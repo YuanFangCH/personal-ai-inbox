@@ -10,12 +10,12 @@
 | 最后更新时间 | 2026-10-06 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex / GPT-5 |
-| 当前阶段 | GitHub 首个预发布版 `v1.0.0` 自动化发布流程已实现并完成本地打包验证 |
-| 总体状态 | `app/` 已形成可运行的 Flutter 客户端，Android release、Windows release、Web release 构建和 253 项主机回归均通过。GitHub 已发布 MIT 源码，并新增 `v*` 标签触发的 Release 工作流，面向 Android 7.0+ 和 Windows 11 x64 生成 APK、安装包、便携 ZIP 与校验文件。首发仍为预发布：Android 使用 Debug 证书，Windows 未进行代码签名。产品功能仍保留既有边界：OneDrive、百度网盘和本地通知尚未完成。 |
+| 当前阶段 | GitHub 首个预发布版 `v1.0.0` 已发布，Android 与 Windows 11 资产可用 |
+| 总体状态 | `app/` 已形成可运行的 Flutter 客户端，Android release、Windows release、Web release 构建和 253 项主机回归均通过。GitHub 已发布 MIT 源码和首个预发布版 `v1.0.0`，包含 Android APK、Windows x64 安装包、便携 ZIP 与 SHA-256 校验文件；Release 工作流在 Windows runner 上完成测试、构建、安装/卸载冒烟和上传。首发仍为预发布：Android 使用 Debug 证书，Windows 未进行代码签名。产品功能仍保留既有边界：OneDrive、百度网盘和本地通知尚未完成。 |
 
 ## 2. 一句话交接
 
-项目已完成首个 GitHub 预发布版的自动打包与上传流程：推送 `v1.0.0` 标签后，Windows runner 会重新测试并生成 Android APK、Windows 安装包、便携 ZIP 和 SHA-256 校验文件。下一步是在发布结果确认后回到厂商后台策略、通知和图片输入边界。
+项目已完成首个 GitHub 预发布版：`v1.0.0`、Android APK、Windows 安装包、便携 ZIP 和 SHA-256 校验文件均已发布，Release Actions 全部通过。下一步是配置正式签名，并继续厂商后台策略、通知和图片输入验证。
 
 ## 3. 当前目标与范围
 
@@ -189,6 +189,8 @@
 - 本机生成的 APK 为 `versionName=1.0.0`、`versionCode=1`、minSdk 24、targetSdk 36，并包含 `android.permission.INTERNET`；证书为 `CN=Android Debug`。
 - `flutter analyze` 无问题，完整 `flutter test --reporter compact` 253 项通过。
 - `scripts/scan-public-release.ps1` 通过，发布文档和脚本未包含凭据或未脱敏设备标识。
+- 标签发布工作流 `37434034842` 在 Windows 2022 上全部通过，耗时约 15 分 39 秒；常规 Flutter CI 也通过。
+- GitHub Release API 确认 `v1.0.0` 为预发布，Android APK、Windows 安装包、便携 ZIP 和 `SHA256SUMS.txt` 均存在；校验文件中的三项哈希与平台记录一致。
 
 ## 7. 风险、阻塞与下一步
 
@@ -217,14 +219,23 @@
 
 ### 下一步
 
-1. 推送并确认 `v1.0.0` 的 GitHub Actions 发布任务、Release 预发布状态和四个资产。
-2. 后续公开开发直接在干净 `main` 上增量提交，禁止推送 `archive/pre-open-source`。
+1. 后续公开开发直接在干净 `main` 上增量提交，禁止推送 `archive/pre-open-source`；新版本必须同步提升 `pubspec.yaml` 版本并新增 `docs/releases/v<version>.md`。
+2. 配置 Android 独立签名和 Windows 代码签名，为后续稳定版准备正式证书。
 3. 在两台设备上验证电池优化、自启动、后台冻结和本地通知恢复。
-4. 配置 Android 独立签名和 Windows 代码签名，为后续稳定版准备正式证书。
-5. 登记 Microsoft public client，完成 OneDrive App Folder、delta、eTag 和 PKCE 联调。
-6. 在具备受控测试 Key 和费用预算时，用线上 `deepseek-flash` 对 20 个大型场景做抽取质量评分，并补 30-50 条中文样本。
+4. 登记 Microsoft public client，完成 OneDrive App Folder、delta、eTag 和 PKCE 联调。
+5. 在具备受控测试 Key 和费用预算时，用线上 `deepseek-flash` 对 20 个大型场景做抽取质量评分，并补 30-50 条中文样本。
 
 ## 8. 变更记录
+
+### 2026-10-06 / 发布 GitHub 首个预发布版 v1.0.0
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 推送 `v1.0.0` 标签，执行 Release 工作流，发布 Android APK 和 Windows 11 x64 安装包、便携 ZIP、校验文件 |
+| 变更文件 | `RM_HANDOFF.md` |
+| 验证 | Release Actions 全部通过；Release 为 prerelease；四个资产存在；APK、安装包和便携 ZIP 的平台 SHA-256 摘要与 `SHA256SUMS.txt` 一致；常规 Flutter CI 通过 |
+| 提交标题 | `docs: 记录 v1.0.0 首发结果` |
+| 遗留事项 | 首发为 Debug 签名 APK 和未签名 Windows 包；后续稳定版需要独立签名和代码签名 |
 
 ### 2026-10-06 / 建立 GitHub 首个预发布版打包与自动上传流程
 
