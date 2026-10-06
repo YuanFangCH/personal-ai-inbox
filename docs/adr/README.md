@@ -16,6 +16,7 @@
 | [0010](0010-contextual-ai-conversation-and-guarded-auto-write.md) | AI 对话采用本地多会话，并授权高置信自动新增成果 | accepted |
 | [0011](0011-mit-open-source-release.md) | 以 MIT 协议公开发布，并使用干净公开历史 | accepted |
 | [0012](0012-github-release-artifacts-and-tag-workflow.md) | GitHub Release 作为首发渠道，并按标签自动构建 | accepted |
+| [0013](0013-lazy-conversation-creation-and-merged-confirmation.md) | 会话按首次内容创建，确认入口合并到收件箱 | accepted |
 
 相关文档：
 

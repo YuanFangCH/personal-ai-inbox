@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/chat_models.dart';
-import '../../core/models.dart';
 import '../../services/app_controller.dart';
 import '../app_scope.dart';
 import '../widgets/capture_sheet.dart';
 import '../widgets/common.dart';
+import '../widgets/review_queue.dart';
 import 'conversation_page.dart';
 import 'document_detail_page.dart';
 
@@ -18,12 +18,14 @@ class InboxPage extends StatelessWidget {
     final app = AppScope.of(context);
     final reviews = app.reviewCaptures;
     final drafts = app.draftDocuments;
-    final pending = reviews.length + drafts.length;
+    final conflicts = app.conflictFiles;
+    final pending = reviews.length + conflicts.length;
     return PageFrame(
       title: '收件箱',
       subtitle: pending == 0
-          ? '${app.conversations.length} 个会话'
-          : '$pending 条待整理 · ${app.conversations.length} 个会话',
+          ? '${app.conversations.length} 个会话 · ${drafts.length} 条草稿'
+          : '$pending 条待确认 · ${drafts.length} 条草稿 · '
+                '${app.conversations.length} 个会话',
       actions: [
         FilledButton.icon(
           key: const Key('inbox_new_conversation'),
@@ -40,21 +42,7 @@ class InboxPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (reviews.isNotEmpty) ...[
-            const SectionHeading(title: '待确认'),
-            const SizedBox(height: 8),
-            SurfacePanel(
-              child: Column(
-                children: [
-                  for (var index = 0; index < reviews.length; index++) ...[
-                    _ReviewRow(capture: reviews[index], app: app),
-                    if (index != reviews.length - 1) const Divider(height: 1),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
-          ],
+          const ReviewQueue(),
           if (drafts.isNotEmpty) ...[
             const SectionHeading(title: '草稿'),
             const SizedBox(height: 8),
@@ -104,10 +92,7 @@ class InboxPage extends StatelessWidget {
   }
 
   Future<void> _newConversation(BuildContext context) async {
-    final conversation = await AppScope.of(context).createConversation();
-    if (context.mounted) {
-      await openConversationPage(context, conversation.id);
-    }
+    await openNewConversationPage(context);
   }
 }
 
@@ -250,179 +235,5 @@ class _ConversationTile extends StatelessWidget {
       return DateFormat('HH:mm').format(date);
     }
     return DateFormat('MM-dd').format(date);
-  }
-}
-
-class _ReviewRow extends StatelessWidget {
-  const _ReviewRow({required this.capture, required this.app});
-
-  final CaptureRecord capture;
-  final AppController app;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final type = capture.candidateType ?? ResultType.knowledge;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(type.icon, color: theme.colorScheme.primary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  capture.candidateTitle ?? '待整理',
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  capture.text,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 7),
-                Wrap(
-                  spacing: 7,
-                  runSpacing: 7,
-                  children: [
-                    StatusPill(
-                      label: type.label,
-                      icon: type.icon,
-                      tone: StatusTone.warning,
-                    ),
-                    if (capture.reviewReason != null)
-                      StatusPill(label: capture.reviewReason!),
-                    StatusPill(
-                      label: DateFormat('MM-dd HH:mm')
-                          .format(capture.capturedAt),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          PopupMenuButton<String>(
-            tooltip: '处理',
-            onSelected: (value) async {
-              if (value == 'accept') {
-                await _confirmCapture(context);
-              } else {
-                await app.rejectCapture(capture);
-              }
-            },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'accept', child: Text('确认并生成')),
-              PopupMenuItem(value: 'reject', child: Text('忽略')),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _confirmCapture(BuildContext context) async {
-    final result = await showDialog<_ReviewDecision>(
-      context: context,
-      builder: (context) => _ReviewDialog(capture: capture),
-    );
-    if (result == null) {
-      return;
-    }
-    await app.acceptCapture(capture, type: result.type, title: result.title);
-  }
-}
-
-class _ReviewDecision {
-  const _ReviewDecision(this.type, this.title);
-
-  final ResultType type;
-  final String title;
-}
-
-class _ReviewDialog extends StatefulWidget {
-  const _ReviewDialog({required this.capture});
-
-  final CaptureRecord capture;
-
-  @override
-  State<_ReviewDialog> createState() => _ReviewDialogState();
-}
-
-class _ReviewDialogState extends State<_ReviewDialog> {
-  late final TextEditingController _title;
-  late ResultType _type;
-
-  @override
-  void initState() {
-    super.initState();
-    _title = TextEditingController(
-      text: widget.capture.candidateTitle ?? '待整理',
-    );
-    _type = widget.capture.candidateType ?? ResultType.knowledge;
-  }
-
-  @override
-  void dispose() {
-    _title.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('确认成果'),
-      content: SizedBox(
-        width: 520,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SegmentedButton<ResultType>(
-              segments: [
-                for (final type in ResultType.values)
-                  ButtonSegment(
-                    value: type,
-                    icon: Icon(type.icon),
-                    label: Text(type.label),
-                  ),
-              ],
-              selected: {_type},
-              onSelectionChanged: (value) =>
-                  setState(() => _type = value.first),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: _title,
-              decoration: const InputDecoration(labelText: '标题'),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              widget.capture.text,
-              maxLines: 5,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('取消'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(
-            context,
-            _ReviewDecision(_type, _title.text.trim()),
-          ),
-          child: const Text('生成'),
-        ),
-      ],
-    );
   }
 }

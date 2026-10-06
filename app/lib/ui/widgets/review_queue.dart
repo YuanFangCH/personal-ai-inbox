@@ -4,76 +4,56 @@ import 'package:path/path.dart' as p;
 import '../../core/models.dart';
 import '../../services/app_controller.dart';
 import '../app_scope.dart';
-import '../widgets/common.dart';
+import 'common.dart';
 
-class ReviewPage extends StatelessWidget {
-  const ReviewPage({super.key});
+class ReviewQueue extends StatelessWidget {
+  const ReviewQueue({super.key});
 
   @override
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
     final reviews = app.reviewCaptures;
     final conflicts = app.conflictFiles;
-    final total = reviews.length + conflicts.length;
-    return PageFrame(
-      title: '确认',
-      subtitle: total == 0 ? '没有待确认内容' : '$total 项需要处理',
-      child: total == 0
-          ? const EmptyState(
-              icon: Icons.verified_outlined,
-              title: '没有待确认内容',
-              message: '低置信度捕获和同步冲突会出现在这里。',
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+    if (reviews.isEmpty && conflicts.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (reviews.isNotEmpty) ...[
+          SectionHeading(title: '待确认', trailing: Text('${reviews.length} 项')),
+          const SizedBox(height: 8),
+          SurfacePanel(
+            child: Column(
               children: [
-                if (reviews.isNotEmpty) ...[
-                  SectionHeading(
-                    title: '捕获确认',
-                    trailing: Text('${reviews.length} 项'),
-                  ),
-                  const SizedBox(height: 8),
-                  SurfacePanel(
-                    child: Column(
-                      children: [
-                        for (
-                          var index = 0;
-                          index < reviews.length;
-                          index++
-                        ) ...[
-                          _ReviewCaptureTile(capture: reviews[index], app: app),
-                          if (index != reviews.length - 1)
-                            const Divider(height: 1),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                ],
-                if (conflicts.isNotEmpty) ...[
-                  SectionHeading(
-                    title: '同步冲突',
-                    trailing: Text('${conflicts.length} 项'),
-                  ),
-                  const SizedBox(height: 8),
-                  SurfacePanel(
-                    child: Column(
-                      children: [
-                        for (
-                          var index = 0;
-                          index < conflicts.length;
-                          index++
-                        ) ...[
-                          _ConflictTile(path: conflicts[index], app: app),
-                          if (index != conflicts.length - 1)
-                            const Divider(height: 1),
-                        ],
-                      ],
-                    ),
-                  ),
+                for (var index = 0; index < reviews.length; index++) ...[
+                  _ReviewCaptureTile(capture: reviews[index], app: app),
+                  if (index != reviews.length - 1) const Divider(height: 1),
                 ],
               ],
             ),
+          ),
+          const SizedBox(height: 18),
+        ],
+        if (conflicts.isNotEmpty) ...[
+          SectionHeading(
+            title: '同步冲突',
+            trailing: Text('${conflicts.length} 项'),
+          ),
+          const SizedBox(height: 8),
+          SurfacePanel(
+            child: Column(
+              children: [
+                for (var index = 0; index < conflicts.length; index++) ...[
+                  _ConflictTile(path: conflicts[index], app: app),
+                  if (index != conflicts.length - 1) const Divider(height: 1),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+        ],
+      ],
     );
   }
 }

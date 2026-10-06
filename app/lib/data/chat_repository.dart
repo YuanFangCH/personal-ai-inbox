@@ -29,6 +29,18 @@ class ChatRepository {
     return _store.listConversations();
   }
 
+  Future<int> deleteEmptyConversations() async {
+    var deleted = 0;
+    for (final conversation in await _store.listConversations()) {
+      if ((await _store.listMessages(conversation.id)).isNotEmpty) {
+        continue;
+      }
+      await deleteConversation(conversation.id);
+      deleted++;
+    }
+    return deleted;
+  }
+
   Future<Conversation?> findConversation(String id) {
     return _store.findConversation(id);
   }

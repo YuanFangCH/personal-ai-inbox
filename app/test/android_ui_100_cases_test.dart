@@ -12,7 +12,7 @@ void main() {
     expect(cases.where((item) => item.device == 'phone'), hasLength(74));
     expect(cases.where((item) => item.device == 'tablet'), hasLength(26));
     expect(cases.where((item) => item.theme == 'dark'), isNotEmpty);
-    expect(cases.where((item) => item.fontScale >= 1.5), hasLength(15));
+    expect(cases.where((item) => item.fontScale >= 1.5), hasLength(17));
     expect(
       cases.map((item) => item.action).toSet(),
       containsAll([

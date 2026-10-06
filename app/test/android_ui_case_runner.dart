@@ -384,7 +384,6 @@ enum AndroidUiPage {
   todos,
   matters,
   knowledge,
-  review,
   sync,
   settings,
 }

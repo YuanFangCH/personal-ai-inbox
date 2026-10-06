@@ -32,7 +32,7 @@ void main() {
         'due': '2026-10-09T15:00:00+08:00',
       },
     );
-    final conversationId = harness.controller.activeConversationId!;
+    final conversationId = (await harness.controller.createConversation()).id;
 
     await harness.controller.sendChatMessage(
       conversationId,
@@ -64,7 +64,7 @@ void main() {
         'sensitive': false,
       },
     );
-    final conversationId = harness.controller.activeConversationId!;
+    final conversationId = (await harness.controller.createConversation()).id;
 
     await harness.controller.sendChatMessage(conversationId, text: '下周找时间开会');
 
@@ -82,7 +82,7 @@ void main() {
       toolPayload: null,
       responseText: '只看到当前会话',
     );
-    final first = harness.controller.activeConversationId!;
+    final first = (await harness.controller.createConversation()).id;
     await harness.controller.sendChatMessage(first, text: '第一条独有内容');
     final second = (await harness.controller.createConversation()).id;
     await harness.controller.sendChatMessage(second, text: '第二条独有内容');
