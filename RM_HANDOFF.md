@@ -10,12 +10,12 @@
 | 最后更新时间 | 2026-10-07 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex / GPT-5 |
-| 当前阶段 | 正在准备 GitHub 预发布版 `v1.1.0`；日历工作区、快速新建和三端响应式回归已完成 |
-| 总体状态 | `app/` 已形成可运行的 Flutter 客户端，冷启动直接进入首页，会话按首次内容创建，确认入口已合并到收件箱；日历已扩展为日程、我的一天、待办统一工作区，支持年/月/周/日/日程列表、详细与概要月视图及事件/待办快速新建。Android release、Windows release、Web release 构建和 268 项主机回归均通过，Android 手机/平板原生冒烟与 100 条 Android UI 集成矩阵均通过。GitHub 已发布 MIT 源码和首个预发布版 `v1.0.0`，包含 Android APK、Windows x64 安装包、便携 ZIP 与 SHA-256 校验文件；首发仍为 Debug 证书 APK 和未签名 Windows 包。产品功能仍保留既有边界：OneDrive、百度网盘和本地通知尚未完成。 |
+| 当前阶段 | GitHub 预发布版 `v1.1.0` 已发布，Android、Windows 安装包和便携包资产可用 |
+| 总体状态 | `app/` 已形成可运行的 Flutter 客户端，冷启动直接进入首页，会话按首次内容创建，确认入口已合并到收件箱；日历已扩展为日程、我的一天、待办统一工作区，支持年/月/周/日/日程列表、详细与概要月视图及事件/待办快速新建。Android release、Windows release、Web release 构建和 268 项主机回归均通过，Android 手机/平板原生冒烟与 100 条 Android UI 集成矩阵均通过。GitHub 已发布 MIT 源码和预发布版 `v1.1.0`，Release 工作流 15 分 5 秒全部成功，资产包含 Android APK、Windows x64 安装包、便携 ZIP 与 `SHA256SUMS.txt`，远端下载校验一致；APK 仍使用 Debug 证书，Windows 包仍未代码签名。产品功能仍保留既有边界：OneDrive、百度网盘和本地通知尚未完成。 |
 
 ## 2. 一句话交接
 
-项目已完成首个 GitHub 预发布版，并把会话生命周期改为首次内容落库、把独立确认页合并回收件箱；日历页已合并为统一工作区并补齐多视图与快速新建。下一步是正式签名、厂商后台策略、通知和图片输入验证。
+项目已发布 GitHub 预发布版 `v1.1.0`，完成日历工作区、多视图、待办投影和快速新建。下一步是正式签名、厂商后台策略、通知和图片输入验证。
 
 ## 3. 当前目标与范围
 
@@ -205,6 +205,9 @@
 - `flutter test integration_test/windows_smoke_test.dart -d windows` 通过；Windows 原生导航、滚动、长文和捕获流程无异常。
 - 在 `aitext_honor_phone` Android 15 x86_64 AVD 上通过手机与平板两档 `android_smoke_test.dart`，并继续通过 `android_ui_100_test.dart` 100/100。
 - 在真实浏览器尺寸复核手机宽度和 1280x800 桌面布局：五档模式栏、月视图、年视图、周时间轴、日程列表、我的一天、待办和快速新建面板均显示正常，未发现文字重叠或控件溢出。
+- `main` Flutter CI `37501730835` 在 Linux/UTC 环境通过格式、静态分析和 268 项测试。
+- `v1.1.0` Release 工作流 `37501751529` 在 Windows runner 用时 15 分 5 秒全部通过，完成标签校验、测试、Android/Windows release 构建、APK 元数据与 Debug 证书校验、Inno Setup 编译、安装/卸载冒烟、便携 ZIP 校验和 Release 上传。
+- GitHub Release `v1.1.0` 已确认是预发布且非草稿，包含 `personal-ai-inbox-v1.1.0-android.apk`、Windows x64 安装包、便携 ZIP 和 `SHA256SUMS.txt`；重新下载三个资产后计算 SHA-256，三项均与校验文件一致。
 
 ## 7. 风险、阻塞与下一步
 
@@ -242,6 +245,16 @@
 6. 在新日历工作区基础上，连接 HONOR/Galaxy 物理设备复跑双设备验收和系统分享强停恢复探针。
 
 ## 8. 变更记录
+
+### 2026-10-07 / 发布 v1.1.0 预发布版
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 推送 `main` 和 `v1.1.0` 标签，执行 Release 工作流，发布 Android APK、Windows 安装包、便携 ZIP 和校验文件 |
+| 变更文件 | `RM_HANDOFF.md` |
+| 验证 | `main` Flutter CI 通过；Release 工作流 15 分 5 秒全部成功；GitHub API 确认 `v1.1.0` 为预发布且非草稿；四个资产存在；重新下载三个二进制资产后 SHA-256 与 `SHA256SUMS.txt` 全部一致 |
+| 提交标题 | `docs: 记录 v1.1.0 发布结果` |
+| 遗留事项 | 仍为 Android Debug 证书和未签名 Windows 包；正式稳定版前需要独立签名与代码签名 |
 
 ### 2026-10-07 / 准备发布 v1.1.0
 
