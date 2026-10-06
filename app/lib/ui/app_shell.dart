@@ -7,7 +7,6 @@ import 'pages/home_page.dart';
 import 'pages/inbox_page.dart';
 import 'pages/knowledge_page.dart';
 import 'pages/matters_page.dart';
-import 'pages/review_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/sync_page.dart';
 import 'pages/todos_page.dart';
@@ -20,7 +19,6 @@ enum AppPage {
   todos('待办', Icons.checklist_outlined),
   matters('事项', Icons.account_tree_outlined),
   knowledge('知识', Icons.menu_book_outlined),
-  review('确认', Icons.rule_folder_outlined),
   sync('同步', Icons.sync_outlined),
   settings('设置', Icons.tune_outlined);
 
@@ -194,10 +192,7 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> _newConversation() async {
-    final conversation = await AppScope.of(context).createConversation();
-    if (mounted) {
-      await openConversationPage(context, conversation.id);
-    }
+    await openNewConversationPage(context);
   }
 
   Widget _pageFor(AppPage page) {
@@ -208,7 +203,6 @@ class _AppShellState extends State<AppShell> {
       AppPage.todos => const TodosPage(),
       AppPage.matters => const MattersPage(),
       AppPage.knowledge => const KnowledgePage(),
-      AppPage.review => const ReviewPage(),
       AppPage.sync => const SyncPage(),
       AppPage.settings => const SettingsPage(),
     };
@@ -235,7 +229,6 @@ class _AppShellState extends State<AppShell> {
                 for (final page in const [
                   AppPage.matters,
                   AppPage.knowledge,
-                  AppPage.review,
                   AppPage.sync,
                   AppPage.settings,
                 ])
@@ -316,7 +309,6 @@ class _WideNavigation extends StatelessWidget {
       AppPage.todos => Icons.checklist,
       AppPage.matters => Icons.account_tree,
       AppPage.knowledge => Icons.menu_book,
-      AppPage.review => Icons.rule_folder,
       AppPage.sync => Icons.sync,
       AppPage.settings => Icons.tune,
     };

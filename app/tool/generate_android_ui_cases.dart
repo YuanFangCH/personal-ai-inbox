@@ -40,7 +40,6 @@ void main() {
     ('todos', '待办'),
     ('matters', '事项'),
     ('knowledge', '知识'),
-    ('review', '确认'),
     ('sync', '同步'),
     ('settings', '设置'),
   ];
@@ -284,13 +283,35 @@ void main() {
     );
   }
 
+  for (final variant in const [
+    ('phone', 'light', 1.5, 'font_scale'),
+    ('phone', 'light', 1.5, 'vertical_swipe'),
+    ('phone', 'light', 1.3, 'font_scale'),
+    ('phone', 'dark', 1.0, 'navigate'),
+    ('tablet', 'light', 1.5, 'font_scale'),
+    ('tablet', 'light', 1.0, 'vertical_swipe'),
+  ]) {
+    add(
+      device: variant.$1,
+      width: variant.$1 == 'phone' ? 390 : 1280,
+      height: variant.$1 == 'phone' ? 844 : 800,
+      pixelRatio: 1,
+      theme: variant.$2,
+      fontScale: variant.$3,
+      page: 'inbox',
+      action: variant.$4,
+      expectedText: '收件箱',
+      description: '${variant.$1} ${variant.$2} ${variant.$3}x 检查合并确认区',
+    );
+  }
+
   if (cases.length != 100) {
     throw StateError('Expected 100 cases, got ${cases.length}');
   }
 
   final output = const JsonEncoder.withIndent('  ').convert({
     'version': 1,
-    'generatedAt': '2026-10-04T18:30:00+08:00',
+    'generatedAt': '2026-10-06T00:00:00+08:00',
     'cases': cases,
   });
   final jsonFile = File('test/fixtures/android_ui_100_cases.json');

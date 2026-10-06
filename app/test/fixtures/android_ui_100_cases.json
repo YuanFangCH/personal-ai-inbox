@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-04T18:30:00+08:00",
+  "generatedAt": "2026-10-06T00:00:00+08:00",
   "cases": [
     {
       "id": "android_ui_001",
@@ -88,26 +88,13 @@
       "pixelRatio": 1.0,
       "theme": "light",
       "fontScale": 1.0,
-      "page": "review",
-      "action": "navigate",
-      "expectedText": "确认",
-      "description": "手机浅色进入确认页"
-    },
-    {
-      "id": "android_ui_008",
-      "device": "phone",
-      "width": 390.0,
-      "height": 844.0,
-      "pixelRatio": 1.0,
-      "theme": "light",
-      "fontScale": 1.0,
       "page": "sync",
       "action": "navigate",
       "expectedText": "同步",
       "description": "手机浅色进入同步页"
     },
     {
-      "id": "android_ui_009",
+      "id": "android_ui_008",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -120,7 +107,7 @@
       "description": "手机浅色进入设置页"
     },
     {
-      "id": "android_ui_010",
+      "id": "android_ui_009",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -133,7 +120,7 @@
       "description": "平板浅色进入首页页"
     },
     {
-      "id": "android_ui_011",
+      "id": "android_ui_010",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -146,7 +133,7 @@
       "description": "平板浅色进入收件箱页"
     },
     {
-      "id": "android_ui_012",
+      "id": "android_ui_011",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -159,7 +146,7 @@
       "description": "平板浅色进入日历页"
     },
     {
-      "id": "android_ui_013",
+      "id": "android_ui_012",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -172,7 +159,7 @@
       "description": "平板浅色进入待办页"
     },
     {
-      "id": "android_ui_014",
+      "id": "android_ui_013",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -185,7 +172,7 @@
       "description": "平板浅色进入事项页"
     },
     {
-      "id": "android_ui_015",
+      "id": "android_ui_014",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -198,20 +185,7 @@
       "description": "平板浅色进入知识页"
     },
     {
-      "id": "android_ui_016",
-      "device": "tablet",
-      "width": 1280.0,
-      "height": 800.0,
-      "pixelRatio": 1.0,
-      "theme": "light",
-      "fontScale": 1.0,
-      "page": "review",
-      "action": "navigate",
-      "expectedText": "确认",
-      "description": "平板浅色进入确认页"
-    },
-    {
-      "id": "android_ui_017",
+      "id": "android_ui_015",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -224,7 +198,7 @@
       "description": "平板浅色进入同步页"
     },
     {
-      "id": "android_ui_018",
+      "id": "android_ui_016",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -237,7 +211,7 @@
       "description": "平板浅色进入设置页"
     },
     {
-      "id": "android_ui_019",
+      "id": "android_ui_017",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -250,7 +224,7 @@
       "description": "手机深色进入首页页"
     },
     {
-      "id": "android_ui_020",
+      "id": "android_ui_018",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -263,7 +237,7 @@
       "description": "手机深色进入收件箱页"
     },
     {
-      "id": "android_ui_021",
+      "id": "android_ui_019",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -276,7 +250,7 @@
       "description": "手机深色进入日历页"
     },
     {
-      "id": "android_ui_022",
+      "id": "android_ui_020",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -289,7 +263,7 @@
       "description": "手机深色进入待办页"
     },
     {
-      "id": "android_ui_023",
+      "id": "android_ui_021",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -302,7 +276,7 @@
       "description": "手机深色进入事项页"
     },
     {
-      "id": "android_ui_024",
+      "id": "android_ui_022",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -315,7 +289,7 @@
       "description": "手机深色进入知识页"
     },
     {
-      "id": "android_ui_025",
+      "id": "android_ui_023",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -328,7 +302,7 @@
       "description": "平板深色进入首页页"
     },
     {
-      "id": "android_ui_026",
+      "id": "android_ui_024",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -341,7 +315,7 @@
       "description": "平板深色进入收件箱页"
     },
     {
-      "id": "android_ui_027",
+      "id": "android_ui_025",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -354,7 +328,7 @@
       "description": "平板深色进入日历页"
     },
     {
-      "id": "android_ui_028",
+      "id": "android_ui_026",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -367,7 +341,7 @@
       "description": "平板深色进入待办页"
     },
     {
-      "id": "android_ui_029",
+      "id": "android_ui_027",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -380,7 +354,7 @@
       "description": "手机字体 1.3x 检查首页页"
     },
     {
-      "id": "android_ui_030",
+      "id": "android_ui_028",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -393,7 +367,7 @@
       "description": "手机字体 1.5x 检查首页页"
     },
     {
-      "id": "android_ui_031",
+      "id": "android_ui_029",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -406,7 +380,7 @@
       "description": "手机字体 1.3x 检查收件箱页"
     },
     {
-      "id": "android_ui_032",
+      "id": "android_ui_030",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -419,7 +393,7 @@
       "description": "手机字体 1.5x 检查收件箱页"
     },
     {
-      "id": "android_ui_033",
+      "id": "android_ui_031",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -432,7 +406,7 @@
       "description": "手机字体 1.3x 检查日历页"
     },
     {
-      "id": "android_ui_034",
+      "id": "android_ui_032",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -445,7 +419,7 @@
       "description": "手机字体 1.5x 检查日历页"
     },
     {
-      "id": "android_ui_035",
+      "id": "android_ui_033",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -458,7 +432,7 @@
       "description": "手机字体 1.3x 检查待办页"
     },
     {
-      "id": "android_ui_036",
+      "id": "android_ui_034",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -471,7 +445,7 @@
       "description": "手机字体 1.5x 检查待办页"
     },
     {
-      "id": "android_ui_037",
+      "id": "android_ui_035",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -484,7 +458,7 @@
       "description": "手机字体 1.3x 检查事项页"
     },
     {
-      "id": "android_ui_038",
+      "id": "android_ui_036",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -497,7 +471,7 @@
       "description": "手机字体 1.5x 检查事项页"
     },
     {
-      "id": "android_ui_039",
+      "id": "android_ui_037",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -510,7 +484,7 @@
       "description": "手机字体 1.3x 检查知识页"
     },
     {
-      "id": "android_ui_040",
+      "id": "android_ui_038",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -523,33 +497,7 @@
       "description": "手机字体 1.5x 检查知识页"
     },
     {
-      "id": "android_ui_041",
-      "device": "phone",
-      "width": 390.0,
-      "height": 844.0,
-      "pixelRatio": 1.0,
-      "theme": "light",
-      "fontScale": 1.3,
-      "page": "review",
-      "action": "font_scale",
-      "expectedText": "确认",
-      "description": "手机字体 1.3x 检查确认页"
-    },
-    {
-      "id": "android_ui_042",
-      "device": "phone",
-      "width": 390.0,
-      "height": 844.0,
-      "pixelRatio": 1.0,
-      "theme": "light",
-      "fontScale": 1.5,
-      "page": "review",
-      "action": "font_scale",
-      "expectedText": "确认",
-      "description": "手机字体 1.5x 检查确认页"
-    },
-    {
-      "id": "android_ui_043",
+      "id": "android_ui_039",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -562,7 +510,7 @@
       "description": "手机字体 1.3x 检查同步页"
     },
     {
-      "id": "android_ui_044",
+      "id": "android_ui_040",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -575,7 +523,7 @@
       "description": "手机字体 1.5x 检查同步页"
     },
     {
-      "id": "android_ui_045",
+      "id": "android_ui_041",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -588,7 +536,7 @@
       "description": "手机字体 1.3x 检查设置页"
     },
     {
-      "id": "android_ui_046",
+      "id": "android_ui_042",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -601,7 +549,7 @@
       "description": "手机字体 1.5x 检查设置页"
     },
     {
-      "id": "android_ui_047",
+      "id": "android_ui_043",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -614,7 +562,7 @@
       "description": "手机字体 1.3x 在首页页上下滑动"
     },
     {
-      "id": "android_ui_048",
+      "id": "android_ui_044",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -627,7 +575,7 @@
       "description": "平板在首页页上下滑动"
     },
     {
-      "id": "android_ui_049",
+      "id": "android_ui_045",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -640,7 +588,7 @@
       "description": "手机字体 1.3x 在收件箱页上下滑动"
     },
     {
-      "id": "android_ui_050",
+      "id": "android_ui_046",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -653,7 +601,7 @@
       "description": "平板在收件箱页上下滑动"
     },
     {
-      "id": "android_ui_051",
+      "id": "android_ui_047",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -666,7 +614,7 @@
       "description": "手机字体 1.3x 在日历页上下滑动"
     },
     {
-      "id": "android_ui_052",
+      "id": "android_ui_048",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -679,7 +627,7 @@
       "description": "平板在日历页上下滑动"
     },
     {
-      "id": "android_ui_053",
+      "id": "android_ui_049",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -692,7 +640,7 @@
       "description": "手机字体 1.3x 在待办页上下滑动"
     },
     {
-      "id": "android_ui_054",
+      "id": "android_ui_050",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -705,7 +653,7 @@
       "description": "平板在待办页上下滑动"
     },
     {
-      "id": "android_ui_055",
+      "id": "android_ui_051",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -718,7 +666,7 @@
       "description": "手机字体 1.3x 在事项页上下滑动"
     },
     {
-      "id": "android_ui_056",
+      "id": "android_ui_052",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -731,7 +679,7 @@
       "description": "平板在事项页上下滑动"
     },
     {
-      "id": "android_ui_057",
+      "id": "android_ui_053",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -744,7 +692,7 @@
       "description": "手机字体 1.3x 在知识页上下滑动"
     },
     {
-      "id": "android_ui_058",
+      "id": "android_ui_054",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -757,33 +705,7 @@
       "description": "平板在知识页上下滑动"
     },
     {
-      "id": "android_ui_059",
-      "device": "phone",
-      "width": 390.0,
-      "height": 844.0,
-      "pixelRatio": 1.0,
-      "theme": "light",
-      "fontScale": 1.3,
-      "page": "review",
-      "action": "vertical_swipe",
-      "expectedText": "确认",
-      "description": "手机字体 1.3x 在确认页上下滑动"
-    },
-    {
-      "id": "android_ui_060",
-      "device": "tablet",
-      "width": 1280.0,
-      "height": 800.0,
-      "pixelRatio": 1.0,
-      "theme": "light",
-      "fontScale": 1.0,
-      "page": "review",
-      "action": "vertical_swipe",
-      "expectedText": "确认",
-      "description": "平板在确认页上下滑动"
-    },
-    {
-      "id": "android_ui_061",
+      "id": "android_ui_055",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -796,7 +718,7 @@
       "description": "手机字体 1.3x 在同步页上下滑动"
     },
     {
-      "id": "android_ui_062",
+      "id": "android_ui_056",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -809,7 +731,7 @@
       "description": "平板在同步页上下滑动"
     },
     {
-      "id": "android_ui_063",
+      "id": "android_ui_057",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -822,7 +744,7 @@
       "description": "手机字体 1.3x 在设置页上下滑动"
     },
     {
-      "id": "android_ui_064",
+      "id": "android_ui_058",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -835,7 +757,7 @@
       "description": "平板在设置页上下滑动"
     },
     {
-      "id": "android_ui_065",
+      "id": "android_ui_059",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -848,7 +770,7 @@
       "description": "手机在calendar页横向滑动控件"
     },
     {
-      "id": "android_ui_066",
+      "id": "android_ui_060",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -861,7 +783,7 @@
       "description": "手机在todos页横向滑动控件"
     },
     {
-      "id": "android_ui_067",
+      "id": "android_ui_061",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -874,7 +796,7 @@
       "description": "手机在matters页横向滑动控件"
     },
     {
-      "id": "android_ui_068",
+      "id": "android_ui_062",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -887,7 +809,7 @@
       "description": "手机在knowledge页横向滑动控件"
     },
     {
-      "id": "android_ui_069",
+      "id": "android_ui_063",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -900,7 +822,7 @@
       "description": "手机在settings页横向滑动控件"
     },
     {
-      "id": "android_ui_070",
+      "id": "android_ui_064",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -913,7 +835,7 @@
       "description": "手机待办切换筛选：今天"
     },
     {
-      "id": "android_ui_071",
+      "id": "android_ui_065",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -926,7 +848,7 @@
       "description": "手机待办切换筛选：即将到期"
     },
     {
-      "id": "android_ui_072",
+      "id": "android_ui_066",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -939,7 +861,7 @@
       "description": "手机待办切换筛选：已完成"
     },
     {
-      "id": "android_ui_073",
+      "id": "android_ui_067",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -952,7 +874,7 @@
       "description": "手机待办切换筛选：全部"
     },
     {
-      "id": "android_ui_074",
+      "id": "android_ui_068",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -965,7 +887,7 @@
       "description": "手机待办切换筛选：今天"
     },
     {
-      "id": "android_ui_075",
+      "id": "android_ui_069",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -978,7 +900,7 @@
       "description": "手机打开matters详情"
     },
     {
-      "id": "android_ui_076",
+      "id": "android_ui_070",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -991,7 +913,7 @@
       "description": "手机打开knowledge详情"
     },
     {
-      "id": "android_ui_077",
+      "id": "android_ui_071",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -1004,7 +926,7 @@
       "description": "手机打开knowledge详情"
     },
     {
-      "id": "android_ui_078",
+      "id": "android_ui_072",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -1017,7 +939,7 @@
       "description": "手机打开matters详情"
     },
     {
-      "id": "android_ui_079",
+      "id": "android_ui_073",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -1030,7 +952,7 @@
       "description": "手机打开knowledge详情"
     },
     {
-      "id": "android_ui_080",
+      "id": "android_ui_074",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -1043,7 +965,7 @@
       "description": "phone light 1.0x 捕获并提交"
     },
     {
-      "id": "android_ui_081",
+      "id": "android_ui_075",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -1056,7 +978,7 @@
       "description": "phone dark 1.3x 捕获并提交"
     },
     {
-      "id": "android_ui_082",
+      "id": "android_ui_076",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -1069,7 +991,7 @@
       "description": "tablet light 1.0x 捕获并提交"
     },
     {
-      "id": "android_ui_083",
+      "id": "android_ui_077",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -1082,7 +1004,7 @@
       "description": "tablet dark 1.0x 捕获并提交"
     },
     {
-      "id": "android_ui_084",
+      "id": "android_ui_078",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -1095,7 +1017,7 @@
       "description": "phone light 1.5x 捕获并提交"
     },
     {
-      "id": "android_ui_085",
+      "id": "android_ui_079",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -1108,7 +1030,7 @@
       "description": "settings 页切换主题控件"
     },
     {
-      "id": "android_ui_086",
+      "id": "android_ui_080",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -1121,7 +1043,7 @@
       "description": "settings 页切换主题控件"
     },
     {
-      "id": "android_ui_087",
+      "id": "android_ui_081",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -1134,7 +1056,7 @@
       "description": "settings 页切换主题控件"
     },
     {
-      "id": "android_ui_088",
+      "id": "android_ui_082",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -1147,7 +1069,7 @@
       "description": "sync 页切换主题控件"
     },
     {
-      "id": "android_ui_089",
+      "id": "android_ui_083",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -1160,7 +1082,7 @@
       "description": "home 页切换主题控件"
     },
     {
-      "id": "android_ui_090",
+      "id": "android_ui_084",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -1173,7 +1095,7 @@
       "description": "手机字体 1.5x 在home页滚动到底部"
     },
     {
-      "id": "android_ui_091",
+      "id": "android_ui_085",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -1186,7 +1108,7 @@
       "description": "手机字体 1.5x 在calendar页滚动到底部"
     },
     {
-      "id": "android_ui_092",
+      "id": "android_ui_086",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -1199,7 +1121,7 @@
       "description": "手机字体 1.5x 在todos页滚动到底部"
     },
     {
-      "id": "android_ui_093",
+      "id": "android_ui_087",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -1212,7 +1134,7 @@
       "description": "手机字体 1.5x 在knowledge页滚动到底部"
     },
     {
-      "id": "android_ui_094",
+      "id": "android_ui_088",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -1225,7 +1147,7 @@
       "description": "手机字体 1.5x 在settings页滚动到底部"
     },
     {
-      "id": "android_ui_095",
+      "id": "android_ui_089",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -1238,7 +1160,7 @@
       "description": "home 页主要按钮点击检查"
     },
     {
-      "id": "android_ui_096",
+      "id": "android_ui_090",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -1251,7 +1173,7 @@
       "description": "inbox 页主要按钮点击检查"
     },
     {
-      "id": "android_ui_097",
+      "id": "android_ui_091",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -1264,7 +1186,7 @@
       "description": "calendar 页主要按钮点击检查"
     },
     {
-      "id": "android_ui_098",
+      "id": "android_ui_092",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -1277,7 +1199,7 @@
       "description": "todos 页主要按钮点击检查"
     },
     {
-      "id": "android_ui_099",
+      "id": "android_ui_093",
       "device": "phone",
       "width": 390.0,
       "height": 844.0,
@@ -1290,7 +1212,7 @@
       "description": "matters 页主要按钮点击检查"
     },
     {
-      "id": "android_ui_100",
+      "id": "android_ui_094",
       "device": "tablet",
       "width": 1280.0,
       "height": 800.0,
@@ -1301,6 +1223,84 @@
       "action": "button_tap",
       "expectedText": null,
       "description": "knowledge 页主要按钮点击检查"
+    },
+    {
+      "id": "android_ui_095",
+      "device": "phone",
+      "width": 390.0,
+      "height": 844.0,
+      "pixelRatio": 1.0,
+      "theme": "light",
+      "fontScale": 1.5,
+      "page": "inbox",
+      "action": "font_scale",
+      "expectedText": "收件箱",
+      "description": "phone light 1.5x 检查合并确认区"
+    },
+    {
+      "id": "android_ui_096",
+      "device": "phone",
+      "width": 390.0,
+      "height": 844.0,
+      "pixelRatio": 1.0,
+      "theme": "light",
+      "fontScale": 1.5,
+      "page": "inbox",
+      "action": "vertical_swipe",
+      "expectedText": "收件箱",
+      "description": "phone light 1.5x 检查合并确认区"
+    },
+    {
+      "id": "android_ui_097",
+      "device": "phone",
+      "width": 390.0,
+      "height": 844.0,
+      "pixelRatio": 1.0,
+      "theme": "light",
+      "fontScale": 1.3,
+      "page": "inbox",
+      "action": "font_scale",
+      "expectedText": "收件箱",
+      "description": "phone light 1.3x 检查合并确认区"
+    },
+    {
+      "id": "android_ui_098",
+      "device": "phone",
+      "width": 390.0,
+      "height": 844.0,
+      "pixelRatio": 1.0,
+      "theme": "dark",
+      "fontScale": 1.0,
+      "page": "inbox",
+      "action": "navigate",
+      "expectedText": "收件箱",
+      "description": "phone dark 1.0x 检查合并确认区"
+    },
+    {
+      "id": "android_ui_099",
+      "device": "tablet",
+      "width": 1280.0,
+      "height": 800.0,
+      "pixelRatio": 1.0,
+      "theme": "light",
+      "fontScale": 1.5,
+      "page": "inbox",
+      "action": "font_scale",
+      "expectedText": "收件箱",
+      "description": "tablet light 1.5x 检查合并确认区"
+    },
+    {
+      "id": "android_ui_100",
+      "device": "tablet",
+      "width": 1280.0,
+      "height": 800.0,
+      "pixelRatio": 1.0,
+      "theme": "light",
+      "fontScale": 1.0,
+      "page": "inbox",
+      "action": "vertical_swipe",
+      "expectedText": "收件箱",
+      "description": "tablet light 1.0x 检查合并确认区"
     }
   ]
 }

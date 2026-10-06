@@ -33,7 +33,6 @@ void main() {
       'nav_todos',
       'nav_matters',
       'nav_knowledge',
-      'nav_review',
       'nav_sync',
       'nav_settings',
       'nav_home',

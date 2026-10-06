@@ -40,7 +40,6 @@ class AppController extends ChangeNotifier {
     ChatRepository? chatRepository,
     ChatService? chatService,
     ImageInputService? imageInputService,
-    bool autoOpenStartupConversation = false,
   }) : _repository = repository,
        _index = indexDatabase,
        _captureService = captureService,
@@ -53,8 +52,7 @@ class AppController extends ChangeNotifier {
              attachments: MemoryAttachmentStore(),
            ),
        _chatService = chatService,
-       _imageInputService = imageInputService ?? ImageInputService(),
-       _autoOpenStartupConversation = autoOpenStartupConversation {
+       _imageInputService = imageInputService ?? ImageInputService() {
     _chatService ??= ChatService(
       settings: _settingsService,
       repository: _chatRepository,
@@ -108,7 +106,6 @@ class AppController extends ChangeNotifier {
         repository: chatRepository,
         modelClient: modelClient,
       ),
-      autoOpenStartupConversation: true,
     );
     await controller.initialize();
     return controller;
@@ -121,13 +118,11 @@ class AppController extends ChangeNotifier {
   final SyncEngine _syncEngine;
   final ChatRepository _chatRepository;
   final ImageInputService _imageInputService;
-  final bool _autoOpenStartupConversation;
   ChatService? _chatService;
   StreamSubscription<ChatStreamDelta>? _chatSubscription;
   Completer<void>? _chatStreamDone;
   bool _cancelChatRequested = false;
   bool _chatInitialized = false;
-  String? _startupConversationId;
   String? _pendingOpenConversationId;
 
   bool isReady = false;
@@ -203,11 +198,8 @@ class AppController extends ChangeNotifier {
         await _chatRepository.initialize();
         _chatInitialized = true;
       }
+      await _chatRepository.deleteEmptyConversations();
       await refresh();
-      final startupConversation = await createConversation();
-      if (_autoOpenStartupConversation) {
-        _startupConversationId = startupConversation.id;
-      }
       isReady = true;
     } catch (error, stackTrace) {
       errorMessage = '初始化失败：$error';
@@ -373,9 +365,8 @@ class AppController extends ChangeNotifier {
   }
 
   String? consumePendingConversationId() {
-    final value = _pendingOpenConversationId ?? _startupConversationId;
+    final value = _pendingOpenConversationId;
     _pendingOpenConversationId = null;
-    _startupConversationId = null;
     return value;
   }
 
@@ -416,11 +407,7 @@ class AppController extends ChangeNotifier {
     }
     final rawImages = await payload.readImages();
     final images = await _imageInputService.fromBytes(rawImages);
-    final startupId = _startupConversationId;
-    _startupConversationId = null;
-    final conversation = startupId == null
-        ? await createConversation()
-        : findConversation(startupId) ?? await createConversation();
+    final conversation = await createConversation();
     _pendingOpenConversationId = conversation.id;
     unawaited(
       sendChatMessage(conversation.id, text: payload.text, attachments: images),

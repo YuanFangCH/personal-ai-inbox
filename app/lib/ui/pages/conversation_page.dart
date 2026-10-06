@@ -17,10 +17,15 @@ Future<void> openConversationPage(BuildContext context, String conversationId) {
   );
 }
 
-class ConversationPage extends StatefulWidget {
-  const ConversationPage({super.key, required this.conversationId});
+Future<void> openNewConversationPage(BuildContext context) {
+  return Navigator.of(context)
+      .push(MaterialPageRoute<void>(builder: (_) => const ConversationPage()));
+}
 
-  final String conversationId;
+class ConversationPage extends StatefulWidget {
+  const ConversationPage({super.key, this.conversationId});
+
+  final String? conversationId;
 
   @override
   State<ConversationPage> createState() => _ConversationPageState();
@@ -33,13 +38,15 @@ class _ConversationPageState extends State<ConversationPage> {
   final _imagePicker = ImageInputService();
   bool _sending = false;
   int _lastMessageCount = -1;
+  String? _conversationId;
 
   @override
   void initState() {
     super.initState();
+    _conversationId = widget.conversationId;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        AppScope.of(context).openConversation(widget.conversationId);
+      if (mounted && _conversationId != null) {
+        AppScope.of(context).openConversation(_conversationId!);
       }
     });
   }
@@ -54,14 +61,19 @@ class _ConversationPageState extends State<ConversationPage> {
   @override
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
-    final conversation = app.findConversation(widget.conversationId);
-    if (conversation == null) {
+    final conversationId = _conversationId;
+    final conversation = conversationId == null
+        ? null
+        : app.findConversation(conversationId);
+    if (conversationId != null && conversation == null) {
       return Scaffold(
         appBar: AppBar(),
         body: const Center(child: Text('会话不存在或已删除')),
       );
     }
-    final messages = app.messagesFor(conversation.id);
+    final messages = conversationId == null
+        ? const <ChatMessage>[]
+        : app.messagesFor(conversationId);
     if (messages.length != _lastMessageCount) {
       _lastMessageCount = messages.length;
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
@@ -74,7 +86,7 @@ class _ConversationPageState extends State<ConversationPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          conversation.title,
+          conversation?.title ?? '新对话',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -85,20 +97,21 @@ class _ConversationPageState extends State<ConversationPage> {
             onPressed: _newConversation,
             icon: const Icon(Icons.add_comment_outlined),
           ),
-          PopupMenuButton<String>(
-            tooltip: '更多',
-            onSelected: (value) {
-              if (value == 'rename') {
-                _renameConversation(conversation);
-              } else if (value == 'delete') {
-                _deleteConversation(conversation);
-              }
-            },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'rename', child: Text('重命名')),
-              PopupMenuItem(value: 'delete', child: Text('删除会话')),
-            ],
-          ),
+          if (conversation != null)
+            PopupMenuButton<String>(
+              tooltip: '更多',
+              onSelected: (value) {
+                if (value == 'rename') {
+                  _renameConversation(conversation);
+                } else if (value == 'delete') {
+                  _deleteConversation(conversation);
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'rename', child: Text('重命名')),
+                PopupMenuItem(value: 'delete', child: Text('删除会话')),
+              ],
+            ),
         ],
       ),
       body: Column(
@@ -154,10 +167,20 @@ class _ConversationPageState extends State<ConversationPage> {
     setState(() => _sending = true);
     try {
       final attachments = List<ChatAttachmentInput>.from(_imageInputs);
-      _textController.clear();
-      setState(() => _imageInputs.clear());
+      var conversationId = _conversationId;
+      if (conversationId == null) {
+        final conversation = await app.createConversation();
+        conversationId = conversation.id;
+        if (mounted) {
+          setState(() => _conversationId = conversationId);
+        }
+      }
+      if (mounted) {
+        _textController.clear();
+        setState(() => _imageInputs.clear());
+      }
       await app.sendChatMessage(
-        widget.conversationId,
+        conversationId,
         text: text,
         attachments: attachments,
       );
@@ -209,15 +232,11 @@ class _ConversationPageState extends State<ConversationPage> {
   }
 
   Future<void> _newConversation() async {
-    final app = AppScope.of(context);
-    final conversation = await app.createConversation();
     if (!mounted) {
       return;
     }
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(
-        builder: (_) => ConversationPage(conversationId: conversation.id),
-      ),
+      MaterialPageRoute<void>(builder: (_) => const ConversationPage()),
     );
   }
 

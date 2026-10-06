@@ -43,7 +43,7 @@ class HomePage extends StatelessWidget {
           _Metrics(
             eventCount: events.length,
             todoCount: openTodos.length,
-            reviewCount: app.reviewCaptures.length,
+            reviewCount: app.reviewCaptures.length + app.conflictFiles.length,
             knowledgeCount: app.knowledge.length,
           ),
           const SizedBox(height: 18),

@@ -7,15 +7,15 @@
 | 字段 | 当前值 |
 |---|---|
 | 项目名称 | 个人 AI 收件箱与提醒系统 |
-| 最后更新时间 | 2026-10-06 |
+| 最后更新时间 | 2026-10-07 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex / GPT-5 |
 | 当前阶段 | GitHub 首个预发布版 `v1.0.0` 已发布，Android 与 Windows 11 资产可用 |
-| 总体状态 | `app/` 已形成可运行的 Flutter 客户端，Android release、Windows release、Web release 构建和 253 项主机回归均通过。GitHub 已发布 MIT 源码和首个预发布版 `v1.0.0`，包含 Android APK、Windows x64 安装包、便携 ZIP 与 SHA-256 校验文件；Release 工作流在 Windows runner 上完成测试、构建、安装/卸载冒烟和上传。首发仍为预发布：Android 使用 Debug 证书，Windows 未进行代码签名。产品功能仍保留既有边界：OneDrive、百度网盘和本地通知尚未完成。 |
+| 总体状态 | `app/` 已形成可运行的 Flutter 客户端，冷启动直接进入首页，会话按首次内容创建，确认入口已合并到收件箱；Android release、Windows release、Web release 构建和 258 项主机回归均通过。GitHub 已发布 MIT 源码和首个预发布版 `v1.0.0`，包含 Android APK、Windows x64 安装包、便携 ZIP 与 SHA-256 校验文件；Release 工作流在 Windows runner 上完成测试、构建、安装/卸载冒烟和上传。首发仍为预发布：Android 使用 Debug 证书，Windows 未进行代码签名。产品功能仍保留既有边界：OneDrive、百度网盘和本地通知尚未完成。 |
 
 ## 2. 一句话交接
 
-项目已完成首个 GitHub 预发布版：`v1.0.0`、Android APK、Windows 安装包、便携 ZIP 和 SHA-256 校验文件均已发布，Release Actions 全部通过。下一步是配置正式签名，并继续厂商后台策略、通知和图片输入验证。
+项目已完成首个 GitHub 预发布版，并把会话生命周期改为首次内容落库、把独立确认页合并回收件箱。下一步是补 Android 设备回归，并继续正式签名、厂商后台策略、通知和图片输入验证。
 
 ## 3. 当前目标与范围
 
@@ -29,8 +29,9 @@
 ### 当前范围
 
 - 当前客户端位于 [app](./app)。
-- 首版已覆盖本地捕获、Markdown 主库、SQLite 索引、收件箱、日历、待办、事项、知识、确认队列、设置和同步演练。
-- 收件箱已覆盖多会话列表、冷启动新会话、旧会话继续、重命名和删除；删除会话不删除已创建成果。
+- 首版已覆盖本地捕获、Markdown 主库、SQLite 索引、收件箱、日历、待办、事项、知识、设置和同步演练；确认队列已并入收件箱。
+- 收件箱已覆盖多会话列表、首次内容创建会话、旧会话继续、重命名和删除；删除会话不删除已创建成果。
+- 冷启动和普通重进直接进入首页；“新对话”只打开临时输入页，未发送退出不留空会话，启动时清理历史空会话。
 - AI 对话支持文本、剪贴板粘贴、相册、拍照、图片预览和 Android 文本/图片分享入口。
 - 对话使用 OpenAI 兼容 SSE 流式回复，可停止、重试，并保留中断半成品。
 - 每轮只使用当前会话最近 20 条消息；历史图片最多来自最近 4 条含图消息、总量不超过 8 张。
@@ -77,7 +78,7 @@
 
 ### 已完成
 
-- 已形成 `CONTEXT.md`、可执行方案、同步协议、模型接入和 12 条 ADR。
+- 已形成 `CONTEXT.md`、可执行方案、同步协议、模型接入和 13 条 ADR。
 - 已完成知识捕获、日历提醒、AI/OCR 自动化调研。
 - 已定义 RM 交接文档的固定结构和只追加变更记录。
 - 已定义 Agent 强制阅读、任务收尾和 Git 提交流程。
@@ -94,7 +95,7 @@
 - 已安装 Visual Studio Build Tools 2022 与 Windows SDK，`flutter doctor` 的 Windows 工具链已通过。
 - 已通过管理员 UAC 安装 Visual Studio ATL 组件，并成功构建 Windows release。
 - 已增加 Windows 与 Android integration test：真实平台导航、滚动、长文和捕获流程。
-- 已生成 100 条 Android UI 独立用例，覆盖 9 个页面、手机/平板、浅色/深色、1.0-1.5x 字体、纵向滚动、横向滑动、筛选、详情、主题切换和捕获。
+- 已生成 100 条 Android UI 独立用例，覆盖 8 个页面、手机/平板、浅色/深色、1.0-1.5x 字体、纵向滚动、横向滑动、筛选、详情、主题切换、捕获和收件箱合并确认区。
 - 已修复 Android 高字体日历溢出、编辑页横向溢出、平板键盘导航栏溢出、状态栏 SafeArea 和捕获提交流程。
 - 已建立荣耀手机与 Galaxy Tab 双设备验收体系，固定 100 条用例，每台 50 条，覆盖导航、字体、滚动、横向控件、筛选、详情、捕获、主题和主要按钮。
 - 已增加设备身份门禁：荣耀配置要求 `manufacturer=HONOR` 且视口小于 600dp；Galaxy Tab 配置要求 `manufacturer=samsung`、型号 `SM-T73*` 且视口至少 600dp。
@@ -109,7 +110,8 @@
 - 已实现 `ConversationStore`、`ChatRepository`、附件存储和 Android 图片分享载荷。
 - 已实现流式模型客户端、停止生成、断流保留、失败重试和会话级上下文裁剪。
 - 已实现高置信自动记录、低置信/敏感/歧义待整理回退和 10 分钟撤销。
-- 已在荣耀 AVD 上人工验证冷启动自动进入新会话、文本分享和相册选图预览；测试 Key 已清除。
+- 已实现会话按首次非空文字或图片创建，冷启动不建会话，启动时清理无消息空会话；系统分享内容仍会创建并打开会话。
+- 已将独立确认页并入收件箱，捕获确认和同步冲突共用同一入口，首页待确认数量同步计入冲突。
 
 ### 验证
 
@@ -148,9 +150,10 @@
 - 使用一支临时测试 Key 验证 DeepSeek 端点：`/models` 返回 `deepseek-flash` 与 `deepseek-v4-pro`；`/chat/completions` 对“周五下午两点和客户开会”返回规范 JSON 事件。
 - App 端到端模型测试生成 `2026-10-09 14:00` 事件，标题“与客户开会”，日期与时间在日历中可见；测试 Key 已从 App 安全存储清除。
 - `flutter analyze` 无问题；完整 `flutter test -r compact` 231 项全部通过。
-- 新增 AI 对话专项测试覆盖 SQLite 持久化、SSE 分片、工具调用解析、高置信自动创建、低置信待整理、撤销、跨会话隔离和冷启动自动打开。
+- 新增 AI 对话专项测试覆盖 SQLite 持久化、SSE 分片、工具调用解析、高置信自动创建、低置信待整理、撤销、跨会话隔离和冷启动留在首页。
 - Android debug APK、release APK（约 63.4 MB，SHA-256 `C4CFC1B5079FD0B7D7483138ADD266A3702AD98399D9F0503647A07473C6C99D`）与 Web release 构建通过。
-- 荣耀 AVD 人工验证：Release 冷启动直接打开新会话；`ACTION_SEND text/plain` 新建会话并显示消息；Android Photo Picker 可选图并返回输入栏预览。
+- 新增会话生命周期测试覆盖冷启动不建会话、临时页退出不留记录、首次发送只创建一个会话、分享内容建会话和启动清理空会话。
+- 新增收件箱合并测试覆盖捕获确认、调整、忽略和同步冲突裁决。
 - 验证报告见 [AI 多会话验证报告](docs/test-reports/2026-10-05-ai-conversation.md)。
 - Galaxy Tab S7 FE 真机识别通过：Samsung `SM-T736B`、Android 14/API 34、1600x2560/340dpi、逻辑宽度约 753dp；未执行清除数据、刷机或重启。
 - Galaxy Tab S7 FE 真机 50/50 UI 通过；`ACTION_SEND`、`ACTION_PROCESS_TEXT`、系统 chooser 与强停恢复均通过。
@@ -191,6 +194,12 @@
 - `scripts/scan-public-release.ps1` 通过，发布文档和脚本未包含凭据或未脱敏设备标识。
 - 标签发布工作流 `37434034842` 在 Windows 2022 上全部通过，耗时约 15 分 39 秒；常规 Flutter CI 也通过。
 - GitHub Release API 确认 `v1.0.0` 为预发布，Android APK、Windows 安装包、便携 ZIP 和 `SHA256SUMS.txt` 均存在；校验文件中的三项哈希与平台记录一致。
+- `dart format --output=none --set-exit-if-changed lib test integration_test tool` 通过，99 个文件格式一致。
+- `flutter analyze` 通过，无 warning、error 或 lint issue。
+- 完整 `flutter test --reporter compact` 通过 258 项，包含会话生命周期、收件箱合并、100 条 Android UI、100 条设备验收和 200 条跨端矩阵。
+- `flutter build web --release`、`flutter build windows --release` 和 `flutter build apk --release` 均成功；Android release APK 约 63.3 MB。
+- `flutter test integration_test/windows_smoke_test.dart -d windows --reporter expanded` 通过完整导航、滚动、长文和捕获流程。
+- 本轮 `flutter devices` 仅发现 Windows 和 Edge，没有在线 Android 设备；本轮未执行 Android 模拟器或真机集成回归。
 
 ## 7. 风险、阻塞与下一步
 
@@ -216,6 +225,7 @@
 - 当前应用尚未实现本地提醒通知，不能把 UI 矩阵通过写成通知验收通过。
 - ADB `shell` 不是媒体 URI 所有者，无法为外部图片分享命令授予 MediaStore 读权限；第三方 App 图片分享仍需人工真机验收。
 - 相机拍照入口尚未在模拟器执行完整拍照流程。
+- 本轮会话生命周期和收件箱合并已通过主机测试与 Windows 原生冒烟，但尚未在 Android 设备上人工复核冷启动、临时会话退出和合并确认区布局。
 
 ### 下一步
 
@@ -224,8 +234,19 @@
 3. 在两台设备上验证电池优化、自启动、后台冻结和本地通知恢复。
 4. 登记 Microsoft public client，完成 OneDrive App Folder、delta、eTag 和 PKCE 联调。
 5. 在具备受控测试 Key 和费用预算时，用线上 `deepseek-flash` 对 20 个大型场景做抽取质量评分，并补 30-50 条中文样本。
+6. 连接 Android 设备或启动 AVD 后，复跑 100 条 Android UI、双设备验收和系统分享强停恢复探针。
 
 ## 8. 变更记录
+
+### 2026-10-07 / 合并确认收件箱并按首次内容创建会话
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 冷启动直接进入首页；新对话改为首次发送文字或图片时才落库；清理历史空会话；删除独立确认页并把捕获确认、同步冲突、草稿和会话合并到收件箱 |
+| 变更文件 | `app/lib/services/app_controller.dart`、`app/lib/data/chat_repository.dart`、`app/lib/ui/app_shell.dart`、`app/lib/ui/pages/conversation_page.dart`、`app/lib/ui/pages/inbox_page.dart`、`app/lib/ui/widgets/review_queue.dart`、Android/Windows 集成测试、Android UI 与双设备生成矩阵、会话生命周期与收件箱合并测试、ADR 0013、ADR 索引、ADR 0010 注记、术语表、可执行方案、模型接入、应用 README、设备验收说明、本文件 |
+| 验证 | Dart 格式检查通过；`flutter analyze` 无问题；完整 `flutter test --reporter compact` 258 项通过；Web、Windows、Android release 构建通过；Windows 原生冒烟通过；本轮无在线 Android 设备，未执行 Android 模拟器/真机集成 |
+| 提交标题 | `feat(app): 合并确认收件箱并按内容创建会话` |
+| 遗留事项 | 需要在 Android 设备或 AVD 上复跑 100 条 UI、双设备验收和系统分享强停恢复探针 |
 
 ### 2026-10-06 / 发布 GitHub 首个预发布版 v1.0.0
 

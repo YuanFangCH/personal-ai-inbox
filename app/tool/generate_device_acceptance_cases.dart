@@ -42,7 +42,6 @@ void main() {
     ('todos', '待办'),
     ('matters', '事项'),
     ('knowledge', '知识'),
-    ('review', '确认'),
     ('sync', '同步'),
     ('settings', '设置'),
   ];
@@ -93,7 +92,6 @@ void main() {
       'inbox',
       'calendar',
       'todos',
-      'review',
       'settings',
     ]) {
       add(
@@ -226,6 +224,33 @@ void main() {
         description: '$hardware 点击 $page 页主要按钮',
       );
     }
+
+    add(
+      target: target,
+      device: device,
+      width: width,
+      height: height,
+      pixelRatio: pixelRatio,
+      theme: 'dark',
+      fontScale: 1,
+      page: 'inbox',
+      action: 'navigate',
+      expectedText: '收件箱',
+      description: '$hardware 深色检查合并确认区',
+    );
+    add(
+      target: target,
+      device: device,
+      width: width,
+      height: height,
+      pixelRatio: pixelRatio,
+      theme: 'light',
+      fontScale: 1,
+      page: 'inbox',
+      action: 'vertical_swipe',
+      expectedText: '收件箱',
+      description: '$hardware 在合并确认区上下滑动',
+    );
   }
 
   addTargetCases(
@@ -257,7 +282,7 @@ void main() {
 
   final output = const JsonEncoder.withIndent('  ').convert({
     'version': 1,
-    'generatedAt': '2026-10-04T21:00:00+08:00',
+    'generatedAt': '2026-10-06T00:00:00+08:00',
     'cases': cases,
   });
   final jsonFile = File('test/fixtures/device_acceptance_100_cases.json');

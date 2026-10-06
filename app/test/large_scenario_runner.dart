@@ -124,7 +124,7 @@ Future<void> runLargeScenario(LargeScenario scenario) async {
 
   try {
     await controller.initialize();
-    final conversationId = controller.activeConversationId!;
+    final conversationId = (await controller.createConversation()).id;
     for (final message in scenario.messages) {
       await controller.sendChatMessage(conversationId, text: message.text);
       final assistant = controller.messagesFor(conversationId).last;
