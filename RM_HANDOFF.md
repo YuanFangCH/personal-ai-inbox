@@ -10,10 +10,11 @@
 | 最后更新时间 | 2026-10-07 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex / GPT-5 |
+| 当前阶段 | GitHub 预发布版 `v1.1.0` 已发布，Android、Windows 安装包和便携包资产可用 |
 
 ## 2. 一句话交接
 
-项目已完成首个 GitHub 预发布版，并把会话生命周期改为首次内容落库、把独立确认页合并回收件箱；日历页已合并为统一工作区并补齐多视图与快速新建。下一步是正式签名、厂商后台策略、通知和图片输入验证。
+项目已发布 GitHub 预发布版 `v1.1.0`，完成日历工作区、多视图、待办投影和快速新建。下一步是正式签名、厂商后台策略、通知和图片输入验证。
 
 ## 3. 当前目标与范围
 
@@ -186,6 +187,9 @@
 - `flutter build web --release`、`flutter build windows --release` 和 `flutter build apk --release` 均成功；Android release APK 为 63.8 MB，SHA-256 `62AA2BB22AE5C800643464C1D6C2899D5CE3325DAC314AE4B52531C40769AAB4`；Windows release EXE SHA-256 `FFD9D0033F3CDBF31B6942A2A87A0DBE6D8C4765A49216651A6B84FE08B8E386`。
 - `flutter test integration_test/windows_smoke_test.dart -d windows` 通过；Windows 原生导航、滚动、长文和捕获流程无异常。
 - 在真实浏览器尺寸复核手机宽度和 1280x800 桌面布局：五档模式栏、月视图、年视图、周时间轴、日程列表、我的一天、待办和快速新建面板均显示正常，未发现文字重叠或控件溢出。
+- `main` Flutter CI `37501730835` 在 Linux/UTC 环境通过格式、静态分析和 268 项测试。
+- `v1.1.0` Release 工作流 `37501751529` 在 Windows runner 用时 15 分 5 秒全部通过，完成标签校验、测试、Android/Windows release 构建、APK 元数据与 Debug 证书校验、Inno Setup 编译、安装/卸载冒烟、便携 ZIP 校验和 Release 上传。
+- GitHub Release `v1.1.0` 已确认是预发布且非草稿，包含 `personal-ai-inbox-v1.1.0-android.apk`、Windows x64 安装包、便携 ZIP 和 `SHA256SUMS.txt`；重新下载三个资产后计算 SHA-256，三项均与校验文件一致。
 
 ## 7. 风险、阻塞与下一步
 
