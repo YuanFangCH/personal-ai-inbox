@@ -30,7 +30,6 @@ void main() {
     for (final key in const [
       'nav_inbox',
       'nav_calendar',
-      'nav_todos',
       'nav_matters',
       'nav_knowledge',
       'nav_sync',
@@ -39,6 +38,10 @@ void main() {
     ]) {
       await tester.tap(find.byKey(Key(key)));
       await tester.pumpAndSettle();
+      if (key == 'nav_calendar') {
+        await tester.tap(find.byKey(const Key('calendar_section_todos')));
+        await tester.pumpAndSettle();
+      }
       final scrollables = find.byType(Scrollable);
       if (scrollables.evaluate().isNotEmpty) {
         await tester.drag(scrollables.first, const Offset(0, -500));

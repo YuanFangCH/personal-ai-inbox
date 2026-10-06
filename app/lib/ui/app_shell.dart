@@ -9,14 +9,12 @@ import 'pages/knowledge_page.dart';
 import 'pages/matters_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/sync_page.dart';
-import 'pages/todos_page.dart';
 import 'widgets/capture_sheet.dart';
 
 enum AppPage {
   home('首页', Icons.space_dashboard_outlined),
   inbox('收件箱', Icons.inbox_outlined),
   calendar('日历', Icons.calendar_month_outlined),
-  todos('待办', Icons.checklist_outlined),
   matters('事项', Icons.account_tree_outlined),
   knowledge('知识', Icons.menu_book_outlined),
   sync('同步', Icons.sync_outlined),
@@ -131,7 +129,7 @@ class _AppShellState extends State<AppShell> {
               : NavigationBar(
                   selectedIndex: _compactIndex(_page),
                   onDestinationSelected: (index) {
-                    if (index < 4) {
+                    if (index < 3) {
                       setState(() => _page = AppPage.values[index]);
                     } else {
                       _showMore();
@@ -167,17 +165,6 @@ class _AppShellState extends State<AppShell> {
                     ),
                     NavigationDestination(
                       icon: Icon(
-                        Icons.checklist_outlined,
-                        key: Key('nav_todos'),
-                      ),
-                      selectedIcon: Icon(
-                        Icons.checklist,
-                        key: Key('nav_todos'),
-                      ),
-                      label: '待办',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(
                         Icons.grid_view_outlined,
                         key: Key('nav_more'),
                       ),
@@ -200,7 +187,6 @@ class _AppShellState extends State<AppShell> {
       AppPage.home => const HomePage(),
       AppPage.inbox => const InboxPage(),
       AppPage.calendar => const CalendarPage(),
-      AppPage.todos => const TodosPage(),
       AppPage.matters => const MattersPage(),
       AppPage.knowledge => const KnowledgePage(),
       AppPage.sync => const SyncPage(),
@@ -209,10 +195,10 @@ class _AppShellState extends State<AppShell> {
   }
 
   int _compactIndex(AppPage page) {
-    if (page.index <= 3) {
+    if (page.index <= 2) {
       return page.index;
     }
-    return 4;
+    return 3;
   }
 
   Future<void> _showMore() async {
@@ -306,7 +292,6 @@ class _WideNavigation extends StatelessWidget {
       AppPage.home => Icons.space_dashboard,
       AppPage.inbox => Icons.inbox,
       AppPage.calendar => Icons.calendar_month,
-      AppPage.todos => Icons.checklist,
       AppPage.matters => Icons.account_tree,
       AppPage.knowledge => Icons.menu_book,
       AppPage.sync => Icons.sync,

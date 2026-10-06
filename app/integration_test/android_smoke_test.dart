@@ -28,7 +28,7 @@ void main() {
     expect(find.text('首页'), findsWidgets);
     await _tap(tester, const Key('nav_inbox'));
     await _tap(tester, const Key('nav_calendar'));
-    await _tap(tester, const Key('nav_todos'));
+    await _tap(tester, const Key('calendar_section_todos'));
     await tester.tap(find.byKey(const Key('nav_more')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('sheet_nav_knowledge')));
@@ -51,13 +51,15 @@ void main() {
     for (final key in const [
       'nav_inbox',
       'nav_calendar',
-      'nav_todos',
       'nav_matters',
       'nav_knowledge',
       'nav_sync',
       'nav_settings',
     ]) {
       await _tap(tester, Key(key));
+      if (key == 'nav_calendar') {
+        await _tap(tester, const Key('calendar_section_todos'));
+      }
     }
 
     await tester.tap(find.byKey(const Key('capture_button')));

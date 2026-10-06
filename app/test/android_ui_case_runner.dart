@@ -153,7 +153,11 @@ Future<AppController> _buildController(AndroidUiCase item) async {
 
 Future<void> _goToPage(WidgetTester tester, AndroidUiCase item) async {
   final width = tester.view.physicalSize.width / tester.view.devicePixelRatio;
-  if (width < 980 && item.page.index >= 4) {
+  if (item.page == AndroidUiPage.todos) {
+    await tester.tap(find.byKey(const Key('nav_calendar')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('calendar_section_todos')));
+  } else if (width < 980 && item.page.index >= 4) {
     await tester.tap(find.byKey(const Key('nav_more')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(Key('sheet_nav_${item.page.name}')));
@@ -162,7 +166,11 @@ Future<void> _goToPage(WidgetTester tester, AndroidUiCase item) async {
   }
   await tester.pumpAndSettle();
   expect(
-    find.byKey(Key('page_${item.page.name}')),
+    find.byKey(
+      item.page == AndroidUiPage.todos
+          ? const Key('calendar_section_todos')
+          : Key('page_${item.page.name}'),
+    ),
     findsOneWidget,
     reason: item.id,
   );
@@ -294,11 +302,16 @@ Future<void> _scrollToBottom(WidgetTester tester) async {
 }
 
 Future<void> _tapPrimaryButton(WidgetTester tester, AndroidUiPage page) async {
+  if (page == AndroidUiPage.calendar || page == AndroidUiPage.todos) {
+    await tester.tap(find.byKey(const Key('calendar_quick_create')));
+    await tester.pumpAndSettle();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    return;
+  }
   final labels = switch (page) {
     AndroidUiPage.home => '收下内容',
     AndroidUiPage.inbox => '收下内容',
-    AndroidUiPage.calendar => '新建事件',
-    AndroidUiPage.todos => '新建待办',
     AndroidUiPage.matters => '新建事项',
     AndroidUiPage.knowledge => '新建知识',
     _ => null,

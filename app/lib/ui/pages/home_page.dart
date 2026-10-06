@@ -6,8 +6,8 @@ import '../../services/app_controller.dart';
 import '../app_scope.dart';
 import '../widgets/capture_sheet.dart';
 import '../widgets/common.dart';
+import '../widgets/quick_create_sheet.dart';
 import 'document_detail_page.dart';
-import 'document_editor_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -321,11 +321,10 @@ class _TodoSection extends StatelessWidget {
           SectionHeading(
             title: '要做的',
             trailing: FilledButton.tonalIcon(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) =>
-                      const DocumentEditorPage.create(type: ResultType.todo),
-                ),
+              onPressed: () => showQuickCreateSheet(
+                context,
+                initialDate: DateTime.now(),
+                type: ResultType.todo,
               ),
               icon: const Icon(Icons.add, size: 18),
               label: const Text('新建'),
