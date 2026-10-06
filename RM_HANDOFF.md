@@ -10,10 +10,11 @@
 | 最后更新时间 | 2026-10-06 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex / GPT-5 |
-| 当前阶段 | MIT 开源发布整理完成；下一步回到厂商后台、通知与图片输入边界 |
+| 当前阶段 | GitHub 首个预发布版 `v1.0.0` 自动化发布流程已实现并完成本地打包验证 |
 
 ## 2. 一句话交接
 
+项目已完成首个 GitHub 预发布版的自动打包与上传流程：推送 `v1.0.0` 标签后，Windows runner 会重新测试并生成 Android APK、Windows 安装包、便携 ZIP 和 SHA-256 校验文件。下一步是在发布结果确认后回到厂商后台策略、通知和图片输入边界。
 
 ## 3. 当前目标与范围
 
@@ -37,6 +38,8 @@
 - Android 已注册系统分享入口；Web 与 Android debug/release 构建可重复产出。
 - 根目录已提供中文开源 README、MIT `LICENSE`、`SECURITY.md`、`CONTRIBUTING.md`、EditorConfig 和 Flutter CI。
 - 公开发布使用干净单根提交；迁移前本地历史保留在 `archive/pre-open-source`，不推送。
+- GitHub Release 采用 `v<major>.<minor>.<patch>` 标签；首发 `v1.0.0` 为预发布，同时提供 Android APK、Windows x64 安装包和便携 ZIP。
+- Windows 安装器使用 Inno Setup，按用户安装并提供开始菜单、可选桌面快捷方式、卸载和安装后启动。
 - 个人服务器、端到端加密、多人协作和实时同步不在当前实现范围。
 
 ## 4. 权威文件
@@ -64,6 +67,7 @@
 - 默认模型为 `deepseek-flash`，模型接入层保持开放。
 - 每项正式任务必须更新本文件，形成一个 Conventional Commit，且提交后工作区必须干净。
 - 源码以 MIT 协议公开发布；公开历史不得包含 API Key、OAuth 令牌、签名文件、本地 vault、原始附件、未脱敏设备标识或旧历史中的敏感提交。
+- GitHub Release 资产和标签规则由 ADR 0012 管理；首发包允许 Android Debug 签名和未签名的 Windows 安装包，但必须明确标记为预发布。
 - 模型不得绕过端内规则；ADR 0010 允许在完整流结束、结构校验通过、置信度不低于 `0.85` 且非敏感时自动新建成品，修改与删除永不自动执行。
 - 图片在配置模型后默认允许出网；设置页提供默认开启的总开关，客户端自动缩放、重编码并去除 EXIF，但不自动遮蔽图片内容。
 
@@ -71,7 +75,7 @@
 
 ### 已完成
 
-- 已形成 `CONTEXT.md`、可执行方案、同步协议、模型接入和 11 条 ADR。
+- 已形成 `CONTEXT.md`、可执行方案、同步协议、模型接入和 12 条 ADR。
 - 已完成知识捕获、日历提醒、AI/OCR 自动化调研。
 - 已定义 RM 交接文档的固定结构和只追加变更记录。
 - 已定义 Agent 强制阅读、任务收尾和 Git 提交流程。
@@ -152,6 +156,9 @@
 - Flutter CI 固定使用 `ubuntu-24.04` 和 `actions/checkout@v5`，避免 runner 迁移与旧 Node runtime 提示。
 - 已扩展 Git `pre-commit`：拦截环境文件、签名材料、本地 vault、构建产物、高置信密钥模式及未脱敏设备标识；隔离策略测试扩展到 9 项。
 - 已新增 ADR 0011，确定 MIT 开源发布和干净公开历史策略；旧历史保留在本地 `archive/pre-open-source`。
+- 已新增 `.github/workflows/release.yml`，`v*` 标签会校验版本和发行说明，执行分析、测试、Android/Windows 构建、APK 检查、安装器编译、安装/卸载冒烟验证和 Release 上传。
+- 已新增 `app/windows/installer/personal_ai_inbox.iss`，固定 AppId、按用户安装到 LocalAppData，并包含中文安装界面、许可证、快捷方式和卸载。
+- 已新增 `docs/releases/v1.0.0.md`、README 下载入口和 ADR 0012。
 - GitHub Actions 首次运行暴露出 Markdown 往返测试依赖执行主机时区；已改为比较绝对时刻，保留 `+08:00` 序列化断言，使 CI 在 UTC 与 `Asia/Hong_Kong` 下一致。
 - `dart format --output=none --set-exit-if-changed lib test integration_test tool` 通过，97 个文件格式一致。
 - `flutter analyze` 通过，无 warning、error 或 lint issue。
@@ -160,6 +167,11 @@
 - `scripts/test-git-policy.ps1` 通过 9 项隔离测试，新增高置信密钥和敏感凭据路径拦截。
 - `scripts/scan-public-release.ps1 -CurrentTreeOnly` 在暂存公开树通过；工作树精确搜索确认不再包含已识别的设备序列号。
 - 公开树使用全新单根提交，提交前工作区为空；GitHub 远程为 `https://github.com/YuanFangCH/personal-ai-inbox`。
+- `actionlint v1.7.12` 检查发布工作流通过。
+- 使用官方 Inno Setup 7.1.0 x64 和固定 SHA-256 实际编译安装器成功；静默安装、必需文件检查、静默卸载和便携 ZIP 展开检查均通过。
+- 本机生成的 APK 为 `versionName=1.0.0`、`versionCode=1`、minSdk 24、targetSdk 36，并包含 `android.permission.INTERNET`；证书为 `CN=Android Debug`。
+- `flutter analyze` 无问题，完整 `flutter test --reporter compact` 253 项通过。
+- `scripts/scan-public-release.ps1` 通过，发布文档和脚本未包含凭据或未脱敏设备标识。
 
 ## 7. 风险、阻塞与下一步
 
@@ -169,6 +181,8 @@
 - `core.hooksPath` 是本地仓库配置，不随仓库内容自动传播；克隆后必须运行安装脚本。
 - 公开仓库已提供 Flutter CI，但 Git hooks 和本地发布扫描仍可能被 `--no-verify` 绕过；推送时必须保留 hook 和人工审计。
 - `archive/pre-open-source` 仅用于本机追溯，包含迁移前敏感测试信息，绝不可推送到 GitHub 或复制给公开协作方。
+- `v1.0.0` Android APK 使用 Debug 证书，Windows 安装包和 EXE 未进行代码签名；用户可能看到未知来源或 SmartScreen 提示，正式稳定版前必须完成独立签名。
+- GitHub Release 仍由标签触发；重跑工作流时必须保持标签版本、`pubspec.yaml` 和 `docs/releases/<tag>.md` 一致。
 - 自动记录目前只授权高置信新建；模型更新、删除、重复规则和敏感内容不会自动执行。真实 Key 的联网流式与自动建成果仍未跑回归。
 - 会话与图片只在本端保存；删除会话会删除本地消息和附件，但不会删除已创建的成果。
 - 当前同步按钮运行的是端内沙箱 Provider，用于验证三 hash 与冲突逻辑，不等于 OneDrive 已联调。
@@ -186,10 +200,10 @@
 
 ### 下一步
 
-1. 后续公开开发直接在干净 `main` 上增量提交，禁止推送 `archive/pre-open-source`。
-2. 在两台设备上验证电池优化、自启动、后台冻结和本地通知恢复。
-3. 在两台设备上验证相机拍照、第三方 App 图片分享和缺权限失败路径。
-4. 配置 Android 独立签名，生成可长期升级的正式 APK。
+1. 推送并确认 `v1.0.0` 的 GitHub Actions 发布任务、Release 预发布状态和四个资产。
+2. 后续公开开发直接在干净 `main` 上增量提交，禁止推送 `archive/pre-open-source`。
+3. 在两台设备上验证电池优化、自启动、后台冻结和本地通知恢复。
+4. 配置 Android 独立签名和 Windows 代码签名，为后续稳定版准备正式证书。
 5. 登记 Microsoft public client，完成 OneDrive App Folder、delta、eTag 和 PKCE 联调。
 6. 在具备受控测试 Key 和费用预算时，用线上 `deepseek-flash` 对 20 个大型场景做抽取质量评分，并补 30-50 条中文样本。
 

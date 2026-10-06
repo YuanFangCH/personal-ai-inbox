@@ -1,0 +1,303 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-2022
+    env:
+      RELEASE_TAG: ${{ github.ref_name }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Java
+        uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2.23.0
+        with:
+          channel: stable
+          cache: true
+
+      - name: Validate release tag
+        working-directory: app
+        shell: pwsh
+        run: |
+          $tag = $env:RELEASE_TAG
+          if ($tag -notmatch '^v(?<version>\d+\.\d+\.\d+)$') {
+              throw "Release tag must use v<major>.<minor>.<patch>: $tag"
+          }
+
+          $tagVersion = $Matches.version
+          $pubspec = Get-Content -Raw -Encoding UTF8 pubspec.yaml
+          if ($pubspec -notmatch '(?m)^version:\s*(?<version>\d+\.\d+\.\d+)\+\d+\s*$') {
+              throw 'Unable to read a semantic version from app/pubspec.yaml.'
+          }
+
+          $appVersion = $Matches.version
+          if ($tagVersion -ne $appVersion) {
+              throw "Release tag $tag does not match app version $appVersion."
+          }
+
+          $notesPath = Join-Path (Resolve-Path '..').Path "docs\releases\$tag.md"
+          if (-not (Test-Path -LiteralPath $notesPath -PathType Leaf)) {
+              throw "Release notes are missing: $notesPath"
+          }
+
+          "RELEASE_VERSION=$tagVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "RELEASE_NOTES=$notesPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Install Dart dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Check Dart formatting
+        working-directory: app
+        run: dart format --output=none --set-exit-if-changed lib test integration_test tool
+
+      - name: Analyze
+        working-directory: app
+        run: flutter analyze
+
+      - name: Test
+        working-directory: app
+        run: flutter test --reporter expanded
+
+      - name: Build Android release
+        working-directory: app
+        run: flutter build apk --release
+
+      - name: Build Windows release
+        working-directory: app
+        run: flutter build windows --release
+
+      - name: Verify Android artifact
+        working-directory: app
+        shell: pwsh
+        run: |
+          $sdkRoot = $env:ANDROID_SDK_ROOT
+          if (-not $sdkRoot) { $sdkRoot = $env:ANDROID_HOME }
+          if (-not $sdkRoot) { throw 'Android SDK path is not configured.' }
+
+          $buildTools = Get-ChildItem -Path (Join-Path $sdkRoot 'build-tools') -Directory |
+              Sort-Object { [version]$_.Name } -Descending |
+              Select-Object -First 1
+          if (-not $buildTools) { throw 'Android build-tools were not found.' }
+
+          $apk = Resolve-Path 'build\app\outputs\flutter-apk\app-release.apk'
+          $badging = & (Join-Path $buildTools.FullName 'aapt2.exe') dump badging $apk | Out-String
+          if ($LASTEXITCODE -ne 0) { throw 'aapt2 could not inspect the APK.' }
+
+          if ($badging -notmatch "versionName='$env:RELEASE_VERSION'") {
+              throw "APK versionName does not match $env:RELEASE_VERSION."
+          }
+          if ($badging -notmatch "minSdkVersion:'24'") {
+              throw 'APK minSdkVersion is not 24.'
+          }
+          if ($badging -notmatch "targetSdkVersion:'36'") {
+              throw 'APK targetSdkVersion is not 36.'
+          }
+          if ($badging -notmatch "uses-permission: name='android.permission.INTERNET'") {
+              throw 'APK does not declare android.permission.INTERNET.'
+          }
+
+          $certificate = & (Join-Path $buildTools.FullName 'apksigner.bat') verify --print-certs $apk | Out-String
+          if ($LASTEXITCODE -ne 0) { throw 'apksigner verification failed.' }
+          if ($certificate -notmatch 'CN=Android Debug') {
+              throw 'The first prerelease must use the expected Android Debug certificate.'
+          }
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          $installer = Join-Path $env:RUNNER_TEMP 'innosetup-7.1.0-x64.exe'
+          $url = 'https://github.com/jrsoftware/issrc/releases/download/is-7_1_0/innosetup-7.1.0-x64.exe'
+          $expected = '0362A383ED217D4C4239B5933866DD96D3EB2102737DA92F80F6057A4B40DF2F'
+
+          Invoke-WebRequest -Uri $url -OutFile $installer
+          $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $installer).Hash
+          if ($actual -ne $expected) {
+              throw "Inno Setup checksum mismatch: $actual"
+          }
+
+          $arguments = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-')
+          $process = Start-Process -FilePath $installer -ArgumentList $arguments -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+              throw "Inno Setup installation failed with exit code $($process.ExitCode)."
+          }
+
+          $candidates = @(
+              (Join-Path $env:ProgramFiles 'Inno Setup 7\ISCC.exe'),
+              (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 7\ISCC.exe'),
+              (Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 7\ISCC.exe')
+          )
+          $iscc = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+          if (-not $iscc) {
+              $iscc = Get-ChildItem -Path $env:ProgramFiles, ${env:ProgramFiles(x86)} -Filter ISCC.exe -Recurse -ErrorAction SilentlyContinue |
+                  Where-Object FullName -Match 'Inno Setup 7' |
+                  Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (-not $iscc) { throw 'Inno Setup compiler ISCC.exe was not found.' }
+
+          "ISCC_PATH=$iscc" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Assemble release assets
+        working-directory: app
+        shell: pwsh
+        run: |
+          $tag = $env:RELEASE_TAG
+          $version = $env:RELEASE_VERSION
+          $dist = Join-Path $PWD 'build\github-release'
+          $windowsRelease = Join-Path $PWD 'build\windows\x64\runner\Release'
+          $apkSource = Join-Path $PWD 'build\app\outputs\flutter-apk\app-release.apk'
+
+          if (Test-Path -LiteralPath $dist) {
+              Remove-Item -LiteralPath $dist -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path $dist -Force | Out-Null
+
+          $apkName = "personal-ai-inbox-$tag-android.apk"
+          $apkPath = Join-Path $dist $apkName
+          Copy-Item -LiteralPath $apkSource -Destination $apkPath
+
+          $license = Join-Path (Resolve-Path '..').Path 'LICENSE'
+          Copy-Item -LiteralPath $license -Destination (Join-Path $windowsRelease 'LICENSE')
+
+          $windowsReadme = @"
+          个人 AI 收件箱 Windows 11 x64
+
+          运行：
+          1. 将本目录完整解压到固定位置。
+          2. 双击 personal_ai_inbox.exe。
+          3. 首次使用请在设置页配置 OpenAI 兼容模型和 API Key。
+
+          注意：
+          - 本版本未进行 Windows 代码签名，SmartScreen 可能提示未知发布者。
+          - 请勿只复制 EXE，运行时依赖同目录中的 DLL 和 data 目录。
+          - API Key 只保存在系统安全存储中，不会进入安装包或仓库。
+          "@
+          Set-Content -LiteralPath (Join-Path $windowsRelease 'README-Windows.txt') -Value $windowsReadme -Encoding UTF8
+
+          $portableStage = Join-Path $dist 'portable-stage'
+          New-Item -ItemType Directory -Path $portableStage -Force | Out-Null
+          Copy-Item -Path (Join-Path $windowsRelease '*') -Destination $portableStage -Recurse
+
+          $portableZip = Join-Path $dist "personal-ai-inbox-$tag-windows-x64-portable.zip"
+          Compress-Archive -Path (Join-Path $portableStage '*') -DestinationPath $portableZip -CompressionLevel Optimal
+          Remove-Item -LiteralPath $portableStage -Recurse -Force
+
+          $iss = Join-Path $PWD 'windows\installer\personal_ai_inbox.iss'
+          & $env:ISCC_PATH `
+              "/DMyAppVersion=$version" `
+              "/DMyAppSource=$windowsRelease" `
+              "/DMyAppOutput=$dist" `
+              $iss
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup compilation failed.' }
+
+          $setupPath = Join-Path $dist "personal-ai-inbox-$tag-windows-x64-setup.exe"
+          if (-not (Test-Path -LiteralPath $setupPath -PathType Leaf)) {
+              throw "Installer was not generated: $setupPath"
+          }
+
+          $smokeInstall = Join-Path $env:RUNNER_TEMP 'personal-ai-inbox-install-smoke'
+          if (Test-Path -LiteralPath $smokeInstall) {
+              Remove-Item -LiteralPath $smokeInstall -Recurse -Force
+          }
+          $installArgs = @(
+              '/VERYSILENT',
+              '/SUPPRESSMSGBOXES',
+              '/NORESTART',
+              "/DIR=`"$smokeInstall`""
+          )
+          $process = Start-Process -FilePath $setupPath -ArgumentList $installArgs -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+              throw "Installer smoke test failed with exit code $($process.ExitCode)."
+          }
+
+          $requiredInstallFiles = @(
+              'personal_ai_inbox.exe',
+              'flutter_windows.dll',
+              'sqlite3.dll',
+              'data\app.so',
+              'unins000.exe'
+          )
+          foreach ($relativePath in $requiredInstallFiles) {
+              if (-not (Test-Path -LiteralPath (Join-Path $smokeInstall $relativePath) -PathType Leaf)) {
+                  throw "Installed file is missing: $relativePath"
+              }
+          }
+          $uninstaller = Join-Path $smokeInstall 'unins000.exe'
+          $uninstall = Start-Process -FilePath $uninstaller -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) {
+              throw "Uninstaller smoke test failed with exit code $($uninstall.ExitCode)."
+          }
+
+          $portableSmoke = Join-Path $env:RUNNER_TEMP 'personal-ai-inbox-portable-smoke'
+          if (Test-Path -LiteralPath $portableSmoke) {
+              Remove-Item -LiteralPath $portableSmoke -Recurse -Force
+          }
+          Expand-Archive -LiteralPath $portableZip -DestinationPath $portableSmoke
+          foreach ($relativePath in @('personal_ai_inbox.exe', 'data\app.so', 'LICENSE', 'README-Windows.txt')) {
+              if (-not (Test-Path -LiteralPath (Join-Path $portableSmoke $relativePath) -PathType Leaf)) {
+                  throw "Portable archive file is missing: $relativePath"
+              }
+          }
+
+          $checksumPath = Join-Path $dist 'SHA256SUMS.txt'
+          $assetPaths = @($apkPath, $setupPath, $portableZip)
+          $checksumLines = foreach ($assetPath in $assetPaths) {
+              $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $assetPath).Hash.ToLowerInvariant()
+              "$hash  $([IO.Path]::GetFileName($assetPath))"
+          }
+          Set-Content -LiteralPath $checksumPath -Value $checksumLines -Encoding UTF8
+
+      - name: Publish GitHub Release
+        working-directory: app
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = $env:RELEASE_TAG
+          $dist = Join-Path $PWD 'build\github-release'
+          $assets = @(
+              (Join-Path $dist "personal-ai-inbox-$tag-android.apk"),
+              (Join-Path $dist "personal-ai-inbox-$tag-windows-x64-setup.exe"),
+              (Join-Path $dist "personal-ai-inbox-$tag-windows-x64-portable.zip"),
+              (Join-Path $dist 'SHA256SUMS.txt')
+          )
+
+          foreach ($asset in $assets) {
+              if (-not (Test-Path -LiteralPath $asset -PathType Leaf)) {
+                  throw "Release asset is missing: $asset"
+              }
+          }
+
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+              gh release edit $tag `
+                  --title "个人 AI 收件箱 $tag" `
+                  --notes-file $env:RELEASE_NOTES `
+                  --prerelease
+              if ($LASTEXITCODE -ne 0) { throw 'Unable to update GitHub Release metadata.' }
+
+              gh release upload $tag @assets --clobber
+              if ($LASTEXITCODE -ne 0) { throw 'Unable to upload GitHub Release assets.' }
+          } else {
+              gh release create $tag @assets `
+                  --verify-tag `
+                  --title "个人 AI 收件箱 $tag" `
+                  --notes-file $env:RELEASE_NOTES `
+                  --prerelease
+              if ($LASTEXITCODE -ne 0) { throw 'Unable to create GitHub Release.' }
+          }
