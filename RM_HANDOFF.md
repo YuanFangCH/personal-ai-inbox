@@ -10,11 +10,10 @@
 | 最后更新时间 | 2026-10-07 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex / GPT-5 |
-| 当前阶段 | GitHub 首个预发布版 `v1.0.0` 已发布，Android 与 Windows 11 资产可用 |
 
 ## 2. 一句话交接
 
-项目已完成首个 GitHub 预发布版，并把会话生命周期改为首次内容落库、把独立确认页合并回收件箱。下一步是补 Android 设备回归，并继续正式签名、厂商后台策略、通知和图片输入验证。
+项目已完成首个 GitHub 预发布版，并把会话生命周期改为首次内容落库、把独立确认页合并回收件箱；日历页已合并为统一工作区并补齐多视图与快速新建。下一步是正式签名、厂商后台策略、通知和图片输入验证。
 
 ## 3. 当前目标与范围
 
@@ -29,6 +28,9 @@
 
 - 当前客户端位于 [app](./app)。
 - 首版已覆盖本地捕获、Markdown 主库、SQLite 索引、收件箱、日历、待办、事项、知识、设置和同步演练；确认队列已并入收件箱。
+- 日历工作区已覆盖日程、我的一天和待办三段切换；日程支持年、月、周、日、日程列表，默认进入详细月视图，月视图可切换概要模式。
+- 事件与带截止时间的待办共同参与日历日期格、时间轴和日程列表投影；基础重复规则会展开到视图，已完成和未完成待办可区分显示。
+- 事件和待办使用快速新建，默认带入当前选中日期与当前时间；事项和知识仍保留完整编辑页。
 - 收件箱已覆盖多会话列表、首次内容创建会话、旧会话继续、重命名和删除；删除会话不删除已创建成果。
 - 冷启动和普通重进直接进入首页；“新对话”只打开临时输入页，未发送退出不留空会话，启动时清理历史空会话。
 - AI 对话支持文本、剪贴板粘贴、相册、拍照、图片预览和 Android 文本/图片分享入口。
@@ -177,12 +179,13 @@
 - `scripts/scan-public-release.ps1` 通过，发布文档和脚本未包含凭据或未脱敏设备标识。
 - 标签发布工作流 `37434034842` 在 Windows 2022 上全部通过，耗时约 15 分 39 秒；常规 Flutter CI 也通过。
 - GitHub Release API 确认 `v1.0.0` 为预发布，Android APK、Windows 安装包、便携 ZIP 和 `SHA256SUMS.txt` 均存在；校验文件中的三项哈希与平台记录一致。
-- `dart format --output=none --set-exit-if-changed lib test integration_test tool` 通过，99 个文件格式一致。
+- `dart format --output=none --set-exit-if-changed lib test integration_test tool` 通过，104 个文件格式一致。
 - `flutter analyze` 通过，无 warning、error 或 lint issue。
-- 完整 `flutter test --reporter compact` 通过 258 项，包含会话生命周期、收件箱合并、100 条 Android UI、100 条设备验收和 200 条跨端矩阵。
-- `flutter build web --release`、`flutter build windows --release` 和 `flutter build apk --release` 均成功；Android release APK 约 63.3 MB。
-- `flutter test integration_test/windows_smoke_test.dart -d windows --reporter expanded` 通过完整导航、滚动、长文和捕获流程。
-- 本轮 `flutter devices` 仅发现 Windows 和 Edge，没有在线 Android 设备；本轮未执行 Android 模拟器或真机集成回归。
+- 日历专项新增 10 项测试，覆盖基础重复投影、月末跳过、日期型/带时待办、默认月视图和五档模式、密度持久化、快速新建、1.5x 字体响应式布局。
+- `flutter analyze` 无问题；完整 `flutter test --reporter compact` 通过 268 项，包含日历专项、会话生命周期、收件箱合并、100 条 Android UI、100 条设备验收和 200 条跨端矩阵。
+- `flutter build web --release`、`flutter build windows --release` 和 `flutter build apk --release` 均成功；Android release APK 为 63.8 MB，SHA-256 `62AA2BB22AE5C800643464C1D6C2899D5CE3325DAC314AE4B52531C40769AAB4`；Windows release EXE SHA-256 `FFD9D0033F3CDBF31B6942A2A87A0DBE6D8C4765A49216651A6B84FE08B8E386`。
+- `flutter test integration_test/windows_smoke_test.dart -d windows` 通过；Windows 原生导航、滚动、长文和捕获流程无异常。
+- 在真实浏览器尺寸复核手机宽度和 1280x800 桌面布局：五档模式栏、月视图、年视图、周时间轴、日程列表、我的一天、待办和快速新建面板均显示正常，未发现文字重叠或控件溢出。
 
 ## 7. 风险、阻塞与下一步
 
@@ -208,7 +211,7 @@
 - 当前应用尚未实现本地提醒通知，不能把 UI 矩阵通过写成通知验收通过。
 - ADB `shell` 不是媒体 URI 所有者，无法为外部图片分享命令授予 MediaStore 读权限；第三方 App 图片分享仍需人工真机验收。
 - 相机拍照入口尚未在模拟器执行完整拍照流程。
-- 本轮会话生命周期和收件箱合并已通过主机测试与 Windows 原生冒烟，但尚未在 Android 设备上人工复核冷启动、临时会话退出和合并确认区布局。
+- 本轮日历工作区已通过主机、Windows 原生冒烟、Android AVD 冒烟和 Android UI 100 条集成矩阵；尚未在 HONOR/Galaxy 物理设备上人工复核新日历布局。
 
 ### 下一步
 
@@ -217,5 +220,5 @@
 3. 在两台设备上验证电池优化、自启动、后台冻结和本地通知恢复。
 4. 登记 Microsoft public client，完成 OneDrive App Folder、delta、eTag 和 PKCE 联调。
 5. 在具备受控测试 Key 和费用预算时，用线上 `deepseek-flash` 对 20 个大型场景做抽取质量评分，并补 30-50 条中文样本。
-6. 连接 Android 设备或启动 AVD 后，复跑 100 条 Android UI、双设备验收和系统分享强停恢复探针。
+6. 在新日历工作区基础上，连接 HONOR/Galaxy 物理设备复跑双设备验收和系统分享强停恢复探针。
 

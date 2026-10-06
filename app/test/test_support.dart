@@ -15,6 +15,7 @@ class FakeSettingsService extends SettingsService {
          modelName: modelName,
          hasModelKey: modelKey != null,
          showCompletedTodos: false,
+         calendarMonthDetailed: true,
          allowImageEgress: true,
        ),
        _modelKey = modelKey;
@@ -43,6 +44,7 @@ class FakeSettingsService extends SettingsService {
     String? modelBaseUrl,
     String? modelName,
     bool? showCompletedTodos,
+    bool? calendarMonthDetailed,
     bool? allowImageEgress,
   }) async {
     _settings = _settings.copyWith(
@@ -50,6 +52,7 @@ class FakeSettingsService extends SettingsService {
       modelBaseUrl: modelBaseUrl,
       modelName: modelName,
       showCompletedTodos: showCompletedTodos,
+      calendarMonthDetailed: calendarMonthDetailed,
       allowImageEgress: allowImageEgress,
     );
   }

@@ -137,7 +137,7 @@ void main() {
       if (profile.compact) {
         await _tapAndScroll(tester, const Key('nav_inbox'));
         await _tapAndScroll(tester, const Key('nav_calendar'));
-        await _tapAndScroll(tester, const Key('nav_todos'));
+        await _tapAndScroll(tester, const Key('calendar_section_todos'));
         await tester.tap(find.byKey(const Key('nav_more')));
         await tester.pumpAndSettle();
         await tester.tap(find.byKey(const Key('sheet_nav_knowledge')));
@@ -151,13 +151,15 @@ void main() {
         for (final key in const [
           'nav_inbox',
           'nav_calendar',
-          'nav_todos',
           'nav_matters',
           'nav_knowledge',
           'nav_sync',
           'nav_settings',
         ]) {
           await _tapAndScroll(tester, Key(key));
+          if (key == 'nav_calendar') {
+            await _tapAndScroll(tester, const Key('calendar_section_todos'));
+          }
           if (key == 'nav_knowledge') {
             await _tapFirstDocument(tester);
           }

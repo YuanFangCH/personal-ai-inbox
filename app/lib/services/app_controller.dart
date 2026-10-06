@@ -717,6 +717,7 @@ class AppController extends ChangeNotifier {
     String? modelName,
     String? apiKey,
     bool? showCompletedTodos,
+    bool? calendarMonthDetailed,
     bool? allowImageEgress,
   }) async {
     await _settingsService.saveGeneral(
@@ -724,6 +725,7 @@ class AppController extends ChangeNotifier {
       modelBaseUrl: modelBaseUrl,
       modelName: modelName,
       showCompletedTodos: showCompletedTodos,
+      calendarMonthDetailed: calendarMonthDetailed,
       allowImageEgress: allowImageEgress,
     );
     if (apiKey != null) {

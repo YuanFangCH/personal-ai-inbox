@@ -54,11 +54,12 @@ void main() {
     await tester.pumpWidget(PersonalAiInboxApp(controller: controller));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('待办'));
+    await tester.tap(find.byKey(const Key('nav_calendar')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('calendar_section_todos')));
     await tester.pumpAndSettle();
 
     expect(find.text('买牛奶'), findsOneWidget);
-    expect(find.text('新建待办'), findsOneWidget);
   });
 
   testWidgets('more sheet remains scrollable at 320x568', (tester) async {
