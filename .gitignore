@@ -1,0 +1,43 @@
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Operating system files
+.DS_Store
+Desktop.ini
+Thumbs.db
+
+# Local temporary and backup files
+*.bak
+*.orig
+*.rej
+*.tmp
+
+# Local secrets and signing material
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+key.properties
+secrets/
+credentials/
+
+# Local application data and build output
+build/
+coverage/
+vault/
+app/build/
+app/.dart_tool/
+
+# Platform output
+*.apk
+*.aab
+*.appx
+*.msix

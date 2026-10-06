@@ -1,0 +1,5 @@
+# Keep repository text files stable across Windows, Linux, and Android tooling.
+* text=auto eol=lf
+
+# Markdown hard line breaks intentionally use two trailing spaces.
+*.md whitespace=-trailing-space

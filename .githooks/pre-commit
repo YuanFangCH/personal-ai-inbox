@@ -1,0 +1,18 @@
+#!/bin/sh
+
+set -eu
+
+hook_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$hook_dir/lib/policy.sh"
+
+repo_root=$(policy_root)
+cd "$repo_root"
+
+policy_require_no_unstaged_changes
+policy_require_no_untracked_files
+policy_require_no_sensitive_paths
+policy_require_no_high_confidence_secrets
+policy_require_handoff_staged
+policy_validate_handoff
+
+exit 0

@@ -1,0 +1,20 @@
+#!/bin/sh
+
+set -eu
+
+hook_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$hook_dir/lib/policy.sh"
+
+repo_root=$(policy_root)
+cd "$repo_root"
+
+policy_require_no_unstaged_changes
+policy_require_no_untracked_files
+
+git rev-parse --verify HEAD >/dev/null 2>&1 ||
+    policy_fail "Cannot push without a commit."
+
+git cat-file -e HEAD:RM_HANDOFF.md 2>/dev/null ||
+    policy_fail "HEAD does not contain RM_HANDOFF.md."
+
+exit 0
