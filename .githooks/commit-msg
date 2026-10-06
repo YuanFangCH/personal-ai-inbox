@@ -1,0 +1,29 @@
+#!/bin/sh
+
+set -eu
+
+hook_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$hook_dir/lib/policy.sh"
+
+message_file=${1:-}
+[ -n "$message_file" ] || policy_fail "commit-msg hook did not receive a message file."
+[ -f "$message_file" ] || policy_fail "Commit message file does not exist."
+
+subject=$(
+    sed '/^[[:space:]]*#/d' "$message_file" |
+        sed -n '/[^[:space:]]/{p;q;}' |
+        tr -d '\r'
+)
+
+[ -n "$subject" ] || policy_fail "Commit subject is empty."
+
+if ! printf '%s\n' "$subject" |
+    grep -Eq '^(chore|docs|feat|fix|refactor|test|build|ci|perf|revert)(\([^()[:space:]]+\))?: [^[:space:]].*$'; then
+    policy_fail "Commit subject must use Conventional Commits, for example: docs: 更新同步协议"
+fi
+
+if [ "${#subject}" -gt 100 ]; then
+    policy_fail "Commit subject must not exceed 100 characters."
+fi
+
+exit 0
