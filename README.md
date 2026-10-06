@@ -7,6 +7,16 @@
 
 项目当前只服务单用户，但配置、密钥和数据边界按可公开源码的方式设计：API Key、OAuth 令牌、签名文件、本地 vault 和运行截图都不进入仓库。
 
+## 下载与安装
+
+首个预发布版本从 [GitHub Releases](https://github.com/YuanFangCH/personal-ai-inbox/releases) 下载：
+
+- Android 7.0 及以上：安装通用 APK。
+- Windows 11 x64：选择安装包或便携 ZIP。
+- 发布页同时提供 `SHA256SUMS.txt`，下载后应校验文件哈希。
+
+`v1.0.0` 是预发布测试版。Android 使用 Debug 证书，Windows 未进行代码签名；安装系统可能显示未知来源或未知发布者提示。完整说明见 [v1.0.0 发行说明](docs/releases/v1.0.0.md)。
+
 ## 核心能力
 
 - 本地优先：文本、分享内容和图片先在本端落盘，离线时捕获、编辑和查看不受影响。

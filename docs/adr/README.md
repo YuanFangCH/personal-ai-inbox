@@ -15,6 +15,7 @@
 | [0009](0009-open-model-access.md) | 默认用 deepseek-flash，模型接入层保持开放 | accepted |
 | [0010](0010-contextual-ai-conversation-and-guarded-auto-write.md) | AI 对话采用本地多会话，并授权高置信自动新增成果 | accepted |
 | [0011](0011-mit-open-source-release.md) | 以 MIT 协议公开发布，并使用干净公开历史 | accepted |
+| [0012](0012-github-release-artifacts-and-tag-workflow.md) | GitHub Release 作为首发渠道，并按标签自动构建 | accepted |
 
 相关文档：
 
