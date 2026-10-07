@@ -11,7 +11,7 @@
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex / GPT-5 |
 | 当前阶段 | 维护性升级第一阶段完成，`v1.1.1+3` 本地 bugfix 候选已通过三端构建与设备验证 |
-| 总体状态 | `app/` 已形成可运行的 Flutter 客户端，本地核心拆分为端配置、成果库、捕获、会话和同步模块，`AppController` 降为迁移期兼容 facade；日历视图、快速新建和对话页已拆分。Dart 格式、`flutter analyze`、294 项主机回归、Android/Windows/Web release 构建、Windows 原生冒烟、Android 手机/平板冒烟和 Android UI 100 条设备矩阵均通过；设备矩阵发现并修复了日历快速新建面板底部溢出。`v1.1.0` 仍是已发布 GitHub 预发布版，`v1.1.1` 尚未创建标签或 Release；APK 仍使用 Debug 证书，Windows 包仍未代码签名。产品边界继续保留：OneDrive、百度网盘、本地通知和真实跨端同步尚未完成。 |
+| 总体状态 | `app/` 已形成可运行的 Flutter 客户端，本地核心拆分为端配置、成果库、捕获、会话和同步模块，`AppController` 降为迁移期兼容 facade；日历视图、快速新建和对话页已拆分。开发工具链已从 C 盘迁移到 `E:\DevTools`，设备验收脚本可直接发现迁移后的 Flutter/Android SDK。Dart 格式、`flutter analyze`、294 项主机回归、Android/Windows/Web release 构建、Windows 原生冒烟、Android 手机/平板冒烟和 Android UI 100 条设备矩阵均通过；设备矩阵发现并修复了日历快速新建面板底部溢出。`v1.1.0` 仍是已发布 GitHub 预发布版，`v1.1.1` 尚未创建标签或 Release；APK 仍使用 Debug 证书，Windows 包仍未代码签名。产品边界继续保留：OneDrive、百度网盘、本地通知和真实跨端同步尚未完成。 |
 
 ## 2. 一句话交接
 
@@ -29,6 +29,7 @@
 ### 当前范围
 
 - 当前客户端位于 [app](./app)。
+- 本机 Windows 开发工具链已迁移到 `E:\DevTools`：Flutter、Android SDK、Gradle、AVD 和 Anaconda 均通过原 C 盘 Junction 兼容旧命令，设备验收脚本同时支持直接发现 E 盘路径。
 - 本地核心采用模块化结构：`DevicePreferences`、`ResultLibrary`、`CaptureWorkflow`、`ConversationWorkspace`、`SyncWorkspace`；组合根和 UI 依赖关系由架构测试约束。
 - 首版已覆盖本地捕获、Markdown 主库、SQLite 索引、收件箱、日历、待办、事项、知识、设置和同步演练；确认队列已并入收件箱。
 - 日历工作区已覆盖日程、我的一天和待办三段切换；日程支持年、月、周、日、日程列表，默认进入详细月视图，月视图可切换概要模式。
@@ -120,10 +121,12 @@
 - 已将原 `AppController` 从约 1110 行降到约 427 行；Markdown/SQLite 写入、捕获确认、会话流和同步状态均委托模块。
 - 已将日历视图、快速新建和对话页拆为小于约 350 行的组件文件，并新增 `architecture_test.dart` 拦截 UI 到存储、模块到 UI 的反向依赖。
 - 已修复 Android 390x844 手机视口下关闭快速新建面板时的底部 52px 溢出。
+- 已适配 C 盘空间迁移：`E:\DevTools` 承载 Flutter、Android SDK、Gradle、AVD 和 Anaconda，原先五个 C 盘路径保留 Junction；设备验收脚本增加 E 盘工具链回退，应用本机 `local.properties` 已改指 E 盘 Flutter/Android SDK。
 
 ### 验证
 
 - `scripts/test-git-policy.ps1` 已通过 7 项隔离测试：合法原子提交、非法标题、未跟踪文件、未暂存修改、缺少 RM 交接更新、空交接章节和脏工作区推送拦截。
+- 开发环境迁移后按用户要求未启动 Flutter、Android、AVD、构建或测试；已确认五个 C 盘 Junction 均指向 `E:\DevTools`，Flutter、ADB、模拟器和 Conda 可执行文件均存在，并完成 PowerShell 脚本语法解析检查。
 - hooks 安装脚本已连续执行两次，`core.hooksPath` 和 `commit.template` 保持一致。
 - 首个提交已通过 `pre-commit` 与 `commit-msg`，暂存区 `git diff --check` 无错误。
 - 首个提交后工作区为空，`RM_HANDOFF.md` 已被跟踪，提交标题符合 Conventional Commits。
@@ -247,6 +250,7 @@
 - ADB `shell` 不是媒体 URI 所有者，无法为外部图片分享命令授予 MediaStore 读权限；第三方 App 图片分享仍需人工真机验收。
 - 相机拍照入口尚未在模拟器执行完整拍照流程。
 - 本轮日历工作区已通过主机、Windows 原生冒烟、Android AVD 冒烟和 Android UI 100 条集成矩阵；尚未在 HONOR/Galaxy 物理设备上人工复核新日历布局。
+- C 盘工具链迁移后尚未重跑 Flutter 构建或测试；下次验证应在继承新环境变量的终端中执行，若 `flutter`、`adb` 仍不可见则重启 Codex Desktop 或终端。
 
 ### 下一步
 
@@ -259,6 +263,16 @@
 7. 继续维护性升级第二阶段：页面改读模块快照、抽模型/同步纯策略、增加 schema migration 和增量刷新，最终删除 `AppController`。
 
 ## 8. 变更记录
+
+### 2026-10-07 / 适配 C 盘开发环境迁移
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 适配 Flutter、Android SDK、Gradle、AVD 和 Anaconda 从 C 盘迁移到 `E:\DevTools`；保留 Junction 兼容，并让本仓库脚本和本机构建配置指向迁移后路径 |
+| 变更文件 | 本机忽略文件 `app/android/local.properties`；`scripts/verify-device-acceptance.ps1`；`scripts/verify-virtual-device.ps1`；`RM_HANDOFF.md` |
+| 验证 | 按用户要求未启动 Flutter、Android、AVD、构建或测试；确认 5 个 C 盘 Junction 指向 `E:\DevTools`，Flutter/ADB/emulator/Conda 可执行文件存在，PowerShell 脚本语法解析和 `git diff --check` 通过 |
+| 提交标题 | `chore(dev): 适配 C 盘开发环境迁移` |
+| 遗留事项 | 下次在继承新环境变量的终端中复跑至少一次 Flutter 分析和 Android 构建；若仍读取不到工具，重启 Codex Desktop 或终端 |
 
 ### 2026-10-07 / 完成维护性升级第一阶段与 v1.1.1 bugfix 候选
 

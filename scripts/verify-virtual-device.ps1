@@ -23,6 +23,7 @@ function Resolve-Flutter {
         return $command.Source
     }
     $candidates = @(
+        'E:\DevTools\Flutter\bin\flutter.bat',
         (Join-Path $env:USERPROFILE 'flutter\bin\flutter.bat'),
         (Join-Path $env:LOCALAPPDATA 'flutter\bin\flutter.bat')
     )
@@ -43,6 +44,7 @@ function Resolve-AndroidSdk {
     $candidates = @(
         $env:ANDROID_HOME,
         $env:ANDROID_SDK_ROOT,
+        'E:\DevTools\Android\Sdk',
         (Join-Path $env:LOCALAPPDATA 'Android\Sdk'),
         (Join-Path $env:USERPROFILE 'Android\Sdk')
     ) | Where-Object { $_ }
