@@ -37,20 +37,11 @@ void main() {
 
   testWidgets('renders core navigation on a compact viewport', (tester) async {
     final controller = await _controller();
-    controller.documents = [
-      ResultDocument(
-        id: 'td_20261004_12345678',
-        type: ResultType.todo,
-        title: '买牛奶',
-        status: ResultStatus.canonical,
-        originDevice: 'test-device',
-        revision: 1,
-        createdAt: DateTime(2026, 10, 4),
-        updatedAt: DateTime(2026, 10, 4),
-        body: '',
-        due: DateTime(2026, 10, 5, 18),
-      ),
-    ];
+    await controller.createManual(
+      type: ResultType.todo,
+      title: '买牛奶',
+      due: DateTime(2026, 10, 5, 18),
+    );
     await tester.pumpWidget(PersonalAiInboxApp(controller: controller));
     await tester.pumpAndSettle();
 
