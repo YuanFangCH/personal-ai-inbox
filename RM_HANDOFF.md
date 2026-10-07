@@ -10,11 +10,11 @@
 | 最后更新时间 | 2026-10-07 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex / GPT-5 |
-| 当前阶段 | GitHub 预发布版 `v1.1.0` 已发布，Android、Windows 安装包和便携包资产可用 |
+| 当前阶段 | 维护性升级第一阶段完成，`v1.1.1+3` 本地 bugfix 候选已通过三端构建与设备验证 |
 
 ## 2. 一句话交接
 
-项目已发布 GitHub 预发布版 `v1.1.0`，完成日历工作区、多视图、待办投影和快速新建。下一步是正式签名、厂商后台策略、通知和图片输入验证。
+维护性升级第一阶段已完成，三端可构建且 Android UI 100 条通过；下一步迁移页面到模块快照、删除兼容 facade，再继续正式签名、通知和真实同步。
 
 ## 3. 当前目标与范围
 
@@ -28,6 +28,7 @@
 ### 当前范围
 
 - 当前客户端位于 [app](./app)。
+- 本地核心采用模块化结构：`DevicePreferences`、`ResultLibrary`、`CaptureWorkflow`、`ConversationWorkspace`、`SyncWorkspace`；组合根和 UI 依赖关系由架构测试约束。
 - 首版已覆盖本地捕获、Markdown 主库、SQLite 索引、收件箱、日历、待办、事项、知识、设置和同步演练；确认队列已并入收件箱。
 - 日历工作区已覆盖日程、我的一天和待办三段切换；日程支持年、月、周、日、日程列表，默认进入详细月视图，月视图可切换概要模式。
 - 事件与带截止时间的待办共同参与日历日期格、时间轴和日程列表投影；基础重复规则会展开到视图，已完成和未完成待办可区分显示。
@@ -79,7 +80,7 @@
 
 ### 已完成
 
-- 已形成 `CONTEXT.md`、可执行方案、同步协议、模型接入和 13 条 ADR。
+- 已形成 `CONTEXT.md`、可执行方案、同步协议、模型接入和 14 条 ADR。
 - 已完成知识捕获、日历提醒、AI/OCR 自动化调研。
 - 已定义 RM 交接文档的固定结构和只追加变更记录。
 - 已定义 Agent 强制阅读、任务收尾和 Git 提交流程。
@@ -112,6 +113,10 @@
 - 已实现高置信自动记录、低置信/敏感/歧义待整理回退和 10 分钟撤销。
 - 已实现会话按首次非空文字或图片创建，冷启动不建会话，启动时清理无消息空会话；系统分享内容仍会创建并打开会话。
 - 已将独立确认页并入收件箱，捕获确认和同步冲突共用同一入口，首页待确认数量同步计入冲突。
+- 已新增 `DevicePreferences`、`ResultLibrary`、`CaptureWorkflow`、`ConversationWorkspace`、`SyncWorkspace` 和 `AppRuntime`，并为每个模块建立独立 contract 测试。
+- 已将原 `AppController` 从约 1110 行降到约 427 行；Markdown/SQLite 写入、捕获确认、会话流和同步状态均委托模块。
+- 已将日历视图、快速新建和对话页拆为小于约 350 行的组件文件，并新增 `architecture_test.dart` 拦截 UI 到存储、模块到 UI 的反向依赖。
+- 已修复 Android 390x844 手机视口下关闭快速新建面板时的底部 52px 溢出。
 
 ### 验证
 
@@ -120,6 +125,11 @@
 - 首个提交已通过 `pre-commit` 与 `commit-msg`，暂存区 `git diff --check` 无错误。
 - 首个提交后工作区为空，`RM_HANDOFF.md` 已被跟踪，提交标题符合 Conventional Commits。
 - `flutter analyze` 通过，无 warning、error 或 lint issue。
+- 模块化升级后 `dart format` 检查 137 个 Dart 文件无变化，`flutter analyze` 无问题。
+- 模块化升级后完整 `flutter test --reporter compact` 通过 294 项，覆盖架构依赖、模块 contract、现有 200/100 条矩阵和会话/捕获/同步流程。
+- `flutter build web --release`、`flutter build windows --release` 和 `flutter build apk --release` 均通过；Android release APK 为 63.8 MB。
+- Windows `integration_test/windows_smoke_test.dart -d windows` 通过。
+- Android `integration_test/android_smoke_test.dart -d emulator-5554` 的 phone/tablet 两档通过。
 - `flutter test --reporter expanded` 通过 124 项测试，其中包含 200 条跨端矩阵和 100 条 Android UI 矩阵：解析、三档后端持久化与同步、三档前端、Android 字体/主题/导航/滚动/滑动/详情/捕获。
 - `flutter build web --release` 成功。
 - `flutter build apk --debug` 与 `flutter build apk --release` 成功；release APK 为 59.7 MB。
@@ -204,6 +214,8 @@
 - 自动记录目前只授权高置信新建；模型更新、删除、重复规则和敏感内容不会自动执行。真实 Key 的联网流式与自动建成果仍未跑回归。
 - 会话与图片只在本端保存；删除会话会删除本地消息和附件，但不会删除已创建的成果。
 - 当前同步按钮运行的是端内沙箱 Provider，用于验证三 hash 与冲突逻辑，不等于 OneDrive 已联调。
+- `AppController` 仍作为迁移期兼容 facade 存在；后续不得向其中新增业务规则，页面迁移完成后必须删除。
+- 维护性升级第一阶段的模块边界已由架构测试保护，但页面仍主要读取 facade，后续需要逐页切换到模块快照。
 - 首版仅支持文本/分享文本捕获，截图视觉 OCR 链路尚未接入和回归。
 - 真实模型已有一条 AVD 和一条 Galaxy Tab 真机端到端样本；尚未形成持续 API Key、30-50 条回归集或费用控制策略。
 - 20 个大型场景使用确定性模拟 SSE 和工具调用，验证应用侧多结果处理与持久化，不代表线上模型对 20 段原文的抽取准确率。
@@ -225,4 +237,5 @@
 4. 登记 Microsoft public client，完成 OneDrive App Folder、delta、eTag 和 PKCE 联调。
 5. 在具备受控测试 Key 和费用预算时，用线上 `deepseek-flash` 对 20 个大型场景做抽取质量评分，并补 30-50 条中文样本。
 6. 在新日历工作区基础上，连接 HONOR/Galaxy 物理设备复跑双设备验收和系统分享强停恢复探针。
+7. 继续维护性升级第二阶段：页面改读模块快照、抽模型/同步纯策略、增加 schema migration 和增量刷新，最终删除 `AppController`。
 
