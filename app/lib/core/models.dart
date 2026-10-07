@@ -385,6 +385,7 @@ class SyncReport {
     required this.failed,
     required this.finishedAt,
     this.message,
+    this.failures = const [],
   });
 
   final int uploaded;
@@ -394,8 +395,27 @@ class SyncReport {
   final int failed;
   final DateTime finishedAt;
   final String? message;
+  final List<SyncFailure> failures;
 
   bool get hasChanges => uploaded + downloaded + conflicts > 0;
+}
+
+class SyncFailure {
+  const SyncFailure({
+    required this.stage,
+    required this.code,
+    required this.message,
+    this.objectId,
+    this.retryable = false,
+    this.occurredAt,
+  });
+
+  final String stage;
+  final String code;
+  final String message;
+  final String? objectId;
+  final bool retryable;
+  final DateTime? occurredAt;
 }
 
 class SyncConflict {

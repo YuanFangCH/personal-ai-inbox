@@ -12,6 +12,7 @@ Flutter 客户端首版，目标覆盖 Android 手机、Android 平板和 Window
 - 对话支持文本、剪贴板粘贴、相册、拍照和 Android 文本 / 图片分享，并通过 SSE 流式回复。
 - 云端模型可以自动新建高置信、非敏感的成果；风险项进入待整理区，成功创建后保留 10 分钟撤销。
 - 同步层已有 `SyncProvider` 接口、三项 hash 判定、冲突副本和墓碑逻辑。
+- 本地核心已拆分为 `DevicePreferences`、`ResultLibrary`、`CaptureWorkflow`、`ConversationWorkspace` 和 `SyncWorkspace` 模块；`AppController` 仅保留迁移期兼容 facade。
 - 云端模型走 OpenAI 兼容配置，密钥进入系统安全存储。
 - Android 注册 `ACTION_SEND` 与 `ACTION_PROCESS_TEXT`，可从其他 App 分享文本。
 

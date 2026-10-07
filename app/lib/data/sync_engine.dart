@@ -34,7 +34,7 @@ class SyncEngine {
       var downloaded = 0;
       var conflicts = 0;
       var unchanged = 0;
-      var failed = 0;
+      final failures = <SyncFailure>[];
 
       for (final record in local.values) {
         if (record.status != ResultStatus.canonical) {
@@ -82,8 +82,17 @@ class SyncEngine {
               unchanged++;
               break;
           }
-        } catch (_) {
-          failed++;
+        } catch (error) {
+          failures.add(
+            SyncFailure(
+              stage: 'sync-local',
+              code: 'sync_object_failed',
+              message: error.toString(),
+              objectId: record.id,
+              retryable: true,
+              occurredAt: DateTime.now(),
+            ),
+          );
         }
       }
 
@@ -91,8 +100,17 @@ class SyncEngine {
         try {
           await _download(remoteObject);
           downloaded++;
-        } catch (_) {
-          failed++;
+        } catch (error) {
+          failures.add(
+            SyncFailure(
+              stage: 'download-remote',
+              code: 'sync_object_failed',
+              message: error.toString(),
+              objectId: remoteObject.id,
+              retryable: true,
+              occurredAt: DateTime.now(),
+            ),
+          );
         }
       }
 
@@ -101,10 +119,18 @@ class SyncEngine {
         downloaded: downloaded,
         conflicts: conflicts,
         unchanged: unchanged,
-        failed: failed,
+        failed: failures.length,
         finishedAt: DateTime.now(),
+        failures: List.unmodifiable(failures),
       );
     } catch (error) {
+      final failure = SyncFailure(
+        stage: 'connect',
+        code: 'sync_round_failed',
+        message: error.toString(),
+        retryable: true,
+        occurredAt: DateTime.now(),
+      );
       return SyncReport(
         uploaded: 0,
         downloaded: 0,
@@ -113,6 +139,7 @@ class SyncEngine {
         failed: 1,
         finishedAt: DateTime.now(),
         message: error.toString(),
+        failures: [failure],
       );
     }
   }
