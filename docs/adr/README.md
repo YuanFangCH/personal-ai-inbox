@@ -17,6 +17,7 @@
 | [0011](0011-mit-open-source-release.md) | 以 MIT 协议公开发布，并使用干净公开历史 | accepted |
 | [0012](0012-github-release-artifacts-and-tag-workflow.md) | GitHub Release 作为首发渠道，并按标签自动构建 | accepted |
 | [0013](0013-lazy-conversation-creation-and-merged-confirmation.md) | 会话按首次内容创建，确认入口合并到收件箱 | accepted |
+| [0014](0014-modular-local-core-and-compatibility-migration.md) | 采用模块化本地核心，并以兼容 facade 分阶段迁移 | accepted |
 
 相关文档：
 
