@@ -4,6 +4,7 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 一个本地优先的个人信息捕获、整理与提醒系统。Android 手机、Android 平板和 Windows 端各自运行独立 Flutter App，以 Markdown 为权威成果库，通过端内规则、云端模型和可替换同步接口完成闭环。
+这个软件一开始是为我自己设计的，安卓端我仅针对荣耀90,200，三星tabs7,9做了实机测试，其他设备不保证能完全运行。
 
 ## 下载与安装
 
