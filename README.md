@@ -5,8 +5,6 @@
 
 一个本地优先的个人信息捕获、整理与提醒系统。Android 手机、Android 平板和 Windows 端各自运行独立 Flutter App，以 Markdown 为权威成果库，通过端内规则、云端模型和可替换同步接口完成闭环。
 
-项目当前只服务单用户，但配置、密钥和数据边界按可公开源码的方式设计：API Key、OAuth 令牌、签名文件、本地 vault 和运行截图都不进入仓库。
-
 ## 下载与安装
 
 首个预发布版本从 [GitHub Releases](https://github.com/YuanFangCH/personal-ai-inbox/releases) 下载：
@@ -125,20 +123,6 @@ docs/            架构方案、协议、ADR、研究与测试报告
 scripts/         构建、验收、Git 策略和公开发布审计
 ```
 
-## 当前边界
-
-- OneDrive OAuth、百度网盘归档和真实双向同步尚未完成，当前同步页使用端内沙箱 Provider。
-- Android release APK 仍使用模板 debug 签名，正式分发前应配置独立签名。
-- 本地通知、厂商后台策略、相机流程和第三方图片分享仍需更多真机验证。
-- 图片在配置模型后默认允许出网；客户端只处理尺寸和 EXIF，不会自动判断图片内容是否敏感。
-
-## 开源与安全
-
-- 许可证：[MIT](LICENSE)
-- 安全问题报告方式：[SECURITY.md](SECURITY.md)
-- 贡献说明：[CONTRIBUTING.md](CONTRIBUTING.md)
-- 不要提交 API Key、OAuth 令牌、签名密钥、环境文件、本地 vault、附件或包含敏感信息的截图。
-- 若密钥曾进入 Git 历史，应先在提供商侧撤销或轮换，再清理历史；删除文件本身不能使已泄漏密钥失效。
 
 ## 许可证
 
