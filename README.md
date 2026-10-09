@@ -14,7 +14,7 @@
 - Windows 11 x64：选择安装包或便携 ZIP。
 - 发布页同时提供 `SHA256SUMS.txt`，下载后应校验文件哈希。
 
-`v1.1.1` 是当前预发布版本，完成本地核心模块化重构，并修复 Android 日历快速新建面板的瞬态布局溢出。Android 仍使用 Debug 证书，Windows 未进行代码签名；安装系统可能显示未知来源或未知发布者提示。发行说明见 [v1.1.1 发行说明](docs/releases/v1.1.1.md)，上一版说明见 [v1.1.0 发行说明](docs/releases/v1.1.0.md)。
+`v1.1.1` 是当前预发布版本，完成本地核心模块化重构，并修复 Android 日历快速新建面板的瞬态布局溢出。
 
 ## 核心能力
 
@@ -33,47 +33,7 @@
 |---|---|
 | ![手机浅色界面](docs/test-reports/screenshots/android-phone-light.png) | ![平板横屏界面](docs/test-reports/screenshots/android-tablet-landscape.png) |
 
-## 架构
 
-```text
-Android / Windows / Web
-  -> 端内捕获
-  -> Markdown vault + SQLite 索引
-  -> 规则引擎与受控模型工具调用
-  -> 云模型 API（可选）
-  -> SyncProvider（当前含端内沙箱实现）
-```
-
-- `Markdown` 是成果的权威存储。
-- `SQLite` 只做索引、同步游标和幂等账本。
-- AI 只生成候选，端内规则决定能否自动新建成果。
-- 同步层通过 `SyncProvider` 抽象，OneDrive 等真实通道尚未接入。
-- 会话、消息、工具审计和图片附件只保存在本端，不进入成果同步区。
-
-详细设计见 [可执行方案](docs/personal-ai-inbox-executable-plan.md)、[同步协议](docs/sync-protocol.md)、[模型接入](docs/model-integration.md) 和 [ADR 索引](docs/adr/README.md)。
-
-## 快速开始
-
-前置环境：
-
-- Flutter stable
-- Dart 3.13.5 或兼容版本
-- Android SDK，用于构建 Android App
-- Visual Studio 2022 C++ 桌面工作负载和 ATL，用于构建 Windows App
-
-```powershell
-cd app
-flutter pub get
-flutter run
-```
-
-常用构建：
-
-```powershell
-flutter build apk --release
-flutter build windows --release
-flutter build web --release
-```
 
 ## 模型配置
 
@@ -84,45 +44,9 @@ flutter build web --release
 - API Key
 - 是否允许图片发送到云端
 
-默认端点为 `https://api.deepseek.com`，默认模型为 `deepseek-flash`。API Key 只写入系统安全存储，不写入 Markdown、日志或 Git。
+默认端点为 `https://api.deepseek.com`，默认模型为 `deepseek-flash`。
 
-## 验证
 
-```powershell
-cd app
-flutter analyze
-flutter test --reporter expanded
-flutter build web --release
-```
-
-仓库还包含 200 条跨端回归、100 条 Android UI、100 条双设备验收和 20 个大型综合场景。执行方式见 [app/README.md](app/README.md)。
-
-Git hooks 安装与策略：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\install-git-hooks.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\test-git-policy.ps1
-```
-
-公开推送前审计：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\scan-public-release.ps1
-```
-
-## 项目结构
-
-```text
-app/
-  lib/core/      模型、Markdown 编解码和确定性解析
-  lib/data/      本地存储、SQLite、同步引擎和配置
-  lib/services/  模型、聊天、捕获和应用控制
-  lib/ui/        Flutter 页面、主题和通用组件
-  test/          单元、组件、矩阵和回归测试
-  integration_test/
-docs/            架构方案、协议、ADR、研究与测试报告
-scripts/         构建、验收、Git 策略和公开发布审计
-```
 
 
 ## 许可证
