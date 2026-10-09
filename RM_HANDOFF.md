@@ -7,15 +7,15 @@
 | 字段 | 当前值 |
 |---|---|
 | 项目名称 | 个人 AI 收件箱与提醒系统 |
-| 最后更新时间 | 2026-10-07 |
+| 最后更新时间 | 2026-10-09 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex / GPT-5 |
-| 当前阶段 | 维护性升级第一阶段完成，`v1.1.1+3` 本地 bugfix 候选已通过三端构建与设备验证 |
-| 总体状态 | `app/` 已形成可运行的 Flutter 客户端，本地核心拆分为端配置、成果库、捕获、会话和同步模块，`AppController` 降为迁移期兼容 facade；日历视图、快速新建和对话页已拆分。开发工具链已从 C 盘迁移到 `E:\DevTools`，设备验收脚本可直接发现迁移后的 Flutter/Android SDK。Dart 格式、`flutter analyze`、294 项主机回归、Android/Windows/Web release 构建、Windows 原生冒烟、Android 手机/平板冒烟和 Android UI 100 条设备矩阵均通过；设备矩阵发现并修复了日历快速新建面板底部溢出。`v1.1.0` 仍是已发布 GitHub 预发布版，`v1.1.1` 尚未创建标签或 Release；APK 仍使用 Debug 证书，Windows 包仍未代码签名。产品边界继续保留：OneDrive、百度网盘、本地通知和真实跨端同步尚未完成。 |
+| 当前阶段 | C 盘开发环境迁移后的完整验证已通过，`v1.1.1+3` 本地 bugfix 候选仍保持可构建和可验收 |
+| 总体状态 | `app/` 已形成可运行的 Flutter 客户端，本地核心拆分为端配置、成果库、捕获、会话和同步模块，`AppController` 降为迁移期兼容 facade；日历视图、快速新建和对话页已拆分。开发工具链已从 C 盘迁移到 `E:\DevTools`，迁移后 Dart 格式、`flutter analyze`、294 项主机回归、Web/Windows/Android release 构建、Windows 原生冒烟和双 AVD 验收均重新通过。`v1.1.0` 仍是已发布 GitHub 预发布版，`v1.1.1` 尚未创建标签或 Release；APK 仍使用 Debug 证书，Windows 包仍未代码签名。产品边界继续保留：OneDrive、百度网盘、本地通知和真实跨端同步尚未完成。 |
 
 ## 2. 一句话交接
 
-维护性升级第一阶段已完成，三端可构建且 Android UI 100 条通过；下一步迁移页面到模块快照、删除兼容 facade，再继续正式签名、通知和真实同步。
+开发环境迁移后的完整测试已通过，三端可构建且双 AVD 验收通过；下一步迁移页面到模块快照、删除兼容 facade，再继续正式签名、通知和真实同步。
 
 ## 3. 当前目标与范围
 
@@ -125,6 +125,11 @@
 
 ### 验证
 
+- 2026-10-09 在 `E:\DevTools` 迁移后重新执行：`flutter pub get` 成功；`dart format` 137 个 Dart 文件 0 变化；`flutter analyze` 无问题；完整主机回归 294/294 通过。
+- 迁移后 `flutter build web --release`、`flutter build windows --release` 和 `flutter build apk --release` 全部通过；Windows integration smoke 通过；Android release APK 为 63.8 MB。
+- 迁移后双 AVD 完整验收通过：主机 100/100、荣耀手机 UI 50/50、Galaxy Tab UI 50/50；两端 `ACTION_SEND`、`ACTION_PROCESS_TEXT`、系统 chooser 和强停恢复全部通过，并生成 12 张证据截图。
+- 迁移后 APK SHA-256 为 `0BC340C2E979D1487B2EE9D978870636B4C2D2A0F28F34870C14F7526F3EB491`；Windows release EXE SHA-256 为 `C555EB7B8D58E2E4B05A0ACCCE6387FF12B4ACAB98F9FA038C91670B2BF4F54B`。
+- 迁移后 `scripts/test-git-policy.ps1` 通过 9 项隔离测试，`scripts/scan-public-release.ps1 -CurrentTreeOnly` 通过；双 AVD 均已停止，`adb devices` 为空。
 - `scripts/test-git-policy.ps1` 已通过 7 项隔离测试：合法原子提交、非法标题、未跟踪文件、未暂存修改、缺少 RM 交接更新、空交接章节和脏工作区推送拦截。
 - 开发环境迁移后按用户要求未启动 Flutter、Android、AVD、构建或测试；已确认五个 C 盘 Junction 均指向 `E:\DevTools`，Flutter、ADB、模拟器和 Conda 可执行文件均存在，并完成 PowerShell 脚本语法解析检查。
 - hooks 安装脚本已连续执行两次，`core.hooksPath` 和 `commit.template` 保持一致。
@@ -250,7 +255,7 @@
 - ADB `shell` 不是媒体 URI 所有者，无法为外部图片分享命令授予 MediaStore 读权限；第三方 App 图片分享仍需人工真机验收。
 - 相机拍照入口尚未在模拟器执行完整拍照流程。
 - 本轮日历工作区已通过主机、Windows 原生冒烟、Android AVD 冒烟和 Android UI 100 条集成矩阵；尚未在 HONOR/Galaxy 物理设备上人工复核新日历布局。
-- C 盘工具链迁移后尚未重跑 Flutter 构建或测试；下次验证应在继承新环境变量的终端中执行，若 `flutter`、`adb` 仍不可见则重启 Codex Desktop 或终端。
+- `flutter doctor -v` 仍提示 Flutter/Dart 未进入当前 PATH、部分 Android licenses 未接受、Chrome 缺失和 Maven 网络检查超时；本轮通过绝对路径和已缓存依赖完成全部测试，后续应修正 PATH 与许可证告警，避免新终端或 CI 环境出现不可复现失败。
 
 ### 下一步
 
@@ -263,6 +268,16 @@
 7. 继续维护性升级第二阶段：页面改读模块快照、抽模型/同步纯策略、增加 schema migration 和增量刷新，最终删除 `AppController`。
 
 ## 8. 变更记录
+
+### 2026-10-09 / 完成 C 盘开发环境迁移后的完整验证
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 在 `E:\DevTools` 迁移后重新验证 Flutter 工具链、全部主机回归、三端 release 构建、Windows 原生冒烟、双 AVD UI 与系统入口探针，以及仓库门禁 |
+| 变更文件 | `RM_HANDOFF.md` |
+| 验证 | `dart format` 137 文件 0 变化；`flutter analyze` 无问题；主机 294/294 通过；Web、Windows、Android release 构建通过；Windows smoke 通过；主机设备矩阵 100/100、荣耀 50/50、Galaxy Tab 50/50；双端系统分享、文本处理、chooser 和强停恢复通过；Git policy 9/9、公开发布扫描通过 |
+| 提交标题 | `test(dev): 完成 C 盘迁移后完整验证` |
+| 遗留事项 | Flutter/Dart 尚未进入当前 PATH，部分 Android licenses、Chrome 和 Maven 网络检查仍有 doctor 告警；未在本次执行真实云端模型或物理设备验收 |
 
 ### 2026-10-07 / 适配 C 盘开发环境迁移
 
