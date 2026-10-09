@@ -22,6 +22,7 @@ import 'test_support.dart';
 
 void main() {
   test('chat creates a high-confidence result and can undo it', () async {
+    final due = DateTime.now().add(const Duration(days: 2));
     final harness = await _ChatHarness.create(
       toolPayload: {
         'type': 'todo',
@@ -29,7 +30,7 @@ void main() {
         'body': '在周五下午三点前提交。',
         'confidence': 0.94,
         'sensitive': false,
-        'due': '2026-10-09T15:00:00+08:00',
+        'due': due.toIso8601String(),
       },
     );
     final conversationId = (await harness.controller.createConversation()).id;

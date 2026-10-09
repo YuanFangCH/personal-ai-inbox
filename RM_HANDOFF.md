@@ -10,12 +10,12 @@
 | 最后更新时间 | 2026-10-09 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex / GPT-5 |
-| 当前阶段 | C 盘开发环境迁移后的完整验证已通过，`v1.1.1+3` 本地 bugfix 候选仍保持可构建和可验收 |
-| 总体状态 | `app/` 已形成可运行的 Flutter 客户端，本地核心拆分为端配置、成果库、捕获、会话和同步模块，`AppController` 降为迁移期兼容 facade；日历视图、快速新建和对话页已拆分。开发工具链已从 C 盘迁移到 `E:\DevTools`，迁移后 Dart 格式、`flutter analyze`、294 项主机回归、Web/Windows/Android release 构建、Windows 原生冒烟和双 AVD 验收均重新通过。`v1.1.0` 仍是已发布 GitHub 预发布版，`v1.1.1` 尚未创建标签或 Release；APK 仍使用 Debug 证书，Windows 包仍未代码签名。产品边界继续保留：OneDrive、百度网盘、本地通知和真实跨端同步尚未完成。 |
+| 当前阶段 | `v1.1.1+3` 已进入 GitHub 预发布流程，发布标签、远端推送与 Actions 结果待最终核验 |
+| 总体状态 | `app/` 已形成可运行的 Flutter 客户端，本地核心拆分为端配置、成果库、捕获、会话和同步模块，`AppController` 降为迁移期兼容 facade；日历视图、快速新建和对话页已拆分。开发工具链已从 C 盘迁移到 `E:\DevTools`，迁移后 Dart 格式、`flutter analyze`、294 项主机回归、Web/Windows/Android release 构建、Windows 原生冒烟和双 AVD 验收均重新通过。`v1.1.0` 仍是上一版 GitHub 预发布版，本版 `v1.1.1` 正在发布；APK 仍使用 Debug 证书，Windows 包仍未代码签名。产品边界继续保留：OneDrive、百度网盘、本地通知和真实跨端同步尚未完成。 |
 
 ## 2. 一句话交接
 
-开发环境迁移后的完整测试已通过，三端可构建且双 AVD 验收通过；下一步迁移页面到模块快照、删除兼容 facade，再继续正式签名、通知和真实同步。
+开发环境迁移后的完整测试已通过，三端可构建且双 AVD 验收通过；`v1.1.1` 发布工作完成后，下一步迁移页面到模块快照、删除兼容 facade，再继续正式签名、通知和真实同步。
 
 ## 3. 当前目标与范围
 
@@ -259,15 +259,25 @@
 
 ### 下一步
 
-1. 后续公开开发直接在干净 `main` 上增量提交，禁止推送 `archive/pre-open-source`；新版本必须同步提升 `pubspec.yaml` 版本并新增 `docs/releases/v<version>.md`。
-2. 配置 Android 独立签名和 Windows 代码签名，为后续稳定版准备正式证书。
-3. 在两台设备上验证电池优化、自启动、后台冻结和本地通知恢复。
-4. 登记 Microsoft public client，完成 OneDrive App Folder、delta、eTag 和 PKCE 联调。
-5. 在具备受控测试 Key 和费用预算时，用线上 `deepseek-flash` 对 20 个大型场景做抽取质量评分，并补 30-50 条中文样本。
-6. 在新日历工作区基础上，连接 HONOR/Galaxy 物理设备复跑双设备验收和系统分享强停恢复探针。
+1. 等待并核验 `v1.1.1` Release 工作流、四个发布资产、预发布状态和校验文件；结果写入本文件。
+2. 后续公开开发直接在干净 `main` 上增量提交，禁止推送 `archive/pre-open-source`；新版本必须同步提升 `pubspec.yaml` 版本并新增 `docs/releases/v<version>.md`。
+3. 配置 Android 独立签名和 Windows 代码签名，为后续稳定版准备正式证书。
+4. 在两台设备上验证电池优化、自启动、后台冻结和本地通知恢复。
+5. 登记 Microsoft public client，完成 OneDrive App Folder、delta、eTag 和 PKCE 联调。
+6. 在具备受控测试 Key 和费用预算时，用线上 `deepseek-flash` 对 20 个大型场景做抽取质量评分，并补 30-50 条中文样本。
 7. 继续维护性升级第二阶段：页面改读模块快照、抽模型/同步纯策略、增加 schema migration 和增量刷新，最终删除 `AppController`。
 
 ## 8. 变更记录
+
+### 2026-10-09 / 准备发布 v1.1.1 预发布版
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 将模块化重构与 Android 布局修复形成的 `v1.1.1+3` 候选转为 GitHub 预发布版，更新发行说明、下载入口和交接状态，推送 `main` 后创建 `v1.1.1` 标签触发发布工作流 |
+| 变更文件 | `app/test/chat_flow_test.dart`、`docs/releases/v1.1.1.md`、`README.md`、`RM_HANDOFF.md` |
+| 验证 | Dart 格式检查 137 文件 0 变化；`flutter analyze` 无问题；修复 `chat_flow_test` 使用固定过去日期导致的时钟相关失败后，完整主机回归 294/294 通过；`scan-public-release.ps1 -CurrentTreeOnly` 通过；Release 工作流结果在发布完成后追加记录 |
+| 提交标题 | `build(release): 准备 v1.1.1 预发布` |
+| 遗留事项 | 需要推送 `main`、创建 `v1.1.1` 标签并核验 GitHub Release 资产 |
 
 ### 2026-10-09 / 完成 C 盘开发环境迁移后的完整验证
 
