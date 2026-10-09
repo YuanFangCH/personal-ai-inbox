@@ -10,12 +10,12 @@
 | 最后更新时间 | 2026-10-09 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex / GPT-5 |
-| 当前阶段 | `v1.1.1+3` 已进入 GitHub 预发布流程，发布标签、远端推送与 Actions 结果待最终核验 |
-| 总体状态 | `app/` 已形成可运行的 Flutter 客户端，本地核心拆分为端配置、成果库、捕获、会话和同步模块，`AppController` 降为迁移期兼容 facade；日历视图、快速新建和对话页已拆分。开发工具链已从 C 盘迁移到 `E:\DevTools`，迁移后 Dart 格式、`flutter analyze`、294 项主机回归、Web/Windows/Android release 构建、Windows 原生冒烟和双 AVD 验收均重新通过。`v1.1.0` 仍是上一版 GitHub 预发布版，本版 `v1.1.1` 正在发布；APK 仍使用 Debug 证书，Windows 包仍未代码签名。产品边界继续保留：OneDrive、百度网盘、本地通知和真实跨端同步尚未完成。 |
+| 当前阶段 | `v1.1.1+3` 已发布为 GitHub 预发布版，Release 工作流、发布资产与 SHA-256 校验均通过 |
+| 总体状态 | `app/` 已形成可运行的 Flutter 客户端，本地核心拆分为端配置、成果库、捕获、会话和同步模块，`AppController` 降为迁移期兼容 facade；日历视图、快速新建和对话页已拆分。开发工具链已从 C 盘迁移到 `E:\DevTools`，迁移后 Dart 格式、`flutter analyze`、294 项主机回归、Web/Windows/Android release 构建、Windows 原生冒烟和双 AVD 验收均重新通过。`v1.1.1` 已是当前 GitHub 预发布版，发布 Android APK、Windows x64 安装包、便携 ZIP 和校验文件；APK 仍使用 Debug 证书，Windows 包仍未代码签名。产品边界继续保留：OneDrive、百度网盘、本地通知和真实跨端同步尚未完成。 |
 
 ## 2. 一句话交接
 
-开发环境迁移后的完整测试已通过，三端可构建且双 AVD 验收通过；`v1.1.1` 发布工作完成后，下一步迁移页面到模块快照、删除兼容 facade，再继续正式签名、通知和真实同步。
+开发环境迁移后的完整测试已通过，三端可构建、双 AVD 验收通过，`v1.1.1` 预发布资产已完成上传与校验；下一步迁移页面到模块快照、删除兼容 facade，再继续正式签名、通知和真实同步。
 
 ## 3. 当前目标与范围
 
@@ -227,6 +227,9 @@
 - `main` Flutter CI `37501730835` 在 Linux/UTC 环境通过格式、静态分析和 268 项测试。
 - `v1.1.0` Release 工作流 `37501751529` 在 Windows runner 用时 15 分 5 秒全部通过，完成标签校验、测试、Android/Windows release 构建、APK 元数据与 Debug 证书校验、Inno Setup 编译、安装/卸载冒烟、便携 ZIP 校验和 Release 上传。
 - GitHub Release `v1.1.0` 已确认是预发布且非草稿，包含 `personal-ai-inbox-v1.1.0-android.apk`、Windows x64 安装包、便携 ZIP 和 `SHA256SUMS.txt`；重新下载三个资产后计算 SHA-256，三项均与校验文件一致。
+- `v1.1.1` 首次 Release 运行 `37952267393` 在 `subosito/flutter-action` 下载 Flutter `3.47.7` 时因缓存未命中且连接中断失败，退出码 56；未进入代码验证或构建步骤。
+- `v1.1.1` 重跑 Release 工作流 `37952267393` 在 15 分 52 秒内全部通过，完成标签校验、格式、静态分析、294 项主机回归、Android/Windows release 构建、APK 元数据与 Debug 证书校验、Inno Setup 编译、安装/卸载冒烟、便携 ZIP 校验和 Release 上传。
+- GitHub Release `v1.1.1` 已确认是预发布且非草稿，包含 `personal-ai-inbox-v1.1.1-android.apk`、Windows x64 安装包、便携 ZIP 和 `SHA256SUMS.txt`；重新下载三个资产后 SHA-256 分别为 `b2dca07b2353e7ea39222f31dd98605df07d4d6311ceb6cd1a134c112283e818`、`110b14c9ddba05f997465831d8a67d81691b94a4a03a36ca6b5b2c36712e2c26` 和 `1303051f796bd39f6d40f6e0b87ab59f3a96cbbe45fb081aa2909b8cbccce3b6`，均与校验文件一致。
 
 ## 7. 风险、阻塞与下一步
 
@@ -238,6 +241,7 @@
 - `archive/pre-open-source` 仅用于本机追溯，包含迁移前敏感测试信息，绝不可推送到 GitHub 或复制给公开协作方。
 - `v1.0.0` Android APK 使用 Debug 证书，Windows 安装包和 EXE 未进行代码签名；用户可能看到未知来源或 SmartScreen 提示，正式稳定版前必须完成独立签名。
 - GitHub Release 仍由标签触发；重跑工作流时必须保持标签版本、`pubspec.yaml` 和 `docs/releases/<tag>.md` 一致。
+- Release 运行依赖 Flutter Action 的版本缓存；稳定通道升级后首次运行可能需要重新下载完整 SDK，本次 `3.47.7` 首次下载曾因连接中断失败，重跑后通过。
 - 自动记录目前只授权高置信新建；模型更新、删除、重复规则和敏感内容不会自动执行。真实 Key 的联网流式与自动建成果仍未跑回归。
 - 会话与图片只在本端保存；删除会话会删除本地消息和附件，但不会删除已创建的成果。
 - 当前同步按钮运行的是端内沙箱 Provider，用于验证三 hash 与冲突逻辑，不等于 OneDrive 已联调。
@@ -259,15 +263,24 @@
 
 ### 下一步
 
-1. 等待并核验 `v1.1.1` Release 工作流、四个发布资产、预发布状态和校验文件；结果写入本文件。
-2. 后续公开开发直接在干净 `main` 上增量提交，禁止推送 `archive/pre-open-source`；新版本必须同步提升 `pubspec.yaml` 版本并新增 `docs/releases/v<version>.md`。
-3. 配置 Android 独立签名和 Windows 代码签名，为后续稳定版准备正式证书。
-4. 在两台设备上验证电池优化、自启动、后台冻结和本地通知恢复。
-5. 登记 Microsoft public client，完成 OneDrive App Folder、delta、eTag 和 PKCE 联调。
-6. 在具备受控测试 Key 和费用预算时，用线上 `deepseek-flash` 对 20 个大型场景做抽取质量评分，并补 30-50 条中文样本。
-7. 继续维护性升级第二阶段：页面改读模块快照、抽模型/同步纯策略、增加 schema migration 和增量刷新，最终删除 `AppController`。
+1. 后续公开开发直接在干净 `main` 上增量提交，禁止推送 `archive/pre-open-source`；新版本必须同步提升 `pubspec.yaml` 版本并新增 `docs/releases/v<version>.md`。
+2. 配置 Android 独立签名和 Windows 代码签名，为后续稳定版准备正式证书。
+3. 在两台设备上验证电池优化、自启动、后台冻结和本地通知恢复。
+4. 登记 Microsoft public client，完成 OneDrive App Folder、delta、eTag 和 PKCE 联调。
+5. 在具备受控测试 Key 和费用预算时，用线上 `deepseek-flash` 对 20 个大型场景做抽取质量评分，并补 30-50 条中文样本。
+6. 继续维护性升级第二阶段：页面改读模块快照、抽模型/同步纯策略、增加 schema migration 和增量刷新，最终删除 `AppController`。
 
 ## 8. 变更记录
+
+### 2026-10-09 / 发布 v1.1.1 预发布版
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 推送 `main` 与 `v1.1.1` 标签，执行 GitHub Release 工作流，发布 Android APK、Windows 安装包、便携 ZIP 和校验文件 |
+| 变更文件 | `RM_HANDOFF.md` |
+| 验证 | Release 工作流 `37952267393` 最终成功，耗时 15 分 52 秒；预发布标签 `v1.1.1` 指向发布准备提交；Release 为非草稿预发布且四个资产存在；重新下载三个二进制资产后 SHA-256 与 `SHA256SUMS.txt` 全部一致 |
+| 提交标题 | `docs: 记录 v1.1.1 发布结果` |
+| 遗留事项 | 仍为 Android Debug 证书和未签名 Windows 包；正式稳定版前需要独立签名与代码签名 |
 
 ### 2026-10-09 / 准备发布 v1.1.1 预发布版
 
