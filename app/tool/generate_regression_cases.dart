@@ -224,16 +224,66 @@ class _TimeSlot {
 }
 
 const _scenarios = [
-  _Scenario('work', '工作', '提交项目材料', '地点在会议室A'),
-  _Scenario('study', '学习', '复习英语口语', '准备第二天的课堂展示'),
-  _Scenario('health', '健康', '预约牙科检查', '带医保卡和既往报告'),
-  _Scenario('finance', '财务', '核对报销单', '重点检查金额和发票编号'),
-  _Scenario('travel', '出行', '前往机场接人', '提前确认航班动态'),
-  _Scenario('family', '家庭', '陪家人采购', '清单里包括牛奶和水果'),
-  _Scenario('shopping', '购物', '领取快递', '取件码以短信为准'),
-  _Scenario('admin', '行政', '更新居住证材料', '需要身份证和租房合同'),
-  _Scenario('maintenance', '维护', '检查服务器备份', '记录异常和恢复耗时'),
-  _Scenario('social', '社交', '参加读书会', '带上正在读的书和笔记'),
+  _Scenario(
+    'fixture_01',
+    'Synthetic fixture 01',
+    'record event 01',
+    'synthetic detail 01',
+  ),
+  _Scenario(
+    'fixture_02',
+    'Synthetic fixture 02',
+    'record event 02',
+    'synthetic detail 02',
+  ),
+  _Scenario(
+    'fixture_03',
+    'Synthetic fixture 03',
+    'record event 03',
+    'synthetic detail 03',
+  ),
+  _Scenario(
+    'fixture_04',
+    'Synthetic fixture 04',
+    'record event 04',
+    'synthetic detail 04',
+  ),
+  _Scenario(
+    'fixture_05',
+    'Synthetic fixture 05',
+    'record event 05',
+    'synthetic detail 05',
+  ),
+  _Scenario(
+    'fixture_06',
+    'Synthetic fixture 06',
+    'record event 06',
+    'synthetic detail 06',
+  ),
+  _Scenario(
+    'fixture_07',
+    'Synthetic fixture 07',
+    'record event 07',
+    'synthetic detail 07',
+  ),
+  _Scenario(
+    'fixture_08',
+    'Synthetic fixture 08',
+    'record event 08',
+    'synthetic detail 08',
+  ),
+  _Scenario(
+    'fixture_09',
+    'Synthetic fixture 09',
+    'record event 09',
+    'synthetic detail 09',
+  ),
+  _Scenario(
+    'fixture_10',
+    'Synthetic fixture 10',
+    'record event 10',
+    'synthetic detail 10',
+  ),
 ];
 
 const _absoluteTimes = [

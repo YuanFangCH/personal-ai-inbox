@@ -9,5 +9,5 @@ List<AndroidUiCase> loadDeviceAcceptanceCases({String? target}) {
 }
 
 bool isSupportedDeviceProfile(String profile) {
-  return profile == 'honor-phone' || profile == 'galaxy-tab';
+  return profile == 'android-phone' || profile == 'android-tablet';
 }

@@ -21,7 +21,7 @@ void main() {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
 
-    final controller = await _controller('honor-phone');
+    final controller = await _controller('android-phone');
     await tester.pumpWidget(PersonalAiInboxApp(controller: controller));
     await tester.pumpAndSettle();
 
@@ -44,7 +44,7 @@ void main() {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1;
 
-    final controller = await _controller('galaxy-tab');
+    final controller = await _controller('android-tablet');
     await tester.pumpWidget(PersonalAiInboxApp(controller: controller));
     await tester.pumpAndSettle();
 

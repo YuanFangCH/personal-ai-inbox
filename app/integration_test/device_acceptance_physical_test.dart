@@ -9,7 +9,7 @@ void main() {
   const profile = String.fromEnvironment('DEVICE_UNDER_TEST');
   if (!isSupportedDeviceProfile(profile)) {
     throw StateError(
-      'DEVICE_UNDER_TEST must be honor-phone or galaxy-tab; got "$profile".',
+      'DEVICE_UNDER_TEST must be android-phone or android-tablet; got "$profile".',
     );
   }
   final cases = loadDeviceAcceptanceCases(target: profile);

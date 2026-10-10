@@ -35,7 +35,7 @@ id: mt_20261004_7f3a91
 type: matter          # matter | todo | event | knowledge
 title: 英语比赛
 status: canonical     # draft | reviewed | canonical
-origin_device: honor-phone
+origin_device: android-phone
 revision: 3
 created_at: 2026-10-04T09:12:00+08:00
 updated_at: 2026-10-04T09:40:00+08:00

@@ -1,6 +1,6 @@
 param(
-    [string]$HonorSerial,
-    [string]$GalaxySerial,
+    [string]$PhoneSerial,
+    [string]$TabletSerial,
     [string]$ReleaseApk,
     [switch]$SkipHost,
     [switch]$SkipPhysical,
@@ -172,23 +172,14 @@ function Assert-DeviceProfile {
     }
 
     switch ($ProfileName) {
-        'honor-phone' {
-            if ($manufacturer -ne 'honor') {
-                throw "honor-phone requires manufacturer HONOR; got $manufacturer on $Serial"
-            }
+        'android-phone' {
             if ($logicalWidth -ge 600) {
-                throw "honor-phone requires a compact viewport below 600dp; got ${logicalWidth}dp"
+                throw "android-phone requires a compact viewport below 600dp; got ${logicalWidth}dp"
             }
         }
-        'galaxy-tab' {
-            if ($manufacturer -ne 'samsung') {
-                throw "galaxy-tab requires manufacturer samsung; got $manufacturer on $Serial"
-            }
-            if ($model -notmatch '^SM-T73') {
-                throw "galaxy-tab requires Galaxy Tab S7 FE model SM-T73*; got $model"
-            }
+        'android-tablet' {
             if ($logicalWidth -lt 600) {
-                throw "galaxy-tab requires an expanded viewport of at least 600dp; got ${logicalWidth}dp"
+                throw "android-tablet requires an expanded viewport of at least 600dp; got ${logicalWidth}dp"
             }
         }
         default {
@@ -588,7 +579,7 @@ function Invoke-SystemProbe {
     }
 
     $timestamp = Get-Date -Format 'MMddHHmmss'
-    $profileCode = if ($ProfileName -eq 'honor-phone') { 'H' } else { 'G' }
+    $profileCode = if ($ProfileName -eq 'android-phone') { 'H' } else { 'G' }
     $probes = @(
         @{
             Name = 'system_share'
@@ -676,8 +667,8 @@ try {
     if ($AllowUnverifiedDevice -and -not $SystemProbesOnly) {
         throw '-AllowUnverifiedDevice is only valid with -SystemProbesOnly.'
     }
-    if ($SystemProbesOnly -and -not $HonorSerial -and -not $GalaxySerial) {
-        throw '-SystemProbesOnly requires -HonorSerial and/or -GalaxySerial.'
+    if ($SystemProbesOnly -and -not $PhoneSerial -and -not $TabletSerial) {
+        throw '-SystemProbesOnly requires -PhoneSerial and/or -TabletSerial.'
     }
 
     if (-not $SkipHost -and -not $SystemProbesOnly) {
@@ -688,28 +679,28 @@ try {
     }
 
     if (-not $SkipPhysical -and -not $SystemProbesOnly) {
-        if (-not $HonorSerial -and -not $GalaxySerial) {
-            throw 'Provide -HonorSerial and/or -GalaxySerial, or use -SkipPhysical.'
+        if (-not $PhoneSerial -and -not $TabletSerial) {
+            throw 'Provide -PhoneSerial and/or -TabletSerial, or use -SkipPhysical.'
         }
-        if ($HonorSerial) {
-            Invoke-PhysicalProfile -ProfileName 'honor-phone' -Serial $HonorSerial
+        if ($PhoneSerial) {
+            Invoke-PhysicalProfile -ProfileName 'android-phone' -Serial $PhoneSerial
         }
-        if ($GalaxySerial) {
-            Invoke-PhysicalProfile -ProfileName 'galaxy-tab' -Serial $GalaxySerial
+        if ($TabletSerial) {
+            Invoke-PhysicalProfile -ProfileName 'android-tablet' -Serial $TabletSerial
         }
     }
 
-    $hasPhysicalSerials = [bool]($HonorSerial -or $GalaxySerial)
+    $hasPhysicalSerials = [bool]($PhoneSerial -or $TabletSerial)
     if (-not $SkipSystemProbes -and $hasPhysicalSerials) {
         $apkPath = Resolve-ReleaseApk
-        if ($HonorSerial) {
-            Invoke-SystemProbe -ProfileName 'honor-phone' `
-                -Serial $HonorSerial `
+        if ($PhoneSerial) {
+            Invoke-SystemProbe -ProfileName 'android-phone' `
+                -Serial $PhoneSerial `
                 -ApkPath $apkPath
         }
-        if ($GalaxySerial) {
-            Invoke-SystemProbe -ProfileName 'galaxy-tab' `
-                -Serial $GalaxySerial `
+        if ($TabletSerial) {
+            Invoke-SystemProbe -ProfileName 'android-tablet' `
+                -Serial $TabletSerial `
                 -ApkPath $apkPath
         }
     }

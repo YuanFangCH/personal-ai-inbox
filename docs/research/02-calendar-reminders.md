@@ -1,7 +1,7 @@
 # 个人 AI 信息收集系统：事项写入日历、到点提醒、三端同步调研
 
 检索日期：2026-10-03  
-目标环境：荣耀 Android 手机、三星 Galaxy Tab S7 FE、Windows 11 多台、自有公网 IPv6 服务器。  
+目标环境：Android 手机与 Android 平板、Windows 11 多台、自有公网 IPv6 服务器。  
 结论口径：本文把官方文档、协议规范、项目仓库中直接写明的内容标为【事实】；把基于这些事实给出的工程选择、风险和落地建议标为【判断】。
 
 > **适用范围说明**：本文撰写于 v1.0 的“服务器中心”架构，CalDAV/Nextcloud 在 v2.1 中已降级为可选镜像，日历与待办由 App 自带。结论请以 [个人 AI 收件箱与提醒系统：可执行方案](../personal-ai-inbox-executable-plan.md) 为准；本文的官方资料与能力边界仍然有效。
@@ -105,7 +105,7 @@ AI 解析结果
 
 【事实】Etar 官方 README 说明它使用 Android calendar storage 展示所有已同步日历；CalDAV 客户端不包含在 Etar 内，需要 DAVx5 等外部同步 App。来源：[Etar README](https://github.com/Etar-Group/Etar-Calendar/blob/master/README.md)。
 
-【判断】Etar 适合作为轻量、无 GMS 依赖的系统日历替代 UI；它本身不是同步器，不能单独完成 CalDAV 写入。若荣耀手机的系统日历能正确读取 DAVx⁵ 提供的账户，也可不装 Etar，但 Etar 的优势是行为更可控、公开源代码。
+【判断】Etar 适合作为轻量、无 GMS 依赖的系统日历替代 UI；它本身不是同步器，不能单独完成 CalDAV 写入。若Android 手机的系统日历能正确读取 DAVx⁵ 提供的账户，也可不装 Etar，但 Etar 的优势是行为更可控、公开源代码。
 
 【事实】Tasks.org 官方同步文档说明它支持 CalDAV、DAVx⁵、Google Tasks、Microsoft To Do、EteSync 等，并列出标题、截止日期、截止时间、开始时间、子任务、说明、优先级、位置、标签、重复、提醒等同步字段。来源：[Tasks.org Synchronization](https://tasks.org/docs/sync/)。
 
@@ -118,7 +118,7 @@ AI 解析结果
 - 事件：DAVx⁵ + Etar/系统日历。
 - 任务：DAVx⁵ + Tasks.org。
 - 关键提醒：Tasks.org 的本地提醒 + 独立 ntfy/Telegram 推送双保险。
-- 荣耀 MagicOS 与三星 One UI 都单独测试“锁屏 8 小时 + 勿扰 + 省电模式 + 重启”。不要只信 Android 通用设置。
+- 厂商定制 Android MagicOS 与另一厂商 One UI 都单独测试“锁屏 8 小时 + 勿扰 + 省电模式 + 重启”。不要只信 Android 通用设置。
 
 ### 2.4 Android 原生日历 intent / DAV 同步的可行性
 
@@ -128,7 +128,7 @@ AI 解析结果
 
 【判断】“无需自建 App”的路有两条：
 
-1. Intent 路线：AI 端生成 `ACTION_INSERT`，手机上由现有日历 App 打开展示预填事件，用户确认保存。优点是无需权限、无需自建 App；缺点是不能静默写入，且荣耀/Samsung 系统日历对 extras 的处理可能不同。
+1. Intent 路线：AI 端生成 `ACTION_INSERT`，手机上由现有日历 App 打开展示预填事件，用户确认保存。优点是无需权限、无需自建 App；缺点是不能静默写入，且不同厂商 系统日历对 extras 的处理可能不同。
 2. DAV 路线：AI 写服务端 CalDAV，DAVx⁵ 同步进 Calendar Provider，现有日历 App 负责展示和提醒。优点是三端一致、可静默写入服务端；缺点是需要 DAVx⁵ 和电池优化设置。
 
 【判断】Android 平台本身没有面向所有机型、开箱即用的通用“CalDAV 账户”入口。AOSP 的同步机制是 sync adapter，第三方 CalDAV 同步器需要提供 sync adapter；因此 DAVx⁵ 是最现实的“无自建 App”桥梁。
@@ -299,7 +299,7 @@ Windows/Android 客户端
 
 【判断】Android 配置：
 
-- 荣耀手机、Galaxy Tab S7 FE 都安装 DAVx⁵。
+- Android 手机、Android 平板 都安装 DAVx⁵。
 - 数据源选择 DAVx⁵ 的 Nextcloud 账户，不保存到设备本地账户。
 - 关闭 DAVx⁵ 和 Tasks.org 的电池优化，确认厂商自启动/后台白名单。
 - 日历事件用 Etar 或系统日历；任务用 Tasks.org。
@@ -385,13 +385,13 @@ Windows/Android 客户端
 
 【判断】以下内容受设备、版本、网络影响，不应仅凭文档拍板：
 
-- 荣耀 MagicOS 具体版本的省电、自启动、后台弹窗和通知折叠策略。
+- 厂商定制 Android MagicOS 具体版本的省电、自启动、后台弹窗和通知折叠策略。
 - Samsung One UI 对 DAVx⁵、Tasks.org、ntfy 的长期后台限制。
 - Thunderbird 在 Windows 11 关机、休眠、快速启动、未登录状态下的提醒边界。
 - 新版 Outlook for Windows 与 Outlook CalDav Synchronizer 的兼容性。
 - 钉钉自定义机器人官方限流细节，本次抓取未能读取动态文档正文。
 - Cloudflare proxied WebDAV/CalDAV 全方法兼容性与 WAF 行为。
-- 荣耀手机蜂窝网络是否长期提供原生 IPv6 或 464XLAT，以及运营商 DNS64/DoH 行为。
+- Android 手机蜂窝网络是否长期提供原生 IPv6 或 464XLAT，以及运营商 DNS64/DoH 行为。
 
 ## 11. 主要官方来源
 
