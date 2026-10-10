@@ -2,7 +2,7 @@
 
 > 版本：v2.6
 > 日期：2026-10-07
-> 目标环境：荣耀 Android 手机、三星 Galaxy Tab S7 FE、Windows 11、OneDrive、百度网盘、可选自有服务器（独立主机 + 公网 IP）
+> 目标环境：Android 手机、Android 平板、Windows 11、OneDrive、百度网盘、可选自有服务器（独立主机 + 公网 IP）
 > 配套调研：
 > - [收集入口与知识库](research/01-knowledge-capture.md)
 > - [日历、提醒与跨端同步](research/02-calendar-reminders.md)
@@ -16,7 +16,7 @@
 > **v2.1 追加要求**
 > 1. 不做本地模型部署：OCR、分类、摘要、结构化全部通过 API 接入云端大模型；每端只保留自己的规则引擎、任务队列和 API 凭据。
 > 2. 以 Markdown 文件为主：`.md` 文件是知识、待办和事项的权威存储，数据库只做索引、同步游标和幂等账本。
-> 3. App 自带完整界面：日历、简略待办列表、事项详情（类似荣耀笔记的使用体验），不把核心交互外包给系统日历或第三方 App。
+> 3. App 自带完整界面：日历、简略待办列表、事项详情（类似系统笔记的使用体验），不把核心交互外包给系统日历或第三方 App。
 
 > **v2.2 关键变更（后端收口）**
 > 1. 不建集中式后端服务：后端 = 每端 App 内的本地核心，跨端只通过云盘交换成果。
@@ -93,7 +93,7 @@ v2.2 把后端与同步收口：
 推荐默认组合（v2.2）：
 
 ```text
-Android 手机 App / Galaxy Tab App / Windows App
+Android 手机 App / Android 平板 App / Windows App
   -> 端内捕获（分享菜单、剪贴板、拖拽、热键、文件夹监听）
   -> 端内 Markdown 主库（.md 文件）+ 索引数据库（SQLite），立即落盘并返回
   -> 端内规则引擎、任务队列、云模型接入配置
@@ -121,7 +121,7 @@ Android 手机 App / Galaxy Tab App / Windows App
 ### 2.1 必须满足
 
 - 手机、平板、Windows 三端都要有独立 App，而不是“一个网页 + 一个脚本”的拼装方案。
-- 三端 App 都自带日历、简略待办列表和事项详情（类似荣耀笔记的使用体验），核心交互不外包给系统日历或第三方 App。
+- 三端 App 都自带日历、简略待办列表和事项详情（类似系统笔记的使用体验），核心交互不外包给系统日历或第三方 App。
 - 三端都能把任意文本、截图、链接或文件快速送入系统（分享菜单、剪贴板、拖拽、热键、文件夹监听）。
 - 三端各自拥有独立的本地存储，且以 Markdown 文件为主：`.md` 是权威副本，数据库只是索引和账本；断网、服务器宕机时仍可捕获和查看。
 - 三端各自拥有独立的规则引擎、任务队列和云模型接入配置；不部署本地模型，模型能力全部通过 API 调用云端大模型。
@@ -170,7 +170,7 @@ Android 手机 App / Galaxy Tab App / Windows App
 | 数据主形态 | Markdown 文件（`.md`）为权威存储 | 可读、可 diff、可 Git、可备份、可长期迁移 | Joplin、Obsidian 仅作编辑前台 |
 | 索引数据库 | SQLite（FTS5 / sqlite-vec） | 只做索引、同步游标和幂等账本，可重建 | 服务端 PostgreSQL 可选汇聚 |
 | 成果权威源 | 每端本地成果库互为副本 | 对等无主，任一端离线不影响其他端 | 服务端作为唯一权威源 |
-| 内置界面 | App 自带日历 + 待办列表 + 事项详情 | 满足“荣耀笔记式”的使用体验，不依赖第三方 App | 桥接系统日历 / Tasks.org |
+| 内置界面 | App 自带日历 + 待办列表 + 事项详情 | 满足“系统笔记式”的使用体验，不依赖第三方 App | 桥接系统日历 / Tasks.org |
 | 跨端镜像 | 默认不需要；可选 Nextcloud / CalDAV | App 自带日历和待办后，第三方镜像只在需要时启用 | Radicale、Baikal |
 | 知识主库 | 每端本地 Markdown vault | `.md` 是唯一权威副本，数据库只做索引 | Joplin、Obsidian 仅作编辑前台 |
 | 知识发布 | 本地静态站 / MkDocs Material（可选） | 静态、快、手机和电脑都能访问 | Nextcloud Files、GitBook |
@@ -194,7 +194,7 @@ Android 手机 App / Galaxy Tab App / Windows App
 
 三端一律按“完整节点”设计，任何一端都不是另一端的遥控器：
 
-| 维度 | 荣耀手机 App | Galaxy Tab App | Windows App |
+| 维度 | Android手机 App | Android 平板 App | Windows App |
 |---|---|---|---|
 | 本地存储 | Markdown vault 为主 + SQLite 索引，配额 8-32 GB | 同手机，配额 8-32 GB | Markdown vault 为主 + SQLite 索引，按磁盘 |
 | 运算单元 | 规则引擎、任务队列、解析与格式化 | 同手机 | 规则引擎、任务队列、批量格式化 |
@@ -234,7 +234,7 @@ Android 手机 App / Galaxy Tab App / Windows App
 {
   "object_id": "kn_20261003_xxx",
   "object_type": "matter | todo | event | knowledge",
-  "origin_device": "honor-phone",
+  "origin_device": "android-phone",
   "revision": 3,
   "content_hash": "sha256:...",
   "updated_at": "2026-10-04T09:40:00+08:00",
@@ -298,12 +298,12 @@ Android 手机 App / Galaxy Tab App / Windows App
 
 ```mermaid
 flowchart LR
-    subgraph PH[荣耀手机 App]
+    subgraph PH[Android手机 App]
       PA[端内捕获] --> PB[(Markdown 主库 + SQLite 索引)]
       PB --> PC[规则引擎 / 任务队列]
       PC --> PD[内置：日历 / 待办 / 事项详情]
     end
-    subgraph TB[Galaxy Tab App]
+    subgraph TB[Android 平板 App]
       TA[端内捕获] --> TB2[(Markdown 主库 + SQLite 索引)]
       TB2 --> TC[规则引擎 / 任务队列]
       TC --> TD[内置：日历 / 待办 / 事项详情]
@@ -376,7 +376,7 @@ flowchart LR
 {
   "schema_version": "1.1",
   "event_id": "uuid-v4",
-  "device_id": "honor-phone",
+  "device_id": "android-phone",
   "captured_at": "2026-10-03T18:00:00+08:00",
   "timezone": "Asia/Hong_Kong",
   "source_type": "text | image | url | file",
@@ -478,16 +478,16 @@ Markdown 主库：
 - 提醒：端内调度，不依赖服务器或第三方客户端常开。
 - 查看与编辑：三端都能浏览和编辑本地成果；联网后自动看到其他端的定稿成果。
 
-### 6.2 荣耀手机 App
+### 6.2 Android手机 App
 
 - 注册系统 Share Target，从任意 App 分享文本、图片或链接进来。
 - 端内跑规则引擎、任务队列和内置三件套；截图和文本通过云端大模型 API 处理。
 - Markdown vault 为主库 + SQLite 索引；断网时正常捕获、编辑和查看。
-- 界面参考荣耀笔记的使用习惯：随手记、分类、置顶、待办勾选。
+- 界面参考系统笔记的使用习惯：随手记、分类、置顶、待办勾选。
 - 提醒走本地通知 + 前台服务，处理 MagicOS 的电池优化与自启动限制。
 - 同步默认只在 WiFi、充电或手动时触发。
 
-### 6.3 三星 Galaxy Tab S7 FE App
+### 6.3 Android 平板 App
 
 - 同一套 Android App，复用手机端配置，仅替换 `device_id`。
 - 利用大屏做双栏 / 三栏：左侧日历或待办，右侧事项详情。
@@ -504,7 +504,7 @@ Markdown 主库：
 ### 6.5 事项详情与笔记（Markdown）
 
 - 每端本地 `vault/` 是 Markdown 主库，可独立阅读和编辑。
-- 事项详情支持长文、图片、清单、代码块等 Markdown 常规能力；交互对齐荣耀笔记的“随手记 + 分类整理”体验。
+- 事项详情支持长文、图片、清单、代码块等 Markdown 常规能力；交互对齐系统笔记的“随手记 + 分类整理”体验。
 - 知识卡片、日报周报都以 `.md` 生成，数据库里的索引可随时重建。
 - 需要发布时由任一端本地生成 MkDocs 静态站。
 - 需要离线编辑时，可用 Obsidian 等编辑器打开本地目录；不要让编辑器成为唯一副本。
@@ -532,7 +532,7 @@ id: kn_20261003_xxx
 kind: knowledge
 title: 某个主题
 created_at: 2026-10-03T18:00:00+08:00
-origin_device: honor-phone
+origin_device: android-phone
 tags: [tag1, tag2]
 links: [mt_20261004_yyy]
 source_event_ids: [evt_xxx]

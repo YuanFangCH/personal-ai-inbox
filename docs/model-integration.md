@@ -88,7 +88,7 @@
 
 - **三端共用一把 API Key**，存在各端系统安全存储里（Android Keystore、Windows Credential Manager + DPAPI），通过配置文件或设置界面填写。
 - Key 不进代码、不进仓库、不写进日志；为未来开源准备的只是配置项本身，不是值。
-- **每端固定一个 `user_id`**（如 `honor-phone`、`galaxy-tab`、`win-desktop`），用于账号内的 KVCache 隔离、内容安全隔离与调度区分。`user_id` 需匹配 `[a-zA-Z0-9\-_]+`，最长 512，不得包含隐私信息。
+- **每端固定一个 `user_id`**（如 `android-phone`、`android-tablet`、`win-desktop`），用于账号内的 KVCache 隔离、内容安全隔离与调度区分。`user_id` 需匹配 `[a-zA-Z0-9\-_]+`，最长 512，不得包含隐私信息。
 - 为什么不用三把 Key：DeepSeek 的并发与余额都是**账号级**，与 Key 数量无关，多 Key 拿不到任何配额好处；而丢设备时换一把 Key 再同步到另外两台的代价很小。
 
 ## 9. AI 对话与自动记录

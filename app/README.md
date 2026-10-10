@@ -71,15 +71,15 @@ flutter test test/chat_flow_test.dart
 flutter test test/chat_widget_test.dart
 ```
 
-三星平板与荣耀手机 100 条设备验收矩阵：
+Android 手机与平板 100 条设备验收矩阵：
 
 ```powershell
 dart run tool/generate_device_acceptance_cases.dart
 flutter test test/device_acceptance_100_cases_test.dart
 flutter test integration_test/device_acceptance_physical_test.dart `
-  -d <device-id> --dart-define=DEVICE_UNDER_TEST=honor-phone
+  -d <device-id> --dart-define=DEVICE_UNDER_TEST=android-phone
 flutter test integration_test/device_acceptance_physical_test.dart `
-  -d <device-id> --dart-define=DEVICE_UNDER_TEST=galaxy-tab
+  -d <device-id> --dart-define=DEVICE_UNDER_TEST=android-tablet
 ```
 
 带厂商和型号门禁的组合入口：
@@ -87,7 +87,7 @@ flutter test integration_test/device_acceptance_physical_test.dart `
 ```powershell
 powershell -ExecutionPolicy Bypass -File ..\scripts\verify-device-acceptance.ps1 -SkipPhysical
 powershell -ExecutionPolicy Bypass -File ..\scripts\verify-device-acceptance.ps1 `
-  -HonorSerial <honor-serial> -GalaxySerial <galaxy-tab-serial>
+  -PhoneSerial <honor-serial> -TabletSerial <android-tablet-serial>
 ```
 
 提供设备序列号时，脚本还会构建或复用 release APK，自动验证 `ACTION_SEND`、`ACTION_PROCESS_TEXT`、系统 chooser 选择和强制停止后的恢复，并把截图写入 `build/device-acceptance/`。
@@ -99,7 +99,7 @@ powershell -ExecutionPolicy Bypass -File ..\scripts\verify-device-acceptance.ps1
 powershell -ExecutionPolicy Bypass -File ..\scripts\verify-virtual-device.ps1
 ```
 
-脚本会自动创建 `aitext_honor_phone` 和 `aitext_galaxy_tab`，依次执行主机 100 条、两台 AVD 各 50 条 UI 用例和系统入口探针，然后关闭 AVD。
+脚本会自动创建 `aitext_android_phone` 和 `aitext_android_tablet`，依次执行主机 100 条、两台 AVD 各 50 条 UI 用例和系统入口探针，然后关闭 AVD。
 
 20 个大型综合场景：
 

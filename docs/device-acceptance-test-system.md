@@ -1,7 +1,7 @@
-# 三星平板与荣耀手机设备验收体系
+# Android 手机与平板设备验收体系
 
 > 日期：2026-10-04
-> 适用范围：荣耀 Android 手机、三星 Galaxy Tab S7 FE
+> 适用范围：Android 手机与 Android 平板
 > 与现有测试的关系：本体系补充物理设备门禁和导航包验证，不替代 200 条跨端矩阵或原有 Android 100 条 UI 矩阵。
 
 ## 1. 目标
@@ -17,8 +17,8 @@
 
 | 配置 | 厂商门禁 | 型号或屏幕门禁 | 用例 |
 |---|---|---|---:|
-| `honor-phone` | `ro.product.manufacturer=HONOR` | 逻辑宽度小于 600dp | 50 |
-| `galaxy-tab` | `ro.product.manufacturer=samsung` | `SM-T73*` 且逻辑宽度至少 600dp | 50 |
+| `android-phone` | Android phone profile | 逻辑宽度小于 600dp | 50 |
+| `android-tablet` | Android tablet profile | 逻辑宽度至少 600dp | 50 |
 
 设备配置由 `scripts/verify-device-acceptance.ps1` 读取：
 
@@ -65,7 +65,7 @@ dart run tool/generate_device_acceptance_cases.dart
 
 ### 4.1 主机矩阵
 
-在主机上按荣耀 390x844 和 Galaxy Tab 1280x800 执行全部 100 条：
+在主机上按手机和大屏平板视口执行全部 100 条：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\verify-device-acceptance.ps1 -SkipPhysical
@@ -85,12 +85,12 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify-virtual-device.ps1
 
 | 配置 | AVD | 模板 |
 |---|---|---|
-| `honor-phone` | `aitext_honor_phone` | Pixel 6 |
-| `galaxy-tab` | `aitext_galaxy_tab` | Medium Tablet |
+| `android-phone` | `aitext_android_phone` | Pixel 6 |
+| `android-tablet` | `aitext_android_tablet` | Medium Tablet |
 
 虚拟验收执行主机 100 条、两个 AVD 各 50 条 UI 用例，以及每台 AVD 的系统分享、文本处理和强停恢复探针。模拟器使用固定端口 5560 / 5562，验证结束后默认关闭；`-KeepRunning` 可保留设备。
 
-本轮结果见 [虚拟设备验收报告](test-reports/2026-10-04-virtual-device-acceptance.md)。
+本轮结果已完成验收；公开仓库不保留设备运行报告或截图。
 
 ### 4.3 物理设备矩阵
 
@@ -98,15 +98,15 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify-virtual-device.ps1
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\verify-device-acceptance.ps1 `
-  -HonorSerial <荣耀设备序列号> `
-  -GalaxySerial <三星设备序列号>
+  -PhoneSerial <手机设备序列号> `
+  -TabletSerial <平板设备序列号>
 ```
 
 单设备执行：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\verify-device-acceptance.ps1 `
-  -HonorSerial <荣耀设备序列号>
+  -PhoneSerial <手机设备序列号>
 ```
 
 不执行系统入口探针时加 `-SkipSystemProbes`；不重新构建 release APK 时加 `-SkipReleaseBuild`。主验收不传这两个开关，确保使用当前源码构建并执行完整探针。
@@ -137,7 +137,7 @@ app/build/device-acceptance/<profile>/<system_share|process_text|system_chooser>
 
 以下能力仍需要人工真机证据：
 
-1. MagicOS 和 One UI 的电池优化、自启动、后台冻结对定时任务的实际影响。
+1. 厂商定制 Android 系统的电池优化、自启动、后台冻结对定时任务的实际影响。
 2. 本地通知权限、锁屏展示、勿扰和重启后的提醒恢复。
 3. 在物理设备屏幕上检查厂商 ROM 的实际分享面板布局和系统文案。
 
@@ -148,8 +148,8 @@ app/build/device-acceptance/<profile>/<system_share|process_text|system_chooser>
 一次设备验收通过必须同时满足：
 
 1. 主机 100 条全部通过。
-2. 荣耀真机 50 条全部通过，且设备门禁输出为 `HONOR`。
-3. Galaxy Tab 真机 50 条全部通过，且设备型号匹配 `SM-T73*`。
+2. Android 手机真机 50 条全部通过。
+3. Android 平板真机 50 条全部通过。
 4. 执行日志包含设备序列号、Android 版本、分辨率、密度和最终测试计数。
 5. 每个设备至少保存一张浅色截图、一张深色截图和一张 1.5x 字体截图。
 6. 第 4.4 节的自动探针在两个设备上均通过，并已生成投递后与强停恢复后截图。

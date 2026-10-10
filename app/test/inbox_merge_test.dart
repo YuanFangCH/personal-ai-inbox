@@ -44,7 +44,7 @@ void main() {
     await vault.write(
       'vault/conflicts/kn_conflict.conflict-tablet.md',
       '---\nid: kn_conflict\ntype: knowledge\ntitle: 冲突副本\n'
-          'status: canonical\norigin_device: galaxy-tab\nrevision: 1\n'
+          'status: canonical\norigin_device: android-tablet\nrevision: 1\n'
           'created_at: 2026-10-07T09:00:00+08:00\n'
           'updated_at: 2026-10-07T09:00:00+08:00\ndeleted: false\n'
           'tags: []\nlinks: []\n---\n冲突正文\n',

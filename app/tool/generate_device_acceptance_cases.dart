@@ -254,17 +254,17 @@ void main() {
   }
 
   addTargetCases(
-    target: 'honor-phone',
+    target: 'android-phone',
     device: 'phone',
-    hardware: '荣耀手机',
+    hardware: 'Android phone',
     width: 390,
     height: 844,
     pixelRatio: 1,
   );
   addTargetCases(
-    target: 'galaxy-tab',
+    target: 'android-tablet',
     device: 'tablet',
-    hardware: '三星 Galaxy Tab',
+    hardware: 'Android tablet',
     width: 1280,
     height: 800,
     pixelRatio: 1,
@@ -273,7 +273,7 @@ void main() {
   if (cases.length != 100) {
     throw StateError('Expected 100 cases, got ${cases.length}');
   }
-  for (final target in const ['honor-phone', 'galaxy-tab']) {
+  for (final target in const ['android-phone', 'android-tablet']) {
     final count = cases.where((item) => item['target'] == target).length;
     if (count != 50) {
       throw StateError('Expected 50 $target cases, got $count');

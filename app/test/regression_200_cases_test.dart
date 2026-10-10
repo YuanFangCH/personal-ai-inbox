@@ -262,8 +262,8 @@ class _Harness {
 }
 
 enum DeviceProfile {
-  phone(size: Size(390, 844), deviceId: 'honor-phone'),
-  tablet(size: Size(1024, 768), deviceId: 'galaxy-tab'),
+  phone(size: Size(390, 844), deviceId: 'android-phone'),
+  tablet(size: Size(1024, 768), deviceId: 'android-tablet'),
   desktop(size: Size(1440, 900), deviceId: 'win-desktop');
 
   const DeviceProfile({required this.size, required this.deviceId});

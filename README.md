@@ -4,7 +4,6 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 一个本地优先的个人信息捕获、整理与提醒系统。Android 手机、Android 平板和 Windows 端各自运行独立 Flutter App，以 Markdown 为权威成果库，通过端内规则、云端模型和可替换同步接口完成闭环。
-这个软件一开始是为我自己设计的，安卓端我仅针对荣耀90,200，m7m8，三星tabs7,9做了实机测试，其他设备不保证能完全运行。
 
 ## 下载与安装
 
@@ -26,14 +25,6 @@
 - 行动与知识：内置事项、日历工作区、知识、确认队列和同步状态页面；日历统一承载日程、我的一天和待办，并提供事件/待办快速新建。
 - 系统接入：Android 注册 `ACTION_SEND` 与 `ACTION_PROCESS_TEXT`，支持从其他 App 分享文本和图片。
 - 多端形态：同一套 Flutter 代码适配手机、平板、Windows 和 Web 预览。
-
-## 界面预览
-
-| Android 手机 | Android 平板 |
-|---|---|
-| ![手机浅色界面](docs/test-reports/screenshots/android-phone-light.png) | ![平板横屏界面](docs/test-reports/screenshots/android-tablet-landscape.png) |
-
-
 
 ## 模型配置
 

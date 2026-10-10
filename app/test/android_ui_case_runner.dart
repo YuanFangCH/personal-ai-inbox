@@ -80,13 +80,13 @@ Future<AppController> _buildController(AndroidUiCase item) async {
   final vault = MemoryVaultStore();
   final index = MemoryIndexDatabase();
   final settings = FakeSettingsService(
-    deviceId: item.device == 'tablet' ? 'galaxy-tab' : 'honor-phone',
+    deviceId: item.device == 'tablet' ? 'android-tablet' : 'android-phone',
     themeMode: item.theme == 'dark' ? ThemeMode.dark : ThemeMode.light,
   );
   final repository = ResultRepository(
     vault: vault,
     index: index,
-    deviceId: item.device == 'tablet' ? 'galaxy-tab' : 'honor-phone',
+    deviceId: item.device == 'tablet' ? 'android-tablet' : 'android-phone',
   );
   await repository.initialize();
 
@@ -144,7 +144,7 @@ Future<AppController> _buildController(AndroidUiCase item) async {
     syncEngine: SyncEngine(
       repository: repository,
       provider: MemorySyncProvider(),
-      deviceId: item.device == 'tablet' ? 'galaxy-tab' : 'honor-phone',
+      deviceId: item.device == 'tablet' ? 'android-tablet' : 'android-phone',
     ),
   );
   await controller.initialize();

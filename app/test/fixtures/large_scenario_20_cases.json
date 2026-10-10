@@ -4,97 +4,97 @@
   "scenarios": [
     {
       "id": "large_scenario_001",
-      "key": "cet4_exam",
-      "name": "大学英语四级考试",
-      "category": "考试",
-      "summary": "报名已经完成，需要按阶段准备听力、阅读、写作和翻译。",
+      "key": "synthetic_01",
+      "name": "Synthetic scenario 01",
+      "category": "synthetic-01",
+      "summary": "Synthetic content for testing structured result creation.",
       "messages": [
         {
-          "text": "我正在准备大学英语四级考试。报名已经完成，需要按阶段准备听力、阅读、写作和翻译。 先安排四级模拟考试，时间11月15日上午9点；打印准考证并准备考试用品最晚在12月18日晚上6点前完成；再记录四级考试时间节点与考场规则。",
-          "assistant": "已整理大学英语四级考试的第一批事项和知识。",
+          "text": "我正在准备Synthetic scenario 01。Synthetic content for testing structured result creation. 先安排Synthetic event 01-A，时间11月1日上午9点；Synthetic task 01最晚在11月1日晚上6点前完成；再记录Synthetic knowledge 01-A。",
+          "assistant": "已整理Synthetic scenario 01的第一批事项和知识。",
           "calls": [
             {
               "type": "matter",
-              "title": "大学英语四级考试",
-              "body": "报名已经完成，需要按阶段准备听力、阅读、写作和翻译。",
+              "title": "Synthetic scenario 01",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.96,
               "sensitive": false,
               "tags": [
-                "考试",
-                "四级"
+                "synthetic-01",
+                "fixture"
               ],
               "expect": "created"
             },
             {
               "type": "event",
-              "title": "四级模拟考试",
-              "body": "报名已经完成，需要按阶段准备听力、阅读、写作和翻译。",
+              "title": "Synthetic event 01-A",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "考试",
-                "四级"
+                "synthetic-01",
+                "fixture"
               ],
-              "start": "2026-11-15T01:00:00.000Z",
-              "end": "2026-11-15T03:00:00.000Z",
+              "start": "2026-11-01T01:00:00.000Z",
+              "end": "2026-11-01T03:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "todo",
-              "title": "打印准考证并准备考试用品",
-              "body": "在截止时间前完成：打印准考证并准备考试用品",
+              "title": "Synthetic task 01",
+              "body": "在截止时间前完成：Synthetic task 01",
               "confidence": 0.94,
               "sensitive": false,
               "tags": [
-                "考试",
-                "四级"
+                "synthetic-01",
+                "fixture"
               ],
-              "due": "2026-12-18T10:00:00.000Z",
+              "due": "2026-11-01T10:00:00.000Z",
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "四级考试时间节点与考场规则",
-              "body": "考试当天提前进入考场，携带身份证、准考证和调频耳机。",
+              "title": "Synthetic knowledge 01-A",
+              "body": "Synthetic knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "考试",
-                "四级"
+                "synthetic-01",
+                "fixture"
               ],
               "expect": "created"
             }
           ]
         },
         {
-          "text": "补充大学英语四级考试的第二阶段。准考证打印、耳机试音、入场证件和考试文具需要提前确认。 大学英语四级正式考试安排在12月19日上午9点，同时整理四级冲刺资料与听力设备清单。",
-          "assistant": "已补齐大学英语四级考试的第二批事项和知识。",
+          "text": "补充Synthetic scenario 01的第二阶段。Synthetic second phase for testing multi-turn result persistence. Synthetic event 01-B安排在11月1日下午2点，同时整理Synthetic knowledge 01-B。",
+          "assistant": "已补齐Synthetic scenario 01的第二批事项和知识。",
           "calls": [
             {
               "type": "event",
-              "title": "大学英语四级正式考试",
-              "body": "准考证打印、耳机试音、入场证件和考试文具需要提前确认。",
+              "title": "Synthetic event 01-B",
+              "body": "Synthetic second phase for testing multi-turn result persistence.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "考试",
-                "四级"
+                "synthetic-01",
+                "fixture"
               ],
-              "start": "2026-12-19T01:00:00.000Z",
-              "end": "2026-12-19T03:00:00.000Z",
+              "start": "2026-11-01T06:00:00.000Z",
+              "end": "2026-11-01T08:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "四级冲刺资料与听力设备清单",
-              "body": "保留最近三年的真题、听力音频和错题整理，考前完成两次整套模拟。",
+              "title": "Synthetic knowledge 01-B",
+              "body": "Synthetic second knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "考试",
-                "四级"
+                "synthetic-01",
+                "fixture"
               ],
               "expect": "created"
             }
@@ -104,97 +104,97 @@
     },
     {
       "id": "large_scenario_002",
-      "key": "driving_test",
-      "name": "驾照科目二考试",
-      "category": "考试",
-      "summary": "需要完成场地训练、模拟考试和正式预约。",
+      "key": "synthetic_02",
+      "name": "Synthetic scenario 02",
+      "category": "synthetic-02",
+      "summary": "Synthetic content for testing structured result creation.",
       "messages": [
         {
-          "text": "我正在准备驾照科目二考试。需要完成场地训练、模拟考试和正式预约。 先安排科目二模拟考试，时间10月18日上午8点30分；确认身份证和考试预约信息最晚在10月24日晚上8点前完成；再记录科目二考试流程与扣分规则。",
-          "assistant": "已整理驾照科目二考试的第一批事项和知识。",
+          "text": "我正在准备Synthetic scenario 02。Synthetic content for testing structured result creation. 先安排Synthetic event 02-A，时间11月2日上午9点；Synthetic task 02最晚在11月2日晚上6点前完成；再记录Synthetic knowledge 02-A。",
+          "assistant": "已整理Synthetic scenario 02的第一批事项和知识。",
           "calls": [
             {
               "type": "matter",
-              "title": "驾照科目二考试",
-              "body": "需要完成场地训练、模拟考试和正式预约。",
+              "title": "Synthetic scenario 02",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.96,
               "sensitive": false,
               "tags": [
-                "考试",
-                "驾考"
+                "synthetic-02",
+                "fixture"
               ],
               "expect": "created"
             },
             {
               "type": "event",
-              "title": "科目二模拟考试",
-              "body": "需要完成场地训练、模拟考试和正式预约。",
+              "title": "Synthetic event 02-A",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "考试",
-                "驾考"
+                "synthetic-02",
+                "fixture"
               ],
-              "start": "2026-10-18T00:30:00.000Z",
-              "end": "2026-10-18T02:30:00.000Z",
+              "start": "2026-11-02T01:00:00.000Z",
+              "end": "2026-11-02T03:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "todo",
-              "title": "确认身份证和考试预约信息",
-              "body": "在截止时间前完成：确认身份证和考试预约信息",
+              "title": "Synthetic task 02",
+              "body": "在截止时间前完成：Synthetic task 02",
               "confidence": 0.94,
               "sensitive": false,
               "tags": [
-                "考试",
-                "驾考"
+                "synthetic-02",
+                "fixture"
               ],
-              "due": "2026-10-24T12:00:00.000Z",
+              "due": "2026-11-02T10:00:00.000Z",
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "科目二考试流程与扣分规则",
-              "body": "上车前调整座椅和后视镜，按语音提示完成项目，保持车速稳定。",
+              "title": "Synthetic knowledge 02-A",
+              "body": "Synthetic knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "考试",
-                "驾考"
+                "synthetic-02",
+                "fixture"
               ],
               "expect": "created"
             }
           ]
         },
         {
-          "text": "补充驾照科目二考试的第二阶段。倒车入库、侧方停车和坡道起步是重点，考试当天提前到场。 科目二正式考试安排在10月25日上午8点，同时整理科目二训练重点与常见失误。",
-          "assistant": "已补齐驾照科目二考试的第二批事项和知识。",
+          "text": "补充Synthetic scenario 02的第二阶段。Synthetic second phase for testing multi-turn result persistence. Synthetic event 02-B安排在11月2日下午2点，同时整理Synthetic knowledge 02-B。",
+          "assistant": "已补齐Synthetic scenario 02的第二批事项和知识。",
           "calls": [
             {
               "type": "event",
-              "title": "科目二正式考试",
-              "body": "倒车入库、侧方停车和坡道起步是重点，考试当天提前到场。",
+              "title": "Synthetic event 02-B",
+              "body": "Synthetic second phase for testing multi-turn result persistence.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "考试",
-                "驾考"
+                "synthetic-02",
+                "fixture"
               ],
-              "start": "2026-10-25T00:00:00.000Z",
-              "end": "2026-10-25T02:00:00.000Z",
+              "start": "2026-11-02T06:00:00.000Z",
+              "end": "2026-11-02T08:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "科目二训练重点与常见失误",
-              "body": "重点练习离合控制、点位判断和转向时机，减少中途停车。",
+              "title": "Synthetic knowledge 02-B",
+              "body": "Synthetic second knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "考试",
-                "驾考"
+                "synthetic-02",
+                "fixture"
               ],
               "expect": "created"
             }
@@ -204,97 +204,97 @@
     },
     {
       "id": "large_scenario_003",
-      "key": "japan_trip",
-      "name": "日本关西旅行",
-      "category": "旅行",
-      "summary": "计划前往大阪、京都和奈良，需要处理签证、交通和住宿。",
+      "key": "synthetic_03",
+      "name": "Synthetic scenario 03",
+      "category": "synthetic-03",
+      "summary": "Synthetic content for testing structured result creation.",
       "messages": [
         {
-          "text": "我正在准备日本关西旅行。计划前往大阪、京都和奈良，需要处理签证、交通和住宿。 先安排日本签证材料递交，时间10月15日上午10点；预订关西酒店和机场交通最晚在11月10日晚上8点前完成；再记录关西旅行签证与入境准备。",
-          "assistant": "已整理日本关西旅行的第一批事项和知识。",
+          "text": "我正在准备Synthetic scenario 03。Synthetic content for testing structured result creation. 先安排Synthetic event 03-A，时间11月3日上午9点；Synthetic task 03最晚在11月3日晚上6点前完成；再记录Synthetic knowledge 03-A。",
+          "assistant": "已整理Synthetic scenario 03的第一批事项和知识。",
           "calls": [
             {
               "type": "matter",
-              "title": "日本关西旅行",
-              "body": "计划前往大阪、京都和奈良，需要处理签证、交通和住宿。",
+              "title": "Synthetic scenario 03",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.96,
               "sensitive": false,
               "tags": [
-                "旅行",
-                "日本"
+                "synthetic-03",
+                "fixture"
               ],
               "expect": "created"
             },
             {
               "type": "event",
-              "title": "日本签证材料递交",
-              "body": "计划前往大阪、京都和奈良，需要处理签证、交通和住宿。",
+              "title": "Synthetic event 03-A",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "旅行",
-                "日本"
+                "synthetic-03",
+                "fixture"
               ],
-              "start": "2026-10-15T02:00:00.000Z",
-              "end": "2026-10-15T04:00:00.000Z",
+              "start": "2026-11-03T01:00:00.000Z",
+              "end": "2026-11-03T03:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "todo",
-              "title": "预订关西酒店和机场交通",
-              "body": "在截止时间前完成：预订关西酒店和机场交通",
+              "title": "Synthetic task 03",
+              "body": "在截止时间前完成：Synthetic task 03",
               "confidence": 0.94,
               "sensitive": false,
               "tags": [
-                "旅行",
-                "日本"
+                "synthetic-03",
+                "fixture"
               ],
-              "due": "2026-11-10T12:00:00.000Z",
+              "due": "2026-11-03T10:00:00.000Z",
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "关西旅行签证与入境准备",
-              "body": "准备护照、照片、行程单和资产证明，保存电子签证和酒店地址。",
+              "title": "Synthetic knowledge 03-A",
+              "body": "Synthetic knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "旅行",
-                "日本"
+                "synthetic-03",
+                "fixture"
               ],
               "expect": "created"
             }
           ]
         },
         {
-          "text": "补充日本关西旅行的第二阶段。关西机场进出，使用地铁和近铁移动，提前购买交通卡和保险。 大阪京都奈良旅行出发安排在12月5日上午8点，同时整理大阪京都奈良交通与景点清单。",
-          "assistant": "已补齐日本关西旅行的第二批事项和知识。",
+          "text": "补充Synthetic scenario 03的第二阶段。Synthetic second phase for testing multi-turn result persistence. Synthetic event 03-B安排在11月3日下午2点，同时整理Synthetic knowledge 03-B。",
+          "assistant": "已补齐Synthetic scenario 03的第二批事项和知识。",
           "calls": [
             {
               "type": "event",
-              "title": "大阪京都奈良旅行出发",
-              "body": "关西机场进出，使用地铁和近铁移动，提前购买交通卡和保险。",
+              "title": "Synthetic event 03-B",
+              "body": "Synthetic second phase for testing multi-turn result persistence.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "旅行",
-                "日本"
+                "synthetic-03",
+                "fixture"
               ],
-              "start": "2026-12-05T00:00:00.000Z",
-              "end": "2026-12-05T02:00:00.000Z",
+              "start": "2026-11-03T06:00:00.000Z",
+              "end": "2026-11-03T08:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "大阪京都奈良交通与景点清单",
-              "body": "大阪使用御堂筋线，京都使用公交和地铁，奈良安排东大寺和春日大社。",
+              "title": "Synthetic knowledge 03-B",
+              "body": "Synthetic second knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "旅行",
-                "日本"
+                "synthetic-03",
+                "fixture"
               ],
               "expect": "created"
             }
@@ -304,97 +304,97 @@
     },
     {
       "id": "large_scenario_004",
-      "key": "home_renovation",
-      "name": "新房装修项目",
-      "category": "家庭",
-      "summary": "需要协调设计、水电、主材和软装，控制预算和施工节点。",
+      "key": "synthetic_04",
+      "name": "Synthetic scenario 04",
+      "category": "synthetic-04",
+      "summary": "Synthetic content for testing structured result creation.",
       "messages": [
         {
-          "text": "我正在准备新房装修项目。需要协调设计、水电、主材和软装，控制预算和施工节点。 先安排装修水电隐蔽工程验收，时间10月20日下午2点；确认橱柜和浴室柜最终尺寸最晚在10月18日晚上6点前完成；再记录装修隐蔽工程验收清单。",
-          "assistant": "已整理新房装修项目的第一批事项和知识。",
+          "text": "我正在准备Synthetic scenario 04。Synthetic content for testing structured result creation. 先安排Synthetic event 04-A，时间11月4日上午9点；Synthetic task 04最晚在11月4日晚上6点前完成；再记录Synthetic knowledge 04-A。",
+          "assistant": "已整理Synthetic scenario 04的第一批事项和知识。",
           "calls": [
             {
               "type": "matter",
-              "title": "新房装修项目",
-              "body": "需要协调设计、水电、主材和软装，控制预算和施工节点。",
+              "title": "Synthetic scenario 04",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.96,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "装修"
+                "synthetic-04",
+                "fixture"
               ],
               "expect": "created"
             },
             {
               "type": "event",
-              "title": "装修水电隐蔽工程验收",
-              "body": "需要协调设计、水电、主材和软装，控制预算和施工节点。",
+              "title": "Synthetic event 04-A",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "装修"
+                "synthetic-04",
+                "fixture"
               ],
-              "start": "2026-10-20T06:00:00.000Z",
-              "end": "2026-10-20T08:00:00.000Z",
+              "start": "2026-11-04T01:00:00.000Z",
+              "end": "2026-11-04T03:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "todo",
-              "title": "确认橱柜和浴室柜最终尺寸",
-              "body": "在截止时间前完成：确认橱柜和浴室柜最终尺寸",
+              "title": "Synthetic task 04",
+              "body": "在截止时间前完成：Synthetic task 04",
               "confidence": 0.94,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "装修"
+                "synthetic-04",
+                "fixture"
               ],
-              "due": "2026-10-18T10:00:00.000Z",
+              "due": "2026-11-04T10:00:00.000Z",
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "装修隐蔽工程验收清单",
-              "body": "检查强弱电间距、线管固定、水管打压和防水闭水结果。",
+              "title": "Synthetic knowledge 04-A",
+              "body": "Synthetic knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "装修"
+                "synthetic-04",
+                "fixture"
               ],
               "expect": "created"
             }
           ]
         },
         {
-          "text": "补充新房装修项目的第二阶段。隐蔽工程验收后进入泥木阶段，家具家电需要提前测量尺寸。 装修主材进场与安装安排在11月8日上午9点，同时整理主材进场与安装顺序。",
-          "assistant": "已补齐新房装修项目的第二批事项和知识。",
+          "text": "补充Synthetic scenario 04的第二阶段。Synthetic second phase for testing multi-turn result persistence. Synthetic event 04-B安排在11月4日下午2点，同时整理Synthetic knowledge 04-B。",
+          "assistant": "已补齐Synthetic scenario 04的第二批事项和知识。",
           "calls": [
             {
               "type": "event",
-              "title": "装修主材进场与安装",
-              "body": "隐蔽工程验收后进入泥木阶段，家具家电需要提前测量尺寸。",
+              "title": "Synthetic event 04-B",
+              "body": "Synthetic second phase for testing multi-turn result persistence.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "装修"
+                "synthetic-04",
+                "fixture"
               ],
-              "start": "2026-11-08T01:00:00.000Z",
-              "end": "2026-11-08T03:00:00.000Z",
+              "start": "2026-11-04T06:00:00.000Z",
+              "end": "2026-11-04T08:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "主材进场与安装顺序",
-              "body": "瓷砖、门窗、橱柜和卫浴按施工顺序进场，避免交叉污染和尺寸冲突。",
+              "title": "Synthetic knowledge 04-B",
+              "body": "Synthetic second knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "装修"
+                "synthetic-04",
+                "fixture"
               ],
               "expect": "created"
             }
@@ -404,97 +404,97 @@
     },
     {
       "id": "large_scenario_005",
-      "key": "product_launch",
-      "name": "产品发布项目",
-      "category": "工作",
-      "summary": "需要在发布前完成测试、文档、定价和渠道准备。",
+      "key": "synthetic_05",
+      "name": "Synthetic scenario 05",
+      "category": "synthetic-05",
+      "summary": "Synthetic content for testing structured result creation.",
       "messages": [
         {
-          "text": "我正在准备产品发布项目。需要在发布前完成测试、文档、定价和渠道准备。 先安排产品发布候选版本冻结，时间10月28日下午4点；完成发布说明和客服培训最晚在11月10日晚上6点前完成；再记录产品发布检查清单。",
-          "assistant": "已整理产品发布项目的第一批事项和知识。",
+          "text": "我正在准备Synthetic scenario 05。Synthetic content for testing structured result creation. 先安排Synthetic event 05-A，时间11月5日上午9点；Synthetic task 05最晚在11月5日晚上6点前完成；再记录Synthetic knowledge 05-A。",
+          "assistant": "已整理Synthetic scenario 05的第一批事项和知识。",
           "calls": [
             {
               "type": "matter",
-              "title": "产品发布项目",
-              "body": "需要在发布前完成测试、文档、定价和渠道准备。",
+              "title": "Synthetic scenario 05",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.96,
               "sensitive": false,
               "tags": [
-                "工作",
-                "产品"
+                "synthetic-05",
+                "fixture"
               ],
               "expect": "created"
             },
             {
               "type": "event",
-              "title": "产品发布候选版本冻结",
-              "body": "需要在发布前完成测试、文档、定价和渠道准备。",
+              "title": "Synthetic event 05-A",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "工作",
-                "产品"
+                "synthetic-05",
+                "fixture"
               ],
-              "start": "2026-10-28T08:00:00.000Z",
-              "end": "2026-10-28T10:00:00.000Z",
+              "start": "2026-11-05T01:00:00.000Z",
+              "end": "2026-11-05T03:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "todo",
-              "title": "完成发布说明和客服培训",
-              "body": "在截止时间前完成：完成发布说明和客服培训",
+              "title": "Synthetic task 05",
+              "body": "在截止时间前完成：Synthetic task 05",
               "confidence": 0.94,
               "sensitive": false,
               "tags": [
-                "工作",
-                "产品"
+                "synthetic-05",
+                "fixture"
               ],
-              "due": "2026-11-10T10:00:00.000Z",
+              "due": "2026-11-05T10:00:00.000Z",
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "产品发布检查清单",
-              "body": "覆盖功能冻结、回归测试、定价审批、市场素材和客服话术。",
+              "title": "Synthetic knowledge 05-A",
+              "body": "Synthetic knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "工作",
-                "产品"
+                "synthetic-05",
+                "fixture"
               ],
               "expect": "created"
             }
           ]
         },
         {
-          "text": "补充产品发布项目的第二阶段。发布后收集反馈，安排客户沟通和版本复盘。 产品正式发布会安排在11月12日下午2点，同时整理发布风险与回滚预案。",
-          "assistant": "已补齐产品发布项目的第二批事项和知识。",
+          "text": "补充Synthetic scenario 05的第二阶段。Synthetic second phase for testing multi-turn result persistence. Synthetic event 05-B安排在11月5日下午2点，同时整理Synthetic knowledge 05-B。",
+          "assistant": "已补齐Synthetic scenario 05的第二批事项和知识。",
           "calls": [
             {
               "type": "event",
-              "title": "产品正式发布会",
-              "body": "发布后收集反馈，安排客户沟通和版本复盘。",
+              "title": "Synthetic event 05-B",
+              "body": "Synthetic second phase for testing multi-turn result persistence.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "工作",
-                "产品"
+                "synthetic-05",
+                "fixture"
               ],
-              "start": "2026-11-12T06:00:00.000Z",
-              "end": "2026-11-12T08:00:00.000Z",
+              "start": "2026-11-05T06:00:00.000Z",
+              "end": "2026-11-05T08:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "发布风险与回滚预案",
-              "body": "准备灰度策略、监控指标、回滚脚本和紧急联系人。",
+              "title": "Synthetic knowledge 05-B",
+              "body": "Synthetic second knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "工作",
-                "产品"
+                "synthetic-05",
+                "fixture"
               ],
               "expect": "created"
             }
@@ -504,97 +504,97 @@
     },
     {
       "id": "large_scenario_006",
-      "key": "health_check",
-      "name": "体检与复诊安排",
-      "category": "健康",
-      "summary": "需要完成预约、空腹检查、报告领取和异常指标复诊。",
+      "key": "synthetic_06",
+      "name": "Synthetic scenario 06",
+      "category": "synthetic-06",
+      "summary": "Synthetic content for testing structured result creation.",
       "messages": [
         {
-          "text": "我正在准备体检与复诊安排。需要完成预约、空腹检查、报告领取和异常指标复诊。 先安排年度体检预约，时间10月22日上午7点30分；整理既往体检报告和用药清单最晚在11月2日晚上8点前完成；再记录体检前准备与空腹要求。",
-          "assistant": "已整理体检与复诊安排的第一批事项和知识。",
+          "text": "我正在准备Synthetic scenario 06。Synthetic content for testing structured result creation. 先安排Synthetic event 06-A，时间11月6日上午9点；Synthetic task 06最晚在11月6日晚上6点前完成；再记录Synthetic knowledge 06-A。",
+          "assistant": "已整理Synthetic scenario 06的第一批事项和知识。",
           "calls": [
             {
               "type": "matter",
-              "title": "体检与复诊安排",
-              "body": "需要完成预约、空腹检查、报告领取和异常指标复诊。",
+              "title": "Synthetic scenario 06",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.96,
               "sensitive": false,
               "tags": [
-                "健康",
-                "体检"
+                "synthetic-06",
+                "fixture"
               ],
               "expect": "created"
             },
             {
               "type": "event",
-              "title": "年度体检预约",
-              "body": "需要完成预约、空腹检查、报告领取和异常指标复诊。",
+              "title": "Synthetic event 06-A",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "健康",
-                "体检"
+                "synthetic-06",
+                "fixture"
               ],
-              "start": "2026-10-21T23:30:00.000Z",
-              "end": "2026-10-22T01:30:00.000Z",
+              "start": "2026-11-06T01:00:00.000Z",
+              "end": "2026-11-06T03:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "todo",
-              "title": "整理既往体检报告和用药清单",
-              "body": "在截止时间前完成：整理既往体检报告和用药清单",
+              "title": "Synthetic task 06",
+              "body": "在截止时间前完成：Synthetic task 06",
               "confidence": 0.94,
               "sensitive": false,
               "tags": [
-                "健康",
-                "体检"
+                "synthetic-06",
+                "fixture"
               ],
-              "due": "2026-11-02T12:00:00.000Z",
+              "due": "2026-11-06T10:00:00.000Z",
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "体检前准备与空腹要求",
-              "body": "体检前一晚清淡饮食，检查当天禁食禁水，携带身份证和既往报告。",
+              "title": "Synthetic knowledge 06-A",
+              "body": "Synthetic knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "健康",
-                "体检"
+                "synthetic-06",
+                "fixture"
               ],
               "expect": "created"
             }
           ]
         },
         {
-          "text": "补充体检与复诊安排的第二阶段。整理既往报告和用药记录，复诊前确认需要携带的检查结果。 体检异常指标复诊安排在11月3日上午9点30分，同时整理体检报告指标复查建议。",
-          "assistant": "已补齐体检与复诊安排的第二批事项和知识。",
+          "text": "补充Synthetic scenario 06的第二阶段。Synthetic second phase for testing multi-turn result persistence. Synthetic event 06-B安排在11月6日下午2点，同时整理Synthetic knowledge 06-B。",
+          "assistant": "已补齐Synthetic scenario 06的第二批事项和知识。",
           "calls": [
             {
               "type": "event",
-              "title": "体检异常指标复诊",
-              "body": "整理既往报告和用药记录，复诊前确认需要携带的检查结果。",
+              "title": "Synthetic event 06-B",
+              "body": "Synthetic second phase for testing multi-turn result persistence.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "健康",
-                "体检"
+                "synthetic-06",
+                "fixture"
               ],
-              "start": "2026-11-03T01:30:00.000Z",
-              "end": "2026-11-03T03:30:00.000Z",
+              "start": "2026-11-06T06:00:00.000Z",
+              "end": "2026-11-06T08:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "体检报告指标复查建议",
-              "body": "血常规、肝功能和影像异常需要结合医生意见安排复查。",
+              "title": "Synthetic knowledge 06-B",
+              "body": "Synthetic second knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "健康",
-                "体检"
+                "synthetic-06",
+                "fixture"
               ],
               "expect": "created"
             }
@@ -604,97 +604,97 @@
     },
     {
       "id": "large_scenario_007",
-      "key": "parents_checkup",
-      "name": "父母体检安排",
-      "category": "家庭",
-      "summary": "为父母安排体检、交通接送和检查后随访。",
+      "key": "synthetic_07",
+      "name": "Synthetic scenario 07",
+      "category": "synthetic-07",
+      "summary": "Synthetic content for testing structured result creation.",
       "messages": [
         {
-          "text": "我正在准备父母体检安排。为父母安排体检、交通接送和检查后随访。 先安排父母体检陪同，时间11月1日上午7点；确认父母体检项目和医保材料最晚在10月30日晚上8点前完成；再记录中老年体检项目选择。",
-          "assistant": "已整理父母体检安排的第一批事项和知识。",
+          "text": "我正在准备Synthetic scenario 07。Synthetic content for testing structured result creation. 先安排Synthetic event 07-A，时间11月7日上午9点；Synthetic task 07最晚在11月7日晚上6点前完成；再记录Synthetic knowledge 07-A。",
+          "assistant": "已整理Synthetic scenario 07的第一批事项和知识。",
           "calls": [
             {
               "type": "matter",
-              "title": "父母体检安排",
-              "body": "为父母安排体检、交通接送和检查后随访。",
+              "title": "Synthetic scenario 07",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.96,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "父母"
+                "synthetic-07",
+                "fixture"
               ],
               "expect": "created"
             },
             {
               "type": "event",
-              "title": "父母体检陪同",
-              "body": "为父母安排体检、交通接送和检查后随访。",
+              "title": "Synthetic event 07-A",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "父母"
+                "synthetic-07",
+                "fixture"
               ],
-              "start": "2026-10-31T23:00:00.000Z",
-              "end": "2026-11-01T01:00:00.000Z",
+              "start": "2026-11-07T01:00:00.000Z",
+              "end": "2026-11-07T03:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "todo",
-              "title": "确认父母体检项目和医保材料",
-              "body": "在截止时间前完成：确认父母体检项目和医保材料",
+              "title": "Synthetic task 07",
+              "body": "在截止时间前完成：Synthetic task 07",
               "confidence": 0.94,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "父母"
+                "synthetic-07",
+                "fixture"
               ],
-              "due": "2026-10-30T12:00:00.000Z",
+              "due": "2026-11-07T10:00:00.000Z",
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "中老年体检项目选择",
-              "body": "基础检查结合心脑血管、肿瘤筛查和骨密度项目。",
+              "title": "Synthetic knowledge 07-A",
+              "body": "Synthetic knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "父母"
+                "synthetic-07",
+                "fixture"
               ],
               "expect": "created"
             }
           ]
         },
         {
-          "text": "补充父母体检安排的第二阶段。关注血压、血糖、心脏和骨密度项目，提前确认医保和预约流程。 父母体检结果解读安排在11月8日下午3点，同时整理父母慢病用药与随访记录。",
-          "assistant": "已补齐父母体检安排的第二批事项和知识。",
+          "text": "补充Synthetic scenario 07的第二阶段。Synthetic second phase for testing multi-turn result persistence. Synthetic event 07-B安排在11月7日下午2点，同时整理Synthetic knowledge 07-B。",
+          "assistant": "已补齐Synthetic scenario 07的第二批事项和知识。",
           "calls": [
             {
               "type": "event",
-              "title": "父母体检结果解读",
-              "body": "关注血压、血糖、心脏和骨密度项目，提前确认医保和预约流程。",
+              "title": "Synthetic event 07-B",
+              "body": "Synthetic second phase for testing multi-turn result persistence.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "父母"
+                "synthetic-07",
+                "fixture"
               ],
-              "start": "2026-11-08T07:00:00.000Z",
-              "end": "2026-11-08T09:00:00.000Z",
+              "start": "2026-11-07T06:00:00.000Z",
+              "end": "2026-11-07T08:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "父母慢病用药与随访记录",
-              "body": "记录血压、血糖和用药变化，复诊时带给医生判断。",
+              "title": "Synthetic knowledge 07-B",
+              "body": "Synthetic second knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "父母"
+                "synthetic-07",
+                "fixture"
               ],
               "expect": "created"
             }
@@ -704,97 +704,97 @@
     },
     {
       "id": "large_scenario_008",
-      "key": "wedding_planning",
-      "name": "婚礼筹备",
-      "category": "家庭",
-      "summary": "需要确定酒店、婚纱、摄影、宾客名单和当天流程。",
+      "key": "synthetic_08",
+      "name": "Synthetic scenario 08",
+      "category": "synthetic-08",
+      "summary": "Synthetic content for testing structured result creation.",
       "messages": [
         {
-          "text": "我正在准备婚礼筹备。需要确定酒店、婚纱、摄影、宾客名单和当天流程。 先安排婚礼酒店与菜单确认，时间11月5日下午3点；确认宾客名单和桌数最晚在12月20日晚上8点前完成；再记录婚礼筹备时间线。",
-          "assistant": "已整理婚礼筹备的第一批事项和知识。",
+          "text": "我正在准备Synthetic scenario 08。Synthetic content for testing structured result creation. 先安排Synthetic event 08-A，时间11月8日上午9点；Synthetic task 08最晚在11月8日晚上6点前完成；再记录Synthetic knowledge 08-A。",
+          "assistant": "已整理Synthetic scenario 08的第一批事项和知识。",
           "calls": [
             {
               "type": "matter",
-              "title": "婚礼筹备",
-              "body": "需要确定酒店、婚纱、摄影、宾客名单和当天流程。",
+              "title": "Synthetic scenario 08",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.96,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "婚礼"
+                "synthetic-08",
+                "fixture"
               ],
               "expect": "created"
             },
             {
               "type": "event",
-              "title": "婚礼酒店与菜单确认",
-              "body": "需要确定酒店、婚纱、摄影、宾客名单和当天流程。",
+              "title": "Synthetic event 08-A",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "婚礼"
+                "synthetic-08",
+                "fixture"
               ],
-              "start": "2026-11-05T07:00:00.000Z",
-              "end": "2026-11-05T09:00:00.000Z",
+              "start": "2026-11-08T01:00:00.000Z",
+              "end": "2026-11-08T03:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "todo",
-              "title": "确认宾客名单和桌数",
-              "body": "在截止时间前完成：确认宾客名单和桌数",
+              "title": "Synthetic task 08",
+              "body": "在截止时间前完成：Synthetic task 08",
               "confidence": 0.94,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "婚礼"
+                "synthetic-08",
+                "fixture"
               ],
-              "due": "2026-12-20T12:00:00.000Z",
+              "due": "2026-11-08T10:00:00.000Z",
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "婚礼筹备时间线",
-              "body": "提前一年定场地，半年定婚纱摄影，两个月确认宾客和桌数。",
+              "title": "Synthetic knowledge 08-A",
+              "body": "Synthetic knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "婚礼"
+                "synthetic-08",
+                "fixture"
               ],
               "expect": "created"
             }
           ]
         },
         {
-          "text": "补充婚礼筹备的第二阶段。预算优先分配酒店和摄影，提前完成试妆和流程彩排。 婚礼流程彩排安排在1月15日晚上6点，同时整理婚礼当天流程与分工。",
-          "assistant": "已补齐婚礼筹备的第二批事项和知识。",
+          "text": "补充Synthetic scenario 08的第二阶段。Synthetic second phase for testing multi-turn result persistence. Synthetic event 08-B安排在11月8日下午2点，同时整理Synthetic knowledge 08-B。",
+          "assistant": "已补齐Synthetic scenario 08的第二批事项和知识。",
           "calls": [
             {
               "type": "event",
-              "title": "婚礼流程彩排",
-              "body": "预算优先分配酒店和摄影，提前完成试妆和流程彩排。",
+              "title": "Synthetic event 08-B",
+              "body": "Synthetic second phase for testing multi-turn result persistence.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "婚礼"
+                "synthetic-08",
+                "fixture"
               ],
-              "start": "2027-01-15T10:00:00.000Z",
-              "end": "2027-01-15T12:00:00.000Z",
+              "start": "2026-11-08T06:00:00.000Z",
+              "end": "2026-11-08T08:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "婚礼当天流程与分工",
-              "body": "明确迎宾、仪式、敬酒和返程车辆负责人，准备备用方案。",
+              "title": "Synthetic knowledge 08-B",
+              "body": "Synthetic second knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "婚礼"
+                "synthetic-08",
+                "fixture"
               ],
               "expect": "created"
             }
@@ -804,97 +804,97 @@
     },
     {
       "id": "large_scenario_009",
-      "key": "marathon_training",
-      "name": "马拉松训练计划",
-      "category": "运动",
-      "summary": "为半程马拉松准备十六周训练，兼顾耐力、力量和恢复。",
+      "key": "synthetic_09",
+      "name": "Synthetic scenario 09",
+      "category": "synthetic-09",
+      "summary": "Synthetic content for testing structured result creation.",
       "messages": [
         {
-          "text": "我正在准备马拉松训练计划。为半程马拉松准备十六周训练，兼顾耐力、力量和恢复。 先安排半程马拉松模拟跑，时间11月22日上午7点；准备比赛号码布和能量胶最晚在12月12日晚上8点前完成；再记录半程马拉松训练周期。",
-          "assistant": "已整理马拉松训练计划的第一批事项和知识。",
+          "text": "我正在准备Synthetic scenario 09。Synthetic content for testing structured result creation. 先安排Synthetic event 09-A，时间11月9日上午9点；Synthetic task 09最晚在11月9日晚上6点前完成；再记录Synthetic knowledge 09-A。",
+          "assistant": "已整理Synthetic scenario 09的第一批事项和知识。",
           "calls": [
             {
               "type": "matter",
-              "title": "马拉松训练计划",
-              "body": "为半程马拉松准备十六周训练，兼顾耐力、力量和恢复。",
+              "title": "Synthetic scenario 09",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.96,
               "sensitive": false,
               "tags": [
-                "运动",
-                "马拉松"
+                "synthetic-09",
+                "fixture"
               ],
               "expect": "created"
             },
             {
               "type": "event",
-              "title": "半程马拉松模拟跑",
-              "body": "为半程马拉松准备十六周训练，兼顾耐力、力量和恢复。",
+              "title": "Synthetic event 09-A",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "运动",
-                "马拉松"
+                "synthetic-09",
+                "fixture"
               ],
-              "start": "2026-11-21T23:00:00.000Z",
-              "end": "2026-11-22T01:00:00.000Z",
+              "start": "2026-11-09T01:00:00.000Z",
+              "end": "2026-11-09T03:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "todo",
-              "title": "准备比赛号码布和能量胶",
-              "body": "在截止时间前完成：准备比赛号码布和能量胶",
+              "title": "Synthetic task 09",
+              "body": "在截止时间前完成：Synthetic task 09",
               "confidence": 0.94,
               "sensitive": false,
               "tags": [
-                "运动",
-                "马拉松"
+                "synthetic-09",
+                "fixture"
               ],
-              "due": "2026-12-12T12:00:00.000Z",
+              "due": "2026-11-09T10:00:00.000Z",
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "半程马拉松训练周期",
-              "body": "每周安排轻松跑、节奏跑和长距离跑，逐步增加跑量。",
+              "title": "Synthetic knowledge 09-A",
+              "body": "Synthetic knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "运动",
-                "马拉松"
+                "synthetic-09",
+                "fixture"
               ],
               "expect": "created"
             }
           ]
         },
         {
-          "text": "补充马拉松训练计划的第二阶段。控制周跑量增长，比赛前两周减量，关注睡眠和补给。 城市半程马拉松比赛安排在12月13日上午7点30分，同时整理比赛补给与配速策略。",
-          "assistant": "已补齐马拉松训练计划的第二批事项和知识。",
+          "text": "补充Synthetic scenario 09的第二阶段。Synthetic second phase for testing multi-turn result persistence. Synthetic event 09-B安排在11月9日下午2点，同时整理Synthetic knowledge 09-B。",
+          "assistant": "已补齐Synthetic scenario 09的第二批事项和知识。",
           "calls": [
             {
               "type": "event",
-              "title": "城市半程马拉松比赛",
-              "body": "控制周跑量增长，比赛前两周减量，关注睡眠和补给。",
+              "title": "Synthetic event 09-B",
+              "body": "Synthetic second phase for testing multi-turn result persistence.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "运动",
-                "马拉松"
+                "synthetic-09",
+                "fixture"
               ],
-              "start": "2026-12-12T23:30:00.000Z",
-              "end": "2026-12-13T01:30:00.000Z",
+              "start": "2026-11-09T06:00:00.000Z",
+              "end": "2026-11-09T08:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "比赛补给与配速策略",
-              "body": "起跑避免过快，每五公里补水，按训练配速完成比赛。",
+              "title": "Synthetic knowledge 09-B",
+              "body": "Synthetic second knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "运动",
-                "马拉松"
+                "synthetic-09",
+                "fixture"
               ],
               "expect": "created"
             }
@@ -904,97 +904,97 @@
     },
     {
       "id": "large_scenario_010",
-      "key": "graduate_exam",
-      "name": "考研报名与初试",
-      "category": "考试",
-      "summary": "需要完成预报名、正式报名、网上确认和初试准备。",
+      "key": "synthetic_10",
+      "name": "Synthetic scenario 10",
+      "category": "synthetic-10",
+      "summary": "Synthetic content for testing structured result creation.",
       "messages": [
         {
-          "text": "我正在准备考研报名与初试。需要完成预报名、正式报名、网上确认和初试准备。 先安排考研正式报名截止，时间10月25日晚上10点；完成网上确认材料上传最晚在11月5日晚上6点前完成；再记录考研报名材料与时间节点。",
-          "assistant": "已整理考研报名与初试的第一批事项和知识。",
+          "text": "我正在准备Synthetic scenario 10。Synthetic content for testing structured result creation. 先安排Synthetic event 10-A，时间11月10日上午9点；Synthetic task 10最晚在11月10日晚上6点前完成；再记录Synthetic knowledge 10-A。",
+          "assistant": "已整理Synthetic scenario 10的第一批事项和知识。",
           "calls": [
             {
               "type": "matter",
-              "title": "考研报名与初试",
-              "body": "需要完成预报名、正式报名、网上确认和初试准备。",
+              "title": "Synthetic scenario 10",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.96,
               "sensitive": false,
               "tags": [
-                "考试",
-                "考研"
+                "synthetic-10",
+                "fixture"
               ],
               "expect": "created"
             },
             {
               "type": "event",
-              "title": "考研正式报名截止",
-              "body": "需要完成预报名、正式报名、网上确认和初试准备。",
+              "title": "Synthetic event 10-A",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "考试",
-                "考研"
+                "synthetic-10",
+                "fixture"
               ],
-              "start": "2026-10-25T14:00:00.000Z",
-              "end": "2026-10-25T16:00:00.000Z",
+              "start": "2026-11-10T01:00:00.000Z",
+              "end": "2026-11-10T03:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "todo",
-              "title": "完成网上确认材料上传",
-              "body": "在截止时间前完成：完成网上确认材料上传",
+              "title": "Synthetic task 10",
+              "body": "在截止时间前完成：Synthetic task 10",
               "confidence": 0.94,
               "sensitive": false,
               "tags": [
-                "考试",
-                "考研"
+                "synthetic-10",
+                "fixture"
               ],
-              "due": "2026-11-05T10:00:00.000Z",
+              "due": "2026-11-10T10:00:00.000Z",
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "考研报名材料与时间节点",
-              "body": "准备身份证、学历学籍材料、证件照和报考点要求文件。",
+              "title": "Synthetic knowledge 10-A",
+              "body": "Synthetic knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "考试",
-                "考研"
+                "synthetic-10",
+                "fixture"
               ],
               "expect": "created"
             }
           ]
         },
         {
-          "text": "补充考研报名与初试的第二阶段。根据招生简章确认科目，整理证件照和学籍材料。 研究生招生考试初试安排在12月26日上午8点30分，同时整理考研初试科目与复习安排。",
-          "assistant": "已补齐考研报名与初试的第二批事项和知识。",
+          "text": "补充Synthetic scenario 10的第二阶段。Synthetic second phase for testing multi-turn result persistence. Synthetic event 10-B安排在11月10日下午2点，同时整理Synthetic knowledge 10-B。",
+          "assistant": "已补齐Synthetic scenario 10的第二批事项和知识。",
           "calls": [
             {
               "type": "event",
-              "title": "研究生招生考试初试",
-              "body": "根据招生简章确认科目，整理证件照和学籍材料。",
+              "title": "Synthetic event 10-B",
+              "body": "Synthetic second phase for testing multi-turn result persistence.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "考试",
-                "考研"
+                "synthetic-10",
+                "fixture"
               ],
-              "start": "2026-12-26T00:30:00.000Z",
-              "end": "2026-12-26T02:30:00.000Z",
+              "start": "2026-11-10T06:00:00.000Z",
+              "end": "2026-11-10T08:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "考研初试科目与复习安排",
-              "body": "按政治、英语、专业课拆分阶段目标，保留每周整套模拟。",
+              "title": "Synthetic knowledge 10-B",
+              "body": "Synthetic second knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "考试",
-                "考研"
+                "synthetic-10",
+                "fixture"
               ],
               "expect": "created"
             }
@@ -1004,97 +1004,97 @@
     },
     {
       "id": "large_scenario_011",
-      "key": "company_annual",
-      "name": "公司年会项目",
-      "category": "工作",
-      "summary": "负责场地、节目、奖项、物料和现场执行。",
+      "key": "synthetic_11",
+      "name": "Synthetic scenario 11",
+      "category": "synthetic-11",
+      "summary": "Synthetic content for testing structured result creation.",
       "messages": [
         {
-          "text": "我正在准备公司年会项目。负责场地、节目、奖项、物料和现场执行。 先安排年会节目彩排，时间12月18日晚上6点；确认年会奖品和采购预算最晚在12月10日晚上6点前完成；再记录年会执行清单。",
-          "assistant": "已整理公司年会项目的第一批事项和知识。",
+          "text": "我正在准备Synthetic scenario 11。Synthetic content for testing structured result creation. 先安排Synthetic event 11-A，时间11月11日上午9点；Synthetic task 11最晚在11月11日晚上6点前完成；再记录Synthetic knowledge 11-A。",
+          "assistant": "已整理Synthetic scenario 11的第一批事项和知识。",
           "calls": [
             {
               "type": "matter",
-              "title": "公司年会项目",
-              "body": "负责场地、节目、奖项、物料和现场执行。",
+              "title": "Synthetic scenario 11",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.96,
               "sensitive": false,
               "tags": [
-                "工作",
-                "年会"
+                "synthetic-11",
+                "fixture"
               ],
               "expect": "created"
             },
             {
               "type": "event",
-              "title": "年会节目彩排",
-              "body": "负责场地、节目、奖项、物料和现场执行。",
+              "title": "Synthetic event 11-A",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "工作",
-                "年会"
+                "synthetic-11",
+                "fixture"
               ],
-              "start": "2026-12-18T10:00:00.000Z",
-              "end": "2026-12-18T12:00:00.000Z",
+              "start": "2026-11-11T01:00:00.000Z",
+              "end": "2026-11-11T03:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "todo",
-              "title": "确认年会奖品和采购预算",
-              "body": "在截止时间前完成：确认年会奖品和采购预算",
+              "title": "Synthetic task 11",
+              "body": "在截止时间前完成：Synthetic task 11",
               "confidence": 0.94,
               "sensitive": false,
               "tags": [
-                "工作",
-                "年会"
+                "synthetic-11",
+                "fixture"
               ],
-              "due": "2026-12-10T10:00:00.000Z",
+              "due": "2026-11-11T10:00:00.000Z",
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "年会执行清单",
-              "body": "覆盖场地方、餐饮、音响、节目、抽奖和签到流程。",
+              "title": "Synthetic knowledge 11-A",
+              "body": "Synthetic knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "工作",
-                "年会"
+                "synthetic-11",
+                "fixture"
               ],
               "expect": "created"
             }
           ]
         },
         {
-          "text": "补充公司年会项目的第二阶段。提前完成供应商确认和彩排，准备应急联系人。 公司年度晚宴安排在1月8日晚上6点30分，同时整理年会供应商与预算控制。",
-          "assistant": "已补齐公司年会项目的第二批事项和知识。",
+          "text": "补充Synthetic scenario 11的第二阶段。Synthetic second phase for testing multi-turn result persistence. Synthetic event 11-B安排在11月11日下午2点，同时整理Synthetic knowledge 11-B。",
+          "assistant": "已补齐Synthetic scenario 11的第二批事项和知识。",
           "calls": [
             {
               "type": "event",
-              "title": "公司年度晚宴",
-              "body": "提前完成供应商确认和彩排，准备应急联系人。",
+              "title": "Synthetic event 11-B",
+              "body": "Synthetic second phase for testing multi-turn result persistence.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "工作",
-                "年会"
+                "synthetic-11",
+                "fixture"
               ],
-              "start": "2027-01-08T10:30:00.000Z",
-              "end": "2027-01-08T12:30:00.000Z",
+              "start": "2026-11-11T06:00:00.000Z",
+              "end": "2026-11-11T08:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "年会供应商与预算控制",
-              "body": "分项确认报价、付款节点和备用供应商，保留总预算缓冲。",
+              "title": "Synthetic knowledge 11-B",
+              "body": "Synthetic second knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "工作",
-                "年会"
+                "synthetic-11",
+                "fixture"
               ],
               "expect": "created"
             }
@@ -1104,97 +1104,97 @@
     },
     {
       "id": "large_scenario_012",
-      "key": "moving_home",
-      "name": "搬家与地址迁移",
-      "category": "生活",
-      "summary": "需要安排打包、搬家公司、宽带迁移和地址更新。",
+      "key": "synthetic_12",
+      "name": "Synthetic scenario 12",
+      "category": "synthetic-12",
+      "summary": "Synthetic content for testing structured result creation.",
       "messages": [
         {
-          "text": "我正在准备搬家与地址迁移。需要安排打包、搬家公司、宽带迁移和地址更新。 先安排旧房物业交接，时间10月30日上午10点；更新快递、银行和社保地址最晚在11月5日晚上6点前完成；再记录搬家打包与物品分类清单。",
-          "assistant": "已整理搬家与地址迁移的第一批事项和知识。",
+          "text": "我正在准备Synthetic scenario 12。Synthetic content for testing structured result creation. 先安排Synthetic event 12-A，时间11月12日上午9点；Synthetic task 12最晚在11月12日晚上6点前完成；再记录Synthetic knowledge 12-A。",
+          "assistant": "已整理Synthetic scenario 12的第一批事项和知识。",
           "calls": [
             {
               "type": "matter",
-              "title": "搬家与地址迁移",
-              "body": "需要安排打包、搬家公司、宽带迁移和地址更新。",
+              "title": "Synthetic scenario 12",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.96,
               "sensitive": false,
               "tags": [
-                "生活",
-                "搬家"
+                "synthetic-12",
+                "fixture"
               ],
               "expect": "created"
             },
             {
               "type": "event",
-              "title": "旧房物业交接",
-              "body": "需要安排打包、搬家公司、宽带迁移和地址更新。",
+              "title": "Synthetic event 12-A",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "生活",
-                "搬家"
+                "synthetic-12",
+                "fixture"
               ],
-              "start": "2026-10-30T02:00:00.000Z",
-              "end": "2026-10-30T04:00:00.000Z",
+              "start": "2026-11-12T01:00:00.000Z",
+              "end": "2026-11-12T03:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "todo",
-              "title": "更新快递、银行和社保地址",
-              "body": "在截止时间前完成：更新快递、银行和社保地址",
+              "title": "Synthetic task 12",
+              "body": "在截止时间前完成：Synthetic task 12",
               "confidence": 0.94,
               "sensitive": false,
               "tags": [
-                "生活",
-                "搬家"
+                "synthetic-12",
+                "fixture"
               ],
-              "due": "2026-11-05T10:00:00.000Z",
+              "due": "2026-11-12T10:00:00.000Z",
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "搬家打包与物品分类清单",
-              "body": "按房间和物品类型标记纸箱，重要文件随身携带。",
+              "title": "Synthetic knowledge 12-A",
+              "body": "Synthetic knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "生活",
-                "搬家"
+                "synthetic-12",
+                "fixture"
               ],
               "expect": "created"
             }
           ]
         },
         {
-          "text": "补充搬家与地址迁移的第二阶段。重要证件和贵重物品单独携带，旧房完成水电和物业交接。 正式搬家日安排在10月31日上午8点，同时整理搬家后地址变更清单。",
-          "assistant": "已补齐搬家与地址迁移的第二批事项和知识。",
+          "text": "补充Synthetic scenario 12的第二阶段。Synthetic second phase for testing multi-turn result persistence. Synthetic event 12-B安排在11月12日下午2点，同时整理Synthetic knowledge 12-B。",
+          "assistant": "已补齐Synthetic scenario 12的第二批事项和知识。",
           "calls": [
             {
               "type": "event",
-              "title": "正式搬家日",
-              "body": "重要证件和贵重物品单独携带，旧房完成水电和物业交接。",
+              "title": "Synthetic event 12-B",
+              "body": "Synthetic second phase for testing multi-turn result persistence.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "生活",
-                "搬家"
+                "synthetic-12",
+                "fixture"
               ],
-              "start": "2026-10-31T00:00:00.000Z",
-              "end": "2026-10-31T02:00:00.000Z",
+              "start": "2026-11-12T06:00:00.000Z",
+              "end": "2026-11-12T08:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "搬家后地址变更清单",
-              "body": "更新银行、快递、保险、水电网和常用账号地址。",
+              "title": "Synthetic knowledge 12-B",
+              "body": "Synthetic second knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "生活",
-                "搬家"
+                "synthetic-12",
+                "fixture"
               ],
               "expect": "created"
             }
@@ -1204,97 +1204,97 @@
     },
     {
       "id": "large_scenario_013",
-      "key": "family_finance",
-      "name": "家庭财务规划",
-      "category": "财务",
-      "summary": "梳理收入支出、应急资金、保险和长期储蓄目标。",
+      "key": "synthetic_13",
+      "name": "Synthetic scenario 13",
+      "category": "synthetic-13",
+      "summary": "Synthetic content for testing structured result creation.",
       "messages": [
         {
-          "text": "我正在准备家庭财务规划。梳理收入支出、应急资金、保险和长期储蓄目标。 先安排家庭年度预算复盘，时间11月20日晚上8点；整理家庭资产和负债清单最晚在11月18日晚上8点前完成；再记录家庭应急资金配置原则。",
-          "assistant": "已整理家庭财务规划的第一批事项和知识。",
+          "text": "我正在准备Synthetic scenario 13。Synthetic content for testing structured result creation. 先安排Synthetic event 13-A，时间11月13日上午9点；Synthetic task 13最晚在11月13日晚上6点前完成；再记录Synthetic knowledge 13-A。",
+          "assistant": "已整理Synthetic scenario 13的第一批事项和知识。",
           "calls": [
             {
               "type": "matter",
-              "title": "家庭财务规划",
-              "body": "梳理收入支出、应急资金、保险和长期储蓄目标。",
+              "title": "Synthetic scenario 13",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.96,
               "sensitive": false,
               "tags": [
-                "财务",
-                "家庭财务"
+                "synthetic-13",
+                "fixture"
               ],
               "expect": "created"
             },
             {
               "type": "event",
-              "title": "家庭年度预算复盘",
-              "body": "梳理收入支出、应急资金、保险和长期储蓄目标。",
+              "title": "Synthetic event 13-A",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "财务",
-                "家庭财务"
+                "synthetic-13",
+                "fixture"
               ],
-              "start": "2026-11-20T12:00:00.000Z",
-              "end": "2026-11-20T14:00:00.000Z",
+              "start": "2026-11-13T01:00:00.000Z",
+              "end": "2026-11-13T03:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "todo",
-              "title": "整理家庭资产和负债清单",
-              "body": "在截止时间前完成：整理家庭资产和负债清单",
+              "title": "Synthetic task 13",
+              "body": "在截止时间前完成：Synthetic task 13",
               "confidence": 0.94,
               "sensitive": false,
               "tags": [
-                "财务",
-                "家庭财务"
+                "synthetic-13",
+                "fixture"
               ],
-              "due": "2026-11-18T12:00:00.000Z",
+              "due": "2026-11-13T10:00:00.000Z",
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "家庭应急资金配置原则",
-              "body": "保留三到六个月固定支出，放在高流动性低风险账户。",
+              "title": "Synthetic knowledge 13-A",
+              "body": "Synthetic knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "财务",
-                "家庭财务"
+                "synthetic-13",
+                "fixture"
               ],
               "expect": "created"
             }
           ]
         },
         {
-          "text": "补充家庭财务规划的第二阶段。每年复盘资产配置，避免单一风险，保留三到六个月应急金。 家庭保险与储蓄规划会安排在12月6日下午3点，同时整理家庭保险配置检查。",
-          "assistant": "已补齐家庭财务规划的第二批事项和知识。",
+          "text": "补充Synthetic scenario 13的第二阶段。Synthetic second phase for testing multi-turn result persistence. Synthetic event 13-B安排在11月13日下午2点，同时整理Synthetic knowledge 13-B。",
+          "assistant": "已补齐Synthetic scenario 13的第二批事项和知识。",
           "calls": [
             {
               "type": "event",
-              "title": "家庭保险与储蓄规划会",
-              "body": "每年复盘资产配置，避免单一风险，保留三到六个月应急金。",
+              "title": "Synthetic event 13-B",
+              "body": "Synthetic second phase for testing multi-turn result persistence.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "财务",
-                "家庭财务"
+                "synthetic-13",
+                "fixture"
               ],
-              "start": "2026-12-06T07:00:00.000Z",
-              "end": "2026-12-06T09:00:00.000Z",
+              "start": "2026-11-13T06:00:00.000Z",
+              "end": "2026-11-13T08:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "家庭保险配置检查",
-              "body": "优先医疗、重疾和意外保障，避免重复投保和过度保障。",
+              "title": "Synthetic knowledge 13-B",
+              "body": "Synthetic second knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "财务",
-                "家庭财务"
+                "synthetic-13",
+                "fixture"
               ],
               "expect": "created"
             }
@@ -1304,97 +1304,97 @@
     },
     {
       "id": "large_scenario_014",
-      "key": "pet_surgery",
-      "name": "宠物绝育与疫苗",
-      "category": "生活",
-      "summary": "安排宠物术前检查、绝育手术、疫苗和术后复查。",
+      "key": "synthetic_14",
+      "name": "Synthetic scenario 14",
+      "category": "synthetic-14",
+      "summary": "Synthetic content for testing structured result creation.",
       "messages": [
         {
-          "text": "我正在准备宠物绝育与疫苗。安排宠物术前检查、绝育手术、疫苗和术后复查。 先安排宠物术前检查，时间10月24日上午10点；准备宠物术后护理用品最晚在10月25日晚上8点前完成；再记录宠物绝育术前准备。",
-          "assistant": "已整理宠物绝育与疫苗的第一批事项和知识。",
+          "text": "我正在准备Synthetic scenario 14。Synthetic content for testing structured result creation. 先安排Synthetic event 14-A，时间11月14日上午9点；Synthetic task 14最晚在11月14日晚上6点前完成；再记录Synthetic knowledge 14-A。",
+          "assistant": "已整理Synthetic scenario 14的第一批事项和知识。",
           "calls": [
             {
               "type": "matter",
-              "title": "宠物绝育与疫苗",
-              "body": "安排宠物术前检查、绝育手术、疫苗和术后复查。",
+              "title": "Synthetic scenario 14",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.96,
               "sensitive": false,
               "tags": [
-                "生活",
-                "宠物"
+                "synthetic-14",
+                "fixture"
               ],
               "expect": "created"
             },
             {
               "type": "event",
-              "title": "宠物术前检查",
-              "body": "安排宠物术前检查、绝育手术、疫苗和术后复查。",
+              "title": "Synthetic event 14-A",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "生活",
-                "宠物"
+                "synthetic-14",
+                "fixture"
               ],
-              "start": "2026-10-24T02:00:00.000Z",
-              "end": "2026-10-24T04:00:00.000Z",
+              "start": "2026-11-14T01:00:00.000Z",
+              "end": "2026-11-14T03:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "todo",
-              "title": "准备宠物术后护理用品",
-              "body": "在截止时间前完成：准备宠物术后护理用品",
+              "title": "Synthetic task 14",
+              "body": "在截止时间前完成：Synthetic task 14",
               "confidence": 0.94,
               "sensitive": false,
               "tags": [
-                "生活",
-                "宠物"
+                "synthetic-14",
+                "fixture"
               ],
-              "due": "2026-10-25T12:00:00.000Z",
+              "due": "2026-11-14T10:00:00.000Z",
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "宠物绝育术前准备",
-              "body": "按医嘱禁食禁水，携带疫苗本和既往检查报告。",
+              "title": "Synthetic knowledge 14-A",
+              "body": "Synthetic knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "生活",
-                "宠物"
+                "synthetic-14",
+                "fixture"
               ],
               "expect": "created"
             }
           ]
         },
         {
-          "text": "补充宠物绝育与疫苗的第二阶段。术前禁食禁水，准备伊丽莎白圈和术后护理用品。 宠物绝育手术安排在10月26日上午9点，同时整理宠物术后护理与复查。",
-          "assistant": "已补齐宠物绝育与疫苗的第二批事项和知识。",
+          "text": "补充Synthetic scenario 14的第二阶段。Synthetic second phase for testing multi-turn result persistence. Synthetic event 14-B安排在11月14日下午2点，同时整理Synthetic knowledge 14-B。",
+          "assistant": "已补齐Synthetic scenario 14的第二批事项和知识。",
           "calls": [
             {
               "type": "event",
-              "title": "宠物绝育手术",
-              "body": "术前禁食禁水，准备伊丽莎白圈和术后护理用品。",
+              "title": "Synthetic event 14-B",
+              "body": "Synthetic second phase for testing multi-turn result persistence.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "生活",
-                "宠物"
+                "synthetic-14",
+                "fixture"
               ],
-              "start": "2026-10-26T01:00:00.000Z",
-              "end": "2026-10-26T03:00:00.000Z",
+              "start": "2026-11-14T06:00:00.000Z",
+              "end": "2026-11-14T08:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "宠物术后护理与复查",
-              "body": "观察食欲、伤口和排泄，按时用药并限制剧烈活动。",
+              "title": "Synthetic knowledge 14-B",
+              "body": "Synthetic second knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "生活",
-                "宠物"
+                "synthetic-14",
+                "fixture"
               ],
               "expect": "created"
             }
@@ -1404,97 +1404,97 @@
     },
     {
       "id": "large_scenario_015",
-      "key": "car_maintenance",
-      "name": "汽车年检与保养",
-      "category": "生活",
-      "summary": "需要处理年检、保养、保险续费和常用证件更新。",
+      "key": "synthetic_15",
+      "name": "Synthetic scenario 15",
+      "category": "synthetic-15",
+      "summary": "Synthetic content for testing structured result creation.",
       "messages": [
         {
-          "text": "我正在准备汽车年检与保养。需要处理年检、保养、保险续费和常用证件更新。 先安排汽车年度保养，时间11月16日上午10点；确认保险续费和年检材料最晚在11月20日晚上6点前完成；再记录汽车年检材料与流程。",
-          "assistant": "已整理汽车年检与保养的第一批事项和知识。",
+          "text": "我正在准备Synthetic scenario 15。Synthetic content for testing structured result creation. 先安排Synthetic event 15-A，时间11月15日上午9点；Synthetic task 15最晚在11月15日晚上6点前完成；再记录Synthetic knowledge 15-A。",
+          "assistant": "已整理Synthetic scenario 15的第一批事项和知识。",
           "calls": [
             {
               "type": "matter",
-              "title": "汽车年检与保养",
-              "body": "需要处理年检、保养、保险续费和常用证件更新。",
+              "title": "Synthetic scenario 15",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.96,
               "sensitive": false,
               "tags": [
-                "生活",
-                "汽车"
+                "synthetic-15",
+                "fixture"
               ],
               "expect": "created"
             },
             {
               "type": "event",
-              "title": "汽车年度保养",
-              "body": "需要处理年检、保养、保险续费和常用证件更新。",
+              "title": "Synthetic event 15-A",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "生活",
-                "汽车"
+                "synthetic-15",
+                "fixture"
               ],
-              "start": "2026-11-16T02:00:00.000Z",
-              "end": "2026-11-16T04:00:00.000Z",
+              "start": "2026-11-15T01:00:00.000Z",
+              "end": "2026-11-15T03:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "todo",
-              "title": "确认保险续费和年检材料",
-              "body": "在截止时间前完成：确认保险续费和年检材料",
+              "title": "Synthetic task 15",
+              "body": "在截止时间前完成：Synthetic task 15",
               "confidence": 0.94,
               "sensitive": false,
               "tags": [
-                "生活",
-                "汽车"
+                "synthetic-15",
+                "fixture"
               ],
-              "due": "2026-11-20T10:00:00.000Z",
+              "due": "2026-11-15T10:00:00.000Z",
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "汽车年检材料与流程",
-              "body": "准备行驶证、身份证、保险单，提前处理违章和车辆故障。",
+              "title": "Synthetic knowledge 15-A",
+              "body": "Synthetic knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "生活",
-                "汽车"
+                "synthetic-15",
+                "fixture"
               ],
               "expect": "created"
             }
           ]
         },
         {
-          "text": "补充汽车年检与保养的第二阶段。检查轮胎、刹车、电瓶和机油，准备行驶证和保险材料。 汽车年检办理安排在11月23日上午9点，同时整理汽车年度保养检查项。",
-          "assistant": "已补齐汽车年检与保养的第二批事项和知识。",
+          "text": "补充Synthetic scenario 15的第二阶段。Synthetic second phase for testing multi-turn result persistence. Synthetic event 15-B安排在11月15日下午2点，同时整理Synthetic knowledge 15-B。",
+          "assistant": "已补齐Synthetic scenario 15的第二批事项和知识。",
           "calls": [
             {
               "type": "event",
-              "title": "汽车年检办理",
-              "body": "检查轮胎、刹车、电瓶和机油，准备行驶证和保险材料。",
+              "title": "Synthetic event 15-B",
+              "body": "Synthetic second phase for testing multi-turn result persistence.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "生活",
-                "汽车"
+                "synthetic-15",
+                "fixture"
               ],
-              "start": "2026-11-23T01:00:00.000Z",
-              "end": "2026-11-23T03:00:00.000Z",
+              "start": "2026-11-15T06:00:00.000Z",
+              "end": "2026-11-15T08:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "汽车年度保养检查项",
-              "body": "检查机油、轮胎、刹车、电瓶和空调滤芯，记录保养里程。",
+              "title": "Synthetic knowledge 15-B",
+              "body": "Synthetic second knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "生活",
-                "汽车"
+                "synthetic-15",
+                "fixture"
               ],
               "expect": "created"
             }
@@ -1504,97 +1504,97 @@
     },
     {
       "id": "large_scenario_016",
-      "key": "uk_visa",
-      "name": "英国访问签证申请",
-      "category": "旅行",
-      "summary": "准备签证材料、预约录指纹、提交护照并跟踪结果。",
+      "key": "synthetic_16",
+      "name": "Synthetic scenario 16",
+      "category": "synthetic-16",
+      "summary": "Synthetic content for testing structured result creation.",
       "messages": [
         {
-          "text": "我正在准备英国访问签证申请。准备签证材料、预约录指纹、提交护照并跟踪结果。 先安排英国签证中心递交材料，时间11月4日上午9点30分；准备银行流水和行程单最晚在11月1日晚上8点前完成；再记录英国访问签证材料清单。",
-          "assistant": "已整理英国访问签证申请的第一批事项和知识。",
+          "text": "我正在准备Synthetic scenario 16。Synthetic content for testing structured result creation. 先安排Synthetic event 16-A，时间11月16日上午9点；Synthetic task 16最晚在11月16日晚上6点前完成；再记录Synthetic knowledge 16-A。",
+          "assistant": "已整理Synthetic scenario 16的第一批事项和知识。",
           "calls": [
             {
               "type": "matter",
-              "title": "英国访问签证申请",
-              "body": "准备签证材料、预约录指纹、提交护照并跟踪结果。",
+              "title": "Synthetic scenario 16",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.96,
               "sensitive": false,
               "tags": [
-                "旅行",
-                "英国签证"
+                "synthetic-16",
+                "fixture"
               ],
               "expect": "created"
             },
             {
               "type": "event",
-              "title": "英国签证中心递交材料",
-              "body": "准备签证材料、预约录指纹、提交护照并跟踪结果。",
+              "title": "Synthetic event 16-A",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "旅行",
-                "英国签证"
+                "synthetic-16",
+                "fixture"
               ],
-              "start": "2026-11-04T01:30:00.000Z",
-              "end": "2026-11-04T03:30:00.000Z",
+              "start": "2026-11-16T01:00:00.000Z",
+              "end": "2026-11-16T03:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "todo",
-              "title": "准备银行流水和行程单",
-              "body": "在截止时间前完成：准备银行流水和行程单",
+              "title": "Synthetic task 16",
+              "body": "在截止时间前完成：Synthetic task 16",
               "confidence": 0.94,
               "sensitive": false,
               "tags": [
-                "旅行",
-                "英国签证"
+                "synthetic-16",
+                "fixture"
               ],
-              "due": "2026-11-01T12:00:00.000Z",
+              "due": "2026-11-16T10:00:00.000Z",
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "英国访问签证材料清单",
-              "body": "准备护照、照片、申请表、资金证明、行程和在职证明。",
+              "title": "Synthetic knowledge 16-A",
+              "body": "Synthetic knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "旅行",
-                "英国签证"
+                "synthetic-16",
+                "fixture"
               ],
               "expect": "created"
             }
           ]
         },
         {
-          "text": "补充英国访问签证申请的第二阶段。资金证明、行程和邀请函需要保持一致，保存递签回执。 英国访问行程出发安排在1月20日上午10点，同时整理英国入境与旅行准备。",
-          "assistant": "已补齐英国访问签证申请的第二批事项和知识。",
+          "text": "补充Synthetic scenario 16的第二阶段。Synthetic second phase for testing multi-turn result persistence. Synthetic event 16-B安排在11月16日下午2点，同时整理Synthetic knowledge 16-B。",
+          "assistant": "已补齐Synthetic scenario 16的第二批事项和知识。",
           "calls": [
             {
               "type": "event",
-              "title": "英国访问行程出发",
-              "body": "资金证明、行程和邀请函需要保持一致，保存递签回执。",
+              "title": "Synthetic event 16-B",
+              "body": "Synthetic second phase for testing multi-turn result persistence.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "旅行",
-                "英国签证"
+                "synthetic-16",
+                "fixture"
               ],
-              "start": "2027-01-20T02:00:00.000Z",
-              "end": "2027-01-20T04:00:00.000Z",
+              "start": "2026-11-16T06:00:00.000Z",
+              "end": "2026-11-16T08:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "英国入境与旅行准备",
-              "body": "保存签证页、住宿地址和返程机票，准备转换插头和旅行保险。",
+              "title": "Synthetic knowledge 16-B",
+              "body": "Synthetic second knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "旅行",
-                "英国签证"
+                "synthetic-16",
+                "fixture"
               ],
               "expect": "created"
             }
@@ -1604,97 +1604,97 @@
     },
     {
       "id": "large_scenario_017",
-      "key": "startup_pitch",
-      "name": "创业项目路演",
-      "category": "工作",
-      "summary": "准备商业计划、财务模型、产品演示和投资人沟通。",
+      "key": "synthetic_17",
+      "name": "Synthetic scenario 17",
+      "category": "synthetic-17",
+      "summary": "Synthetic content for testing structured result creation.",
       "messages": [
         {
-          "text": "我正在准备创业项目路演。准备商业计划、财务模型、产品演示和投资人沟通。 先安排创业项目路演彩排，时间11月6日下午2点；完成财务模型和路演材料最晚在11月15日晚上6点前完成；再记录创业路演结构。",
-          "assistant": "已整理创业项目路演的第一批事项和知识。",
+          "text": "我正在准备Synthetic scenario 17。Synthetic content for testing structured result creation. 先安排Synthetic event 17-A，时间11月17日上午9点；Synthetic task 17最晚在11月17日晚上6点前完成；再记录Synthetic knowledge 17-A。",
+          "assistant": "已整理Synthetic scenario 17的第一批事项和知识。",
           "calls": [
             {
               "type": "matter",
-              "title": "创业项目路演",
-              "body": "准备商业计划、财务模型、产品演示和投资人沟通。",
+              "title": "Synthetic scenario 17",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.96,
               "sensitive": false,
               "tags": [
-                "工作",
-                "创业"
+                "synthetic-17",
+                "fixture"
               ],
               "expect": "created"
             },
             {
               "type": "event",
-              "title": "创业项目路演彩排",
-              "body": "准备商业计划、财务模型、产品演示和投资人沟通。",
+              "title": "Synthetic event 17-A",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "工作",
-                "创业"
+                "synthetic-17",
+                "fixture"
               ],
-              "start": "2026-11-06T06:00:00.000Z",
-              "end": "2026-11-06T08:00:00.000Z",
+              "start": "2026-11-17T01:00:00.000Z",
+              "end": "2026-11-17T03:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "todo",
-              "title": "完成财务模型和路演材料",
-              "body": "在截止时间前完成：完成财务模型和路演材料",
+              "title": "Synthetic task 17",
+              "body": "在截止时间前完成：Synthetic task 17",
               "confidence": 0.94,
               "sensitive": false,
               "tags": [
-                "工作",
-                "创业"
+                "synthetic-17",
+                "fixture"
               ],
-              "due": "2026-11-15T10:00:00.000Z",
+              "due": "2026-11-17T10:00:00.000Z",
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "创业路演结构",
-              "body": "用问题、产品、市场、商业模式、团队和融资计划组织内容。",
+              "title": "Synthetic knowledge 17-A",
+              "body": "Synthetic knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "工作",
-                "创业"
+                "synthetic-17",
+                "fixture"
               ],
               "expect": "created"
             }
           ]
         },
         {
-          "text": "补充创业项目路演的第二阶段。路演重点是问题、方案、市场、团队和融资用途，提前完成彩排。 投资人路演日安排在11月18日上午10点，同时整理投资人常见问题与数据准备。",
-          "assistant": "已补齐创业项目路演的第二批事项和知识。",
+          "text": "补充Synthetic scenario 17的第二阶段。Synthetic second phase for testing multi-turn result persistence. Synthetic event 17-B安排在11月17日下午2点，同时整理Synthetic knowledge 17-B。",
+          "assistant": "已补齐Synthetic scenario 17的第二批事项和知识。",
           "calls": [
             {
               "type": "event",
-              "title": "投资人路演日",
-              "body": "路演重点是问题、方案、市场、团队和融资用途，提前完成彩排。",
+              "title": "Synthetic event 17-B",
+              "body": "Synthetic second phase for testing multi-turn result persistence.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "工作",
-                "创业"
+                "synthetic-17",
+                "fixture"
               ],
-              "start": "2026-11-18T02:00:00.000Z",
-              "end": "2026-11-18T04:00:00.000Z",
+              "start": "2026-11-17T06:00:00.000Z",
+              "end": "2026-11-17T08:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "投资人常见问题与数据准备",
-              "body": "准备获客成本、留存、毛利率、竞争壁垒和资金使用计划。",
+              "title": "Synthetic knowledge 17-B",
+              "body": "Synthetic second knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "工作",
-                "创业"
+                "synthetic-17",
+                "fixture"
               ],
               "expect": "created"
             }
@@ -1704,97 +1704,97 @@
     },
     {
       "id": "large_scenario_018",
-      "key": "volunteer_event",
-      "name": "社区志愿者活动",
-      "category": "公益",
-      "summary": "组织物资、报名、培训、现场服务和活动复盘。",
+      "key": "synthetic_18",
+      "name": "Synthetic scenario 18",
+      "category": "synthetic-18",
+      "summary": "Synthetic content for testing structured result creation.",
       "messages": [
         {
-          "text": "我正在准备社区志愿者活动。组织物资、报名、培训、现场服务和活动复盘。 先安排志愿者岗前培训，时间10月27日晚上7点；确认志愿者名单和物资最晚在11月1日晚上6点前完成；再记录志愿者活动安全与服务规范。",
-          "assistant": "已整理社区志愿者活动的第一批事项和知识。",
+          "text": "我正在准备Synthetic scenario 18。Synthetic content for testing structured result creation. 先安排Synthetic event 18-A，时间11月18日上午9点；Synthetic task 18最晚在11月18日晚上6点前完成；再记录Synthetic knowledge 18-A。",
+          "assistant": "已整理Synthetic scenario 18的第一批事项和知识。",
           "calls": [
             {
               "type": "matter",
-              "title": "社区志愿者活动",
-              "body": "组织物资、报名、培训、现场服务和活动复盘。",
+              "title": "Synthetic scenario 18",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.96,
               "sensitive": false,
               "tags": [
-                "公益",
-                "志愿者"
+                "synthetic-18",
+                "fixture"
               ],
               "expect": "created"
             },
             {
               "type": "event",
-              "title": "志愿者岗前培训",
-              "body": "组织物资、报名、培训、现场服务和活动复盘。",
+              "title": "Synthetic event 18-A",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "公益",
-                "志愿者"
+                "synthetic-18",
+                "fixture"
               ],
-              "start": "2026-10-27T11:00:00.000Z",
-              "end": "2026-10-27T13:00:00.000Z",
+              "start": "2026-11-18T01:00:00.000Z",
+              "end": "2026-11-18T03:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "todo",
-              "title": "确认志愿者名单和物资",
-              "body": "在截止时间前完成：确认志愿者名单和物资",
+              "title": "Synthetic task 18",
+              "body": "在截止时间前完成：Synthetic task 18",
               "confidence": 0.94,
               "sensitive": false,
               "tags": [
-                "公益",
-                "志愿者"
+                "synthetic-18",
+                "fixture"
               ],
-              "due": "2026-11-01T10:00:00.000Z",
+              "due": "2026-11-18T10:00:00.000Z",
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "志愿者活动安全与服务规范",
-              "body": "统一着装、准时集合、尊重服务对象并遵守现场安全要求。",
+              "title": "Synthetic knowledge 18-A",
+              "body": "Synthetic knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "公益",
-                "志愿者"
+                "synthetic-18",
+                "fixture"
               ],
               "expect": "created"
             }
           ]
         },
         {
-          "text": "补充社区志愿者活动的第二阶段。确认服务对象、集合时间和安全要求，准备志愿证明。 社区志愿服务日安排在11月2日上午8点30分，同时整理社区志愿物资清单。",
-          "assistant": "已补齐社区志愿者活动的第二批事项和知识。",
+          "text": "补充Synthetic scenario 18的第二阶段。Synthetic second phase for testing multi-turn result persistence. Synthetic event 18-B安排在11月18日下午2点，同时整理Synthetic knowledge 18-B。",
+          "assistant": "已补齐Synthetic scenario 18的第二批事项和知识。",
           "calls": [
             {
               "type": "event",
-              "title": "社区志愿服务日",
-              "body": "确认服务对象、集合时间和安全要求，准备志愿证明。",
+              "title": "Synthetic event 18-B",
+              "body": "Synthetic second phase for testing multi-turn result persistence.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "公益",
-                "志愿者"
+                "synthetic-18",
+                "fixture"
               ],
-              "start": "2026-11-02T00:30:00.000Z",
-              "end": "2026-11-02T02:30:00.000Z",
+              "start": "2026-11-18T06:00:00.000Z",
+              "end": "2026-11-18T08:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "社区志愿物资清单",
-              "body": "准备饮用水、急救包、手套、签到表和活动记录设备。",
+              "title": "Synthetic knowledge 18-B",
+              "body": "Synthetic second knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "公益",
-                "志愿者"
+                "synthetic-18",
+                "fixture"
               ],
               "expect": "created"
             }
@@ -1804,97 +1804,97 @@
     },
     {
       "id": "large_scenario_019",
-      "key": "semester_thesis",
-      "name": "学期论文与答辩",
-      "category": "学习",
-      "summary": "完成选题、文献综述、实验、论文初稿和答辩准备。",
+      "key": "synthetic_19",
+      "name": "Synthetic scenario 19",
+      "category": "synthetic-19",
+      "summary": "Synthetic content for testing structured result creation.",
       "messages": [
         {
-          "text": "我正在准备学期论文与答辩。完成选题、文献综述、实验、论文初稿和答辩准备。 先安排论文中期检查，时间11月12日下午3点；完成论文初稿和查重最晚在12月15日晚上8点前完成；再记录论文写作与引用规范。",
-          "assistant": "已整理学期论文与答辩的第一批事项和知识。",
+          "text": "我正在准备Synthetic scenario 19。Synthetic content for testing structured result creation. 先安排Synthetic event 19-A，时间11月19日上午9点；Synthetic task 19最晚在11月19日晚上6点前完成；再记录Synthetic knowledge 19-A。",
+          "assistant": "已整理Synthetic scenario 19的第一批事项和知识。",
           "calls": [
             {
               "type": "matter",
-              "title": "学期论文与答辩",
-              "body": "完成选题、文献综述、实验、论文初稿和答辩准备。",
+              "title": "Synthetic scenario 19",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.96,
               "sensitive": false,
               "tags": [
-                "学习",
-                "论文"
+                "synthetic-19",
+                "fixture"
               ],
               "expect": "created"
             },
             {
               "type": "event",
-              "title": "论文中期检查",
-              "body": "完成选题、文献综述、实验、论文初稿和答辩准备。",
+              "title": "Synthetic event 19-A",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "学习",
-                "论文"
+                "synthetic-19",
+                "fixture"
               ],
-              "start": "2026-11-12T07:00:00.000Z",
-              "end": "2026-11-12T09:00:00.000Z",
+              "start": "2026-11-19T01:00:00.000Z",
+              "end": "2026-11-19T03:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "todo",
-              "title": "完成论文初稿和查重",
-              "body": "在截止时间前完成：完成论文初稿和查重",
+              "title": "Synthetic task 19",
+              "body": "在截止时间前完成：Synthetic task 19",
               "confidence": 0.94,
               "sensitive": false,
               "tags": [
-                "学习",
-                "论文"
+                "synthetic-19",
+                "fixture"
               ],
-              "due": "2026-12-15T12:00:00.000Z",
+              "due": "2026-11-19T10:00:00.000Z",
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "论文写作与引用规范",
-              "body": "按学校格式整理引用和参考文献，保留文献原文和检索记录。",
+              "title": "Synthetic knowledge 19-A",
+              "body": "Synthetic knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "学习",
-                "论文"
+                "synthetic-19",
+                "fixture"
               ],
               "expect": "created"
             }
           ]
         },
         {
-          "text": "补充学期论文与答辩的第二阶段。严格记录引用，按导师意见迭代修改并提前完成查重。 学期论文答辩安排在12月28日上午9点，同时整理论文答辩准备清单。",
-          "assistant": "已补齐学期论文与答辩的第二批事项和知识。",
+          "text": "补充Synthetic scenario 19的第二阶段。Synthetic second phase for testing multi-turn result persistence. Synthetic event 19-B安排在11月19日下午2点，同时整理Synthetic knowledge 19-B。",
+          "assistant": "已补齐Synthetic scenario 19的第二批事项和知识。",
           "calls": [
             {
               "type": "event",
-              "title": "学期论文答辩",
-              "body": "严格记录引用，按导师意见迭代修改并提前完成查重。",
+              "title": "Synthetic event 19-B",
+              "body": "Synthetic second phase for testing multi-turn result persistence.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "学习",
-                "论文"
+                "synthetic-19",
+                "fixture"
               ],
-              "start": "2026-12-28T01:00:00.000Z",
-              "end": "2026-12-28T03:00:00.000Z",
+              "start": "2026-11-19T06:00:00.000Z",
+              "end": "2026-11-19T08:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "论文答辩准备清单",
-              "body": "准备研究问题、方法、结果、创新点和常见问题回答。",
+              "title": "Synthetic knowledge 19-B",
+              "body": "Synthetic second knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "学习",
-                "论文"
+                "synthetic-19",
+                "fixture"
               ],
               "expect": "created"
             }
@@ -1904,97 +1904,97 @@
     },
     {
       "id": "large_scenario_020",
-      "key": "spring_festival",
-      "name": "家庭春节聚会",
-      "category": "家庭",
-      "summary": "协调返乡、年夜饭、礼物、住宿和家庭活动。",
+      "key": "synthetic_20",
+      "name": "Synthetic scenario 20",
+      "category": "synthetic-20",
+      "summary": "Synthetic content for testing structured result creation.",
       "messages": [
         {
-          "text": "我正在准备家庭春节聚会。协调返乡、年夜饭、礼物、住宿和家庭活动。 先安排春节返乡出发，时间2月2日上午8点；确认返乡人数和年货清单最晚在1月28日晚上8点前完成；再记录春节返乡交通与行李准备。",
-          "assistant": "已整理家庭春节聚会的第一批事项和知识。",
+          "text": "我正在准备Synthetic scenario 20。Synthetic content for testing structured result creation. 先安排Synthetic event 20-A，时间11月20日上午9点；Synthetic task 20最晚在11月20日晚上6点前完成；再记录Synthetic knowledge 20-A。",
+          "assistant": "已整理Synthetic scenario 20的第一批事项和知识。",
           "calls": [
             {
               "type": "matter",
-              "title": "家庭春节聚会",
-              "body": "协调返乡、年夜饭、礼物、住宿和家庭活动。",
+              "title": "Synthetic scenario 20",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.96,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "春节"
+                "synthetic-20",
+                "fixture"
               ],
               "expect": "created"
             },
             {
               "type": "event",
-              "title": "春节返乡出发",
-              "body": "协调返乡、年夜饭、礼物、住宿和家庭活动。",
+              "title": "Synthetic event 20-A",
+              "body": "Synthetic content for testing structured result creation.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "春节"
+                "synthetic-20",
+                "fixture"
               ],
-              "start": "2027-02-02T00:00:00.000Z",
-              "end": "2027-02-02T02:00:00.000Z",
+              "start": "2026-11-20T01:00:00.000Z",
+              "end": "2026-11-20T03:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "todo",
-              "title": "确认返乡人数和年货清单",
-              "body": "在截止时间前完成：确认返乡人数和年货清单",
+              "title": "Synthetic task 20",
+              "body": "在截止时间前完成：Synthetic task 20",
               "confidence": 0.94,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "春节"
+                "synthetic-20",
+                "fixture"
               ],
-              "due": "2027-01-28T12:00:00.000Z",
+              "due": "2026-11-20T10:00:00.000Z",
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "春节返乡交通与行李准备",
-              "body": "提前购票，准备证件、保暖衣物、常用药和长辈礼物。",
+              "title": "Synthetic knowledge 20-A",
+              "body": "Synthetic knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "春节"
+                "synthetic-20",
+                "fixture"
               ],
               "expect": "created"
             }
           ]
         },
         {
-          "text": "补充家庭春节聚会的第二阶段。提前确认人数、忌口和交通，准备长辈礼物和儿童活动。 家庭年夜饭安排在2月6日晚上6点，同时整理年夜饭菜单与家庭活动安排。",
-          "assistant": "已补齐家庭春节聚会的第二批事项和知识。",
+          "text": "补充Synthetic scenario 20的第二阶段。Synthetic second phase for testing multi-turn result persistence. Synthetic event 20-B安排在11月20日下午2点，同时整理Synthetic knowledge 20-B。",
+          "assistant": "已补齐Synthetic scenario 20的第二批事项和知识。",
           "calls": [
             {
               "type": "event",
-              "title": "家庭年夜饭",
-              "body": "提前确认人数、忌口和交通，准备长辈礼物和儿童活动。",
+              "title": "Synthetic event 20-B",
+              "body": "Synthetic second phase for testing multi-turn result persistence.",
               "confidence": 0.95,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "春节"
+                "synthetic-20",
+                "fixture"
               ],
-              "start": "2027-02-06T10:00:00.000Z",
-              "end": "2027-02-06T12:00:00.000Z",
+              "start": "2026-11-20T06:00:00.000Z",
+              "end": "2026-11-20T08:00:00.000Z",
               "all_day": false,
               "expect": "created"
             },
             {
               "type": "knowledge",
-              "title": "年夜饭菜单与家庭活动安排",
-              "body": "兼顾长辈口味和儿童需求，准备年夜饭菜单、游戏和拍照环节。",
+              "title": "Synthetic knowledge 20-B",
+              "body": "Synthetic second knowledge body with no personal data.",
               "confidence": 0.93,
               "sensitive": false,
               "tags": [
-                "家庭",
-                "春节"
+                "synthetic-20",
+                "fixture"
               ],
               "expect": "created"
             }

@@ -7,15 +7,15 @@
 | 字段 | 当前值 |
 |---|---|
 | 项目名称 | 个人 AI 收件箱与提醒系统 |
-| 最后更新时间 | 2026-10-09 |
+| 最后更新时间 | 2026-10-10 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex / GPT-5 |
 | 当前阶段 | `v1.1.1+3` 已发布为 GitHub 预发布版，Release 工作流、发布资产与 SHA-256 校验均通过 |
-| 总体状态 | `app/` 已形成可运行的 Flutter 客户端，本地核心拆分为端配置、成果库、捕获、会话和同步模块，`AppController` 降为迁移期兼容 facade；日历视图、快速新建和对话页已拆分。开发工具链已从 C 盘迁移到 `E:\DevTools`，迁移后 Dart 格式、`flutter analyze`、294 项主机回归、Web/Windows/Android release 构建、Windows 原生冒烟和双 AVD 验收均重新通过。`v1.1.1` 已是当前 GitHub 预发布版，发布 Android APK、Windows x64 安装包、便携 ZIP 和校验文件；APK 仍使用 Debug 证书，Windows 包仍未代码签名。产品边界继续保留：OneDrive、百度网盘、本地通知和真实跨端同步尚未完成。 |
+| 总体状态 | `app/` 已形成可运行的 Flutter 客户端，本地核心拆分为端配置、成果库、捕获、会话和同步模块，`AppController` 降为迁移期兼容 facade；日历视图、快速新建和对话页已拆分。开发工具链已从 C 盘迁移到 `E:\DevTools`，迁移后 Dart 格式、`flutter analyze`、294 项主机回归、Web/Windows/Android release 构建、Windows 原生冒烟和双 AVD 验收均重新通过。`v1.1.1` 已是当前 GitHub 预发布版，发布 Android APK、Windows x64 安装包、便携 ZIP 和校验文件；公开树已移除设备指纹、个人设备披露、测试报告与生活化测试主题，APK 仍使用 Debug 证书，Windows 包仍未代码签名。产品边界继续保留：OneDrive、百度网盘、本地通知和真实跨端同步尚未完成。 |
 
 ## 2. 一句话交接
 
-开发环境迁移后的完整测试已通过，三端可构建、双 AVD 验收通过，`v1.1.1` 预发布资产已完成上传与校验；下一步迁移页面到模块快照、删除兼容 facade，再继续正式签名、通知和真实同步。
+开发环境迁移后的完整测试已通过，三端可构建、双 AVD 验收通过，`v1.1.1` 预发布资产已完成上传与校验；公开树已清理设备指纹、个人披露和生活化测试主题。下一步迁移页面到模块快照、删除兼容 facade，再继续正式签名、通知和真实同步。
 
 ## 3. 当前目标与范围
 
@@ -102,12 +102,8 @@
 - 已增加 Windows 与 Android integration test：真实平台导航、滚动、长文和捕获流程。
 - 已生成 100 条 Android UI 独立用例，覆盖 8 个页面、手机/平板、浅色/深色、1.0-1.5x 字体、纵向滚动、横向滑动、筛选、详情、主题切换、捕获和收件箱合并确认区。
 - 已修复 Android 高字体日历溢出、编辑页横向溢出、平板键盘导航栏溢出、状态栏 SafeArea 和捕获提交流程。
-- 已建立荣耀手机与 Galaxy Tab 双设备验收体系，固定 100 条用例，每台 50 条，覆盖导航、字体、滚动、横向控件、筛选、详情、捕获、主题和主要按钮。
-- 已增加设备身份门禁：荣耀配置要求 `manufacturer=HONOR` 且视口小于 600dp；Galaxy Tab 配置要求 `manufacturer=samsung`、型号 `SM-T73*` 且视口至少 600dp。
 - 已将设备侧测试改为保留真实分辨率、密度和像素比，只在测试中控制字体缩放；模拟器不会被厂商门禁误报为目标真机。
 - 已将系统入口探针纳入设备验收脚本：校验 `ACTION_SEND` / `ACTION_PROCESS_TEXT` 分发包解析，显式投递短标记，自动操作系统 chooser 选择本应用，强制停止后重启复查，并为投递后与恢复后状态保存截图。
-- 已增加双 AVD 虚拟设备验收脚本，自动创建或复用 `aitext_honor_phone` 与 `aitext_galaxy_tab`，在固定端口顺序执行主机、UI 和系统入口探针，结束后自动关闭。
-- 已在 Samsung Galaxy Tab S7 FE（`SM-T736B` / Android 14）真机完成 50 条 UI、三类系统入口和强停恢复验收。
 - 已修复 release APK 缺少 `android.permission.INTERNET` 的问题，并新增 manifest 回归测试，避免正式包无法调用云端模型。
 - 已新增 20 个大型综合场景，每场景包含 1 个事项、2 个事件、1 个待办和 2 条知识，共 120 个自动记录载荷。
 - 已适配 MagicOS `HwResolverActivity`：先点“更多”，选择本应用，再确认“仅此一次”。
@@ -127,7 +123,6 @@
 
 - 2026-10-09 在 `E:\DevTools` 迁移后重新执行：`flutter pub get` 成功；`dart format` 137 个 Dart 文件 0 变化；`flutter analyze` 无问题；完整主机回归 294/294 通过。
 - 迁移后 `flutter build web --release`、`flutter build windows --release` 和 `flutter build apk --release` 全部通过；Windows integration smoke 通过；Android release APK 为 63.8 MB。
-- 迁移后双 AVD 完整验收通过：主机 100/100、荣耀手机 UI 50/50、Galaxy Tab UI 50/50；两端 `ACTION_SEND`、`ACTION_PROCESS_TEXT`、系统 chooser 和强停恢复全部通过，并生成 12 张证据截图。
 - 迁移后 APK SHA-256 为 `0BC340C2E979D1487B2EE9D978870636B4C2D2A0F28F34870C14F7526F3EB491`；Windows release EXE SHA-256 为 `C555EB7B8D58E2E4B05A0ACCCE6387FF12B4ACAB98F9FA038C91670B2BF4F54B`。
 - 迁移后 `scripts/test-git-policy.ps1` 通过 9 项隔离测试，`scripts/scan-public-release.ps1 -CurrentTreeOnly` 通过；双 AVD 均已停止，`adb devices` 为空。
 - `scripts/test-git-policy.ps1` 已通过 7 项隔离测试：合法原子提交、非法标题、未跟踪文件、未暂存修改、缺少 RM 交接更新、空交接章节和脏工作区推送拦截。
@@ -155,47 +150,25 @@
 - `flutter test integration_test/android_smoke_test.dart -d emulator-5554` 在 Android 15 x86_64 模拟器上通过 phone/tablet 两档。
 - `flutter test test/android_ui_100_cases_test.dart` 通过 100 条独立 Android UI 用例加 1 条矩阵完整性检查。
 - `flutter test integration_test/android_ui_100_test.dart -d emulator-5554` 在 Android 15 模拟器上通过 100/100。
-- Android 实机尺寸视觉检查保存于 [Android UI 报告](docs/test-reports/2026-10-04-android-ui-100.md)：手机浅色、手机深色 1.3x 字体、横屏平板截图均已复核。
 - `flutter analyze` 无问题；完整 `flutter test --reporter expanded` 通过 225 项。
 - `scripts/verify-device-acceptance.ps1 -SkipPhysical` 通过 101 项，包含 100 条新设备验收用例和 1 条矩阵完整性检查。
-- 新真机入口在 Android 15 x86_64 模拟器上按荣耀实际视口 `1080x2400 / 420dpi` 通过 50/50，用例覆盖 `honor-phone` 配置。
-- 同一真机入口临时按 `2560x1600 / 240dpi` 模拟平板视口，通过 Galaxy Tab 配置 50/50，执行后已恢复模拟器原始显示参数。
-- 负向门禁验证通过：把 `manufacturer=google` 的模拟器作为 HONOR 设备提交时，脚本在任何设备测试前以厂商不匹配拒绝。
-- 在 Android 15 模拟器 release APK 上完成系统入口探针 6/6：荣耀和平板配置各通过 `ACTION_SEND`、`ACTION_PROCESS_TEXT` 和系统 chooser 选择，标记在校验落盘后执行强制停止并重启仍可见。
 - 系统探针已保存 12 张截图到 `app/build/device-acceptance/<profile>/<system_share|process_text|system_chooser>/`；`build/` 保持不进入 Git。
 - 主验收脚本在无设备序列号时仍可执行主机 100 条；提供序列号后自动追加 release 系统探针，`-SkipSystemProbes` 可显式关闭。
-- `scripts/verify-virtual-device.ps1` 完整执行通过：主机 100 条、`aitext_honor_phone` UI 50 条、`aitext_galaxy_tab` UI 50 条，两台 AVD 各 3 类系统入口与强停恢复全部通过。
 - 虚拟脚本已验证 AVD 自动创建/复用、固定端口 5560/5562、顺序启动、完成后自动关闭；本次运行结束后两个专用 AVD 均已停止。
-- 双设备验收体系、用例分布、执行入口和未覆盖探针记录于 [双设备验收体系](docs/device-acceptance-test-system.md)；虚拟运行记录于 [虚拟设备验收报告](docs/test-reports/2026-10-04-virtual-device-acceptance.md)，矩阵结果记录于 [双设备 100 条报告](docs/test-reports/2026-10-04-device-acceptance-100.md)。
 - `scripts/verify-app.ps1` 与 `scripts/verify-integration.ps1` 均已跑通。
 - 浏览器 release 在 390x844 实测日历页，修复后的日格无溢出，控制台无错误。
-- 使用一支临时测试 Key 验证 DeepSeek 端点：`/models` 返回 `deepseek-flash` 与 `deepseek-v4-pro`；`/chat/completions` 对“周五下午两点和客户开会”返回规范 JSON 事件。
-- App 端到端模型测试生成 `2026-10-09 14:00` 事件，标题“与客户开会”，日期与时间在日历中可见；测试 Key 已从 App 安全存储清除。
 - `flutter analyze` 无问题；完整 `flutter test -r compact` 231 项全部通过。
 - 新增 AI 对话专项测试覆盖 SQLite 持久化、SSE 分片、工具调用解析、高置信自动创建、低置信待整理、撤销、跨会话隔离和冷启动留在首页。
 - Android debug APK、release APK（约 63.4 MB，SHA-256 `C4CFC1B5079FD0B7D7483138ADD266A3702AD98399D9F0503647A07473C6C99D`）与 Web release 构建通过。
 - 新增会话生命周期测试覆盖冷启动不建会话、临时页退出不留记录、首次发送只创建一个会话、分享内容建会话和启动清理空会话。
 - 新增收件箱合并测试覆盖捕获确认、调整、忽略和同步冲突裁决。
-- 验证报告见 [AI 多会话验证报告](docs/test-reports/2026-10-05-ai-conversation.md)。
-- Galaxy Tab S7 FE 真机识别通过：Samsung `SM-T736B`、Android 14/API 34、1600x2560/340dpi、逻辑宽度约 753dp；未执行清除数据、刷机或重启。
-- Galaxy Tab S7 FE 真机 50/50 UI 通过；`ACTION_SEND`、`ACTION_PROCESS_TEXT`、系统 chooser 与强停恢复均通过。
 - 真机 release 验证发现 DNS 被阻断，根因为主 manifest 缺少 `android.permission.INTERNET`；修复后 `aapt2 dump permissions` 确认权限存在，release APK SHA-256 为 `CAF39E61B1A4583EF0767FA5C1A7A9811F1B94041D74AC9B90A8317FC1265100`。
-- Galaxy Tab 真机真实模型端到端通过：输入“明天下午三点和客户开会”，自动创建“与客户开会”事件，开始时间 `2026-10-06 15:00`，标签“会议、客户”；测试 Key 已在验证后从平板安全存储清除。
-- 真机验收报告见 [Galaxy Tab S7 FE 物理设备验收报告](docs/test-reports/2026-10-05-galaxy-tab-s7-fe-physical.md)。
 - 20 个大型场景主机矩阵通过 21/21；每个场景的两轮对话、6 个多工具调用、事件/待办时间、知识正文和 Markdown 重建均通过。
-- 同一大型场景矩阵在 Galaxy Tab S7 FE 真机通过 20/20；真机报告见 [20 个大型综合场景测试报告](docs/test-reports/2026-10-05-large-scenario-20.md)。
 - 完整主机测试套件扩展到 253 项并全部通过。
-- HONOR 90 真机识别通过：`REA-AN00`、Android 15/API 35、1200x2664/520dpi、逻辑宽度约 369dp；实机 UI 50/50 通过。
-- HONOR 90 的 `ACTION_SEND`、`ACTION_PROCESS_TEXT`、MagicOS chooser 和强停恢复全部通过。
-- HONOR 90 真机大型场景 20/20 通过；真实模型输入“12月19日上午九点参加大学英语四级考试”，自动创建 `2026-12-19 09:00` 事件，标签“考试、英语四级”。
-- 荣耀测试完成后曾清除 Key；为当前人工检查又临时保留，真机报告见 [HONOR 90 物理设备验收报告](docs/test-reports/2026-10-05-honor-90-physical.md)。
 - 已新增 `tool/export_large_scenario_vault.dart`，可把 20 个大型场景导出为 120 份 Markdown。
-- 已把 220 份人工检查数据写入 HONOR 90 正式应用的 vault，包含 120 个大型场景成果和 100 条设备验收用例；首页显示 20 个待办、140 条知识，事项页显示 20 件事。
-- 按用户要求，HONOR 90 应用的测试 Key 当前保留在系统安全存储中，暂未清除。
 - 已新增中文根 README、MIT 许可证、安全策略、贡献指南、EditorConfig、Flutter CI 和公开发布扫描脚本。
 - Flutter CI 固定使用 `ubuntu-24.04` 和 `actions/checkout@v5`，避免 runner 迁移与旧 Node runtime 提示。
 - 已扩展 Git `pre-commit`：拦截环境文件、签名材料、本地 vault、构建产物、高置信密钥模式及未脱敏设备标识；隔离策略测试扩展到 9 项。
-- 已脱敏测试报告中的 Galaxy Tab 序列号，并确认当前公开树不再包含该值。
 - 已新增 ADR 0011，确定 MIT 开源发布和干净公开历史策略；旧历史保留在本地 `archive/pre-open-source`。
 - 已新增 `.github/workflows/release.yml`，`v*` 标签会校验版本和发行说明，执行分析、测试、Android/Windows 构建、APK 检查、安装器编译、安装/卸载冒烟验证和 Release 上传。
 - 已新增 `app/windows/installer/personal_ai_inbox.iss`，固定 AppId、按用户安装到 LocalAppData，并包含中文安装界面、许可证、快捷方式和卸载。
@@ -222,7 +195,6 @@
 - `flutter analyze` 无问题；完整 `flutter test --reporter compact` 通过 268 项，包含日历专项、会话生命周期、收件箱合并、100 条 Android UI、100 条设备验收和 200 条跨端矩阵。
 - `flutter build web --release`、`flutter build windows --release` 和 `flutter build apk --release` 均成功；Android release APK 为 63.8 MB，SHA-256 `62AA2BB22AE5C800643464C1D6C2899D5CE3325DAC314AE4B52531C40769AAB4`；Windows release EXE SHA-256 `FFD9D0033F3CDBF31B6942A2A87A0DBE6D8C4765A49216651A6B84FE08B8E386`。
 - `flutter test integration_test/windows_smoke_test.dart -d windows` 通过；Windows 原生导航、滚动、长文和捕获流程无异常。
-- 在 `aitext_honor_phone` Android 15 x86_64 AVD 上通过手机与平板两档 `android_smoke_test.dart`，并继续通过 `android_ui_100_test.dart` 100/100。
 - 在真实浏览器尺寸复核手机宽度和 1280x800 桌面布局：五档模式栏、月视图、年视图、周时间轴、日程列表、我的一天、待办和快速新建面板均显示正常，未发现文字重叠或控件溢出。
 - `main` Flutter CI `37501730835` 在 Linux/UTC 环境通过格式、静态分析和 268 项测试。
 - `v1.1.0` Release 工作流 `37501751529` 在 Windows runner 用时 15 分 5 秒全部通过，完成标签校验、测试、Android/Windows release 构建、APK 元数据与 Debug 证书校验、Inno Setup 编译、安装/卸载冒烟、便携 ZIP 校验和 Release 上传。
@@ -248,18 +220,14 @@
 - `AppController` 仍作为迁移期兼容 facade 存在；后续不得向其中新增业务规则，页面迁移完成后必须删除。
 - 维护性升级第一阶段的模块边界已由架构测试保护，但页面仍主要读取 facade，后续需要逐页切换到模块快照。
 - 首版仅支持文本/分享文本捕获，截图视觉 OCR 链路尚未接入和回归。
-- 真实模型已有一条 AVD 和一条 Galaxy Tab 真机端到端样本；尚未形成持续 API Key、30-50 条回归集或费用控制策略。
 - 20 个大型场景使用确定性模拟 SSE 和工具调用，验证应用侧多结果处理与持久化，不代表线上模型对 20 段原文的抽取准确率。
 - Android release APK 使用 debug 签名，不能作为正式分发包。
-- Windows release 与 integration test 已完成；物理设备、托盘、热键、Toast 和通知仍未在真实 Windows 桌面长期运行验证。
-- Galaxy Tab S7 FE 与 HONOR 90 均已完成真机 50 条、系统入口、强停恢复、20 个大型场景和真实模型验证。
-- 两台设备上的测试应用与成果暂时保留便于检查；Galaxy Tab 的测试 Key 已清除，HONOR 90 按用户要求仍保留测试 Key；未执行系统数据清理或卸载。
 - MagicOS/One UI 后台策略、通知、相机和第三方 App 图片分享必须单独采集真机证据。
 - 当前应用尚未实现本地提醒通知，不能把 UI 矩阵通过写成通知验收通过。
 - ADB `shell` 不是媒体 URI 所有者，无法为外部图片分享命令授予 MediaStore 读权限；第三方 App 图片分享仍需人工真机验收。
 - 相机拍照入口尚未在模拟器执行完整拍照流程。
-- 本轮日历工作区已通过主机、Windows 原生冒烟、Android AVD 冒烟和 Android UI 100 条集成矩阵；尚未在 HONOR/Galaxy 物理设备上人工复核新日历布局。
 - `flutter doctor -v` 仍提示 Flutter/Dart 未进入当前 PATH、部分 Android licenses 未接受、Chrome 缺失和 Maven 网络检查超时；本轮通过绝对路径和已缓存依赖完成全部测试，后续应修正 PATH 与许可证告警，避免新终端或 CI 环境出现不可复现失败。
+- 本次公开隐私清理只修改当前公开树；此前公开提交历史仍可能保留旧报告、设备指纹和生活化测试主题，若要求彻底清除历史对象，需要另行执行历史重写和强制推送。
 
 ### 下一步
 
@@ -267,10 +235,19 @@
 2. 配置 Android 独立签名和 Windows 代码签名，为后续稳定版准备正式证书。
 3. 在两台设备上验证电池优化、自启动、后台冻结和本地通知恢复。
 4. 登记 Microsoft public client，完成 OneDrive App Folder、delta、eTag 和 PKCE 联调。
-5. 在具备受控测试 Key 和费用预算时，用线上 `deepseek-flash` 对 20 个大型场景做抽取质量评分，并补 30-50 条中文样本。
 6. 继续维护性升级第二阶段：页面改读模块快照、抽模型/同步纯策略、增加 schema migration 和增量刷新，最终删除 `AppController`。
 
 ## 8. 变更记录
+
+### 2026-10-10 / 清理公开设备指纹、个人披露与测试主题
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 删除公开测试报告和截图，移除个人设备披露与具体设备型号，改用通用 Android 手机/平板 profile，并将回归 fixture 改为无个人语义的合成占位主题 |
+| 变更文件 | `README.md`、`RM_HANDOFF.md`、`docs/device-acceptance-test-system.md`、`docs/personal-ai-inbox-executable-plan.md`、`docs/research/02-calendar-reminders.md`、`docs/research/03-ai-automation-ocr.md`、`app/tool/generate_large_scenarios.dart`、`app/tool/generate_regression_cases.dart`、`app/tool/generate_device_acceptance_cases.dart`、相关 fixture/generated 文件、验收脚本和公开测试证据目录 |
+| 验证 | 待提交前执行 fixture 生成、定向测试、公开发布扫描、敏感词检索、`git diff --check`、Git hooks 和推送后远程复核；未执行完整 Flutter 构建 |
+| 提交标题 | 待提交 |
+| 遗留事项 | 当前提交不会自动抹除 GitHub 旧提交中的历史对象；如需彻底清除旧历史，必须另行确认历史重写与强制推送 |
 
 ### 2026-10-09 / 发布 v1.1.1 预发布版
 
@@ -298,9 +275,7 @@
 |---|---|
 | 任务 | 在 `E:\DevTools` 迁移后重新验证 Flutter 工具链、全部主机回归、三端 release 构建、Windows 原生冒烟、双 AVD UI 与系统入口探针，以及仓库门禁 |
 | 变更文件 | `RM_HANDOFF.md` |
-| 验证 | `dart format` 137 文件 0 变化；`flutter analyze` 无问题；主机 294/294 通过；Web、Windows、Android release 构建通过；Windows smoke 通过；主机设备矩阵 100/100、荣耀 50/50、Galaxy Tab 50/50；双端系统分享、文本处理、chooser 和强停恢复通过；Git policy 9/9、公开发布扫描通过 |
 | 提交标题 | `test(dev): 完成 C 盘迁移后完整验证` |
-| 遗留事项 | Flutter/Dart 尚未进入当前 PATH，部分 Android licenses、Chrome 和 Maven 网络检查仍有 doctor 告警；未在本次执行真实云端模型或物理设备验收 |
 
 ### 2026-10-07 / 适配 C 盘开发环境迁移
 
@@ -350,7 +325,6 @@
 | 变更文件 | `app/lib/core/calendar.dart`、`app/lib/ui/pages/calendar_page.dart`、`app/lib/ui/widgets/calendar_views.dart`、`app/lib/ui/widgets/quick_create_sheet.dart`、`app/lib/ui/widgets/todos_pane.dart`、`app/lib/ui/app_shell.dart`、`app/lib/ui/pages/home_page.dart`、设置与控制器、Android/Windows 集成测试、Android UI 与设备矩阵执行器、日历专项测试、`CONTEXT.md`、可执行方案、`app/README.md`、本文件 |
 | 验证 | Dart 格式检查通过；`flutter analyze` 无问题；完整主机回归 268/268 通过；Web、Windows、Android release 构建通过；Windows 原生冒烟通过；Android 15 x86_64 AVD 手机/平板两档冒烟通过；Android UI 集成矩阵 100/100 通过；手机宽度与 1280x800 浏览器实测五档视图、三段切换和快速新建无溢出 |
 | 提交标题 | `feat(app): 扩展日历工作区与快速新建` |
-| 遗留事项 | 尚未在 HONOR/Galaxy 物理设备人工复核新日历布局；提醒/闹钟/优先级/时区字段按本轮范围继续延后 |
 
 ### 2026-10-07 / 合并确认收件箱并按首次内容创建会话
 
@@ -396,9 +370,6 @@
 
 | 字段 | 内容 |
 |---|---|
-| 任务 | 把前 100 条设备验收用例也导出为知识条目，与 120 个大型场景成果一起保留在 HONOR 90 应用中供人工检查 |
-| 变更文件 | `app/tool/export_large_scenario_vault.dart`、`app/README.md`、`docs/test-reports/2026-10-05-honor-90-physical.md`、`RM_HANDOFF.md` |
-| 验证 | 导出器生成 220 份 Markdown；写入手机后首页显示 20 个待办、140 条知识，事项页 20 件事；测试 Key 仍保留 |
 | 提交标题 | `test(app): 补充验收用例人工检查数据` |
 | 遗留事项 | 人工检查完成后由用户决定是否清除 Key 和这些验收数据 |
 
@@ -406,41 +377,24 @@
 
 | 字段 | 内容 |
 |---|---|
-| 任务 | 把 20 个大型场景导出为正式 Markdown，写入 HONOR 90 应用 vault，并按要求保留测试 Key 供人工检查 |
-| 变更文件 | `app/tool/export_large_scenario_vault.dart`、`app/README.md`、`docs/test-reports/2026-10-05-honor-90-physical.md`、`RM_HANDOFF.md` |
-| 验证 | 生成 120 份 Markdown；写入 HONOR 90 应用后首页显示 20 个待办、40 条知识，事项页显示 20 件事；原有 37 份数据保留；恢复 release APK；测试 Key 当前保留在安全存储 |
 | 提交标题 | `test(app): 支持大型场景人工检查数据导出` |
-| 遗留事项 | 人工检查完成后应由用户决定是否清除测试 Key 和验收数据 |
 
-### 2026-10-05 / 完成 HONOR 90 真机测试与 MagicOS chooser 适配
 
 | 字段 | 内容 |
 |---|---|
-| 任务 | 在借用的 HONOR 90 上执行既有 50 条 UI、系统入口探针、20 个大型场景和真实模型验证，并适配 MagicOS 分享面板 |
-| 变更文件 | `scripts/verify-device-acceptance.ps1`、`docs/test-reports/2026-10-05-honor-90-physical.md`、`RM_HANDOFF.md` |
-| 验证 | HONOR `REA-AN00` / Android 15；主机 100/100；实机 UI 50/50；`ACTION_SEND`、`ACTION_PROCESS_TEXT`、MagicOS chooser 和强停恢复通过；大型场景 20/20；真实模型自动创建 `2026-12-19 09:00` 四级考试事件；测试 Key 已清除 |
-| 提交标题 | `test(android): 完成HONOR 90真机适配` |
 | 遗留事项 | MagicOS/One UI 后台策略、通知、相机和第三方 App 图片分享仍待验证 |
 
 ### 2026-10-05 / 建立 20 个大型综合场景测试
 
 | 字段 | 内容 |
 |---|---|
-| 任务 | 构建类似四级考试的大型综合场景，每个场景包含多个时间、事件、待办和知识，并在主机与已连接的 Galaxy Tab 真机执行 |
-| 变更文件 | `app/tool/generate_large_scenarios.dart`、`app/test/fixtures/large_scenario_20_cases.json`、`app/test/large_scenario_20_cases.g.dart`、`app/test/large_scenario_runner.dart`、`app/test/large_scenario_20_cases_test.dart`、`app/integration_test/large_scenario_20_test.dart`、`scripts/verify-large-scenarios.ps1`、`docs/test-reports/2026-10-05-large-scenario-20.md`、`app/README.md`、`RM_HANDOFF.md` |
-| 验证 | 主机大型场景 21/21 通过；Galaxy Tab S7 FE 真机 20/20 通过；共 120 个自动记录载荷，覆盖 20 事项、40 事件、20 待办、40 知识；日期时间、正文和 Markdown 重建全部通过；完整主机套件 253 项通过 |
 | 提交标题 | `test(app): 建立20个大型综合场景矩阵` |
 | 遗留事项 | 该矩阵使用确定性模拟 SSE，不替代线上模型对 20 个场景的抽取准确率测试 |
 
-### 2026-10-05 / 修复正式包联网并完成 Galaxy Tab 真机验收
 
 | 字段 | 内容 |
 |---|---|
-| 任务 | 在借用的 Samsung Galaxy Tab S7 FE 上完成 50 条 UI、系统入口和真实模型验证，修复 release APK 缺少网络权限的问题，并更新真机恢复探针 |
-| 变更文件 | `app/android/app/src/main/AndroidManifest.xml`、`app/test/android_manifest_test.dart`、`scripts/verify-device-acceptance.ps1`、`docs/device-acceptance-test-system.md`、`docs/test-reports/2026-10-05-galaxy-tab-s7-fe-physical.md`、`RM_HANDOFF.md` |
-| 验证 | 真机 Samsung `SM-T736B` / Android 14；主机 232 项通过；Galaxy Tab UI 50/50；三类系统入口和强停恢复通过；release APK 重新构建并确认 `INTERNET` 权限；真实模型自动创建 `2026-10-06 15:00` 事件；测试 Key 已从平板清除 |
 | 提交标题 | `fix(android): 修复正式包联网并完成平板真机验收` |
-| 遗留事项 | 荣耀手机实机未接入；MagicOS/One UI 后台策略、通知、相机和第三方 App 图片分享仍需物理设备验证 |
 
 ### 2026-10-05 / 收件箱改造为 AI 多会话与自动记录
 
@@ -448,79 +402,54 @@
 |---|---|
 | 任务 | 学习 DeepSeek 式对话交互，把收件箱改成本地多会话 AI 记录，支持冷启动新会话、上下文隔离、文本/粘贴/图片输入、流式回复和高置信自动新增成果 |
 | 变更文件 | `app/lib/core/chat_models.dart`、`app/lib/data/*conversation*`、`app/lib/data/*attachment*`、`app/lib/data/chat_repository.dart`、`app/lib/data/share_payload.dart`、`app/lib/services/chat_service.dart`、`app/lib/services/image_input_service.dart`、`app/lib/services/model_client.dart`、`app/lib/services/app_controller.dart`、`app/lib/ui/pages/inbox_page.dart`、`app/lib/ui/pages/conversation_page.dart`、`app/lib/ui/pages/settings_page.dart`、`app/lib/ui/app_shell.dart`、Android manifest/MainActivity、`app/pubspec.*`、新增专项测试、ADR 0010、模型接入/同步协议/可执行方案/CONTEXT/app README、本文件 |
-| 验证 | `flutter analyze` 无问题；完整 `flutter test -r compact` 231 项通过；Android debug/release 与 Web release 构建通过；荣耀 AVD 人工确认冷启动自动打开新会话、文本分享、相册选图和图片预览；测试 Key 已清除 |
 | 提交标题 | `feat(app): 收件箱改造成 AI 多会话与自动记录` |
-| 遗留事项 | 尚未用真实模型 Key 跑线上流式与自动记录；相机拍照、第三方 App 图片分享和真机图片权限流程仍需物理设备验收 |
 
-### 2026-10-04 / 搭建荣耀与三星双 AVD 虚拟验收环境
 
 | 字段 | 内容 |
 |---|---|
-| 任务 | 先搭建可重复的虚拟设备测试环境，自动创建并运行荣耀手机和 Galaxy Tab 两套 AVD，执行 100 条用例与系统入口探针 |
-| 变更文件 | `scripts/verify-virtual-device.ps1`、`docs/test-reports/2026-10-04-virtual-device-acceptance.md`、`docs/device-acceptance-test-system.md`、`docs/test-reports/2026-10-04-device-acceptance-100.md`、`app/README.md`、`RM_HANDOFF.md` |
-| 验证 | `verify-virtual-device.ps1` 完整通过；主机 100/100、荣耀 AVD 50/50、平板 AVD 50/50；两台 AVD 的系统分享、文本处理、chooser 和强停恢复全部通过；12 张截图生成；两台专用 AVD 已自动关闭 |
 | 提交标题 | `test(android): 搭建双设备虚拟验收环境` |
-| 遗留事项 | 虚拟设备不能替代 HONOR MagicOS / Samsung One UI 物理机验收；真实设备尚未接入 |
 
 ### 2026-10-04 / 自动化设备分享与强停恢复探针
 
 | 字段 | 内容 |
 |---|---|
 | 任务 | 补齐双设备验收中的系统分享面板、文本处理和进程重启持久化证据，并纳入主验收脚本 |
-| 变更文件 | `scripts/verify-device-acceptance.ps1`、`docs/device-acceptance-test-system.md`、`docs/test-reports/2026-10-04-device-acceptance-100.md`、`app/README.md`、`RM_HANDOFF.md` |
-| 验证 | 主机 100 条仍通过；模拟器 release 上荣耀与平板配置各通过 `ACTION_SEND`、`ACTION_PROCESS_TEXT`、系统 chooser 选择及强停恢复，系统探针 6/6 通过；12 张证据截图已生成 |
 | 提交标题 | `test(android): 自动化设备系统分享与恢复探针` |
-| 遗留事项 | 仍需物理设备执行 50+50 UI 矩阵、真实系统分享面板选择、后台策略和通知验证 |
 
-### 2026-10-04 / 建立荣耀与三星双设备 100 条验收体系
 
 | 字段 | 内容 |
 |---|---|
-| 任务 | 搭建覆盖三星 Galaxy Tab 和荣耀手机的测试体系，固定 100 条用例并按目标设备执行 |
-| 变更文件 | `app/tool/generate_device_acceptance_cases.dart`、`app/test/fixtures/device_acceptance_100_cases.json`、`app/test/device_acceptance_100_cases.g.dart`、`app/test/device_acceptance_case_runner.dart`、`app/test/device_acceptance_100_cases_test.dart`、`app/integration_test/device_acceptance_physical_test.dart`、`app/test/android_ui_case_runner.dart`、`scripts/verify-device-acceptance.ps1`、`docs/device-acceptance-test-system.md`、`docs/test-reports/2026-10-04-device-acceptance-100.md`、`app/README.md`、`RM_HANDOFF.md` |
-| 验证 | `flutter analyze` 无问题；完整 `flutter test` 225 项通过；主机双设备矩阵 100/100 通过；模拟器按荣耀视口 50/50、平板视口 50/50 通过；厂商负向门禁正确拒绝 |
-| 提交标题 | `test(android): 建立荣耀与三星双设备验收矩阵` |
-| 遗留事项 | 当前未连接物理荣耀手机与 Galaxy Tab；系统分享、重启持久化、后台策略和通知仍需真机探针 |
 
 ### 2026-10-04 / 建立 Android 100 条 UI 回归
 
 | 字段 | 内容 |
 |---|---|
 | 任务 | 生成 100 条独立 Android UI 用例，测试手机/平板前端、字体、主题、按钮、滚动、滑动、详情和捕获体验，修复视觉与交互问题 |
-| 变更文件 | `app/tool/generate_android_ui_cases.dart`、`app/test/fixtures/android_ui_100_cases.json`、`app/test/android_ui_100_cases.g.dart`、`app/test/android_ui_100_cases_test.dart`、`app/test/android_ui_case_runner.dart`、`app/integration_test/android_ui_100_test.dart`、日历/编辑页/AppShell/捕获面板、`scripts/verify-android-ui.ps1`、`docs/test-reports/2026-10-04-android-ui-100.md`、三张 Android 截图、`RM_HANDOFF.md` |
 | 验证 | `flutter analyze` 无问题；124 项主机测试通过；Android 15 模拟器 100/100 integration test 通过；Web、Windows release、Android release APK 构建通过 |
 | 提交标题 | `test(android): 完成100条UI回归与体验修复` |
-| 遗留事项 | 物理荣耀手机/Galaxy Tab、通知权限、系统分享面板和长期后台运行仍待验证 |
 
 ### 2026-10-04 / 补充 Windows 与 Android 原生集成测试
 
 | 字段 | 内容 |
 |---|---|
 | 任务 | 完成 Windows 原生构建与运行验证，补齐 Android 手机/平板模拟器集成测试，并固化三端验证脚本 |
-| 变更文件 | `app/integration_test/windows_smoke_test.dart`、`app/integration_test/android_smoke_test.dart`、`app/pubspec.yaml`、`app/pubspec.lock`、`scripts/verify-integration.ps1`、`app/README.md`、`docs/test-reports/2026-10-04-200-case-matrix.md`、`RM_HANDOFF.md` |
 | 验证 | Windows release 构建成功；Windows integration test 通过；Android 15 x86_64 模拟器 phone/tablet integration test 通过；完整测试套件仍为 23 项通过 |
 | 提交标题 | `test(app): 补充三端原生集成测试` |
-| 遗留事项 | 物理荣耀手机/Galaxy Tab、托盘热键 Toast、OneDrive OAuth 和真实通知仍待验证 |
 
 ### 2026-10-04 / 建立 200 条跨端回归矩阵
 
 | 字段 | 内容 |
 |---|---|
 | 任务 | 生成 200 条不同设备、时段、事件、场景、需求和文本大小的测试例，测试手机、平板、桌面三档前端与后端并修复问题 |
-| 变更文件 | `app/tool/generate_regression_cases.dart`、`app/test/fixtures/regression_cases.json`、`app/test/regression_200_cases_test.dart`、日期解析与日历布局、`docs/test-reports/2026-10-04-200-case-matrix.md`、`app/README.md`、`RM_HANDOFF.md` |
 | 验证 | 23 项 `flutter test` 全部通过；200 条解析矩阵通过；三档后端持久化、索引重建和同步通过；三档前端渲染与长文详情通过；`flutter analyze` 无问题；Web release 与 Android release APK 构建成功 |
 | 提交标题 | `test(app): 建立200条跨端回归矩阵` |
-| 遗留事项 | Windows 原生构建需要管理员 UAC 安装 ATL；尚未在荣耀手机和 Galaxy Tab 物理设备运行；OneDrive OAuth 未接入 |
 
 ### 2026-10-04 / 修复周内日期与中文口语时间
 
 | 字段 | 内容 |
 |---|---|
-| 任务 | 使用临时测试 Key 联调真实模型，修复“周五”“两点”等中文口语解析缺口，并完成端到端事件生成验证 |
 | 变更文件 | `app/lib/core/deterministic_parser.dart`、`app/test/deterministic_parser_test.dart`、`RM_HANDOFF.md` |
-| 验证 | 15 项 `flutter test` 通过；`flutter analyze` 无问题；Web release 与 Android release APK 构建成功；真实模型返回事件 JSON；App 生成 `2026-10-09 14:00` 事件；测试 Key 未写入仓库且已从 App 清除 |
 | 提交标题 | `fix(app): 补全周内日期与中文口语时间解析` |
-| 遗留事项 | 仍需真实 Key 的持续回归、截图视觉链路和费用控制策略；用户提供的测试 Key 应尽快撤销 |
 
 ### 2026-10-04 / 完成第一版本地收件箱客户端
 
@@ -530,7 +459,6 @@
 | 变更文件 | `app/**`、`scripts/verify-app.ps1`、`RM_HANDOFF.md` |
 | 验证 | `flutter analyze` 无问题；14 项 `flutter test` 通过；Web release、Android debug/release APK 构建成功；APK manifest 与签名校验通过；浏览器 1440/390/320 三档实测通过 |
 | 提交标题 | `feat(app): 完成第一版本地收件箱客户端` |
-| 遗留事项 | OneDrive OAuth、Windows 原生构建、真实模型调用、物理设备提醒、正式签名和 AI 直写 ADR 待后续完成 |
 
 ### 2026-10-04 / 建立 RM 交接与 Git 强制提交
 
@@ -541,3 +469,4 @@
 | 验证 | `scripts/test-git-policy.ps1` 的 7 项隔离测试全部通过；hooks 安装幂等；首个提交及提交后状态、diff 和跟踪检查通过 |
 | 提交标题 | `chore: 建立项目交接与强制提交规范` |
 | 遗留事项 | 后续根据实际开发任务持续维护本文件；目前未配置远程仓库 |
+

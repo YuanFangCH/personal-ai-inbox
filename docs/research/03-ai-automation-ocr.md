@@ -1,7 +1,7 @@
 # 文本/截图到 AI 分类、结构化 JSON、知识报告与日历自动化调研
 
 > 调研日期：2026-10-03  
-> 目标环境：自建服务器、公网 IPv6、Windows 11、荣耀 Android、三星 Android 平板。  
+> 目标环境：自建服务器、公网 IPv6、Windows 11、Android 手机与平板。  
 > 偏好：开源、可自托管；允许按量使用云模型 API。  
 > 资料口径：优先采用项目官方仓库、官方文档和第一方 API 规范。文中的“我的判断”均为结合本环境的工程结论，不是厂商承诺。
 
@@ -47,7 +47,7 @@ Activepieces 核心是 MIT，且有 Webhook Trigger、Waitpoint、AI Providers�
 
 ```mermaid
 flowchart LR
-    A[荣耀/三星 Android<br/>HTTP Shortcuts Direct Share] -->|文本或图片 + event_id/HMAC| B[Caddy<br/>域名 AAAA + HTTPS]
+    A[Android 手机/平板<br/>HTTP Shortcuts Direct Share] -->|文本或图片 + event_id/HMAC| B[Caddy<br/>域名 AAAA + HTTPS]
     B --> C[n8n Webhook<br/>Header/JWT/HMAC 校验]
     C --> D[幂等写入 PostgreSQL<br/>event_id UNIQUE]
     D --> E{输入类型}
@@ -475,8 +475,8 @@ OpenAI Structured Outputs 支持 JSON Schema 子集，能保证结构符合 sche
 
 **入口**
 
-- 荣耀手机：HTTP Shortcuts，Direct Share + 图片/文本快捷方式。
-- 三星平板：HTTP Shortcuts，同一份导出配置导入。
+- Android手机：HTTP Shortcuts，Direct Share + 图片/文本快捷方式。
+- Android 平板：HTTP Shortcuts，同一份导出配置导入。
 - 共享事件携带 `event_id`、`device_id`、timestamp、HMAC。
 
 **网络**

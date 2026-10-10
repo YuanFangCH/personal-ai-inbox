@@ -1,6 +1,6 @@
 param(
-    [string]$HonorAvd = 'aitext_honor_phone',
-    [string]$GalaxyAvd = 'aitext_galaxy_tab',
+    [string]$HonorAvd = 'aitext_android_phone',
+    [string]$GalaxyAvd = 'aitext_android_tablet',
     [string]$SystemImage = 'system-images;android-35;google_apis;x86_64',
     [int]$HonorPort = 5560,
     [int]$GalaxyPort = 5562,
@@ -271,18 +271,18 @@ function Invoke-VirtualProfile {
     }
 
     if (-not $SkipSystemProbes) {
-        if ($Profile -eq 'honor-phone') {
+        if ($Profile -eq 'android-phone') {
             & $acceptanceScript `
                 -SystemProbesOnly `
                 -AllowUnverifiedDevice `
                 -SkipReleaseBuild `
-                -HonorSerial $Serial
+                -PhoneSerial $Serial
         } else {
             & $acceptanceScript `
                 -SystemProbesOnly `
                 -AllowUnverifiedDevice `
                 -SkipReleaseBuild `
-                -GalaxySerial $Serial
+                -TabletSerial $Serial
         }
     }
 }
@@ -320,7 +320,7 @@ try {
 
     $honor = Start-VirtualDevice -AvdName $HonorAvd -Port $HonorPort
     try {
-        Invoke-VirtualProfile -Profile 'honor-phone' -Serial $honor.Serial
+        Invoke-VirtualProfile -Profile 'android-phone' -Serial $honor.Serial
     }
     finally {
         Stop-VirtualDevice -Serial $honor.Serial -Started $honor.Started
@@ -328,7 +328,7 @@ try {
 
     $galaxy = Start-VirtualDevice -AvdName $GalaxyAvd -Port $GalaxyPort
     try {
-        Invoke-VirtualProfile -Profile 'galaxy-tab' -Serial $galaxy.Serial
+        Invoke-VirtualProfile -Profile 'android-tablet' -Serial $galaxy.Serial
     }
     finally {
         Stop-VirtualDevice -Serial $galaxy.Serial -Started $galaxy.Started
