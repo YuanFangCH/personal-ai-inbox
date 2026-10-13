@@ -7,10 +7,11 @@ import 'package:sqlite3/sqlite3.dart';
 import 'package:uuid/uuid.dart';
 
 import 'settings_service.dart';
+import 'migration_coordinator.dart';
 
 /// Takes a consistent pre-migration snapshot and coordinates rollback across
 /// the local index database, conversation database, and non-secret settings.
-class SqliteMigrationCoordinator {
+class SqliteMigrationCoordinator implements MigrationCoordinator {
   SqliteMigrationCoordinator({
     required this.supportPath,
     required SettingsService settings,
@@ -26,6 +27,7 @@ class SqliteMigrationCoordinator {
   RandomAccessFile? _startupLock;
   Map<String, dynamic>? _pendingState;
 
+  @override
   Future<void> prepare() async {
     await Directory(supportPath).create(recursive: true);
     final lock = File(p.join(supportPath, '.migration-startup.lock'));
@@ -117,6 +119,7 @@ class SqliteMigrationCoordinator {
     _pendingState = state;
   }
 
+  @override
   Future<void> complete() async {
     final pending = _pendingState;
     if (pending == null) {
@@ -134,6 +137,7 @@ class SqliteMigrationCoordinator {
     await _releaseLock();
   }
 
+  @override
   Future<void> rollback() async {
     final pending = _pendingState;
     if (pending == null) {

@@ -39,6 +39,19 @@ class FakeSettingsService extends SettingsService {
   }
 
   @override
+  Future<AppSettings> saveConfiguration(
+    AppSettings configuration, {
+    String? apiKey,
+    bool replaceApiKey = false,
+  }) async {
+    if (replaceApiKey) {
+      _modelKey = apiKey?.trim().isEmpty == true ? null : apiKey?.trim();
+    }
+    _settings = configuration.copyWith(hasModelKey: _modelKey != null);
+    return _settings;
+  }
+
+  @override
   Future<void> saveGeneral({
     ThemePreference? themeMode,
     String? modelBaseUrl,
@@ -46,6 +59,13 @@ class FakeSettingsService extends SettingsService {
     bool? showCompletedTodos,
     bool? calendarMonthDetailed,
     bool? allowImageEgress,
+    ModelCapabilityOverrides? capabilityOverrides,
+    int? responseHeaderTimeoutSeconds,
+    int? streamIdleTimeoutSeconds,
+    int? totalTimeoutSeconds,
+    int? contextMessageLimit,
+    int? imageMessageLimit,
+    int? imageLimit,
   }) async {
     _settings = _settings.copyWith(
       themeMode: themeMode,
@@ -54,6 +74,13 @@ class FakeSettingsService extends SettingsService {
       showCompletedTodos: showCompletedTodos,
       calendarMonthDetailed: calendarMonthDetailed,
       allowImageEgress: allowImageEgress,
+      capabilityOverrides: capabilityOverrides,
+      responseHeaderTimeoutSeconds: responseHeaderTimeoutSeconds,
+      streamIdleTimeoutSeconds: streamIdleTimeoutSeconds,
+      totalTimeoutSeconds: totalTimeoutSeconds,
+      contextMessageLimit: contextMessageLimit,
+      imageMessageLimit: imageMessageLimit,
+      imageLimit: imageLimit,
     );
   }
 }

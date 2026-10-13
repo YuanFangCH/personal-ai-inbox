@@ -13,6 +13,8 @@ class ModelRequestPolicy {
     required List<ChatMessage> history,
     required bool imagesAllowed,
     required String imageBlockReason,
+    int messageLimit = ModelRequestPolicy.messageLimit,
+    int imageMessageLimit = ModelRequestPolicy.imageMessageLimit,
     Set<String> excludedMessageIds = const {},
   }) {
     final complete = history

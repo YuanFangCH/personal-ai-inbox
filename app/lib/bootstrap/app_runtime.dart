@@ -11,7 +11,7 @@ import '../data/memory_attachment_store.dart';
 import '../data/memory_conversation_store.dart';
 import '../data/result_repository.dart';
 import '../data/settings_service.dart';
-import '../data/sqlite_migration_coordinator.dart';
+import '../data/migration_coordinator_factory.dart';
 import '../data/sync_engine.dart';
 import '../data/sync_provider.dart';
 import '../data/vault_store.dart';
@@ -45,9 +45,9 @@ final class AppRuntime {
         ? await appSupportPath()
         : 'memory';
     final settingsService = settingsOverride ?? SettingsService();
-    final migration = supportPath == 'memory'
+    final migration = vaultOverride != null
         ? null
-        : SqliteMigrationCoordinator(
+        : await createMigrationCoordinator(
             supportPath: supportPath,
             settings: settingsService,
           );

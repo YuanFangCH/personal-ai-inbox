@@ -22,6 +22,23 @@ void main() {
     expect(plan.messages.last.id, 'm24');
   });
 
+  test('uses configured context and image-history limits', () {
+    final plan = policy.prepare(
+      history: [
+        _message('old', 'old', attachments: [_attachment('old-image')]),
+        _message('middle', 'middle', attachments: [_attachment('mid-image')]),
+        _message('latest', 'latest', attachments: [_attachment('new-image')]),
+      ],
+      imagesAllowed: true,
+      imageBlockReason: 'image disabled',
+      messageLimit: 2,
+      imageMessageLimit: 1,
+    );
+
+    expect(plan.messages.map((message) => message.id), ['middle', 'latest']);
+    expect(plan.imageMessageIds, {'latest'});
+  });
+
   test('filters every image message when image egress is disabled', () {
     final oldImage = _message('old', '', attachments: [_attachment('a1')]);
     final currentText = _message('current', 'local text');

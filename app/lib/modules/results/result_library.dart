@@ -247,6 +247,9 @@ class ResultLibrary extends ChangeNotifier {
       links: List<String>.unmodifiable(document.links),
       sourceEventIds: List<String>.unmodifiable(document.sourceEventIds),
       sourceHashes: List<String>.unmodifiable(document.sourceHashes),
+      extensionFields: Map<String, Object?>.unmodifiable(
+        document.extensionFields,
+      ),
     );
   }
 }
