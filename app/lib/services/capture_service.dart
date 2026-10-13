@@ -2,6 +2,7 @@ import '../core/deterministic_parser.dart';
 import '../core/models.dart';
 import '../data/settings_service.dart';
 import 'model_client.dart';
+import 'model_capabilities.dart';
 
 class CaptureAnalysis {
   const CaptureAnalysis({
@@ -52,6 +53,7 @@ class CaptureService {
           baseUrl: settings.modelBaseUrl,
           model: settings.modelName,
           apiKey: apiKey,
+          capabilities: ModelCapabilities.forModel(settings.modelName),
         ),
       );
       final merged = _mergeWithRules(

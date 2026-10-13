@@ -4,23 +4,24 @@ import '../core/chat_models.dart';
 import '../data/chat_repository.dart';
 import '../data/settings_service.dart';
 import 'model_client.dart';
+import 'model_capabilities.dart';
+import 'model_request_policy.dart';
 
 class ChatService {
   ChatService({
     required SettingsService settings,
     required ChatRepository repository,
     ModelClient? modelClient,
+    ModelRequestPolicy requestPolicy = const ModelRequestPolicy(),
   }) : _settings = settings,
        _repository = repository,
-       _modelClient = modelClient ?? ModelClient();
-
-  static const contextMessageLimit = 20;
-  static const contextImageMessageLimit = 4;
-  static const contextImageLimit = 8;
+       _modelClient = modelClient ?? ModelClient(),
+       _requestPolicy = requestPolicy;
 
   final SettingsService _settings;
   final ChatRepository _repository;
   final ModelClient _modelClient;
+  final ModelRequestPolicy _requestPolicy;
 
   Future<bool> get isConfigured async {
     final settings = await _settings.load();
@@ -29,6 +30,7 @@ class ChatService {
 
   Future<Stream<ChatStreamDelta>> streamReply({
     required String conversationId,
+    Set<String> excludedMessageIds = const {},
   }) async {
     final settings = await _settings.load();
     final apiKey = await _settings.readModelKey();
@@ -36,14 +38,34 @@ class ChatService {
       throw StateError('请先在设置中配置云端模型 API Key');
     }
 
-    final history = await _repository.listMessages(conversationId);
-    final requestMessages = await _buildRequestMessages(history);
+    final capabilities = ModelCapabilities.forModel(settings.modelName);
+    final imagesAllowed = settings.allowImageEgress && capabilities.vision;
+    final plan = _requestPolicy.prepare(
+      history: await _repository.listMessages(conversationId),
+      imagesAllowed: imagesAllowed,
+      imageBlockReason: settings.allowImageEgress ? '当前模型不支持图片' : '图片出网已关闭',
+      excludedMessageIds: excludedMessageIds,
+    );
+    if (plan.blockedReason != null) {
+      throw StateError(plan.blockedReason!);
+    }
+    final requestMessages = await _buildRequestMessages(
+      plan.messages,
+      imageMessageIds: plan.imageMessageIds,
+      includeImages: plan.imagesAllowed,
+    );
+    if (!requestMessages.any(
+      (message) => message.text.trim().isNotEmpty || message.images.isNotEmpty,
+    )) {
+      throw StateError('没有可发送的文字或图片内容。');
+    }
     return _modelClient.streamChat(
       messages: requestMessages,
       configuration: ModelConfiguration(
         baseUrl: settings.modelBaseUrl,
         model: settings.modelName,
         apiKey: apiKey,
+        capabilities: capabilities,
       ),
       now: DateTime.now(),
     );
@@ -52,38 +74,17 @@ class ChatService {
   void close() => _modelClient.close();
 
   Future<List<ChatRequestMessage>> _buildRequestMessages(
-    List<ChatMessage> history,
-  ) async {
-    final complete = history
-        .where(
-          (message) =>
-              message.status != ChatMessageStatus.streaming &&
-              (message.content.trim().isNotEmpty ||
-                  message.attachments.isNotEmpty),
-        )
-        .toList(growable: false);
-    final start = complete.length > contextMessageLimit
-        ? complete.length - contextMessageLimit
-        : 0;
-    final selected = complete.sublist(start);
-    final imageMessages = selected
-        .where((message) => message.attachments.isNotEmpty)
-        .toList(growable: false);
-    final imageStart = imageMessages.length > contextImageMessageLimit
-        ? imageMessages.length - contextImageMessageLimit
-        : 0;
-    final imageMessageIds = imageMessages
-        .sublist(imageStart)
-        .map((message) => message.id)
-        .toSet();
-
+    List<ChatMessage> selected, {
+    required Set<String> imageMessageIds,
+    required bool includeImages,
+  }) async {
     var imageCount = 0;
     final values = <ChatRequestMessage>[];
     for (final message in selected) {
       final images = <ChatRequestImage>[];
-      if (imageMessageIds.contains(message.id)) {
+      if (includeImages && imageMessageIds.contains(message.id)) {
         for (final attachment in message.attachments) {
-          if (imageCount >= contextImageLimit) {
+          if (imageCount >= ModelRequestPolicy.imageLimit) {
             break;
           }
           final resolved = await _repository.readAttachment(attachment);

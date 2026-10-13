@@ -147,6 +147,7 @@ class _LifecycleHarness {
   }) async {
     final model = ModelClient(
       client: MockClient.streaming((request, bodyStream) async {
+        await bodyStream.toBytes();
         return http.StreamedResponse(
           Stream.fromIterable([
             utf8.encode(

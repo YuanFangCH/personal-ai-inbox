@@ -53,7 +53,8 @@ class _MessageBubble extends StatelessWidget {
                 padding: EdgeInsets.only(top: 10),
                 child: LinearProgressIndicator(minHeight: 2),
               ),
-            if (message.status == ChatMessageStatus.failed) ...[
+            if (message.status == ChatMessageStatus.failed ||
+                message.status == ChatMessageStatus.interrupted) ...[
               const SizedBox(height: 10),
               Text(
                 message.error ?? '生成失败',

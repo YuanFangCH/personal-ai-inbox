@@ -66,6 +66,10 @@ class AutoRecordProcessor {
     final payload = decoded.map(
       (key, value) => MapEntry(key.toString(), value),
     );
+    final structuralError = _validatePayload(payload);
+    if (structuralError != null) {
+      return _skipped(actionId, createdAt, structuralError);
+    }
     ResultType type;
     try {
       type = ResultType.parse(payload['type'].toString());
@@ -81,7 +85,7 @@ class AutoRecordProcessor {
     }
     final title = payload['title']?.toString().trim() ?? '';
     final body = payload['body']?.toString().trim() ?? '';
-    final confidence = (payload['confidence'] as num?)?.toDouble() ?? 0;
+    final confidence = (payload['confidence'] as num).toDouble();
     final sensitive = payload['sensitive'] == true;
     final recurrence = payload['recurrence']?.toString().trim() ?? '';
     final due = _parseDate(payload['due']);
@@ -100,8 +104,21 @@ class AutoRecordProcessor {
       reviewReason = '敏感内容需要人工确认';
     } else if (recurrence.isNotEmpty) {
       reviewReason = '重复规则需要人工确认';
+    } else if ((type != ResultType.todo && due != null) ||
+        (type != ResultType.event &&
+            (start != null || end != null || allDay))) {
+      reviewReason = '日期字段与成果类型不匹配';
+    } else if (_hasInvalidDate(payload, 'due') ||
+        _hasInvalidDate(payload, 'start') ||
+        _hasInvalidDate(payload, 'end')) {
+      reviewReason = '日期格式无效，需要人工确认';
     } else if (type == ResultType.event && start == null) {
       reviewReason = '事件缺少开始时间';
+    } else if (type == ResultType.event &&
+        end != null &&
+        start != null &&
+        end.isBefore(start)) {
+      reviewReason = '事件结束时间早于开始时间';
     } else if ((start ?? due) != null &&
         (start ?? due)!.isBefore(DateTime.now())) {
       reviewReason = '日期已经过去';
@@ -177,6 +194,64 @@ class AutoRecordProcessor {
       createdAt: createdAt,
       reason: reason,
     );
+  }
+
+  String? _validatePayload(Map<String, dynamic> payload) {
+    const allowed = {
+      'type',
+      'title',
+      'body',
+      'tags',
+      'confidence',
+      'sensitive',
+      'due',
+      'start',
+      'end',
+      'all_day',
+      'recurrence',
+    };
+    if (payload.keys.any((key) => !allowed.contains(key))) {
+      return '模型返回了未支持的字段';
+    }
+    if (payload['type'] is! String ||
+        payload['title'] is! String ||
+        payload['body'] is! String) {
+      return '成果类型、标题和正文必须是文本';
+    }
+    final confidence = payload['confidence'];
+    if (confidence is! num ||
+        !confidence.isFinite ||
+        confidence < 0 ||
+        confidence > 1) {
+      return '置信度格式无效';
+    }
+    if (payload['sensitive'] is! bool) {
+      return '敏感状态缺失或格式无效';
+    }
+    if (payload.containsKey('tags') &&
+        (payload['tags'] is! List ||
+            (payload['tags'] as List).any((value) => value is! String))) {
+      return '标签格式无效';
+    }
+    if (payload.containsKey('all_day') && payload['all_day'] is! bool) {
+      return '全天标记格式无效';
+    }
+    final recurrence = payload['recurrence'];
+    if (recurrence != null && recurrence is! String) {
+      return '重复规则格式无效';
+    }
+    for (final field in const ['due', 'start', 'end']) {
+      final value = payload[field];
+      if (value != null && value is! String) {
+        return '$field 日期格式无效';
+      }
+    }
+    return null;
+  }
+
+  bool _hasInvalidDate(Map<String, dynamic> payload, String field) {
+    final value = payload[field];
+    return value is String && DateTime.tryParse(value) == null;
   }
 
   Future<bool> _isDuplicate(ResultType type, String title, DateTime? at) async {
