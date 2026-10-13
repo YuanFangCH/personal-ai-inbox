@@ -238,6 +238,19 @@ class _RecordingIndexDatabase implements IndexDatabase {
   Future<List<IndexedResult>> listResults() => _delegate.listResults();
 
   @override
+  Future<List<IndexedResult>> searchResults({
+    required String query,
+    required int limit,
+    required int offset,
+    ResultType? type,
+  }) => _delegate.searchResults(
+    query: query,
+    limit: limit,
+    offset: offset,
+    type: type,
+  );
+
+  @override
   Future<IndexedResult?> findResult(String id) => _delegate.findResult(id);
 
   @override

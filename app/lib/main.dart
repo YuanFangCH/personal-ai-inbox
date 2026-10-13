@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
 import 'app.dart';
+import 'bootstrap/app_runtime.dart';
 import 'data/share_bridge.dart';
-import 'services/app_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final controller = await AppController.bootstrap();
+  final runtime = await AppRuntime.bootstrap();
   await initializeShareBridge((payload) async {
-    await controller.handleSharedPayload(payload);
+    await runtime.conversations.handleSharedPayload(payload);
   });
-  runApp(PersonalAiInboxApp(controller: controller));
+  runApp(PersonalAiInboxApp(runtime: runtime));
 }

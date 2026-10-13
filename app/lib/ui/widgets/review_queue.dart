@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 
 import '../../core/models.dart';
-import '../../services/app_controller.dart';
+import '../../modules/capture/capture_workflow.dart';
+import '../../modules/sync/sync_workspace.dart';
+import '../presentation/domain_presentation.dart';
 import '../app_scope.dart';
 import 'common.dart';
 
@@ -11,9 +13,10 @@ class ReviewQueue extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final app = AppScope.of(context);
-    final reviews = app.reviewCaptures;
-    final conflicts = app.conflictFiles;
+    final captureWorkflow = AppScope.capture(context);
+    final syncWorkspace = AppScope.sync(context);
+    final reviews = captureWorkflow.reviewCaptures;
+    final conflicts = syncWorkspace.conflictFiles;
     if (reviews.isEmpty && conflicts.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -27,7 +30,10 @@ class ReviewQueue extends StatelessWidget {
             child: Column(
               children: [
                 for (var index = 0; index < reviews.length; index++) ...[
-                  _ReviewCaptureTile(capture: reviews[index], app: app),
+                  _ReviewCaptureTile(
+                    capture: reviews[index],
+                    captureWorkflow: captureWorkflow,
+                  ),
                   if (index != reviews.length - 1) const Divider(height: 1),
                 ],
               ],
@@ -45,7 +51,10 @@ class ReviewQueue extends StatelessWidget {
             child: Column(
               children: [
                 for (var index = 0; index < conflicts.length; index++) ...[
-                  _ConflictTile(path: conflicts[index], app: app),
+                  _ConflictTile(
+                    path: conflicts[index],
+                    syncWorkspace: syncWorkspace,
+                  ),
                   if (index != conflicts.length - 1) const Divider(height: 1),
                 ],
               ],
@@ -59,10 +68,13 @@ class ReviewQueue extends StatelessWidget {
 }
 
 class _ReviewCaptureTile extends StatelessWidget {
-  const _ReviewCaptureTile({required this.capture, required this.app});
+  const _ReviewCaptureTile({
+    required this.capture,
+    required this.captureWorkflow,
+  });
 
   final CaptureRecord capture;
-  final AppController app;
+  final CaptureWorkflow captureWorkflow;
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +87,10 @@ class _ReviewCaptureTile extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(type.icon, color: Theme.of(context).colorScheme.primary),
+              Icon(
+                resultTypeIcon(type),
+                color: Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -104,7 +119,7 @@ class _ReviewCaptureTile extends StatelessWidget {
                   tone: StatusTone.warning,
                 ),
               FilledButton.tonalIcon(
-                onPressed: () => app.acceptCapture(capture),
+                onPressed: () => captureWorkflow.acceptCapture(capture),
                 icon: const Icon(Icons.check, size: 18),
                 label: const Text('按建议生成'),
               ),
@@ -114,7 +129,7 @@ class _ReviewCaptureTile extends StatelessWidget {
                 label: const Text('调整'),
               ),
               TextButton.icon(
-                onPressed: () => app.rejectCapture(capture),
+                onPressed: () => captureWorkflow.rejectCapture(capture),
                 icon: const Icon(Icons.close, size: 18),
                 label: const Text('忽略'),
               ),
@@ -131,7 +146,7 @@ class _ReviewCaptureTile extends StatelessWidget {
       builder: (context) => _ReviewDialog(capture: capture),
     );
     if (decision != null) {
-      await app.acceptCapture(
+      await captureWorkflow.acceptCapture(
         capture,
         type: decision.type,
         title: decision.title,
@@ -190,8 +205,8 @@ class _ReviewDialogState extends State<_ReviewDialog> {
                 for (final type in ResultType.values)
                   ButtonSegment(
                     value: type,
-                    icon: Icon(type.icon),
-                    label: Text(type.label),
+                    icon: Icon(resultTypeIcon(type)),
+                    label: Text(resultTypeLabel(type)),
                   ),
               ],
               selected: {_type},
@@ -224,10 +239,10 @@ class _ReviewDialogState extends State<_ReviewDialog> {
 }
 
 class _ConflictTile extends StatelessWidget {
-  const _ConflictTile({required this.path, required this.app});
+  const _ConflictTile({required this.path, required this.syncWorkspace});
 
   final String path;
-  final AppController app;
+  final SyncWorkspace syncWorkspace;
 
   @override
   Widget build(BuildContext context) {
@@ -256,8 +271,10 @@ class _ConflictTile extends StatelessWidget {
           ),
           PopupMenuButton<String>(
             tooltip: '裁决冲突',
-            onSelected: (value) =>
-                app.resolveConflict(path, useRemote: value == 'remote'),
+            onSelected: (value) => syncWorkspace.resolveConflict(
+              path,
+              useRemote: value == 'remote',
+            ),
             itemBuilder: (context) => const [
               PopupMenuItem(value: 'local', child: Text('保留本地版本')),
               PopupMenuItem(value: 'remote', child: Text('使用远端版本')),

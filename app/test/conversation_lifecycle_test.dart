@@ -16,7 +16,9 @@ import 'package:personal_ai_inbox/data/result_repository.dart';
 import 'package:personal_ai_inbox/data/share_payload.dart';
 import 'package:personal_ai_inbox/data/sync_engine.dart';
 import 'package:personal_ai_inbox/data/sync_provider.dart';
-import 'package:personal_ai_inbox/services/app_controller.dart';
+
+import 'support/test_app_host.dart';
+
 import 'package:personal_ai_inbox/services/capture_service.dart';
 import 'package:personal_ai_inbox/services/chat_service.dart';
 import 'package:personal_ai_inbox/services/model_client.dart';
@@ -71,7 +73,9 @@ void main() {
     tester,
   ) async {
     final harness = await _LifecycleHarness.create();
-    await tester.pumpWidget(PersonalAiInboxApp(controller: harness.controller));
+    await tester.pumpWidget(
+      PersonalAiInboxApp(runtime: harness.controller.runtime),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('nav_inbox')));
@@ -89,7 +93,9 @@ void main() {
     expect(conversation.title, '明天下午三点和客户开会');
     expect(harness.controller.messagesFor(conversation.id), hasLength(2));
 
-    await tester.pumpWidget(PersonalAiInboxApp(controller: harness.controller));
+    await tester.pumpWidget(
+      PersonalAiInboxApp(runtime: harness.controller.runtime),
+    );
     await tester.pumpAndSettle();
     expect(harness.controller.conversations, hasLength(1));
     harness.controller.dispose();
@@ -140,7 +146,7 @@ Future<void> _waitFor(bool Function() condition) async {
 class _LifecycleHarness {
   const _LifecycleHarness({required this.controller});
 
-  final AppController controller;
+  final TestAppHost controller;
 
   static Future<_LifecycleHarness> create({
     MemoryConversationStore? store,
@@ -178,7 +184,7 @@ class _LifecycleHarness {
       store: store ?? MemoryConversationStore(),
       attachments: MemoryAttachmentStore(),
     );
-    final controller = AppController(
+    final controller = TestAppHost(
       repository: repository,
       indexDatabase: index,
       captureService: CaptureService(

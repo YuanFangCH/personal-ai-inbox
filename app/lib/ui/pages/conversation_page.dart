@@ -3,10 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import '../../core/chat_models.dart';
-import '../../services/app_controller.dart';
+import '../../modules/conversation/conversation_workspace.dart';
 import '../../services/image_input_service.dart';
 import '../../services/model_capabilities.dart';
 import '../app_scope.dart';
+import '../presentation/domain_presentation.dart';
 import '../widgets/common.dart';
 import 'document_detail_page.dart';
 
@@ -54,7 +55,18 @@ class _ConversationPageState extends State<ConversationPage>
 
   @override
   Widget build(BuildContext context) {
-    final app = AppScope.of(context);
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        AppScope.conversations(context),
+        AppScope.preferences(context),
+      ]),
+      builder: (context, _) => _buildConversation(context),
+    );
+  }
+
+  Widget _buildConversation(BuildContext context) {
+    final app = AppScope.conversations(context);
+    final settings = AppScope.preferences(context).settings;
     final conversationId = _conversationId;
     final conversation = conversationId == null
         ? null
@@ -75,9 +87,9 @@ class _ConversationPageState extends State<ConversationPage>
     if (app.isChatGenerating) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     }
-    final modelReady = app.settings?.hasModelKey ?? false;
-    final imageEgressAllowed = app.settings?.allowImageEgress ?? true;
-    final modelName = app.settings?.modelName ?? '';
+    final modelReady = settings.hasModelKey;
+    final imageEgressAllowed = settings.allowImageEgress;
+    final modelName = settings.modelName;
     final imageCapability = ModelCapabilities.forModel(modelName).vision;
     return Scaffold(
       appBar: AppBar(
@@ -145,7 +157,7 @@ class _ConversationPageState extends State<ConversationPage>
             onRemoveImage: (index) =>
                 setState(() => _imageInputs.removeAt(index)),
             onSend: _send,
-            onStop: app.cancelChatGeneration,
+            onStop: app.cancelGeneration,
           ),
         ],
       ),

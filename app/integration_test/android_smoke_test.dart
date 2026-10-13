@@ -2,15 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:personal_ai_inbox/app.dart';
-import 'package:personal_ai_inbox/core/deterministic_parser.dart';
+import 'package:personal_ai_inbox/bootstrap/app_runtime.dart';
 import 'package:personal_ai_inbox/core/models.dart';
 import 'package:personal_ai_inbox/data/memory_index_database.dart';
 import 'package:personal_ai_inbox/data/memory_vault_store.dart';
-import 'package:personal_ai_inbox/data/result_repository.dart';
-import 'package:personal_ai_inbox/data/sync_engine.dart';
-import 'package:personal_ai_inbox/data/sync_provider.dart';
-import 'package:personal_ai_inbox/services/app_controller.dart';
-import 'package:personal_ai_inbox/services/capture_service.dart';
 
 import '../test/test_support.dart';
 
@@ -21,8 +16,8 @@ void main() {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
 
-    final controller = await _controller('android-phone');
-    await tester.pumpWidget(PersonalAiInboxApp(controller: controller));
+    final runtime = await _runtime();
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
     await tester.pumpAndSettle();
 
     expect(find.text('首页'), findsWidgets);
@@ -44,8 +39,8 @@ void main() {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1;
 
-    final controller = await _controller('android-tablet');
-    await tester.pumpWidget(PersonalAiInboxApp(controller: controller));
+    final runtime = await _runtime();
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
     await tester.pumpAndSettle();
 
     for (final key in const [
@@ -77,7 +72,7 @@ void main() {
     await tester.tap(find.byKey(const Key('capture_submit')));
     await tester.pumpAndSettle();
 
-    expect(controller.documents, isNotEmpty);
+    expect(runtime.results.documents, isNotEmpty);
     await _failIfException(tester, 'capture submitted');
   });
 }
@@ -104,37 +99,16 @@ Future<void> _failIfException(WidgetTester tester, String context) async {
   fail('$context: $error');
 }
 
-Future<AppController> _controller(String deviceId) async {
-  final vault = MemoryVaultStore();
-  final index = MemoryIndexDatabase();
-  final settings = FakeSettingsService(deviceId: deviceId);
-  final repository = ResultRepository(
-    vault: vault,
-    index: index,
-    deviceId: deviceId,
+Future<AppRuntime> _runtime() async {
+  final runtime = await AppRuntime.bootstrap(
+    vaultOverride: MemoryVaultStore(),
+    indexOverride: MemoryIndexDatabase(),
+    settingsOverride: FakeSettingsService(deviceId: 'android-test'),
   );
-  await repository.initialize();
-  await repository.create(
+  await runtime.results.createManual(
     type: ResultType.knowledge,
     title: 'Android 长文',
     body: List.filled(120, '这是 Android 设备渲染的长文本压力内容。').join(),
   );
-  final provider = MemorySyncProvider();
-  final engine = SyncEngine(
-    repository: repository,
-    provider: provider,
-    deviceId: deviceId,
-  );
-  final controller = AppController(
-    repository: repository,
-    indexDatabase: index,
-    captureService: CaptureService(
-      settings: settings,
-      parser: const DeterministicParser(),
-    ),
-    settingsService: settings,
-    syncEngine: engine,
-  );
-  await controller.initialize();
-  return controller;
+  return runtime;
 }

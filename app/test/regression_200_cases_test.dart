@@ -11,7 +11,9 @@ import 'package:personal_ai_inbox/data/memory_vault_store.dart';
 import 'package:personal_ai_inbox/data/result_repository.dart';
 import 'package:personal_ai_inbox/data/sync_engine.dart';
 import 'package:personal_ai_inbox/data/sync_provider.dart';
-import 'package:personal_ai_inbox/services/app_controller.dart';
+
+import 'support/test_app_host.dart';
+
 import 'package:personal_ai_inbox/services/capture_service.dart';
 import 'package:personal_ai_inbox/ui/widgets/common.dart';
 
@@ -129,7 +131,7 @@ void main() {
           .toList(growable: false);
       final harness = await _buildHarness(profile, assigned);
       await tester.pumpWidget(
-        PersonalAiInboxApp(controller: harness.controller),
+        PersonalAiInboxApp(runtime: harness.controller.runtime),
       );
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
@@ -225,7 +227,7 @@ Future<_Harness> _buildHarness(
     provider: provider,
     deviceId: profile.deviceId,
   );
-  final controller = AppController(
+  final controller = TestAppHost(
     repository: repository,
     indexDatabase: index,
     captureService: CaptureService(
@@ -254,7 +256,7 @@ class _Harness {
     required this.engine,
   });
 
-  final AppController controller;
+  final TestAppHost controller;
   final ResultRepository repository;
   final MemoryVaultStore vault;
   final MemoryIndexDatabase index;

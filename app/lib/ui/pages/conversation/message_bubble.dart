@@ -4,7 +4,7 @@ class _MessageBubble extends StatelessWidget {
   const _MessageBubble({required this.message, required this.app});
 
   final ChatMessage message;
-  final AppController app;
+  final ConversationWorkspace app;
 
   @override
   Widget build(BuildContext context) {

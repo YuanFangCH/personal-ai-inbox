@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/models.dart';
+import '../presentation/domain_presentation.dart';
 
 const kContentMaxWidth = 1320.0;
 
@@ -298,7 +299,7 @@ class DocumentListTile extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
-                document.type.icon,
+                resultTypeIcon(document.type),
                 size: 19,
                 color: theme.colorScheme.primary,
               ),
@@ -338,7 +339,7 @@ class DocumentListTile extends StatelessWidget {
   String _documentMeta(ResultDocument document) {
     final parts = <String>[];
     if (showType) {
-      parts.add(document.type.label);
+      parts.add(resultTypeLabel(document.type));
     }
     if (document.due != null) {
       parts.add('截止 ${DateFormat('MM-dd HH:mm').format(document.due!)}');

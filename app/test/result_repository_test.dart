@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:personal_ai_inbox/core/markdown_codec.dart';
 import 'package:personal_ai_inbox/core/models.dart';
 import 'package:personal_ai_inbox/data/index_database.dart';
 import 'package:personal_ai_inbox/data/io_vault_store.dart';
@@ -60,6 +61,88 @@ void main() {
     expect(indexed!.deleted, isTrue);
     expect(await repository.listDocuments(), isEmpty);
   });
+
+  test('searches normalized title body and tags with stable paging', () async {
+    final first = await repository.create(
+      type: ResultType.knowledge,
+      title: 'Alpha',
+      body: 'Literal 100%_ token',
+      tags: const ['Needle'],
+      createdAt: DateTime(2026, 1, 1),
+    );
+    await repository.create(
+      type: ResultType.knowledge,
+      title: 'Other',
+      body: 'unrelated',
+      tags: const ['needle'],
+      createdAt: DateTime(2026, 1, 2),
+    );
+
+    expect(
+      (await repository.searchDocuments(
+        query: '100%_',
+        type: ResultType.knowledge,
+        offset: 0,
+      )).single.id,
+      first.id,
+    );
+    expect(
+      await repository.searchDocuments(
+        query: 'NEEDLE',
+        type: ResultType.knowledge,
+        offset: 0,
+        limit: 1,
+      ),
+      hasLength(1),
+    );
+    expect(
+      (await repository.searchDocuments(
+        query: 'needle',
+        type: ResultType.knowledge,
+        offset: 1,
+      )),
+      hasLength(1),
+    );
+  });
+
+  test(
+    'index rebuild reports malformed files and excludes duplicate IDs',
+    () async {
+      final knowledge = await repository.create(
+        type: ResultType.knowledge,
+        title: '重复 ID',
+        body: '知识文件',
+      );
+      final duplicate = knowledge.copyWith(type: ResultType.matter);
+      await vault.write(
+        duplicate.markdownPath,
+        const MarkdownCodec().encode(duplicate),
+      );
+      await vault.write(
+        'vault/knowledge/broken.md',
+        'not valid markdown frontmatter',
+      );
+
+      final report = await repository.rebuildIndex();
+
+      expect(report.scanned, 3);
+      expect(report.indexed, 0);
+      expect(report.failed, 3);
+      expect(await repository.listIndex(), isEmpty);
+      expect(
+        report.diagnostics.map((item) => item.path),
+        contains(knowledge.markdownPath),
+      );
+      expect(
+        report.diagnostics.map((item) => item.path),
+        contains(duplicate.markdownPath),
+      );
+      expect(
+        report.diagnostics.map((item) => item.path),
+        contains('vault/knowledge/broken.md'),
+      );
+    },
+  );
 
   test(
     'replays an idempotent create without producing a second result',

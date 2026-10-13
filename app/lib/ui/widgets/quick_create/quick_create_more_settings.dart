@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/models.dart';
+import '../../presentation/domain_presentation.dart';
 import '../common.dart';
 import 'quick_create_form_model.dart';
 import 'quick_date_time_field.dart';
@@ -192,7 +193,10 @@ class QuickCreateMoreSettings extends StatelessWidget {
             ),
             items: [
               for (final value in ResultStatus.values)
-                DropdownMenuItem(value: value, child: Text(value.label)),
+                DropdownMenuItem(
+                  value: value,
+                  child: Text(resultStatusLabel(value)),
+                ),
             ],
             onChanged: (value) {
               if (value != null) {

@@ -23,8 +23,8 @@ class SqliteIndexDatabase implements IndexDatabase {
         ..execute('PRAGMA foreign_keys = ON');
       final version =
           _database.select('PRAGMA user_version').single['user_version'] as int;
-      if (version > 2) {
-        throw StateError('索引数据库版本 $version 高于此应用支持的版本 2');
+      if (version > 3) {
+        throw StateError('索引数据库版本 $version 高于此应用支持的版本 3');
       }
       _database.execute('BEGIN EXCLUSIVE');
       _database
@@ -42,7 +42,8 @@ class SqliteIndexDatabase implements IndexDatabase {
           last_synced_hash TEXT,
           remote_etag TEXT,
           matter_id TEXT,
-          sync_state TEXT NOT NULL
+          sync_state TEXT NOT NULL,
+          search_text TEXT NOT NULL DEFAULT ''
         )
       ''')
         ..execute('''
@@ -86,6 +87,13 @@ class SqliteIndexDatabase implements IndexDatabase {
       if (version < 2) {
         _database.execute('PRAGMA user_version = 2');
       }
+      final columns = _database.select('PRAGMA table_info(objects)');
+      if (!columns.any((row) => row['name'] == 'search_text')) {
+        _database.execute(
+          "ALTER TABLE objects ADD COLUMN search_text TEXT NOT NULL DEFAULT ''",
+        );
+      }
+      if (version < 3) _database.execute('PRAGMA user_version = 3');
       _database.execute('COMMIT');
     } catch (_) {
       try {
@@ -107,8 +115,9 @@ class SqliteIndexDatabase implements IndexDatabase {
       '''
       INSERT INTO objects (
         id, type, title, status, revision, updated_at, deleted, md_path,
-        local_hash, last_synced_hash, remote_etag, matter_id, sync_state
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        local_hash, last_synced_hash, remote_etag, matter_id, sync_state,
+        search_text
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         type = excluded.type,
         title = excluded.title,
@@ -121,7 +130,8 @@ class SqliteIndexDatabase implements IndexDatabase {
         last_synced_hash = excluded.last_synced_hash,
         remote_etag = excluded.remote_etag,
         matter_id = excluded.matter_id,
-        sync_state = excluded.sync_state
+        sync_state = excluded.sync_state,
+        search_text = excluded.search_text
       ''',
       [
         result.id,
@@ -137,6 +147,7 @@ class SqliteIndexDatabase implements IndexDatabase {
         result.remoteEtag,
         result.matterId,
         result.syncState.name,
+        result.searchText,
       ],
     );
   }
@@ -150,6 +161,28 @@ class SqliteIndexDatabase implements IndexDatabase {
   Future<List<IndexedResult>> listResults() async {
     final rows = _database.select(
       'SELECT * FROM objects ORDER BY updated_at DESC',
+    );
+    return rows.map(_resultFromRow).toList(growable: false);
+  }
+
+  @override
+  Future<List<IndexedResult>> searchResults({
+    required String query,
+    required int limit,
+    required int offset,
+    ResultType? type,
+  }) async {
+    final normalized = query.trim().toLowerCase();
+    final rows = _database.select(
+      '''
+      SELECT * FROM objects
+      WHERE deleted = 0 AND status = 'canonical'
+        AND (? = '' OR instr(search_text, ?) > 0)
+        AND (? IS NULL OR type = ?)
+      ORDER BY updated_at DESC, id ASC
+      LIMIT ? OFFSET ?
+      ''',
+      [normalized, normalized, type?.wireName, type?.wireName, limit, offset],
     );
     return rows.map(_resultFromRow).toList(growable: false);
   }
@@ -372,6 +405,7 @@ class SqliteIndexDatabase implements IndexDatabase {
         (state) => state.name == row['sync_state'],
         orElse: () => SyncState.pendingUpload,
       ),
+      searchText: row['search_text'] as String? ?? '',
     );
   }
 

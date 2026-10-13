@@ -3,8 +3,9 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/models.dart';
-import '../../services/app_controller.dart';
+import '../../modules/results/result_library.dart';
 import '../app_scope.dart';
+import '../presentation/domain_presentation.dart';
 import '../widgets/common.dart';
 import 'document_editor_page.dart';
 
@@ -14,8 +15,12 @@ class DocumentDetailPage extends StatelessWidget {
   final String documentId;
 
   @override
-  Widget build(BuildContext context) {
-    final app = AppScope.of(context);
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: AppScope.results(context),
+    builder: (context, _) => _buildDetail(context, AppScope.results(context)),
+  );
+
+  Widget _buildDetail(BuildContext context, ResultLibrary app) {
     final document = app.findDocument(documentId);
     if (document == null) {
       return Scaffold(
@@ -35,7 +40,7 @@ class DocumentDetailPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(document.type.label),
+        title: Text(resultTypeLabel(document.type)),
         actions: [
           IconButton(
             tooltip: '编辑',
@@ -62,7 +67,7 @@ class DocumentDetailPage extends StatelessWidget {
       body: PageFrame(
         title: document.title,
         subtitle:
-            '${document.type.label} · ${DateFormat('yyyy-MM-dd HH:mm').format(document.updatedAt)}',
+            '${resultTypeLabel(document.type)} · ${DateFormat('yyyy-MM-dd HH:mm').format(document.updatedAt)}',
         child: LayoutBuilder(
           builder: (context, constraints) {
             final details = _DetailsPanel(document: document, app: app);
@@ -134,7 +139,7 @@ class DocumentDetailPage extends StatelessWidget {
     if (confirmed != true || !context.mounted) {
       return;
     }
-    await AppScope.of(context).deleteDocument(document.id);
+    await AppScope.results(context).deleteDocument(document.id);
     if (context.mounted) {
       Navigator.pop(context);
     }
@@ -145,7 +150,7 @@ class _ContentPanel extends StatelessWidget {
   const _ContentPanel({required this.document, required this.app});
 
   final ResultDocument document;
-  final AppController app;
+  final ResultLibrary app;
 
   @override
   Widget build(BuildContext context) {
@@ -178,12 +183,12 @@ class _DetailsPanel extends StatelessWidget {
   const _DetailsPanel({required this.document, required this.app});
 
   final ResultDocument document;
-  final AppController app;
+  final ResultLibrary app;
 
   @override
   Widget build(BuildContext context) {
     final details = <(String, String)>[
-      ('状态', document.status.label),
+      ('状态', resultStatusLabel(document.status)),
       ('版本', 'r${document.revision}'),
       ('来源端', document.originDevice),
       if (document.due != null)

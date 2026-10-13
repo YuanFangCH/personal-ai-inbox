@@ -53,7 +53,7 @@ class _AppShellState extends State<AppShell> {
       if (!mounted) {
         return;
       }
-      final conversationId = AppScope.of(context)
+      final conversationId = AppScope.conversations(context)
           .consumePendingConversationId();
       if (conversationId != null &&
           conversationId != _lastOpenedConversationId) {
@@ -66,15 +66,32 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     _schedulePendingConversationOpen();
-    final controller = AppScope.of(context);
+    final runtime = AppScope.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 980;
-        final content = AnimatedSwitcher(
-          duration: const Duration(milliseconds: 180),
-          child: KeyedSubtree(
-            key: ValueKey('page_${_page.name}'),
-            child: _pageFor(_page),
+        final List<Listenable> pageModules = switch (_page) {
+          AppPage.home => [runtime.results, runtime.capture, runtime.sync],
+          AppPage.inbox => [
+            runtime.results,
+            runtime.capture,
+            runtime.sync,
+            runtime.conversations,
+          ],
+          AppPage.calendar => [runtime.results, runtime.preferences],
+          AppPage.matters => [runtime.results],
+          AppPage.knowledge => const <Listenable>[],
+          AppPage.sync => [runtime.results, runtime.sync],
+          AppPage.settings => [runtime.results, runtime.preferences],
+        };
+        final content = AnimatedBuilder(
+          animation: Listenable.merge(pageModules),
+          builder: (context, _) => AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            child: KeyedSubtree(
+              key: ValueKey('page_${_page.name}'),
+              child: _pageFor(_page),
+            ),
           ),
         );
         return Scaffold(
@@ -100,13 +117,22 @@ class _AppShellState extends State<AppShell> {
                       : content,
                 ),
               ),
-              if (controller.isBusy)
-                const Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: LinearProgressIndicator(minHeight: 2),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: ListenableBuilder(
+                  listenable: Listenable.merge([
+                    runtime.sync,
+                    runtime.conversations,
+                  ]),
+                  builder: (context, _) =>
+                      runtime.sync.isBusy ||
+                          runtime.conversations.isChatGenerating
+                      ? const LinearProgressIndicator(minHeight: 2)
+                      : const SizedBox.shrink(),
                 ),
+              ),
             ],
           ),
           floatingActionButton: constraints.maxWidth < 600

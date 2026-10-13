@@ -53,6 +53,35 @@ class ResultRepository {
     return documents;
   }
 
+  Future<List<ResultDocument>> searchDocuments({
+    required String query,
+    required ResultType type,
+    required int offset,
+    int limit = 50,
+  }) async {
+    final records = await _index.searchResults(
+      query: query,
+      type: type,
+      limit: limit.clamp(1, 50),
+      offset: offset < 0 ? 0 : offset,
+    );
+    final documents = <ResultDocument>[];
+    for (final record in records) {
+      final document = await _vault.exclusive(() async {
+        final source = await _vault.read(record.mdPath);
+        if (source == null) return null;
+        try {
+          final decoded = _codec.decode(source);
+          return decoded.id == record.id && !decoded.deleted ? decoded : null;
+        } on FormatException {
+          return null;
+        }
+      });
+      if (document != null) documents.add(document);
+    }
+    return List.unmodifiable(documents);
+  }
+
   Future<ResultDocument?> readDocument(String id) {
     return _vault.exclusive(() => _readDocument(id));
   }
@@ -105,7 +134,7 @@ class ResultRepository {
       final document = ResultDocument(
         id: id,
         type: type,
-        title: title.trim().isEmpty ? type.label : title.trim(),
+        title: title.trim().isEmpty ? type.wireName : title.trim(),
         status: status,
         originDevice: deviceId,
         revision: 1,
@@ -191,11 +220,11 @@ class ResultRepository {
     return saved;
   }
 
-  Future<void> markTodo(ResultDocument document, bool done) async {
+  Future<ResultDocument?> markTodo(ResultDocument document, bool done) async {
     if (document.type != ResultType.todo) {
-      return;
+      return null;
     }
-    await save(document.copyWith(done: done));
+    return save(document.copyWith(done: done));
   }
 
   Future<void> addLink(String id, String targetId) async {
@@ -220,10 +249,10 @@ class ResultRepository {
     );
   }
 
-  Future<void> delete(String id) async {
+  Future<ResultDocument?> delete(String id) async {
     final document = await readDocument(id);
     if (document == null) {
-      return;
+      return null;
     }
     final tombstone = document.copyWith(
       deleted: true,
@@ -235,6 +264,7 @@ class ResultRepository {
       end: null,
     );
     await _writeAndIndex(tombstone);
+    return tombstone;
   }
 
   Future<ResultDocument?> findDocument(String id) async {
@@ -281,26 +311,57 @@ class ResultRepository {
     await _vault.exclusive(() => _index.upsertResult(result));
   }
 
-  Future<void> rebuildIndex() async {
+  Future<IndexRebuildReport> rebuildIndex() {
     return _withWriteLock(_rebuildIndex);
   }
 
-  Future<void> _rebuildIndex() async {
+  Future<IndexRebuildReport> _rebuildIndex() async {
     final previous = {
       for (final entry in await _index.listResults()) entry.id: entry,
     };
     final files = await _vault.listMarkdownFiles();
     final results = <IndexedResult>[];
+    final diagnostics = <IndexRebuildDiagnostic>[];
+    final firstPathById = <String, String>{};
+    final duplicateIds = <String>{};
+    var scanned = 0;
     for (final path in files) {
       if (!_isManagedMarkdown(path)) {
         continue;
       }
+      scanned++;
       final source = await _vault.read(path);
       if (source == null) {
+        diagnostics.add(IndexRebuildDiagnostic(path: path, message: '文件读取失败'));
         continue;
       }
       try {
         final document = _codec.decode(source);
+        if (!_isSafeResultId(document.id) ||
+            document.markdownPath != path.replaceAll('\\', '/')) {
+          diagnostics.add(
+            IndexRebuildDiagnostic(path: path, message: '成果身份或标准路径不匹配'),
+          );
+          continue;
+        }
+        final firstPath = firstPathById[document.id];
+        if (firstPath != null) {
+          duplicateIds.add(document.id);
+          diagnostics.add(
+            IndexRebuildDiagnostic(
+              path: firstPath,
+              message: '成果 ID 与 $path 重复；两份文件均未写入索引',
+            ),
+          );
+          diagnostics.add(
+            IndexRebuildDiagnostic(
+              path: path,
+              message: '成果 ID 与 $firstPath 重复；两份文件均未写入索引',
+            ),
+          );
+          continue;
+        }
+        firstPathById[document.id] = path;
         final hash = hashMarkdown(source);
         final old = previous[document.id];
         results.add(
@@ -314,6 +375,7 @@ class ResultRepository {
             deleted: document.deleted,
             mdPath: path,
             localHash: hash,
+            searchText: _searchText(document),
             lastSyncedHash: old?.lastSyncedHash,
             remoteEtag: old?.remoteEtag,
             matterId: document.matterId,
@@ -324,11 +386,34 @@ class ResultRepository {
                 : SyncState.pendingUpload,
           ),
         );
-      } on FormatException {
+      } on FormatException catch (error) {
+        diagnostics.add(
+          IndexRebuildDiagnostic(path: path, message: error.message),
+        );
+        continue;
+      } catch (error) {
+        diagnostics.add(
+          IndexRebuildDiagnostic(path: path, message: '解析失败：$error'),
+        );
         continue;
       }
     }
-    await _index.replaceResults(results);
+    results.removeWhere((result) => duplicateIds.contains(result.id));
+    final nextById = {for (final result in results) result.id: result};
+    for (final old in previous.values) {
+      if (!nextById.containsKey(old.id)) await _index.removeResult(old.id);
+    }
+    for (final result in results) {
+      final old = previous[result.id];
+      if (old == null || !_sameIndexRecord(old, result)) {
+        await _index.upsertResult(result);
+      }
+    }
+    return IndexRebuildReport(
+      scanned: scanned,
+      indexed: results.length,
+      diagnostics: List.unmodifiable(diagnostics),
+    );
   }
 
   Future<String> writeConflictCopy(
@@ -507,6 +592,8 @@ class ResultRepository {
       }
     }();
   }
+
+  Future<void> waitForWrites() => _writeTail;
 
   Future<void> _commitAndIndex(
     ResultDocument document, {
@@ -805,6 +892,7 @@ class ResultRepository {
       deleted: document.deleted,
       mdPath: document.markdownPath,
       localHash: hash,
+      searchText: _searchText(document),
       lastSyncedHash: syncBaseline?.hash ?? old?.lastSyncedHash,
       remoteEtag: syncBaseline?.etag ?? old?.remoteEtag,
       matterId: document.matterId,
@@ -816,6 +904,28 @@ class ResultRepository {
     );
     await _index.upsertResult(record);
   }
+
+  String _searchText(ResultDocument document) => [
+    document.title,
+    document.body,
+    ...document.tags,
+  ].join('\n').toLowerCase();
+
+  bool _sameIndexRecord(IndexedResult left, IndexedResult right) =>
+      left.id == right.id &&
+      left.type == right.type &&
+      left.title == right.title &&
+      left.status == right.status &&
+      left.revision == right.revision &&
+      left.updatedAt == right.updatedAt &&
+      left.deleted == right.deleted &&
+      left.mdPath == right.mdPath &&
+      left.localHash == right.localHash &&
+      left.lastSyncedHash == right.lastSyncedHash &&
+      left.remoteEtag == right.remoteEtag &&
+      left.matterId == right.matterId &&
+      left.syncState == right.syncState &&
+      left.searchText == right.searchText;
 
   Future<void> _cleanupTransaction(
     String stagedPath,

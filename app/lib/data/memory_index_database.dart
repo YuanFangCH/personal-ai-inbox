@@ -29,6 +29,33 @@ class MemoryIndexDatabase implements IndexDatabase {
   }
 
   @override
+  Future<List<IndexedResult>> searchResults({
+    required String query,
+    required int limit,
+    required int offset,
+    ResultType? type,
+  }) async {
+    final normalized = query.trim().toLowerCase();
+    final matches =
+        _results.values
+            .where(
+              (result) =>
+                  !result.deleted &&
+                  result.status == ResultStatus.canonical &&
+                  (type == null || result.type == type) &&
+                  (normalized.isEmpty ||
+                      result.searchText.contains(normalized)),
+            )
+            .toList()
+          ..sort((left, right) {
+            final byTime = right.updatedAt.compareTo(left.updatedAt);
+            return byTime != 0 ? byTime : left.id.compareTo(right.id);
+          });
+    if (offset >= matches.length) return const [];
+    return matches.skip(offset).take(limit).toList(growable: false);
+  }
+
+  @override
   Future<IndexedResult?> findResult(String id) async => _results[id];
 
   @override

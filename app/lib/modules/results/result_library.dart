@@ -149,23 +149,34 @@ class ResultLibrary extends ChangeNotifier {
       idempotencyKey: idempotencyKey,
       createdAt: createdAt,
     );
-    await refresh();
+    _publishDocument(document);
     return document;
   }
 
   Future<void> saveDocument(ResultDocument document) async {
-    await _repository.save(document);
-    await refresh();
+    final saved = await _repository.save(document);
+    _publishDocument(saved);
   }
 
+  Future<List<ResultDocument>> searchKnowledge({
+    String query = '',
+    int offset = 0,
+    int limit = 50,
+  }) => _repository.searchDocuments(
+    query: query,
+    type: ResultType.knowledge,
+    offset: offset,
+    limit: limit,
+  );
+
   Future<void> toggleTodo(ResultDocument document, bool done) async {
-    await _repository.markTodo(document, done);
-    await refresh();
+    final saved = await _repository.markTodo(document, done);
+    if (saved != null) _publishDocument(saved);
   }
 
   Future<void> deleteDocument(String id) async {
-    await _repository.delete(id);
-    await refresh();
+    final deleted = await _repository.delete(id);
+    if (deleted != null) _publishDocument(deleted);
   }
 
   /// Creates a canonical result from a captured or model-produced candidate.
@@ -191,13 +202,43 @@ class ResultLibrary extends ChangeNotifier {
       idempotencyKey: idempotencyKey,
       createdAt: createdAt,
     );
-    await refresh();
+    _publishDocument(document);
     return document;
   }
 
-  Future<void> rebuildIndex() async {
-    await _repository.rebuildIndex();
+  Future<IndexRebuildReport> rebuildIndex() async {
+    final report = await _repository.rebuildIndex();
     await refresh();
+    return report;
+  }
+
+  Future<void> shutdown() => _repository.waitForWrites();
+
+  void _publishDocument(ResultDocument document) {
+    final next = _documents.where((item) => item.id != document.id).toList();
+    if (!document.deleted) next.add(_freezeDocument(document));
+    next.sort((left, right) => right.updatedAt.compareTo(left.updatedAt));
+    _documents = List.unmodifiable(next);
+    final canonical = _documents
+        .where((item) => item.status == ResultStatus.canonical)
+        .toList(growable: false);
+    _canonicalDocuments = List.unmodifiable(canonical);
+    _draftDocuments = List.unmodifiable(
+      _documents.where((item) => item.status == ResultStatus.draft),
+    );
+    _todos = List.unmodifiable(
+      canonical.where((item) => item.type == ResultType.todo),
+    );
+    _events = List.unmodifiable(
+      canonical.where((item) => item.type == ResultType.event),
+    );
+    _matters = List.unmodifiable(
+      canonical.where((item) => item.type == ResultType.matter),
+    );
+    _knowledge = List.unmodifiable(
+      canonical.where((item) => item.type == ResultType.knowledge),
+    );
+    notifyListeners();
   }
 
   ResultDocument _freezeDocument(ResultDocument document) {

@@ -4,7 +4,7 @@ class _AutoRecordCard extends StatelessWidget {
   const _AutoRecordCard({required this.action, required this.app});
 
   final AutoRecordAction action;
-  final AppController app;
+  final ConversationWorkspace app;
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +25,7 @@ class _AutoRecordCard extends StatelessWidget {
       padding: const EdgeInsets.all(10),
       child: Row(
         children: [
-          Icon(action.type.icon, color: theme.colorScheme.primary),
+          Icon(resultTypeIcon(action.type), color: theme.colorScheme.primary),
           const SizedBox(width: 10),
           Expanded(
             child: Column(

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/chat_models.dart';
-import '../../services/app_controller.dart';
+import '../../modules/conversation/conversation_workspace.dart';
 import '../app_scope.dart';
 import '../widgets/capture_sheet.dart';
 import '../widgets/common.dart';
@@ -15,17 +15,18 @@ class InboxPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final app = AppScope.of(context);
-    final reviews = app.reviewCaptures;
-    final drafts = app.draftDocuments;
-    final conflicts = app.conflictFiles;
+    final conversations = AppScope.conversations(context);
+    final reviews = AppScope.capture(context).reviewCaptures;
+    final drafts = AppScope.results(context).draftDocuments;
+    final conflicts = AppScope.sync(context).conflictFiles;
     final pending = reviews.length + conflicts.length;
+    final conversationCount = conversations.conversations.length;
     return PageFrame(
       title: '收件箱',
       subtitle: pending == 0
-          ? '${app.conversations.length} 个会话 · ${drafts.length} 条草稿'
+          ? '$conversationCount 个会话 · ${drafts.length} 条草稿'
           : '$pending 条待确认 · ${drafts.length} 条草稿 · '
-                '${app.conversations.length} 个会话',
+                '$conversationCount 个会话',
       actions: [
         FilledButton.icon(
           key: const Key('inbox_new_conversation'),
@@ -73,14 +74,14 @@ class InboxPage extends StatelessWidget {
               children: [
                 for (
                   var index = 0;
-                  index < app.conversations.length;
+                  index < conversations.conversations.length;
                   index++
                 ) ...[
                   _ConversationTile(
-                    conversation: app.conversations[index],
-                    app: app,
+                    conversation: conversations.conversations[index],
+                    conversations: conversations,
                   ),
-                  if (index != app.conversations.length - 1)
+                  if (index != conversations.conversations.length - 1)
                     const Divider(height: 1),
                 ],
               ],
@@ -97,10 +98,13 @@ class InboxPage extends StatelessWidget {
 }
 
 class _ConversationTile extends StatelessWidget {
-  const _ConversationTile({required this.conversation, required this.app});
+  const _ConversationTile({
+    required this.conversation,
+    required this.conversations,
+  });
 
   final Conversation conversation;
-  final AppController app;
+  final ConversationWorkspace conversations;
 
   @override
   Widget build(BuildContext context) {
@@ -200,7 +204,7 @@ class _ConversationTile extends StatelessWidget {
     );
     controller.dispose();
     if (title != null && title.isNotEmpty) {
-      await app.renameConversation(conversation.id, title);
+      await conversations.renameConversation(conversation.id, title);
     }
   }
 
@@ -223,7 +227,7 @@ class _ConversationTile extends StatelessWidget {
       ),
     );
     if (confirmed == true) {
-      await app.deleteConversation(conversation.id);
+      await conversations.deleteConversation(conversation.id);
     }
   }
 

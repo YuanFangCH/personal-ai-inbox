@@ -1,52 +1,10 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
-class AppSettings {
-  const AppSettings({
-    required this.deviceId,
-    required this.themeMode,
-    required this.modelBaseUrl,
-    required this.modelName,
-    required this.hasModelKey,
-    required this.showCompletedTodos,
-    required this.calendarMonthDetailed,
-    this.allowImageEgress = true,
-  });
+import '../core/models.dart';
 
-  final String deviceId;
-  final ThemeMode themeMode;
-  final String modelBaseUrl;
-  final String modelName;
-  final bool hasModelKey;
-  final bool showCompletedTodos;
-  final bool calendarMonthDetailed;
-  final bool allowImageEgress;
-
-  AppSettings copyWith({
-    String? deviceId,
-    ThemeMode? themeMode,
-    String? modelBaseUrl,
-    String? modelName,
-    bool? hasModelKey,
-    bool? showCompletedTodos,
-    bool? calendarMonthDetailed,
-    bool? allowImageEgress,
-  }) {
-    return AppSettings(
-      deviceId: deviceId ?? this.deviceId,
-      themeMode: themeMode ?? this.themeMode,
-      modelBaseUrl: modelBaseUrl ?? this.modelBaseUrl,
-      modelName: modelName ?? this.modelName,
-      hasModelKey: hasModelKey ?? this.hasModelKey,
-      showCompletedTodos: showCompletedTodos ?? this.showCompletedTodos,
-      calendarMonthDetailed:
-          calendarMonthDetailed ?? this.calendarMonthDetailed,
-      allowImageEgress: allowImageEgress ?? this.allowImageEgress,
-    );
-  }
-}
+export '../core/models.dart' show AppSettings;
 
 class SettingsService {
   SettingsService({
@@ -96,7 +54,7 @@ class SettingsService {
   }
 
   Future<void> saveGeneral({
-    ThemeMode? themeMode,
+    ThemePreference? themeMode,
     String? modelBaseUrl,
     String? modelName,
     bool? showCompletedTodos,
@@ -183,19 +141,19 @@ class SettingsService {
     }
   }
 
-  ThemeMode _parseTheme(String? value) {
+  ThemePreference _parseTheme(String? value) {
     return switch (value) {
-      'light' => ThemeMode.light,
-      'dark' => ThemeMode.dark,
-      _ => ThemeMode.system,
+      'light' => ThemePreference.light,
+      'dark' => ThemePreference.dark,
+      _ => ThemePreference.system,
     };
   }
 
-  String _themeName(ThemeMode value) {
+  String _themeName(ThemePreference value) {
     return switch (value) {
-      ThemeMode.light => 'light',
-      ThemeMode.dark => 'dark',
-      ThemeMode.system => 'system',
+      ThemePreference.light => 'light',
+      ThemePreference.dark => 'dark',
+      ThemePreference.system => 'system',
     };
   }
 }

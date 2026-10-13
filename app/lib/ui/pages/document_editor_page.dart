@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/models.dart';
 import '../app_scope.dart';
+import '../presentation/domain_presentation.dart';
 
 class DocumentEditorPage extends StatefulWidget {
   const DocumentEditorPage({super.key, required this.document})
@@ -65,10 +66,14 @@ class _DocumentEditorPageState extends State<DocumentEditorPage> {
 
   @override
   Widget build(BuildContext context) {
-    final app = AppScope.of(context);
+    final app = AppScope.results(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEditing ? '编辑${_type.label}' : '新建${_type.label}'),
+        title: Text(
+          isEditing
+              ? '编辑${resultTypeLabel(_type)}'
+              : '新建${resultTypeLabel(_type)}',
+        ),
         actions: [
           TextButton.icon(
             onPressed: _saving ? null : _save,
@@ -100,8 +105,8 @@ class _DocumentEditorPageState extends State<DocumentEditorPage> {
                             for (final type in ResultType.values)
                               ButtonSegment(
                                 value: type,
-                                icon: Icon(type.icon),
-                                label: Text(type.label),
+                                icon: Icon(resultTypeIcon(type)),
+                                label: Text(resultTypeLabel(type)),
                               ),
                           ],
                           selected: {_type},
@@ -228,7 +233,7 @@ class _DocumentEditorPageState extends State<DocumentEditorPage> {
       return;
     }
     setState(() => _saving = true);
-    final app = AppScope.of(context);
+    final app = AppScope.results(context);
     try {
       final tags = _tags.text
           .split(RegExp(r'[,，\s]+'))
@@ -424,7 +429,10 @@ class _EditorForm extends StatelessWidget {
             ),
             items: [
               for (final value in ResultStatus.values)
-                DropdownMenuItem(value: value, child: Text(value.label)),
+                DropdownMenuItem(
+                  value: value,
+                  child: Text(resultStatusLabel(value)),
+                ),
             ],
             onChanged: (value) {
               if (value != null) {

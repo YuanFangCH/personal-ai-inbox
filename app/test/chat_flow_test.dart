@@ -15,7 +15,9 @@ import 'package:personal_ai_inbox/data/memory_vault_store.dart';
 import 'package:personal_ai_inbox/data/result_repository.dart';
 import 'package:personal_ai_inbox/data/sync_engine.dart';
 import 'package:personal_ai_inbox/data/sync_provider.dart';
-import 'package:personal_ai_inbox/services/app_controller.dart';
+
+import 'support/test_app_host.dart';
+
 import 'package:personal_ai_inbox/services/capture_service.dart';
 import 'package:personal_ai_inbox/services/chat_service.dart';
 import 'package:personal_ai_inbox/services/model_client.dart';
@@ -291,7 +293,7 @@ void main() {
 class _ChatHarness {
   const _ChatHarness({required this.controller, required this.requests});
 
-  final AppController controller;
+  final TestAppHost controller;
   final List<Map<String, dynamic>> requests;
 
   static Future<_ChatHarness> create({
@@ -360,7 +362,7 @@ class _ChatHarness {
       store: MemoryConversationStore(),
       attachments: MemoryAttachmentStore(),
     );
-    final controller = AppController(
+    final controller = TestAppHost(
       repository: repository,
       indexDatabase: index,
       captureService: CaptureService(

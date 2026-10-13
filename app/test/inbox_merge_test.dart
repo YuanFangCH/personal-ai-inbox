@@ -8,7 +8,9 @@ import 'package:personal_ai_inbox/data/memory_vault_store.dart';
 import 'package:personal_ai_inbox/data/result_repository.dart';
 import 'package:personal_ai_inbox/data/sync_engine.dart';
 import 'package:personal_ai_inbox/data/sync_provider.dart';
-import 'package:personal_ai_inbox/services/app_controller.dart';
+
+import 'support/test_app_host.dart';
+
 import 'package:personal_ai_inbox/services/capture_service.dart';
 
 import 'test_support.dart';
@@ -49,7 +51,7 @@ void main() {
           'updated_at: 2026-10-07T09:00:00+08:00\ndeleted: false\n'
           'tags: []\nlinks: []\n---\n冲突正文\n',
     );
-    final controller = AppController(
+    final controller = TestAppHost(
       repository: repository,
       indexDatabase: index,
       captureService: CaptureService(
@@ -65,7 +67,7 @@ void main() {
     );
     await controller.initialize();
 
-    await tester.pumpWidget(PersonalAiInboxApp(controller: controller));
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: controller.runtime));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('nav_inbox')));
     await tester.pumpAndSettle();
