@@ -18,6 +18,8 @@
 | [0012](0012-github-release-artifacts-and-tag-workflow.md) | GitHub Release 作为首发渠道，并按标签自动构建 | accepted |
 | [0013](0013-lazy-conversation-creation-and-merged-confirmation.md) | 会话按首次内容创建，确认入口合并到收件箱 | accepted |
 | [0014](0014-modular-local-core-and-compatibility-migration.md) | 采用模块化本地核心，并以兼容 facade 分阶段迁移 | accepted |
+| [0015](0015-recoverable-local-commits-and-idempotent-actions.md) | 本地持久化使用可恢复提交与幂等动作 | accepted |
+| [0016](0016-sync-validation-and-version-bound-conflict-decisions.md) | 同步对象经过校验，冲突裁决绑定观察到的远端版本 | accepted |
 
 相关文档：
 

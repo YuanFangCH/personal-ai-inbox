@@ -8,6 +8,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
 $appRoot = Join-Path $repoRoot 'app'
 $flutter = (Get-Command flutter -ErrorAction Stop).Source
+. (Join-Path $PSScriptRoot 'assert-flutter-version.ps1') -FlutterExecutable $flutter
 
 Push-Location $appRoot
 try {

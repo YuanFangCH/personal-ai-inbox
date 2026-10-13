@@ -168,12 +168,12 @@ Android 手机 App / Android 平板 App / Windows App
 | OCR | 云端多模态模型的视觉能力 | 不部署本地模型，截图直接送云端做 OCR + 版面理解 | 本地 PaddleOCR（不采用） |
 | 模型边界 | 统一用 `deepseek-flash`（DeepSeek-V4.1-Flash，多模态） | 文本与截图走同一条链路，客户端只维护一个模型配置 | 多厂商切换（当前不需要） |
 | 数据主形态 | Markdown 文件（`.md`）为权威存储 | 可读、可 diff、可 Git、可备份、可长期迁移 | Joplin、Obsidian 仅作编辑前台 |
-| 索引数据库 | SQLite（FTS5 / sqlite-vec） | 只做索引、同步游标和幂等账本，可重建 | 服务端 PostgreSQL 可选汇聚 |
+| 索引数据库 | SQLite | 成果派生索引可从 Markdown 重建；捕获、会话和动作账本另行保留 | 服务端 PostgreSQL 可选汇聚 |
 | 成果权威源 | 每端本地成果库互为副本 | 对等无主，任一端离线不影响其他端 | 服务端作为唯一权威源 |
 | 内置界面 | App 自带日历 + 待办列表 + 事项详情 | 满足“系统笔记式”的使用体验，不依赖第三方 App | 桥接系统日历 / Tasks.org |
 | 跨端镜像 | 默认不需要；可选 Nextcloud / CalDAV | App 自带日历和待办后，第三方镜像只在需要时启用 | Radicale、Baikal |
 | 知识主库 | 每端本地 Markdown vault | `.md` 是唯一权威副本，数据库只做索引 | Joplin、Obsidian 仅作编辑前台 |
-| 知识发布 | 本地静态站 / MkDocs Material（可选） | 静态、快、手机和电脑都能访问 | Nextcloud Files、GitBook |
+| 知识发布 | App 内查看并导出 Markdown | 知识在本地成果库管理，可携带纯文本迁移 | 静态站发布不在当前范围 |
 | Android 提醒 | App 本地通知 + 前台服务 | 自建、可在无 GMS 设备使用，不依赖第三方 | ntfy |
 | Windows 提醒 | 原生 Toast + 托盘 + 任务计划补发 | 不依赖浏览器常开，也覆盖睡眠唤醒后的补发 | Thunderbird、ntfy |
 | 备份 | restic + rclone 到 OneDrive | 加密、可校验、可恢复；OneDrive 已有账号 | 本地 NAS、冷备硬盘 |
@@ -184,7 +184,7 @@ Android 手机 App / Android 平板 App / Windows App
 - 不部署本地模型。每端 App 用自己的 API 凭据直连云端大模型；弱端不怕模型太大，只怕网络不稳，所以必须做超时、重试和离线排队。
 - 没有中心服务可依赖，也没有中心服务可宕机；跨端一致性完全由云盘同步区、三项 hash 判定和冲突队列保证。
 - 云端模型只能通过受约束工具请求新建成果；端内规则层验证置信度、敏感内容、日期和重复项后才允许自动写入，修改与删除永不自动执行。
-- Markdown 是权威数据，数据库是可重建的索引。任何时候删掉 SQLite，都必须能从 `.md` 文件重建出笔记、待办和事项。
+- Markdown 是成果的权威数据；成果索引及派生关系可重建。SQLite 同时保存捕获原文、AI 会话、动作审计、同步游标和迁移状态；这些不能从成果 `.md` 恢复，必须由对应数据库备份保存。
 - 同步的是成果，不是素材。原始截图和附件默认留在捕获端，除非用户显式开启附带原图。
 - 同步成功不等于提醒成功。每端都要有自己的提醒调度器，不依赖其他端是否已收到成果。
 - 同一套 Markdown 格式、成果对象和同步协议是三端共享核心的关键；界面壳和模型厂商可以分化，数据契约不能分化。
@@ -214,7 +214,7 @@ Android 手机 App / Android 平板 App / Windows App
 
 ### 3.3 同步边界：只同步最终成果
 
-**Markdown 是权威数据形态。** 每端的知识、待办和事项详情都以 `.md` 文件落在本地 vault 中，带 frontmatter 元数据；SQLite 只保存索引、同步游标、幂等键和提醒状态。同步时先比 `.md` 的 `id + revision + content_hash`，再按需交换文件。
+**Markdown 是成果的权威数据形态。** 每端的知识、待办和事项详情都以 `.md` 文件落在本地 vault 中，带 frontmatter 元数据；成果索引和派生关系从 `.md` 重建，SQLite 同时保留捕获原文、会话、动作审计和同步状态。同步时先比 `.md` 的 `id + revision + content_hash`，再按需交换文件。
 
 “最终成果”有明确白名单，白名单之外一律不同步：
 
@@ -431,7 +431,7 @@ flowchart LR
 
 ### 5.4 必需数据库表
 
-每端本地以 Markdown vault 为权威存储，下列 SQLite 表只是索引、账本和运行状态，必须能从 `.md` 重建。三端不共享数据库，只通过同步区交换成果。
+每端本地以 Markdown vault 为成果权威存储。成果对象、反向关系、搜索字段是可重建索引；捕获事件、会话消息/图片、动作审计和迁移状态是独立权威状态，不会从 `.md` 重建。三端不共享数据库，只通过同步区交换成果。
 
 Markdown 主库：
 
@@ -506,7 +506,7 @@ Markdown 主库：
 - 每端本地 `vault/` 是 Markdown 主库，可独立阅读和编辑。
 - 事项详情支持长文、图片、清单、代码块等 Markdown 常规能力；交互对齐系统笔记的“随手记 + 分类整理”体验。
 - 知识卡片、日报周报都以 `.md` 生成，数据库里的索引可随时重建。
-- 需要发布时由任一端本地生成 MkDocs 静态站。
+- 知识通过 App 查看，按需导出原始 Markdown；静态站发布不在当前范围。
 - 需要离线编辑时，可用 Obsidian 等编辑器打开本地目录；不要让编辑器成为唯一副本。
 - 每篇报告保留 `source_event_ids`、原始文件 hash、OCR 工具版本和模型版本。
 
@@ -529,7 +529,7 @@ Markdown 主库：
 ```markdown
 ---
 id: kn_20261003_xxx
-kind: knowledge
+type: knowledge
 title: 某个主题
 created_at: 2026-10-03T18:00:00+08:00
 origin_device: android-phone
@@ -553,7 +553,7 @@ status: draft | reviewed | canonical
 ## 来源
 ```
 
-`kind` 取 `matter | todo | event | knowledge` 之一。只有 `status: canonical` 的卡片参与跨端同步；`draft` 默认留在本端。`.md` 文件是权威副本，SQLite 里的行只是索引，删掉可以重建。
+`type` 取 `matter | todo | event | knowledge` 之一。只有 `status: canonical` 的卡片参与跨端同步；`draft` 默认留在本端。`.md` 文件是权威副本；SQLite 中的成果索引行可以重建，但捕获、会话和审计账本不能由成果文件恢复。
 
 ### 7.2 去重
 
@@ -562,7 +562,7 @@ status: draft | reviewed | canonical
 1. `event_id` 唯一约束，防止重复捕获。
 2. 文件 SHA-256 + MIME + 文件大小，防止同一截图重复处理。
 3. 规范化 OCR 文本 hash 或 SimHash，发现近似重复。
-4. embedding 相似度只产生“可能重复”候选，不自动删除。
+4. 仅按规范化文本及来源引用产生重复候选；本阶段不维护 embedding 或向量索引。
 5. 合并知识时保留所有来源引用，并记录合并原因。
 6. 跨端合并按 `object_id` 做，重复成果只保留一份，来源端信息合并到同一条目。
 
@@ -731,7 +731,7 @@ status: draft | reviewed | canonical
 1. 定义 Markdown frontmatter 和目录结构。
 2. 原子知识卡片写入。
 3. Jinja2 日报和周报。
-4. 端内本地 FTS 或向量索引。
+4. 端内成果索引提供现有中文子串检索语义；本阶段不增加全文或向量索引。
 5. 引用 `source_event_ids` 和 OCR block。
 
 
@@ -789,7 +789,7 @@ status: draft | reviewed | canonical
 
 全部设计已定稿，无待确认项。
 
-已定：客户端用 Flutter，当前个人自用但按未来开源准备；模型走 OpenAI 兼容配置，默认 `deepseek-flash`，内置能力表允许用户覆盖，三端共用一把 Key 并以 `user_id` 区分设备，未配 Key 时 AI 功能禁用，细节见 [模型接入](model-integration.md)；内置日历支持基础重复，不做例外 / 农历 / ICS 订阅；待办不嵌套，聚合层只有事项；文本和图片可出网，图片自动缩放、去 EXIF，并按 ADR 0010 默认允许发送；知识不发布静态站，App 内查看并可按需导出 Markdown。
+已定：客户端用 Flutter，当前个人自用但按未来开源准备；模型走 OpenAI 兼容配置，默认 `deepseek-flash`，内置能力表允许用户覆盖，模型 Key 存储在各端系统安全存储中，用户可手动在多端配置相同值或分别配置；`user_id` 按端区分，未配 Key 时 AI 功能禁用，细节见 [模型接入](model-integration.md)；内置日历支持基础重复，不做例外 / 农历 / ICS 订阅；待办不嵌套，聚合层只有事项；文本和图片可出网，图片自动缩放、去 EXIF，并按 ADR 0010 默认允许发送；知识在 App 内查看并可按需导出 Markdown，不发布静态站。
 
 默认开工方案：Flutter 三端 + Markdown 主库 + 行动域（事项 / 待办 / 事件）+ 知识域 + OneDrive 双向同步 + 百度网盘每日归档 + 默认 `deepseek-flash`（OpenAI 兼容可替换）。
 
@@ -808,7 +808,7 @@ status: draft | reviewed | canonical
 - 其它云端多模态模型（OpenAI、Gemini、Claude、通义千问等）官方文档：作为开放接入的备选端点参考。
 - LiteLLM 官方文档：验证可选的多厂商网关、结构化输出、重试和路由（当前不采用，端内直连各厂商）。
 - Markdown / CommonMark / YAML frontmatter 规范：验证 `.md` 作为权威存储格式。
-- SQLite FTS5 / sqlite-vec 官方文档：验证基于 Markdown 主库的本地索引与检索。
+- SQLite 官方文档：验证本地数据库索引与迁移行为；本阶段不采用 FTS 或向量索引。
 - ntfy、Gotify、Telegram、企业微信、飞书、钉钉官方文档：验证跨端提醒通道。
 - Microsoft Graph 官方文档：验证 App Folder、`/delta`、`eTag` / `If-Match`、MSAL 与限流。
 - 百度网盘开放平台官方文档：验证 OAuth、专属目录、文件动词与配额限制。

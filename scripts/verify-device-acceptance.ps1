@@ -651,6 +651,7 @@ function Invoke-PhysicalProfile {
 }
 
 $script:Flutter = Resolve-Flutter
+. (Join-Path $PSScriptRoot 'assert-flutter-version.ps1') -FlutterExecutable $script:Flutter
 $script:Adb = Resolve-Adb
 $androidSdk = Resolve-AndroidSdk
 if ($androidSdk) {
