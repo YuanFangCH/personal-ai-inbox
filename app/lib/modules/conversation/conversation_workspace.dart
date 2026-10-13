@@ -45,6 +45,8 @@ class ConversationWorkspace extends ChangeNotifier {
   final Map<String, Future<void>> _messageSaveQueues = {};
   bool _cancelChatRequested = false;
   bool _isChatGenerating = false;
+  Future<void>? _shutdownFuture;
+  bool _chatServiceClosed = false;
 
   List<Conversation> get conversations => List.unmodifiable(_conversations);
 
@@ -536,6 +538,20 @@ class ConversationWorkspace extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> shutdown() => _shutdownFuture ??= _shutdown();
+
+  Future<void> _shutdown() async {
+    await cancelGeneration();
+    final pendingSaves = _messageSaveQueues.values.toList(growable: false);
+    if (pendingSaves.isNotEmpty) {
+      await Future.wait(pendingSaves.map((save) => save.catchError((_) {})));
+    }
+    if (!_chatServiceClosed) {
+      _chatServiceClosed = true;
+      _chatService.close();
+    }
+  }
+
   Future<void> retryAssistantMessage(String messageId) async {
     final message = await _repository.findMessage(messageId);
     if (message == null ||
@@ -598,8 +614,7 @@ class ConversationWorkspace extends ChangeNotifier {
 
   @override
   void dispose() {
-    unawaited(_chatSubscription?.cancel());
-    _chatService.close();
+    unawaited(shutdown());
     super.dispose();
   }
 

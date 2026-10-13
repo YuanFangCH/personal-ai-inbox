@@ -3,7 +3,7 @@ part of '../conversation_page.dart';
 class _AttachmentPreview extends StatelessWidget {
   const _AttachmentPreview({required this.app, required this.attachment});
 
-  final AppController app;
+  final ConversationWorkspace app;
   final ChatAttachment attachment;
 
   @override

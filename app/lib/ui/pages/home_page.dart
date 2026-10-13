@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/models.dart';
-import '../../services/app_controller.dart';
+import '../../modules/results/result_library.dart';
 import '../app_scope.dart';
 import '../widgets/capture_sheet.dart';
 import '../widgets/common.dart';
@@ -14,7 +14,10 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final app = AppScope.of(context);
+    final app = AppScope.results(context);
+    final reviewCount =
+        AppScope.capture(context).reviewCaptures.length +
+        AppScope.sync(context).conflictFiles.length;
     final now = DateTime.now();
     final events =
         app.events
@@ -43,7 +46,7 @@ class HomePage extends StatelessWidget {
           _Metrics(
             eventCount: events.length,
             todoCount: openTodos.length,
-            reviewCount: app.reviewCaptures.length + app.conflictFiles.length,
+            reviewCount: reviewCount,
             knowledgeCount: app.knowledge.length,
           ),
           const SizedBox(height: 18),
@@ -313,7 +316,7 @@ class _TodoSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final app = AppScope.of(context);
+    final app = AppScope.results(context);
     return SurfacePanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -351,7 +354,7 @@ class _TodoRow extends StatelessWidget {
   const _TodoRow({required this.document, required this.app});
 
   final ResultDocument document;
-  final AppController app;
+  final ResultLibrary app;
 
   @override
   Widget build(BuildContext context) {

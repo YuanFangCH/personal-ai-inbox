@@ -43,7 +43,7 @@ class _QuickCreateSheetViewState extends State<QuickCreateSheetView> {
 
   @override
   Widget build(BuildContext context) {
-    final app = AppScope.of(context);
+    final app = AppScope.results(context);
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     return AnimatedPadding(
       duration: const Duration(milliseconds: 160),
@@ -115,7 +115,7 @@ class _QuickCreateSheetViewState extends State<QuickCreateSheetView> {
       return;
     }
     setState(() => _form.setSaving(true));
-    final app = AppScope.of(context);
+    final app = AppScope.results(context);
     try {
       final document = await app.createManual(
         type: _form.type,

@@ -9,11 +9,12 @@ class SyncPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final app = AppScope.of(context);
-    final report = app.lastSyncReport;
+    final app = AppScope.sync(context);
+    final results = AppScope.results(context);
+    final report = app.lastReport;
     return PageFrame(
       title: '同步',
-      subtitle: app.syncProviderName,
+      subtitle: app.providerName,
       actions: [
         FilledButton.icon(
           onPressed: app.isBusy ? null : app.syncNow,
@@ -132,14 +133,13 @@ class SyncPage extends StatelessWidget {
               children: [
                 const SectionHeading(title: '本地状态'),
                 const SizedBox(height: 10),
-                _StatusRow(label: '成果对象', value: '${app.documents.length}'),
+                _StatusRow(label: '成果对象', value: '${results.documents.length}'),
                 _StatusRow(
                   label: '待上传',
-                  value:
-                      '${app.documents.where((document) => document.status.wireName == 'canonical').length}',
+                  value: '${results.canonicalDocuments.length}',
                 ),
                 _StatusRow(label: '冲突副本', value: '${app.conflictFiles.length}'),
-                _StatusRow(label: 'Markdown 主库', value: app.vaultRoot),
+                _StatusRow(label: 'Markdown 主库', value: results.vaultRoot),
               ],
             ),
           ),

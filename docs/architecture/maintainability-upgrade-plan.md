@@ -1,6 +1,6 @@
 # 架构整改实施计划
 
-> 状态：阶段 A–D 已完成并通过全量主机验收；阶段 E 待开始
+> 状态：阶段 A–E 已完成并通过全量主机验收；阶段 F 待开始
 > 创建日期：2026-10-13
 > 执行入口：[RM_HANDOFF.md](../../RM_HANDOFF.md)
 > 依据：[架构审查](architecture-audit-2026-10-13.md)、[ADR 0014](../adr/0014-modular-local-core-and-compatibility-migration.md)
@@ -86,7 +86,7 @@
 9. 全仓迁移完成后移除 AppController、旧全局订阅和 raw storage UI surface。异步 dispose 排空写入、停止请求、关闭数据库和文件锁。
 10. 合成 1k/10k 数据验证页大小和单项编辑文件读取数；延迟/资源生命周期测试不依赖本机毫秒门槛。
 
-阶段门槛：UI 无存储/厂商实现依赖，单成果编辑不全量读取 Markdown，门禁可检出违规。提交：`refactor(app): 完成模块迁移与增量成果查询`。
+阶段门槛：UI 无存储/厂商实现或 `AppController` 依赖，单成果编辑不全量读取 Markdown，门禁可检出 import/export/part 违规与模块循环。已通过 Flutter 3.47.6 / Dart 3.13.5 格式检查（146 文件零变化）、`flutter analyze`（0 问题）、完整主机测试（339/339）、Android UI 矩阵（100/100）及 SQLite migration 回归；10k 成果的查询只读取请求的 50 个 Markdown 文件，单项编辑少于 10 次文件读取。显式重建扫描会返回坏文件路径；前台自动重扫、release/原生 integration smoke 和升级恢复演练留在阶段 F/最终平台验收记录。提交：`refactor(app): 完成模块迁移与增量成果查询`。
 
 ### F. 设置与最终验收
 

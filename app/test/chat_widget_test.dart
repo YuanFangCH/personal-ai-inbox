@@ -10,7 +10,9 @@ import 'package:personal_ai_inbox/data/memory_vault_store.dart';
 import 'package:personal_ai_inbox/data/result_repository.dart';
 import 'package:personal_ai_inbox/data/sync_engine.dart';
 import 'package:personal_ai_inbox/data/sync_provider.dart';
-import 'package:personal_ai_inbox/services/app_controller.dart';
+
+import 'support/test_app_host.dart';
+
 import 'package:personal_ai_inbox/services/capture_service.dart';
 import 'package:personal_ai_inbox/services/chat_service.dart';
 
@@ -33,7 +35,7 @@ void main() {
       store: MemoryConversationStore(),
       attachments: MemoryAttachmentStore(),
     );
-    final controller = AppController(
+    final controller = TestAppHost(
       repository: repository,
       indexDatabase: index,
       captureService: CaptureService(
@@ -51,14 +53,14 @@ void main() {
     );
     await controller.initialize();
 
-    await tester.pumpWidget(PersonalAiInboxApp(controller: controller));
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: controller.runtime));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('page_home')), findsOneWidget);
     expect(find.byKey(const Key('chat_input')), findsNothing);
     expect(controller.conversations, isEmpty);
 
-    await tester.pumpWidget(PersonalAiInboxApp(controller: controller));
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: controller.runtime));
     await tester.pumpAndSettle();
     expect(controller.conversations, isEmpty);
     controller.dispose();
@@ -78,7 +80,7 @@ void main() {
       store: MemoryConversationStore(),
       attachments: MemoryAttachmentStore(),
     );
-    final controller = AppController(
+    final controller = TestAppHost(
       repository: repository,
       indexDatabase: index,
       captureService: CaptureService(
@@ -95,7 +97,7 @@ void main() {
       chatService: ChatService(settings: settings, repository: chatRepository),
     );
     await controller.initialize();
-    await tester.pumpWidget(PersonalAiInboxApp(controller: controller));
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: controller.runtime));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('nav_inbox')));

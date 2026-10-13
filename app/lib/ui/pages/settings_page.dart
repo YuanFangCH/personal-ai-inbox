@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_scope.dart';
+import '../presentation/domain_presentation.dart';
 import '../widgets/common.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -26,11 +27,11 @@ class _SettingsPageState extends State<SettingsPage> {
     if (_initialized) {
       return;
     }
-    final settings = AppScope.of(context).settings;
-    _baseUrl = TextEditingController(text: settings?.modelBaseUrl ?? '');
-    _model = TextEditingController(text: settings?.modelName ?? '');
-    _themeMode = settings?.themeMode ?? ThemeMode.system;
-    _allowImageEgress = settings?.allowImageEgress ?? true;
+    final settings = AppScope.preferences(context).settings;
+    _baseUrl = TextEditingController(text: settings.modelBaseUrl);
+    _model = TextEditingController(text: settings.modelName);
+    _themeMode = materialThemeMode(settings.themeMode);
+    _allowImageEgress = settings.allowImageEgress;
     _initialized = true;
   }
 
@@ -44,8 +45,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final app = AppScope.of(context);
-    final settings = app.settings;
+    final preferences = AppScope.preferences(context);
+    final results = AppScope.results(context);
+    final settings = preferences.settings;
     return PageFrame(
       title: '设置',
       subtitle: '本端配置与数据诊断',
@@ -125,7 +127,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   decoration: InputDecoration(
                     labelText: 'API Key',
                     prefixIcon: const Icon(Icons.key_outlined),
-                    hintText: settings?.hasModelKey == true && !_apiKeyChanged
+                    hintText: settings.hasModelKey && !_apiKeyChanged
                         ? '已保存，留空则不修改'
                         : '输入后保存到系统安全存储',
                   ),
@@ -134,11 +136,11 @@ class _SettingsPageState extends State<SettingsPage> {
                 Row(
                   children: [
                     StatusPill(
-                      label: settings?.hasModelKey == true ? '模型已配置' : '模型未配置',
-                      icon: settings?.hasModelKey == true
+                      label: settings.hasModelKey ? '模型已配置' : '模型未配置',
+                      icon: settings.hasModelKey
                           ? Icons.check_circle_outline
                           : Icons.info_outline,
-                      tone: settings?.hasModelKey == true
+                      tone: settings.hasModelKey
                           ? StatusTone.positive
                           : StatusTone.warning,
                     ),
@@ -177,20 +179,20 @@ class _SettingsPageState extends State<SettingsPage> {
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.fingerprint),
                   title: const Text('设备 ID'),
-                  subtitle: SelectableText(settings?.deviceId ?? ''),
+                  subtitle: SelectableText(settings.deviceId),
                 ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.folder_outlined),
                   title: const Text('Markdown 主库'),
-                  subtitle: SelectableText(app.vaultRoot),
+                  subtitle: SelectableText(results.vaultRoot),
                 ),
                 const Divider(height: 20),
                 Row(
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: app.isBusy ? null : app.rebuildIndex,
+                        onPressed: _saving ? null : _rebuildIndex,
                         icon: const Icon(Icons.refresh),
                         label: const Text('从 Markdown 重建索引'),
                       ),
@@ -207,10 +209,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _save() async {
     setState(() => _saving = true);
-    final app = AppScope.of(context);
     try {
-      await app.saveSettings(
-        themeMode: _themeMode,
+      await AppScope.preferences(context).update(
+        themeMode: themePreference(_themeMode),
         modelBaseUrl: _baseUrl.text,
         modelName: _model.text,
         apiKey: _apiKeyChanged ? _apiKey.text : null,
@@ -226,5 +227,21 @@ class _SettingsPageState extends State<SettingsPage> {
         setState(() => _saving = false);
       }
     }
+  }
+
+  Future<void> _rebuildIndex() async {
+    final report = await AppScope.results(context).rebuildIndex();
+    if (!mounted) return;
+    final errorPaths = report.diagnostics
+        .take(2)
+        .map((diagnostic) => diagnostic.path)
+        .join('、');
+    final message = report.failed == 0
+        ? '扫描 ${report.scanned} 项，索引 ${report.indexed} 项'
+        : '扫描完成：索引 ${report.indexed}/${report.scanned} 项，失败 ${report.failed} 项'
+              '${errorPaths.isEmpty ? '' : '（$errorPaths）'}';
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 }

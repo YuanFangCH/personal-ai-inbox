@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:personal_ai_inbox/core/models.dart';
 import 'package:personal_ai_inbox/data/settings_service.dart';
 
 class FakeSettingsService extends SettingsService {
   FakeSettingsService({
     String deviceId = 'test-device',
-    ThemeMode themeMode = ThemeMode.light,
+    ThemePreference themeMode = ThemePreference.light,
     String modelBaseUrl = 'https://api.deepseek.com',
     String modelName = 'deepseek-flash',
     String? modelKey,
@@ -40,7 +40,7 @@ class FakeSettingsService extends SettingsService {
 
   @override
   Future<void> saveGeneral({
-    ThemeMode? themeMode,
+    ThemePreference? themeMode,
     String? modelBaseUrl,
     String? modelName,
     bool? showCompletedTodos,

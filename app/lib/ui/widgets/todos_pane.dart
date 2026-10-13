@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/models.dart';
-import '../../services/app_controller.dart';
+import '../../modules/results/result_library.dart';
 import '../app_scope.dart';
 import '../pages/document_detail_page.dart';
 import 'common.dart';
@@ -21,7 +21,7 @@ class _TodosPaneState extends State<TodosPane> {
 
   @override
   Widget build(BuildContext context) {
-    final app = AppScope.of(context);
+    final app = AppScope.results(context);
     final now = DateTime.now();
     final all = app.todos.toList()..sort(_compareTodo);
     final filtered = all
@@ -96,7 +96,7 @@ class _TodoTile extends StatelessWidget {
   const _TodoTile({required this.todo, required this.app});
 
   final ResultDocument todo;
-  final AppController app;
+  final ResultLibrary app;
 
   @override
   Widget build(BuildContext context) {

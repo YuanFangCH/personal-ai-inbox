@@ -15,7 +15,7 @@ void main() {
     final versionDatabase = sqlite3.open('${directory.path}/index.sqlite3');
     expect(
       versionDatabase.select('PRAGMA user_version').single['user_version'],
-      2,
+      3,
     );
     versionDatabase.close();
 
@@ -31,8 +31,18 @@ void main() {
       localHash: 'sha256:test',
       lastSyncedHash: null,
       syncState: SyncState.pendingUpload,
+      searchText: '标题 包含 100%_ 字符',
     );
     await database.upsertResult(record);
+    expect(
+      await database.searchResults(
+        query: '100%_',
+        limit: 50,
+        offset: 0,
+        type: ResultType.knowledge,
+      ),
+      hasLength(1),
+    );
     final operation = IdempotentOperation(
       key: 'capture:test-idempotency',
       resultId: record.id,

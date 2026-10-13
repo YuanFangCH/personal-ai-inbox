@@ -11,6 +11,13 @@ abstract interface class IndexDatabase {
 
   Future<List<IndexedResult>> listResults();
 
+  Future<List<IndexedResult>> searchResults({
+    required String query,
+    required int limit,
+    required int offset,
+    ResultType? type,
+  });
+
   Future<IndexedResult?> findResult(String id);
 
   Future<void> replaceResults(List<IndexedResult> results);

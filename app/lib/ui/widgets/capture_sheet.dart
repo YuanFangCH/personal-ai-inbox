@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../services/app_controller.dart';
+import '../../modules/capture/capture_workflow.dart';
 import '../app_scope.dart';
+import '../presentation/domain_presentation.dart';
 
 Future<void> showCaptureSheet(BuildContext context) {
   return showModalBottomSheet<void>(
@@ -33,9 +34,8 @@ class _CaptureSheetState extends State<_CaptureSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final app = AppScope.of(context);
     final theme = Theme.of(context);
-    final modelAvailable = app.settings?.hasModelKey ?? false;
+    final modelAvailable = AppScope.preferences(context).settings.hasModelKey;
     return AnimatedPadding(
       duration: const Duration(milliseconds: 160),
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
@@ -122,25 +122,28 @@ class _CaptureSheetState extends State<_CaptureSheet> {
       return;
     }
     setState(() => _submitting = true);
-    final app = AppScope.of(context);
     try {
-      final result = await app.captureText(text, preferModel: _preferModel);
+      final result = await AppScope.capture(context)
+          .captureText(text, preferModel: _preferModel);
       if (!mounted) {
         return;
       }
       final message = switch (result.status) {
         CaptureOutcomeStatus.created =>
-          '已生成${result.document!.type.label}：${result.document!.title}',
+          '已生成${resultTypeLabel(result.document!.type)}：${result.document!.title}',
         CaptureOutcomeStatus.review => '已进入确认队列',
         CaptureOutcomeStatus.failure => result.message ?? '捕获失败',
       };
-      if (result.warning != null) {
-        app.errorMessage = '${result.warning}';
-      }
       Navigator.pop(context);
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(message)));
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              result.warning == null ? message : '$message（${result.warning}）',
+            ),
+          ),
+        );
     } finally {
       if (mounted) {
         setState(() => _submitting = false);

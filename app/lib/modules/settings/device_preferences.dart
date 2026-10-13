@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:personal_ai_inbox/core/models.dart';
 import 'package:personal_ai_inbox/data/settings_service.dart';
 import 'package:personal_ai_inbox/domain/app_failure.dart';
 
@@ -38,7 +39,7 @@ class DevicePreferences extends ChangeNotifier {
   }
 
   Future<void> update({
-    ThemeMode? themeMode,
+    ThemePreference? themeMode,
     String? modelBaseUrl,
     String? modelName,
     String? apiKey,
@@ -95,6 +96,8 @@ class DevicePreferences extends ChangeNotifier {
     });
   }
 
+  Future<void> shutdown() => _queue;
+
   Future<T> _enqueue<T>(Future<T> Function() operation) {
     final result = _queue.then((_) => operation());
     _queue = result.then<void>((_) {}, onError: (_, _) {});
@@ -128,7 +131,7 @@ abstract interface class DevicePreferencesAdapter {
   Future<AppSettings> load();
 
   Future<void> saveGeneral({
-    ThemeMode? themeMode,
+    ThemePreference? themeMode,
     String? modelBaseUrl,
     String? modelName,
     bool? showCompletedTodos,
@@ -152,7 +155,7 @@ final class SettingsServiceDevicePreferencesAdapter
 
   @override
   Future<void> saveGeneral({
-    ThemeMode? themeMode,
+    ThemePreference? themeMode,
     String? modelBaseUrl,
     String? modelName,
     bool? showCompletedTodos,

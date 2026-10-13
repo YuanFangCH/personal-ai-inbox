@@ -18,7 +18,7 @@ class SqliteMigrationCoordinator {
 
   static const _indexFile = 'index.sqlite3';
   static const _conversationFile = 'conversations.sqlite3';
-  static const _supportedVersions = {_indexFile: 2, _conversationFile: 1};
+  static const _supportedVersions = {_indexFile: 3, _conversationFile: 1};
 
   final String supportPath;
   final SettingsService _settings;

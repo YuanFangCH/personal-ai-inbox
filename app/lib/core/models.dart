@@ -1,16 +1,56 @@
-import 'package:flutter/material.dart';
+enum ThemePreference { system, light, dark }
+
+class AppSettings {
+  const AppSettings({
+    required this.deviceId,
+    required this.themeMode,
+    required this.modelBaseUrl,
+    required this.modelName,
+    required this.hasModelKey,
+    required this.showCompletedTodos,
+    required this.calendarMonthDetailed,
+    this.allowImageEgress = true,
+  });
+
+  final String deviceId;
+  final ThemePreference themeMode;
+  final String modelBaseUrl;
+  final String modelName;
+  final bool hasModelKey;
+  final bool showCompletedTodos;
+  final bool calendarMonthDetailed;
+  final bool allowImageEgress;
+
+  AppSettings copyWith({
+    String? deviceId,
+    ThemePreference? themeMode,
+    String? modelBaseUrl,
+    String? modelName,
+    bool? hasModelKey,
+    bool? showCompletedTodos,
+    bool? calendarMonthDetailed,
+    bool? allowImageEgress,
+  }) => AppSettings(
+    deviceId: deviceId ?? this.deviceId,
+    themeMode: themeMode ?? this.themeMode,
+    modelBaseUrl: modelBaseUrl ?? this.modelBaseUrl,
+    modelName: modelName ?? this.modelName,
+    hasModelKey: hasModelKey ?? this.hasModelKey,
+    showCompletedTodos: showCompletedTodos ?? this.showCompletedTodos,
+    calendarMonthDetailed: calendarMonthDetailed ?? this.calendarMonthDetailed,
+    allowImageEgress: allowImageEgress ?? this.allowImageEgress,
+  );
+}
 
 enum ResultType {
-  matter('matter', '事项', Icons.account_tree_outlined),
-  todo('todo', '待办', Icons.check_circle_outline),
-  event('event', '事件', Icons.event_outlined),
-  knowledge('knowledge', '知识', Icons.menu_book_outlined);
+  matter('matter'),
+  todo('todo'),
+  event('event'),
+  knowledge('knowledge');
 
-  const ResultType(this.wireName, this.label, this.icon);
+  const ResultType(this.wireName);
 
   final String wireName;
-  final String label;
-  final IconData icon;
 
   String get directory => switch (this) {
     ResultType.matter => 'matters',
@@ -28,14 +68,13 @@ enum ResultType {
 }
 
 enum ResultStatus {
-  draft('draft', '草稿'),
-  reviewed('reviewed', '已复核'),
-  canonical('canonical', '定稿');
+  draft('draft'),
+  reviewed('reviewed'),
+  canonical('canonical');
 
-  const ResultStatus(this.wireName, this.label);
+  const ResultStatus(this.wireName);
 
   final String wireName;
-  final String label;
 
   static ResultStatus parse(String value) {
     return ResultStatus.values.firstWhere(
@@ -45,28 +84,38 @@ enum ResultStatus {
   }
 }
 
-enum SyncState {
-  synced('已同步'),
-  pendingUpload('待上传'),
-  pendingDownload('待下载'),
-  conflict('冲突'),
-  deleted('已删除');
+enum SyncState { synced, pendingUpload, pendingDownload, conflict, deleted }
 
-  const SyncState(this.label);
+class IndexRebuildDiagnostic {
+  const IndexRebuildDiagnostic({required this.path, required this.message});
 
-  final String label;
+  final String path;
+  final String message;
+}
+
+class IndexRebuildReport {
+  const IndexRebuildReport({
+    required this.scanned,
+    required this.indexed,
+    required this.diagnostics,
+  });
+
+  final int scanned;
+  final int indexed;
+  final List<IndexRebuildDiagnostic> diagnostics;
+
+  int get failed => diagnostics.length;
 }
 
 enum CaptureSourceType {
-  text('text', '文本'),
-  image('image', '图片'),
-  url('url', '链接'),
-  file('file', '文件');
+  text('text'),
+  image('image'),
+  url('url'),
+  file('file');
 
-  const CaptureSourceType(this.wireName, this.label);
+  const CaptureSourceType(this.wireName);
 
   final String wireName;
-  final String label;
 
   static CaptureSourceType parse(String value) {
     return CaptureSourceType.values.firstWhere(
@@ -305,6 +354,7 @@ class IndexedResult {
     required this.syncState,
     this.matterId,
     this.remoteEtag,
+    this.searchText = '',
   });
 
   final String id;
@@ -320,12 +370,14 @@ class IndexedResult {
   final String? remoteEtag;
   final String? matterId;
   final SyncState syncState;
+  final String searchText;
 
   IndexedResult copyWith({
     String? localHash,
     String? lastSyncedHash,
     String? remoteEtag,
     SyncState? syncState,
+    String? searchText,
   }) {
     return IndexedResult(
       id: id,
@@ -341,6 +393,7 @@ class IndexedResult {
       remoteEtag: remoteEtag ?? this.remoteEtag,
       matterId: matterId,
       syncState: syncState ?? this.syncState,
+      searchText: searchText ?? this.searchText,
     );
   }
 }

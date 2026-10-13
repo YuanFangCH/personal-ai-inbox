@@ -6,13 +6,13 @@ import 'package:personal_ai_inbox/data/result_repository.dart';
 import 'package:personal_ai_inbox/modules/results/result_library.dart';
 
 void main() {
-  late MemoryVaultStore vault;
+  late _CountingVaultStore vault;
   late MemoryIndexDatabase index;
   late ResultRepository repository;
   late ResultLibrary library;
 
   setUp(() async {
-    vault = MemoryVaultStore();
+    vault = _CountingVaultStore();
     index = MemoryIndexDatabase();
     repository = ResultRepository(
       vault: vault,
@@ -198,4 +198,30 @@ void main() {
     await internal.deleteRaw(path);
     expect(await internal.readRaw(path), isNull);
   });
+
+  test(
+    'editing one document performs a bounded number of file reads',
+    () async {
+      final created = await library.createManual(
+        type: ResultType.knowledge,
+        title: '单项编辑',
+        body: '正文',
+      );
+      vault.readCount = 0;
+
+      await library.saveDocument(created.copyWith(title: '更新标题'));
+
+      expect(vault.readCount, lessThan(10));
+    },
+  );
+}
+
+class _CountingVaultStore extends MemoryVaultStore {
+  int readCount = 0;
+
+  @override
+  Future<String?> read(String relativePath) {
+    readCount++;
+    return super.read(relativePath);
+  }
 }

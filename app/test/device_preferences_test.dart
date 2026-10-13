@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_ai_inbox/data/settings_service.dart';
+import 'package:personal_ai_inbox/core/models.dart';
 import 'package:personal_ai_inbox/domain/app_failure.dart';
 import 'package:personal_ai_inbox/modules/settings/device_preferences.dart';
 
@@ -39,7 +39,7 @@ void main() {
         await preferences.initialize();
 
         await preferences.update(
-          themeMode: ThemeMode.dark,
+          themeMode: ThemePreference.dark,
           modelBaseUrl: ' https://example.com/v1 ',
           modelName: ' model-a ',
           showCompletedTodos: true,
@@ -49,7 +49,7 @@ void main() {
 
         expect(settings.saveGeneralCalls, 1);
         expect(preferences.settings.deviceId, 'device_test');
-        expect(preferences.settings.themeMode, ThemeMode.dark);
+        expect(preferences.settings.themeMode, ThemePreference.dark);
         expect(preferences.settings.modelBaseUrl, 'https://example.com/v1');
         expect(preferences.settings.modelName, 'model-a');
         expect(preferences.settings.showCompletedTodos, isTrue);
@@ -121,11 +121,11 @@ void main() {
         final preferences = _preferences(settings);
 
         final initialize = preferences.initialize();
-        final update = preferences.update(themeMode: ThemeMode.dark);
+        final update = preferences.update(themeMode: ThemePreference.dark);
         gate.complete();
         await Future.wait([initialize, update]);
 
-        expect(preferences.settings.themeMode, ThemeMode.dark);
+        expect(preferences.settings.themeMode, ThemePreference.dark);
       },
     );
 
@@ -158,7 +158,7 @@ final class _FakeSettingsService extends SettingsService {
 
   AppSettings _settings = const AppSettings(
     deviceId: 'device_test',
-    themeMode: ThemeMode.system,
+    themeMode: ThemePreference.system,
     modelBaseUrl: 'https://api.deepseek.com',
     modelName: 'deepseek-flash',
     hasModelKey: false,
@@ -190,7 +190,7 @@ final class _FakeSettingsService extends SettingsService {
 
   @override
   Future<void> saveGeneral({
-    ThemeMode? themeMode,
+    ThemePreference? themeMode,
     String? modelBaseUrl,
     String? modelName,
     bool? showCompletedTodos,

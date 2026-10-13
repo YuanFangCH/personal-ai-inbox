@@ -8,7 +8,9 @@ import 'package:personal_ai_inbox/data/memory_vault_store.dart';
 import 'package:personal_ai_inbox/data/result_repository.dart';
 import 'package:personal_ai_inbox/data/sync_engine.dart';
 import 'package:personal_ai_inbox/data/sync_provider.dart';
-import 'package:personal_ai_inbox/services/app_controller.dart';
+
+import 'support/test_app_host.dart';
+
 import 'package:personal_ai_inbox/services/capture_service.dart';
 import 'package:personal_ai_inbox/ui/pages/document_detail_page.dart';
 import 'package:personal_ai_inbox/ui/widgets/common.dart';
@@ -45,7 +47,7 @@ Future<void> runAndroidUiCase(
 
   final controller = await _buildController(item);
   addTearDown(controller.dispose);
-  await tester.pumpWidget(PersonalAiInboxApp(controller: controller));
+  await tester.pumpWidget(PersonalAiInboxApp(runtime: controller.runtime));
   await tester.pumpAndSettle();
   if (!simulateViewport) {
     _assertPhysicalViewport(tester, item);
@@ -76,12 +78,14 @@ void _assertPhysicalViewport(WidgetTester tester, AndroidUiCase item) {
   }
 }
 
-Future<AppController> _buildController(AndroidUiCase item) async {
+Future<TestAppHost> _buildController(AndroidUiCase item) async {
   final vault = MemoryVaultStore();
   final index = MemoryIndexDatabase();
   final settings = FakeSettingsService(
     deviceId: item.device == 'tablet' ? 'android-tablet' : 'android-phone',
-    themeMode: item.theme == 'dark' ? ThemeMode.dark : ThemeMode.light,
+    themeMode: item.theme == 'dark'
+        ? ThemePreference.dark
+        : ThemePreference.light,
   );
   final repository = ResultRepository(
     vault: vault,
@@ -133,7 +137,7 @@ Future<AppController> _buildController(AndroidUiCase item) async {
     ),
   );
 
-  final controller = AppController(
+  final controller = TestAppHost(
     repository: repository,
     indexDatabase: index,
     captureService: CaptureService(
@@ -178,7 +182,7 @@ Future<void> _goToPage(WidgetTester tester, AndroidUiCase item) async {
 
 Future<void> _runAction(
   WidgetTester tester,
-  AppController controller,
+  TestAppHost controller,
   AndroidUiCase item,
 ) async {
   switch (item.action) {

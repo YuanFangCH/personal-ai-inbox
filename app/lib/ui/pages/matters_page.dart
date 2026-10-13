@@ -11,7 +11,7 @@ class MattersPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final app = AppScope.of(context);
+    final app = AppScope.results(context);
     final matters = app.matters;
     return PageFrame(
       title: '事项',

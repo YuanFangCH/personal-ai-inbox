@@ -13,7 +13,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
     _conversationId = widget.conversationId;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _conversationId != null) {
-        AppScope.of(context).openConversation(_conversationId!);
+        AppScope.conversations(context).openConversation(_conversationId!);
       }
     });
   }
@@ -24,7 +24,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
   }
 
   Future<void> _send() async {
-    final app = AppScope.of(context);
+    final app = AppScope.conversations(context);
     final text = _textController.text;
     if ((text.trim().isEmpty && _imageInputs.isEmpty) ||
         app.isChatGenerating ||
@@ -132,7 +132,8 @@ mixin _ConversationPageActions on State<ConversationPage> {
     );
     controller.dispose();
     if (title != null && title.isNotEmpty && mounted) {
-      await AppScope.of(context).renameConversation(conversation.id, title);
+      await AppScope.conversations(context)
+          .renameConversation(conversation.id, title);
     }
   }
 
@@ -157,7 +158,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
     if (confirmed != true || !mounted) {
       return;
     }
-    await AppScope.of(context).deleteConversation(conversation.id);
+    await AppScope.conversations(context).deleteConversation(conversation.id);
     if (mounted) {
       Navigator.pop(context);
     }

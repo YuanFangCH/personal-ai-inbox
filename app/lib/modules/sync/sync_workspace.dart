@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../core/models.dart';
@@ -28,6 +30,7 @@ class SyncWorkspace extends ChangeNotifier {
   List<String> _conflictFiles = const [];
   bool _isBusy = false;
   String? _errorMessage;
+  Completer<void>? _activeSync;
 
   SyncReport? get lastReport => _lastReport;
 
@@ -44,6 +47,10 @@ class SyncWorkspace extends ChangeNotifier {
 
   Future<void> initialize() => refresh();
 
+  Future<void> shutdown() async {
+    await _activeSync?.future;
+  }
+
   Future<void> refresh() async {
     try {
       _conflictFiles = List.unmodifiable(await _repository.listConflictFiles());
@@ -59,6 +66,8 @@ class SyncWorkspace extends ChangeNotifier {
     }
 
     _isBusy = true;
+    final activeSync = Completer<void>();
+    _activeSync = activeSync;
     _errorMessage = null;
     notifyListeners();
 
@@ -78,6 +87,8 @@ class SyncWorkspace extends ChangeNotifier {
     } finally {
       _isBusy = false;
       notifyListeners();
+      activeSync.complete();
+      if (identical(_activeSync, activeSync)) _activeSync = null;
     }
   }
 

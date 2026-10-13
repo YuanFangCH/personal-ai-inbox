@@ -8,7 +8,9 @@ import 'package:personal_ai_inbox/data/memory_vault_store.dart';
 import 'package:personal_ai_inbox/data/result_repository.dart';
 import 'package:personal_ai_inbox/data/sync_engine.dart';
 import 'package:personal_ai_inbox/data/sync_provider.dart';
-import 'package:personal_ai_inbox/services/app_controller.dart';
+
+import 'support/test_app_host.dart';
+
 import 'package:personal_ai_inbox/services/capture_service.dart';
 
 import 'test_support.dart';
@@ -18,7 +20,7 @@ void main() {
     tester,
   ) async {
     final controller = await _controller();
-    await tester.pumpWidget(PersonalAiInboxApp(controller: controller));
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: controller.runtime));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('nav_calendar')));
     await tester.pumpAndSettle();
@@ -40,7 +42,7 @@ void main() {
 
   testWidgets('month density persists through settings', (tester) async {
     final controller = await _controller();
-    await tester.pumpWidget(PersonalAiInboxApp(controller: controller));
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: controller.runtime));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('nav_calendar')));
     await tester.pumpAndSettle();
@@ -58,7 +60,7 @@ void main() {
     tester,
   ) async {
     final controller = await _controller();
-    await tester.pumpWidget(PersonalAiInboxApp(controller: controller));
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: controller.runtime));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('nav_calendar')));
     await tester.pumpAndSettle();
@@ -86,7 +88,7 @@ void main() {
     'quick create can switch to todo and save through more settings',
     (tester) async {
       final controller = await _controller();
-      await tester.pumpWidget(PersonalAiInboxApp(controller: controller));
+      await tester.pumpWidget(PersonalAiInboxApp(runtime: controller.runtime));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('nav_calendar')));
       await tester.pumpAndSettle();
@@ -152,7 +154,7 @@ void main() {
         ),
       ],
     );
-    await tester.pumpWidget(PersonalAiInboxApp(controller: controller));
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: controller.runtime));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('nav_calendar')));
     await tester.pumpAndSettle();
@@ -174,9 +176,7 @@ void main() {
   });
 }
 
-Future<AppController> _controller({
-  List<ResultDocument> seed = const [],
-}) async {
+Future<TestAppHost> _controller({List<ResultDocument> seed = const []}) async {
   final vault = MemoryVaultStore();
   final index = MemoryIndexDatabase();
   final settings = FakeSettingsService();
@@ -189,7 +189,7 @@ Future<AppController> _controller({
   for (final document in seed) {
     await repository.save(document, incrementRevision: false);
   }
-  final controller = AppController(
+  final controller = TestAppHost(
     repository: repository,
     indexDatabase: index,
     captureService: CaptureService(

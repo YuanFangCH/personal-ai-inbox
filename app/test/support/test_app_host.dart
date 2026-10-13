@@ -2,49 +2,49 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
-import '../bootstrap/app_runtime.dart';
-import '../core/chat_models.dart';
-import '../core/deterministic_parser.dart';
-import '../core/models.dart';
-import '../data/attachment_store.dart';
-import '../data/attachment_store_factory.dart';
-import '../data/chat_repository.dart';
-import '../data/conversation_store.dart';
-import '../data/conversation_store_factory.dart';
-import '../data/device_paths.dart';
-import '../data/index_database.dart';
-import '../data/index_database_factory.dart';
-import '../data/memory_attachment_store.dart';
-import '../data/memory_conversation_store.dart';
-import '../data/result_repository.dart';
-import '../data/settings_service.dart';
-import '../data/share_payload.dart';
-import '../data/sqlite_migration_coordinator.dart';
-import '../data/sync_engine.dart';
-import '../data/sync_provider.dart';
-import '../data/vault_store.dart';
-import '../data/vault_store_factory.dart';
-import '../modules/capture/capture_workflow.dart';
-import '../modules/conversation/auto_record_processor.dart';
-import '../modules/conversation/conversation_workspace.dart';
-import '../modules/results/result_library.dart';
-import '../modules/settings/device_preferences.dart';
-import '../modules/sync/sync_workspace.dart';
-import 'capture_service.dart';
-import 'chat_service.dart';
-import 'image_input_service.dart';
-import 'model_client.dart';
+import 'package:personal_ai_inbox/bootstrap/app_runtime.dart';
+import 'package:personal_ai_inbox/core/chat_models.dart';
+import 'package:personal_ai_inbox/core/deterministic_parser.dart';
+import 'package:personal_ai_inbox/core/models.dart';
+import 'package:personal_ai_inbox/data/attachment_store.dart';
+import 'package:personal_ai_inbox/data/attachment_store_factory.dart';
+import 'package:personal_ai_inbox/data/chat_repository.dart';
+import 'package:personal_ai_inbox/data/conversation_store.dart';
+import 'package:personal_ai_inbox/data/conversation_store_factory.dart';
+import 'package:personal_ai_inbox/data/device_paths.dart';
+import 'package:personal_ai_inbox/data/index_database.dart';
+import 'package:personal_ai_inbox/data/index_database_factory.dart';
+import 'package:personal_ai_inbox/data/memory_attachment_store.dart';
+import 'package:personal_ai_inbox/data/memory_conversation_store.dart';
+import 'package:personal_ai_inbox/data/result_repository.dart';
+import 'package:personal_ai_inbox/data/settings_service.dart';
+import 'package:personal_ai_inbox/data/share_payload.dart';
+import 'package:personal_ai_inbox/data/sqlite_migration_coordinator.dart';
+import 'package:personal_ai_inbox/data/sync_engine.dart';
+import 'package:personal_ai_inbox/data/sync_provider.dart';
+import 'package:personal_ai_inbox/data/vault_store.dart';
+import 'package:personal_ai_inbox/data/vault_store_factory.dart';
+import 'package:personal_ai_inbox/modules/capture/capture_workflow.dart';
+import 'package:personal_ai_inbox/modules/conversation/auto_record_processor.dart';
+import 'package:personal_ai_inbox/modules/conversation/conversation_workspace.dart';
+import 'package:personal_ai_inbox/modules/results/result_library.dart';
+import 'package:personal_ai_inbox/modules/settings/device_preferences.dart';
+import 'package:personal_ai_inbox/modules/sync/sync_workspace.dart';
+import 'package:personal_ai_inbox/services/capture_service.dart';
+import 'package:personal_ai_inbox/services/chat_service.dart';
+import 'package:personal_ai_inbox/services/image_input_service.dart';
+import 'package:personal_ai_inbox/services/model_client.dart';
 
-export '../modules/capture/capture_workflow.dart'
+export 'package:personal_ai_inbox/modules/capture/capture_workflow.dart'
     show CaptureOutcome, CaptureOutcomeStatus;
 
-/// Compatibility application facade over the modular local core.
+/// Test-only host for module integration tests.
 ///
 /// UI and existing tests still cross this seam while pages migrate to the
 /// module snapshots. Business rules and persistence live in [AppRuntime]
 /// modules, not in this class.
-class AppController extends ChangeNotifier {
-  factory AppController({
+class TestAppHost extends ChangeNotifier {
+  factory TestAppHost({
     required ResultRepository repository,
     required IndexDatabase indexDatabase,
     required CaptureService captureService,
@@ -93,18 +93,22 @@ class AppController extends ChangeNotifier {
       repository: repository,
       results: results,
     );
-    return AppController._(
+    return TestAppHost._(
       AppRuntime(
         preferences: preferences,
         results: results,
         capture: capture,
         conversations: conversations,
         sync: sync,
+        closeAdapters: () async {
+          await resolvedChatRepository.close();
+          await indexDatabase.close();
+        },
       ),
     );
   }
 
-  AppController._(this._runtime) {
+  TestAppHost._(this._runtime) {
     _runtime.preferences.addListener(_handleModuleChange);
     _runtime.results.addListener(_handleModuleChange);
     _runtime.capture.addListener(_handleModuleChange);
@@ -112,7 +116,9 @@ class AppController extends ChangeNotifier {
     _runtime.sync.addListener(_handleModuleChange);
   }
 
-  static Future<AppController> bootstrap({
+  bool _isDisposed = false;
+
+  static Future<TestAppHost> bootstrap({
     VaultStore? vaultOverride,
     IndexDatabase? indexOverride,
     ConversationStore? conversationStoreOverride,
@@ -140,7 +146,7 @@ class AppController extends ChangeNotifier {
     IndexDatabase? index;
     ConversationStore? conversationStore;
     ChatRepository? chatRepository;
-    AppController? controller;
+    TestAppHost? controller;
     try {
       index = indexOverride ?? await createPlatformIndexDatabase(supportPath);
       final settings = await settingsService.load();
@@ -161,7 +167,7 @@ class AppController extends ChangeNotifier {
         store: conversationStore,
         attachments: attachmentStoreOverride ?? await createAttachmentStore(),
       );
-      controller = AppController(
+      controller = TestAppHost(
         repository: repository,
         indexDatabase: index,
         captureService: CaptureService(
@@ -201,6 +207,18 @@ class AppController extends ChangeNotifier {
   AppSettings? settings;
 
   bool get isBusy => _localBusy || _runtime.sync.isBusy;
+
+  ResultLibrary get resultLibrary => _runtime.results;
+
+  AppRuntime get runtime => _runtime;
+
+  CaptureWorkflow get captureWorkflow => _runtime.capture;
+
+  ConversationWorkspace get conversationWorkspace => _runtime.conversations;
+
+  DevicePreferences get devicePreferences => _runtime.preferences;
+
+  SyncWorkspace get syncWorkspace => _runtime.sync;
 
   String get vaultRoot => _runtime.results.vaultRoot;
 
@@ -255,7 +273,7 @@ class AppController extends ChangeNotifier {
       isReady = true;
     } catch (error, stackTrace) {
       errorMessage = '初始化失败：$error';
-      debugPrint('AppController initialization failed: $error\n$stackTrace');
+      debugPrint('TestAppHost initialization failed: $error\n$stackTrace');
       isReady = true;
     }
     notifyListeners();
@@ -412,7 +430,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> saveSettings({
-    ThemeMode? themeMode,
+    ThemePreference? themeMode,
     String? modelBaseUrl,
     String? modelName,
     String? apiKey,
@@ -441,13 +459,27 @@ class AppController extends ChangeNotifier {
 
   @override
   void dispose() {
+    if (_isDisposed) return;
+    _isDisposed = true;
+    _detachModuleListeners();
+    _runtime.dispose();
+    super.dispose();
+  }
+
+  Future<void> shutdown() async {
+    if (_isDisposed) return;
+    _isDisposed = true;
+    _detachModuleListeners();
+    await _runtime.shutdown();
+    super.dispose();
+  }
+
+  void _detachModuleListeners() {
     _runtime.preferences.removeListener(_handleModuleChange);
     _runtime.results.removeListener(_handleModuleChange);
     _runtime.capture.removeListener(_handleModuleChange);
     _runtime.conversations.removeListener(_handleModuleChange);
     _runtime.sync.removeListener(_handleModuleChange);
-    _runtime.dispose();
-    super.dispose();
   }
 
   void _handleModuleChange() {

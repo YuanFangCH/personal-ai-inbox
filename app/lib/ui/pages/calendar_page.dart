@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/calendar.dart';
 import '../../core/models.dart';
-import '../../services/app_controller.dart';
+import '../../modules/results/result_library.dart';
 import '../app_scope.dart';
 import '../widgets/calendar_views.dart';
 import '../widgets/common.dart';
@@ -33,8 +33,9 @@ class _CalendarPageState extends State<CalendarPage> {
 
   @override
   Widget build(BuildContext context) {
-    final app = AppScope.of(context);
-    final detailed = app.settings?.calendarMonthDetailed ?? true;
+    final app = AppScope.results(context);
+    final preferences = AppScope.preferences(context);
+    final detailed = preferences.settings.calendarMonthDetailed;
     final density = detailed
         ? CalendarMonthDensity.detailed
         : CalendarMonthDensity.overview;
@@ -57,7 +58,7 @@ class _CalendarPageState extends State<CalendarPage> {
             key: const Key('calendar_density_menu'),
             initialValue: density,
             onSelected: (value) {
-              app.saveSettings(
+              preferences.update(
                 calendarMonthDetailed: value == CalendarMonthDensity.detailed,
               );
             },
@@ -123,7 +124,7 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   Widget _buildSection(
-    AppController app,
+    ResultLibrary app,
     List<CalendarOccurrence> occurrences,
     CalendarMonthDensity density,
   ) {
@@ -258,7 +259,7 @@ class _CalendarPageState extends State<CalendarPage> {
     };
   }
 
-  String _pageSubtitle(AppController app) {
+  String _pageSubtitle(ResultLibrary app) {
     return switch (_section) {
       CalendarSection.calendar => monthDayHeader(_selectedDay),
       CalendarSection.myDay => fullDateHeader(_selectedDay),
