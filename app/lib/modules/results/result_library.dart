@@ -72,6 +72,18 @@ class ResultLibrary extends ChangeNotifier {
     return null;
   }
 
+  Future<ResultDocument?> findByIdempotencyKey({
+    required ResultType type,
+    required DateTime createdAt,
+    required String idempotencyKey,
+  }) {
+    return _repository.findByIdempotencyKey(
+      type: type,
+      createdAt: createdAt,
+      idempotencyKey: idempotencyKey,
+    );
+  }
+
   Future<void> initialize() async {
     await _repository.initialize();
     await refresh();
@@ -119,6 +131,8 @@ class ResultLibrary extends ChangeNotifier {
     bool allDay = false,
     String? recurrence,
     List<String> tags = const [],
+    String? idempotencyKey,
+    DateTime? createdAt,
   }) async {
     final document = await _repository.create(
       type: type,
@@ -132,6 +146,8 @@ class ResultLibrary extends ChangeNotifier {
       allDay: allDay,
       recurrence: recurrence,
       tags: tags,
+      idempotencyKey: idempotencyKey,
+      createdAt: createdAt,
     );
     await refresh();
     return document;
@@ -157,8 +173,10 @@ class ResultLibrary extends ChangeNotifier {
   /// This is an application-layer capability for capture and auto-record
   /// coordinators. UI code should use [createManual] instead.
   Future<ResultDocument> createFromCandidate(
-    ClassificationCandidate candidate,
-  ) async {
+    ClassificationCandidate candidate, {
+    String? idempotencyKey,
+    DateTime? createdAt,
+  }) async {
     final document = await _repository.create(
       type: candidate.type,
       title: candidate.title,
@@ -170,6 +188,8 @@ class ResultLibrary extends ChangeNotifier {
       end: candidate.type == ResultType.event ? candidate.end : null,
       allDay: candidate.allDay,
       recurrence: candidate.recurrence,
+      idempotencyKey: idempotencyKey,
+      createdAt: createdAt,
     );
     await refresh();
     return document;

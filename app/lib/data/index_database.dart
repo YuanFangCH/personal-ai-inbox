@@ -24,4 +24,49 @@ abstract interface class IndexDatabase {
   Future<void> deleteCapture(String id);
 
   Future<void> clear();
+
+  Future<IdempotentOperation?> findOperation(String key);
+
+  Future<void> upsertOperation(IdempotentOperation operation);
+
+  Future<List<IdempotentOperation>> listIncompleteOperations();
+}
+
+enum OperationState {
+  prepared('prepared'),
+  resultCommitted('resultCommitted'),
+  completed('completed');
+
+  const OperationState(this.wireName);
+
+  final String wireName;
+}
+
+class IdempotentOperation {
+  const IdempotentOperation({
+    required this.key,
+    required this.resultId,
+    required this.payloadHash,
+    required this.state,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  final String key;
+  final String resultId;
+  final String payloadHash;
+  final OperationState state;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  IdempotentOperation copyWith({OperationState? state, DateTime? updatedAt}) {
+    return IdempotentOperation(
+      key: key,
+      resultId: resultId,
+      payloadHash: payloadHash,
+      state: state ?? this.state,
+      createdAt: createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 }

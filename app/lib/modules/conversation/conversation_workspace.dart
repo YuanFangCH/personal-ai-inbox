@@ -69,8 +69,98 @@ class ConversationWorkspace extends ChangeNotifier {
 
   Future<void> initialize() async {
     await _repository.initialize();
+    await _recoverPendingGenerations();
     await _repository.deleteEmptyConversations();
     await refresh();
+  }
+
+  Future<void> _recoverPendingGenerations() async {
+    for (final generation in await _repository.listRecoverableGenerations()) {
+      final assistant = await _repository.findMessage(
+        generation.assistantMessageId,
+      );
+      if (generation.status == GenerationStatus.requesting) {
+        if (assistant != null &&
+            assistant.status == ChatMessageStatus.streaming) {
+          await _repository.saveMessage(
+            assistant.copyWith(
+              status: ChatMessageStatus.interrupted,
+              error: '应用在模型响应完成前关闭；保留原消息，请手动重试。',
+              updatedAt: DateTime.now(),
+            ),
+          );
+        }
+        await _repository.saveGeneration(
+          generation.copyWith(
+            status: GenerationStatus.interrupted,
+            error: '应用在模型响应完成前关闭；未自动重发请求。',
+            updatedAt: DateTime.now(),
+          ),
+        );
+        continue;
+      }
+
+      final calls = _toolCallsFrom(generation.toolCalls);
+      final actions = await _autoRecordProcessor.processToolCalls(
+        generation.assistantMessageId,
+        calls,
+      );
+      final completedMessage =
+          (assistant ??
+                  ChatMessage(
+                    id: generation.assistantMessageId,
+                    conversationId: generation.conversationId,
+                    role: ChatRole.assistant,
+                    content: generation.responseText,
+                    status: ChatMessageStatus.streaming,
+                    createdAt: generation.createdAt,
+                    updatedAt: generation.updatedAt,
+                  ))
+              .copyWith(
+                content: generation.responseText,
+                status: ChatMessageStatus.complete,
+                actions: actions,
+                updatedAt: DateTime.now(),
+                error: null,
+              );
+      await _repository.saveMessage(completedMessage);
+      await _repository.saveGeneration(
+        generation.copyWith(
+          status: GenerationStatus.completed,
+          updatedAt: DateTime.now(),
+          error: null,
+        ),
+      );
+    }
+
+    // Cover a crash after the streaming message was saved but before the
+    // generation row was inserted. It is never safe to resend automatically.
+    for (final conversation in await _repository.listConversations()) {
+      for (final message in await _repository.listMessages(conversation.id)) {
+        if (message.role == ChatRole.assistant &&
+            message.status == ChatMessageStatus.streaming &&
+            await _repository.findGeneration(message.id) == null) {
+          await _repository.saveMessage(
+            message.copyWith(
+              status: ChatMessageStatus.interrupted,
+              error: '应用在模型响应完成前关闭；保留原消息，请手动重试。',
+              updatedAt: DateTime.now(),
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  List<ToolCallAccumulator> _toolCallsFrom(List<Map<String, String>> values) {
+    return [
+      for (final value in values)
+        ToolCallAccumulator()
+          ..index = int.tryParse(value['index'] ?? '')
+          ..id = value['id']
+          ..name = value['name']
+          ..arguments.write(value['arguments'] ?? ''),
+    ];
   }
 
   Future<void> refresh() async {
@@ -200,12 +290,17 @@ class ConversationWorkspace extends ChangeNotifier {
     await _repository.saveConversation(updatedConversation);
     _replaceConversation(updatedConversation);
 
-    await _generateReply(conversationId, updatedConversation);
+    await _generateReply(
+      conversationId,
+      updatedConversation,
+      userMessageId: userMessage.id,
+    );
   }
 
   Future<void> _generateReply(
     String conversationId,
     Conversation updatedConversation, {
+    required String userMessageId,
     Set<String> excludedMessageIds = const {},
   }) async {
     final now = DateTime.now();
@@ -221,6 +316,17 @@ class ConversationWorkspace extends ChangeNotifier {
     );
     await _saveMessage(assistant);
     _replaceMessage(assistant);
+    var generation = GenerationRun(
+      assistantMessageId: assistantMessageId,
+      conversationId: conversationId,
+      userMessageId: userMessageId,
+      status: GenerationStatus.requesting,
+      responseText: '',
+      toolCalls: const [],
+      createdAt: now,
+      updatedAt: now,
+    );
+    await _repository.saveGeneration(generation);
 
     _isChatGenerating = true;
     _cancelChatRequested = false;
@@ -261,6 +367,7 @@ class ConversationWorkspace extends ChangeNotifier {
                 ToolCallAccumulator.new,
               );
               current
+                ..index = index
                 ..id = delta.toolCallId ?? current.id
                 ..name = delta.toolCallName ?? current.name
                 ..arguments.write(delta.toolArguments);
@@ -308,6 +415,23 @@ class ConversationWorkspace extends ChangeNotifier {
           updatedAt: DateTime.now(),
         );
       } else {
+        generation = generation.copyWith(
+          status: GenerationStatus.responseReady,
+          responseText: assistant.content,
+          toolCalls: toolCalls.entries
+              .map(
+                (entry) => <String, String>{
+                  'index': entry.key.toString(),
+                  if (entry.value.id != null) 'id': entry.value.id!,
+                  if (entry.value.name != null) 'name': entry.value.name!,
+                  'arguments': entry.value.arguments.toString(),
+                },
+              )
+              .toList(growable: false),
+          updatedAt: DateTime.now(),
+          error: null,
+        );
+        await _repository.saveGeneration(generation);
         final actions = await _autoRecordProcessor.processToolCalls(
           assistantMessageId,
           toolCalls.values.toList(growable: false),
@@ -338,6 +462,26 @@ class ConversationWorkspace extends ChangeNotifier {
         );
         await _repository.saveConversation(withPreview);
         _replaceConversation(withPreview);
+        if (generation.status == GenerationStatus.responseReady &&
+            assistant.status == ChatMessageStatus.complete) {
+          await _repository.saveGeneration(
+            generation.copyWith(
+              status: GenerationStatus.completed,
+              updatedAt: DateTime.now(),
+              error: null,
+            ),
+          );
+        } else if (generation.status == GenerationStatus.requesting) {
+          await _repository.saveGeneration(
+            generation.copyWith(
+              status: _cancelChatRequested
+                  ? GenerationStatus.interrupted
+                  : GenerationStatus.failed,
+              updatedAt: DateTime.now(),
+              error: assistant.error,
+            ),
+          );
+        }
       } catch (_) {
         // A persistence error must not leave the workspace locked in streaming.
       } finally {
@@ -420,6 +564,7 @@ class ConversationWorkspace extends ChangeNotifier {
     await _generateReply(
       message.conversationId,
       conversation,
+      userMessageId: previousUser.id,
       excludedMessageIds: {message.id},
     );
   }

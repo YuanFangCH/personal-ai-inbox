@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:uuid/uuid.dart';
+import 'package:crypto/crypto.dart';
 
 import '../../core/chat_models.dart';
 import '../../core/models.dart';
@@ -33,12 +33,37 @@ class AutoRecordProcessor {
     List<ToolCallAccumulator> calls,
   ) async {
     final actions = <AutoRecordAction>[];
+    final assistant = await _chatRepository.findMessage(assistantMessageId);
+    var sourceUserMessageId = assistantMessageId;
+    if (assistant != null) {
+      for (final message in await _chatRepository.listMessages(
+        assistant.conversationId,
+      )) {
+        if (message.role == ChatRole.user &&
+            !message.createdAt.isAfter(assistant.createdAt)) {
+          sourceUserMessageId = message.id;
+        }
+      }
+    }
+    final createdAt = assistant?.createdAt ?? DateTime.now();
     for (final call in calls) {
       if (call.name != 'create_result' || call.arguments.isEmpty) {
         continue;
       }
+      final stableKey =
+          'conversation:$sourceUserMessageId:${call.index ?? call.id ?? calls.indexOf(call)}';
+      final actionId =
+          'act_${sha256.convert(utf8.encode(stableKey)).toString().substring(0, 24)}';
+      final existingAction = await _chatRepository.findAutoRecordAction(
+        actionId,
+      );
+      if (existingAction != null) {
+        actions.add(existingAction);
+        continue;
+      }
       final action = await _process(
-        assistantMessageId,
+        stableKey,
+        createdAt,
         call.arguments.toString(),
       );
       if (action != null) {
@@ -49,11 +74,12 @@ class AutoRecordProcessor {
   }
 
   Future<AutoRecordAction?> _process(
-    String assistantMessageId,
+    String idempotencyKey,
+    DateTime createdAt,
     String rawArguments,
   ) async {
-    final actionId = _chatRepository.newActionId();
-    final createdAt = DateTime.now();
+    final actionId =
+        'act_${sha256.convert(utf8.encode(idempotencyKey)).toString().substring(0, 24)}';
     dynamic decoded;
     try {
       decoded = jsonDecode(rawArguments);
@@ -95,6 +121,40 @@ class AutoRecordProcessor {
     final tags = _stringList(payload['tags']);
     final candidateAt = type == ResultType.event ? start : due;
 
+    final savedAction = await _chatRepository.findAutoRecordAction(actionId);
+    if (savedAction != null) {
+      return savedAction;
+    }
+    final previouslyCreated = await _results.findByIdempotencyKey(
+      type: type,
+      createdAt: createdAt,
+      idempotencyKey: idempotencyKey,
+    );
+    if (previouslyCreated != null) {
+      if (!_matchesCandidate(
+        previouslyCreated,
+        type,
+        title,
+        body,
+        tags,
+        due,
+        start,
+        end,
+        allDay,
+      )) {
+        return _skipped(actionId, createdAt, '同一自动记录请求对应的成果内容不同');
+      }
+      return AutoRecordAction(
+        id: actionId,
+        type: type,
+        title: previouslyCreated.title,
+        status: AutoRecordStatus.created,
+        createdAt: previouslyCreated.createdAt,
+        resultId: previouslyCreated.id,
+        undoUntil: previouslyCreated.createdAt.add(const Duration(minutes: 10)),
+      );
+    }
+
     String? reviewReason;
     if (title.isEmpty || body.isEmpty) {
       reviewReason = '标题或正文为空';
@@ -135,7 +195,7 @@ class AutoRecordProcessor {
 
     if (reviewReason != null) {
       final capture = CaptureRecord(
-        id: 'cap_${const Uuid().v4()}',
+        id: 'cap_${sha256.convert(utf8.encode(idempotencyKey)).toString().substring(0, 24)}',
         deviceId: _deviceId(),
         capturedAt: createdAt,
         sourceType: CaptureSourceType.text,
@@ -169,6 +229,8 @@ class AutoRecordProcessor {
       start: type == ResultType.event ? start : null,
       end: type == ResultType.event ? end : null,
       allDay: allDay,
+      idempotencyKey: idempotencyKey,
+      createdAt: createdAt,
     );
     return AutoRecordAction(
       id: actionId,
@@ -249,6 +311,32 @@ class AutoRecordProcessor {
     return null;
   }
 
+  bool _matchesCandidate(
+    ResultDocument existing,
+    ResultType type,
+    String title,
+    String body,
+    List<String> tags,
+    DateTime? due,
+    DateTime? start,
+    DateTime? end,
+    bool allDay,
+  ) {
+    final normalizedTags = tags
+        .map((tag) => tag.trim())
+        .where((tag) => tag.isNotEmpty)
+        .toSet();
+    return existing.type == type &&
+        existing.title == title &&
+        existing.body == body &&
+        existing.tags.length == normalizedTags.length &&
+        existing.tags.every(normalizedTags.contains) &&
+        existing.due == (type == ResultType.todo ? due : null) &&
+        existing.start == (type == ResultType.event ? start : null) &&
+        existing.end == (type == ResultType.event ? end : null) &&
+        existing.allDay == (type == ResultType.event && allDay);
+  }
+
   bool _hasInvalidDate(Map<String, dynamic> payload, String field) {
     final value = payload[field];
     return value is String && DateTime.tryParse(value) == null;
@@ -297,6 +385,7 @@ class AutoRecordProcessor {
 }
 
 class ToolCallAccumulator {
+  int? index;
   String? id;
   String? name;
   final StringBuffer arguments = StringBuffer();

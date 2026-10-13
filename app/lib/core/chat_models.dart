@@ -54,6 +54,71 @@ enum AutoRecordStatus {
   }
 }
 
+enum GenerationStatus {
+  requesting('requesting'),
+  responseReady('response_ready'),
+  completed('completed'),
+  interrupted('interrupted'),
+  failed('failed');
+
+  const GenerationStatus(this.wireName);
+
+  final String wireName;
+
+  static GenerationStatus parse(String value) {
+    return GenerationStatus.values.firstWhere(
+      (status) => status.wireName == value,
+      orElse: () => GenerationStatus.failed,
+    );
+  }
+}
+
+/// Durable state for one model request. Completed response/tool data is kept
+/// locally so result creation can be replayed after an application restart.
+class GenerationRun {
+  const GenerationRun({
+    required this.assistantMessageId,
+    required this.conversationId,
+    required this.userMessageId,
+    required this.status,
+    required this.responseText,
+    required this.toolCalls,
+    required this.createdAt,
+    required this.updatedAt,
+    this.error,
+  });
+
+  final String assistantMessageId;
+  final String conversationId;
+  final String userMessageId;
+  final GenerationStatus status;
+  final String responseText;
+  final List<Map<String, String>> toolCalls;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final String? error;
+
+  GenerationRun copyWith({
+    GenerationStatus? status,
+    String? responseText,
+    List<Map<String, String>>? toolCalls,
+    DateTime? updatedAt,
+    Object? error = _unset,
+  }) {
+    return GenerationRun(
+      assistantMessageId: assistantMessageId,
+      conversationId: conversationId,
+      userMessageId: userMessageId,
+      status: status ?? this.status,
+      responseText: responseText ?? this.responseText,
+      toolCalls: toolCalls ?? this.toolCalls,
+      createdAt: createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      error: identical(error, _unset) ? this.error : error as String?,
+    );
+  }
+}
+
 class Conversation {
   const Conversation({
     required this.id,

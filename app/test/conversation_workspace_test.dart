@@ -111,4 +111,262 @@ void main() {
     );
     workspace.dispose();
   });
+
+  test(
+    'replays a completed model response after a restart without a request',
+    () async {
+      final now = DateTime(2026, 10, 13, 10);
+      final settings = FakeSettingsService();
+      final vault = MemoryVaultStore();
+      final index = MemoryIndexDatabase();
+      final resultRepository = ResultRepository(
+        vault: vault,
+        index: index,
+        deviceId: 'test-device',
+      );
+      await resultRepository.initialize();
+      final results = ResultLibrary(repository: resultRepository);
+      await results.initialize();
+      final captures = CaptureWorkflow(
+        repository: resultRepository,
+        results: results,
+        indexDatabase: index,
+        captureService: CaptureService(
+          settings: settings,
+          parser: const DeterministicParser(),
+        ),
+      );
+      await captures.initialize();
+      final store = MemoryConversationStore();
+      final chatRepository = ChatRepository(
+        store: store,
+        attachments: MemoryAttachmentStore(),
+      );
+      await chatRepository.initialize();
+      final conversation = await chatRepository.createConversation(
+        createdAt: now,
+      );
+      final user = ChatMessage(
+        id: 'msg_recovery_user',
+        conversationId: conversation.id,
+        role: ChatRole.user,
+        content: '存储这条知识',
+        status: ChatMessageStatus.complete,
+        createdAt: now,
+        updatedAt: now,
+      );
+      final assistant = ChatMessage(
+        id: 'msg_recovery_assistant',
+        conversationId: conversation.id,
+        role: ChatRole.assistant,
+        content: '结论已整理',
+        status: ChatMessageStatus.streaming,
+        createdAt: now.add(const Duration(seconds: 1)),
+        updatedAt: now.add(const Duration(seconds: 1)),
+      );
+      await chatRepository.saveMessage(user);
+      await chatRepository.saveMessage(assistant);
+      await chatRepository.saveGeneration(
+        GenerationRun(
+          assistantMessageId: assistant.id,
+          conversationId: conversation.id,
+          userMessageId: user.id,
+          status: GenerationStatus.responseReady,
+          responseText: '结论已整理',
+          toolCalls: const [
+            {
+              'index': '0',
+              'id': 'call_recovery',
+              'name': 'create_result',
+              'arguments': '{"type":"knowledge","title":"恢复知识","body":"完整模型响应","confidence":0.95,"sensitive":false}',
+            },
+          ],
+          createdAt: assistant.createdAt,
+          updatedAt: assistant.updatedAt,
+        ),
+      );
+      var outboundRequests = 0;
+      final model = ModelClient(
+        client: MockClient.streaming((request, bodyStream) async {
+          outboundRequests++;
+          await bodyStream.toBytes();
+          return http.StreamedResponse(const Stream.empty(), 400);
+        }),
+      );
+      final workspace = ConversationWorkspace(
+        repository: chatRepository,
+        results: results,
+        chatService: ChatService(
+          settings: settings,
+          repository: chatRepository,
+          modelClient: model,
+        ),
+        autoRecordProcessor: AutoRecordProcessor(
+          chatRepository: chatRepository,
+          results: results,
+          captures: captures,
+          deviceId: () => 'test-device',
+        ),
+      );
+
+      await workspace.initialize();
+
+      expect(outboundRequests, 0);
+      expect(results.documents, hasLength(1));
+      expect(results.documents.single.title, '恢复知识');
+      expect(
+        workspace.messagesFor(conversation.id).isEmpty,
+        isTrue,
+        reason: 'startup refresh keeps the message load lazy',
+      );
+      final recovered = await chatRepository.findMessage(assistant.id);
+      expect(recovered?.status, ChatMessageStatus.complete);
+      expect(recovered?.content, '结论已整理');
+      expect(recovered?.actions.single.resultId, results.documents.single.id);
+      expect(
+        (await chatRepository.findGeneration(assistant.id))?.status,
+        GenerationStatus.completed,
+      );
+
+      final completedGeneration = (await chatRepository.findGeneration(
+        assistant.id,
+      ))!;
+      final completedAssistant = (await chatRepository.findMessage(
+        assistant.id,
+      ))!;
+      await chatRepository.saveGeneration(
+        completedGeneration.copyWith(
+          status: GenerationStatus.responseReady,
+          updatedAt: DateTime.now(),
+        ),
+      );
+      await chatRepository.saveMessage(
+        completedAssistant.copyWith(
+          status: ChatMessageStatus.streaming,
+          actions: const [],
+          updatedAt: DateTime.now(),
+        ),
+      );
+      await workspace.initialize();
+
+      expect(results.documents, hasLength(1));
+      expect(
+        (await chatRepository.findMessage(assistant.id))!
+            .actions
+            .single
+            .resultId,
+        results.documents.single.id,
+      );
+      workspace.dispose();
+      await chatRepository.close();
+    },
+  );
+
+  test(
+    'marks an unfinished network request interrupted without resending',
+    () async {
+      final now = DateTime(2026, 10, 13, 10);
+      final settings = FakeSettingsService(modelKey: 'test-key');
+      final vault = MemoryVaultStore();
+      final index = MemoryIndexDatabase();
+      final resultRepository = ResultRepository(
+        vault: vault,
+        index: index,
+        deviceId: 'test-device',
+      );
+      await resultRepository.initialize();
+      final results = ResultLibrary(repository: resultRepository);
+      await results.initialize();
+      final captures = CaptureWorkflow(
+        repository: resultRepository,
+        results: results,
+        indexDatabase: index,
+        captureService: CaptureService(
+          settings: settings,
+          parser: const DeterministicParser(),
+        ),
+      );
+      await captures.initialize();
+      final chatRepository = ChatRepository(
+        store: MemoryConversationStore(),
+        attachments: MemoryAttachmentStore(),
+      );
+      await chatRepository.initialize();
+      final conversation = await chatRepository.createConversation(
+        createdAt: now,
+      );
+      final user = ChatMessage(
+        id: 'msg_interrupted_user',
+        conversationId: conversation.id,
+        role: ChatRole.user,
+        content: '保留这条请求',
+        status: ChatMessageStatus.complete,
+        createdAt: now,
+        updatedAt: now,
+      );
+      final assistant = ChatMessage(
+        id: 'msg_interrupted_assistant',
+        conversationId: conversation.id,
+        role: ChatRole.assistant,
+        content: '未完成的部分',
+        status: ChatMessageStatus.streaming,
+        createdAt: now.add(const Duration(seconds: 1)),
+        updatedAt: now.add(const Duration(seconds: 1)),
+      );
+      await chatRepository.saveMessage(user);
+      await chatRepository.saveMessage(assistant);
+      await chatRepository.saveGeneration(
+        GenerationRun(
+          assistantMessageId: assistant.id,
+          conversationId: conversation.id,
+          userMessageId: user.id,
+          status: GenerationStatus.requesting,
+          responseText: '',
+          toolCalls: const [],
+          createdAt: assistant.createdAt,
+          updatedAt: assistant.updatedAt,
+        ),
+      );
+      var outboundRequests = 0;
+      final workspace = ConversationWorkspace(
+        repository: chatRepository,
+        results: results,
+        chatService: ChatService(
+          settings: settings,
+          repository: chatRepository,
+          modelClient: ModelClient(
+            client: MockClient.streaming((request, bodyStream) async {
+              outboundRequests++;
+              await bodyStream.toBytes();
+              return http.StreamedResponse(const Stream.empty(), 400);
+            }),
+          ),
+        ),
+        autoRecordProcessor: AutoRecordProcessor(
+          chatRepository: chatRepository,
+          results: results,
+          captures: captures,
+          deviceId: () => 'test-device',
+        ),
+      );
+
+      await workspace.initialize();
+
+      expect(outboundRequests, 0);
+      expect(
+        (await chatRepository.findMessage(assistant.id))?.status,
+        ChatMessageStatus.interrupted,
+      );
+      expect(
+        (await chatRepository.findGeneration(assistant.id))?.status,
+        GenerationStatus.interrupted,
+      );
+      expect(
+        (await chatRepository.listMessages(conversation.id)).first.content,
+        '保留这条请求',
+      );
+      workspace.dispose();
+      await chatRepository.close();
+    },
+  );
 }

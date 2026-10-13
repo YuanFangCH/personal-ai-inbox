@@ -10,7 +10,7 @@
 | 最后更新时间 | 2026-10-13 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex |
-| 当前阶段 | 架构整改阶段 A、B 已完成：模型图片策略、流终态、严格工具校验和手动重试已修复；格式、静态分析和 312 项主机测试通过，阶段 C 待开始 |
+| 当前阶段 | 架构整改阶段 A–C 已完成：模型请求门禁、可恢复成果提交、幂等账本、生成响应恢复和两库迁移回滚已实现；格式/静态分析通过，327 项主机测试通过，阶段 D 待开始 |
 | 总体状态 | `app/` 已形成可运行的 Flutter 客户端，本地核心拆分为端配置、成果库、捕获、会话和同步模块，`AppController` 降为迁移期兼容 facade；日历视图、快速新建和对话页已拆分。开发工具链已从 C 盘迁移到 `E:\DevTools`，迁移后 Dart 格式、`flutter analyze`、294 项主机回归、Web/Windows/Android release 构建、Windows 原生冒烟和双 AVD 验收均重新通过。`v1.1.1` 已是当前 GitHub 预发布版，发布 Android APK、Windows x64 安装包、便携 ZIP 和校验文件；公开树已移除设备指纹、个人设备披露、测试报告与生活化测试主题，APK 仍使用 Debug 证书，Windows 包仍未代码签名。产品边界继续保留：OneDrive、百度网盘、本地通知和真实跨端同步尚未完成。 |
 
 ## 2. 一句话交接
@@ -88,6 +88,8 @@
 - 已完成 2026-10-13 架构审查，按当前代码区分已复现问题、代码审阅风险和未完成能力；报告记录 12 项发现、文档冲突与建议验收。
 - 架构整改阶段 A 已新增逐阶段执行方案与 ADR 0015/0016，明确可恢复文件提交、幂等动作、数据库/设置迁移、同步身份校验和版本绑定裁决；修正文档中的成果类型、SQLite 恢复范围、Key 复用、向量检索与静态站口径。
 - CI、Release 和 PowerShell 验证入口统一固定 Flutter 3.47.6 / Dart 3.13.5；新增机器版本断言脚本；场景生成器 lint 已修复并保持日期字符串内容不变。
+- 架构整改阶段 C 已增加 `.local-transactions` 暂存、恢复副本、提交日志、hash/revision 校验及启动恢复；成果写入由 OS 文件锁跨实例串行化。SQLite 动作账本保存幂等键/载荷 hash/提交状态，会话库保存请求状态和完整响应/工具参数；重启可重放完整响应，未完成网络请求转人工重试；processing 捕获转待整理。
+- 索引与会话库已加入 `user_version=1` 迁移，启动时以 `VACUUM INTO` 备份两库和非秘密配置并校验 hash；完成验证前失败则恢复快照。Web 仍使用预览级内存 adapter。
 - 已形成 `CONTEXT.md`、可执行方案、同步协议、模型接入和 14 条 ADR。
 - 已完成知识捕获、日历提醒、AI/OCR 自动化调研。
 - 已定义 RM 交接文档的固定结构和只追加变更记录。
@@ -129,6 +131,7 @@
 - 2026-10-13：`flutter test --no-pub --reporter expanded` 294/294 通过；`flutter analyze` 失败，现有 `app/tool/generate_large_scenarios.dart:160` 有 1 条 `unnecessary_brace_in_string_interps` info lint，本轮未修复。临时故障探针修正被否定的坏 YAML 阻断假设后 7/7 符合观察：6 个行为问题复现、1 个坏文件静默排除行为确认。`git diff --check` 通过。未执行 release 构建、原生/AVD 验收、真实模型/云盘联调、磁盘故障注入或性能基准。
 - 2026-10-13 架构整改阶段 A：Dart 格式检查 137 文件零变化；`flutter analyze` 无问题；`flutter test --no-pub --reporter expanded` 294/294 通过；7 个 PowerShell 验证脚本解析通过，本机 Flutter 3.47.6 / Dart 3.13.5 版本断言通过；`git diff --check` 通过。未执行 release 构建、原生/AVD、真实模型/云盘、磁盘故障注入或性能基准。
 - 架构整改阶段 B：`dart format --output=none --set-exit-if-changed lib test integration_test tool` 140 文件零变化；`flutter analyze` 无问题；完整 `flutter test --no-pub --reporter expanded` 312/312 通过，覆盖请求策略、图片出网、终态/超时/取消、工具参数和重试。未执行 release 构建、原生/AVD 或真实模型联调。
+- 架构整改阶段 C：Dart 格式检查 143 文件零变化，静态分析通过，全量主机回归 327/327 通过；新增真实临时文件/OS 锁、事务日志恢复、幂等账本、SQLite 两库备份和旧数据 migration 回滚测试。未执行 release、原生/AVD、真实用户数据升级或物理断电验收。
 - 2026-10-09 在 `E:\DevTools` 迁移后重新执行：`flutter pub get` 成功；`dart format` 137 个 Dart 文件 0 变化；`flutter analyze` 无问题；完整主机回归 294/294 通过。
 - 迁移后 `flutter build web --release`、`flutter build windows --release` 和 `flutter build apk --release` 全部通过；Windows integration smoke 通过；Android release APK 为 63.8 MB。
 - 迁移后 APK SHA-256 为 `0BC340C2E979D1487B2EE9D978870636B4C2D2A0F28F34870C14F7526F3EB491`；Windows release EXE SHA-256 为 `C555EB7B8D58E2E4B05A0ACCCE6387FF12B4ACAB98F9FA038C91670B2BF4F54B`。
@@ -216,11 +219,11 @@
 ### 风险与边界
 
 - 2026-10-13 架构整改已收敛可执行方案、模型接入和同步协议中的五组口径冲突：成果字段统一为 `type`，正式范围不含向量/静态站，SQLite 按成果派生索引与独立捕获/会话/账本区分，Key 独立存储且可由用户手动复用。此项取代同日审查记录中“尚未更改既有决定”的状态说明。
-- 2026-10-13 架构整改阶段 A、B 已完成并通过门槛；C–F 尚未开始。
+- 2026-10-13 架构整改阶段 A–C 已完成并通过门槛；D–F 尚未开始。
 - 阶段 B 已修复并覆盖测试：图片关闭后旧附件不出网；未确认完整流不执行工具；缺失 `sensitive`、越界置信度和未知字段不会自动创建；重试保留用户消息；停止后生成状态释放。
-- 阶段 C、D 风险仍在：文件写入恢复、跨库迁移回滚和动作重放账本未实现；同步对象身份校验、裁决收敛与快照刷新未实现。详见架构审查 F3/F5–F8。
-- Markdown 写入先删除旧文件再 rename，存在权威副本丢失窗口和固定临时路径并发风险；本轮仅代码审阅，没有执行磁盘故障注入。schema migration、任务恢复/幂等、模型能力声明和策略配置仍不完整。
-- 当前状态纠正：本文件当前范围中的“Windows 原生运行验证尚未完成”已被后续验证取代；图片对话已实现，但不能据此宣称独立视觉 OCR 工作流已完成。“294 项测试通过”不能覆盖当前 lint、真实云盘或通知可靠性。
+- 阶段 C 已实现事务日志、两库备份/迁移回滚、本机幂等动作和完整响应恢复，并以真实临时文件、合成旧数据库验证；未升级真实用户数据或执行物理断电演练。阶段 D 的同步对象身份校验、冲突裁决收敛与快照刷新 F5–F7 尚待实施。
+- Markdown 写入现在由事务日志、恢复副本及文件锁协调；I/O 故障覆盖合成与真实临时文件，但未执行断电/真实用户目录升级演练。高级模型配置与能力覆盖仍待阶段 F。
+- 当前状态纠正：本文件当前范围中的“Windows 原生运行验证尚未完成”已被后续验证取代；图片对话已实现，但不能据此宣称独立视觉 OCR 工作流已完成。“327 项测试通过”不能覆盖真实云盘或通知可靠性。
 - Git hooks 可被 `--no-verify` 绕过，项目规则明确禁止该操作。
 - `core.hooksPath` 是本地仓库配置，不随仓库内容自动传播；克隆后必须运行安装脚本。
 - 公开仓库已提供 Flutter CI，但 Git hooks 和本地发布扫描仍可能被 `--no-verify` 绕过；推送时必须保留 hook 和人工审计。
@@ -245,10 +248,20 @@
 
 ### 下一步
 
-1. 按执行方案进入阶段 C，实现可恢复文件提交、版本化迁移与动作幂等，并通过故障恢复回归。
-2. 之后依序完成 D–F；每阶段过门槛、追加交接并提交。真实云盘和通知保持独立待办。
+1. 按执行方案进入阶段 D，完成远端对象身份校验、版本绑定冲突裁决和成果快照刷新。
+2. 之后依序完成 E–F；每阶段过门槛、追加交接并提交。真实云盘和通知保持独立待办。
 
 ## 8. 变更记录
+
+### 2026-10-13 / 执行阶段 C 可恢复存储与迁移恢复
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 引入 SQLite version 与操作账本、模型完整响应生成记录；实现成果事务日志/暂存/恢复副本、revision 校验、跨实例 OS 文件锁；实现双库备份、hash 校验、schema migration 与失败回滚 |
+| 变更文件 | `app/lib/data/result_repository.dart`、SQLite/ConversationStore 与迁移 adapter、`app/lib/data/sqlite_migration_coordinator.dart`、`app/lib/services/app_controller.dart`、捕获/对话/成果模块、故障及迁移回归、阶段计划、`RM_HANDOFF.md` |
+| 验证 | `dart format --output=none --set-exit-if-changed lib test integration_test tool` 143 文件零变化；`flutter analyze` 通过；完整主机回归 327/327 通过；另有真实临时文件提交失败恢复、索引失败、OS 写锁、生成响应重放、两库升级/回滚验证 |
+| 提交标题 | `fix(storage): 增加可恢复写入迁移与动作幂等` |
+| 遗留事项 | 未执行三端 release、原生/AVD、真实用户目录升级和物理断电演练；阶段 D–F 尚未实施 |
 
 ### 2026-10-13 / 执行阶段 B 模型请求与自动记录整改
 

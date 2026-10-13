@@ -1,7 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqlite3/sqlite3.dart';
 import 'package:personal_ai_inbox/core/models.dart';
+import 'package:personal_ai_inbox/data/index_database.dart';
 import 'package:personal_ai_inbox/data/sqlite_index_database.dart';
 
 void main() {
@@ -10,6 +12,12 @@ void main() {
     addTearDown(() => directory.delete(recursive: true));
     final database = SqliteIndexDatabase('${directory.path}/index.sqlite3');
     await database.open();
+    final versionDatabase = sqlite3.open('${directory.path}/index.sqlite3');
+    expect(
+      versionDatabase.select('PRAGMA user_version').single['user_version'],
+      1,
+    );
+    versionDatabase.close();
 
     final record = IndexedResult(
       id: 'kn_20261004_12345678',
@@ -25,6 +33,15 @@ void main() {
       syncState: SyncState.pendingUpload,
     );
     await database.upsertResult(record);
+    final operation = IdempotentOperation(
+      key: 'capture:test-idempotency',
+      resultId: record.id,
+      payloadHash: 'sha256:payload',
+      state: OperationState.completed,
+      createdAt: DateTime(2026, 10, 4, 12),
+      updatedAt: DateTime(2026, 10, 4, 12),
+    );
+    await database.upsertOperation(operation);
     await database.insertCapture(
       CaptureRecord(
         id: 'cap-1',
@@ -41,6 +58,10 @@ void main() {
     await reopened.open();
     expect((await reopened.findResult(record.id))!.title, '持久化知识');
     expect(await reopened.listCaptures(reviewOnly: true), hasLength(1));
+    expect((await reopened.findOperation(operation.key))?.resultId, record.id);
+    await reopened.clear();
+    expect(await reopened.findResult(record.id), isNull);
+    expect(await reopened.findOperation(operation.key), isNotNull);
     await reopened.close();
   });
 }

@@ -17,10 +17,18 @@ class SqliteIndexDatabase implements IndexDatabase {
     final parent = Directory(p.dirname(path));
     await parent.create(recursive: true);
     _database = sqlite3.open(path);
-    _database
-      ..execute('PRAGMA journal_mode = WAL')
-      ..execute('PRAGMA foreign_keys = ON')
-      ..execute('''
+    try {
+      _database
+        ..execute('PRAGMA journal_mode = WAL')
+        ..execute('PRAGMA foreign_keys = ON');
+      final version =
+          _database.select('PRAGMA user_version').single['user_version'] as int;
+      if (version > 1) {
+        throw StateError('索引数据库版本 $version 高于此应用支持的版本 1');
+      }
+      _database.execute('BEGIN EXCLUSIVE');
+      _database
+        ..execute('''
         CREATE TABLE IF NOT EXISTS objects (
           id TEXT PRIMARY KEY,
           type TEXT NOT NULL,
@@ -37,7 +45,7 @@ class SqliteIndexDatabase implements IndexDatabase {
           sync_state TEXT NOT NULL
         )
       ''')
-      ..execute('''
+        ..execute('''
         CREATE TABLE IF NOT EXISTS captures (
           id TEXT PRIMARY KEY,
           device_id TEXT NOT NULL,
@@ -52,7 +60,30 @@ class SqliteIndexDatabase implements IndexDatabase {
           confidence REAL,
           review_reason TEXT
         )
+      ''')
+        ..execute('''
+        CREATE TABLE IF NOT EXISTS actions (
+          idempotency_key TEXT PRIMARY KEY,
+          result_id TEXT NOT NULL,
+          payload_hash TEXT NOT NULL,
+          state TEXT NOT NULL CHECK (
+            state IN ('prepared', 'resultCommitted', 'completed')
+          ),
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
       ''');
+      if (version < 1) {
+        _database.execute('PRAGMA user_version = 1');
+      }
+      _database.execute('COMMIT');
+    } catch (_) {
+      try {
+        _database.execute('ROLLBACK');
+      } catch (_) {}
+      _database.close();
+      rethrow;
+    }
   }
 
   @override
@@ -197,6 +228,60 @@ class SqliteIndexDatabase implements IndexDatabase {
     _database
       ..execute('DELETE FROM objects')
       ..execute('DELETE FROM captures');
+  }
+
+  @override
+  Future<IdempotentOperation?> findOperation(String key) async {
+    final rows = _database.select(
+      'SELECT * FROM actions WHERE idempotency_key = ?',
+      [key],
+    );
+    return rows.isEmpty ? null : _operationFromRow(rows.first);
+  }
+
+  @override
+  Future<void> upsertOperation(IdempotentOperation operation) async {
+    _database.execute(
+      '''
+      INSERT INTO actions (
+        idempotency_key, result_id, payload_hash, state, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(idempotency_key) DO UPDATE SET
+        result_id = excluded.result_id,
+        payload_hash = excluded.payload_hash,
+        state = excluded.state,
+        updated_at = excluded.updated_at
+      ''',
+      [
+        operation.key,
+        operation.resultId,
+        operation.payloadHash,
+        operation.state.wireName,
+        operation.createdAt.toIso8601String(),
+        operation.updatedAt.toIso8601String(),
+      ],
+    );
+  }
+
+  @override
+  Future<List<IdempotentOperation>> listIncompleteOperations() async {
+    final rows = _database.select(
+      "SELECT * FROM actions WHERE state != 'completed' ORDER BY created_at",
+    );
+    return rows.map(_operationFromRow).toList(growable: false);
+  }
+
+  IdempotentOperation _operationFromRow(Row row) {
+    return IdempotentOperation(
+      key: row['idempotency_key'] as String,
+      resultId: row['result_id'] as String,
+      payloadHash: row['payload_hash'] as String,
+      state: OperationState.values.firstWhere(
+        (state) => state.wireName == row['state'],
+      ),
+      createdAt: DateTime.parse(row['created_at'] as String),
+      updatedAt: DateTime.parse(row['updated_at'] as String),
+    );
   }
 
   IndexedResult _resultFromRow(Row row) {
