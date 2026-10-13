@@ -15,10 +15,34 @@ abstract interface class SyncProvider {
     required String id,
     required String path,
     required String contents,
-    String? etag,
+    required SyncWriteCondition condition,
   });
 
   Future<void> deleteObject(String id, String? etag);
+}
+
+enum SyncWriteConditionKind { createOnly, matchEtag }
+
+class SyncWriteCondition {
+  const SyncWriteCondition.createOnly()
+    : kind = SyncWriteConditionKind.createOnly,
+      etag = null;
+
+  const SyncWriteCondition.matchEtag(this.etag)
+    : assert(etag != null),
+      kind = SyncWriteConditionKind.matchEtag;
+
+  final SyncWriteConditionKind kind;
+  final String? etag;
+}
+
+class SyncPreconditionFailed implements Exception {
+  const SyncPreconditionFailed(this.objectId);
+
+  final String objectId;
+
+  @override
+  String toString() => 'Remote object precondition failed: $objectId';
 }
 
 class MemorySyncProvider implements SyncProvider {
@@ -41,11 +65,16 @@ class MemorySyncProvider implements SyncProvider {
     required String id,
     required String path,
     required String contents,
-    String? etag,
+    required SyncWriteCondition condition,
   }) async {
     final current = _objects[id];
-    if (etag != null && current?.etag != etag) {
-      throw StateError('Remote object changed');
+    final conditionMatches = switch (condition.kind) {
+      SyncWriteConditionKind.createOnly => current == null,
+      SyncWriteConditionKind.matchEtag =>
+        current?.etag == condition.etag && condition.etag != null,
+    };
+    if (!conditionMatches) {
+      throw SyncPreconditionFailed(id);
     }
     final object = SyncRemoteObject(
       id: id,

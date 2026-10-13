@@ -331,16 +331,118 @@ class ResultRepository {
     await _index.replaceResults(results);
   }
 
-  Future<void> writeConflictCopy(String id, String contents) async {
-    final timestamp = DateTime.now().toIso8601String().replaceAll(':', '');
+  Future<String> writeConflictCopy(
+    String id,
+    String contents, {
+    required String remoteEtag,
+    required String localHash,
+  }) async {
+    final remoteHash = hashMarkdown(contents);
     final safeId = id.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
-    await _vault.exclusive(
-      () => _vault.write(
-        'vault/conflicts/$safeId.conflict-$timestamp.md',
-        contents,
+    final path =
+        'vault/conflicts/$safeId.conflict-${remoteHash.substring(7)}.md';
+    return _withWriteLock(() async {
+      final indexed = await _index.findResult(id);
+      final source = indexed == null ? null : await _vault.read(indexed.mdPath);
+      if (indexed == null ||
+          source == null ||
+          hashMarkdown(source) != localHash) {
+        throw StateError('本地成果在登记冲突前已变化：$id');
+      }
+      final previousConflict = await _index.findConflict(id);
+      var conflictLocalHash = localHash;
+      if (previousConflict?.remoteHash != remoteHash) {
+        final document = _codec.decode(source);
+        final registered = document.copyWith(
+          revision: document.revision + 1,
+          updatedAt: DateTime.now(),
+        );
+        await _commitAndIndex(registered);
+        final registeredSource = await _vault.read(registered.markdownPath);
+        if (registeredSource == null) {
+          throw StateError('冲突版本提交后文件缺失：$id');
+        }
+        conflictLocalHash = hashMarkdown(registeredSource);
+      }
+      final existing = await _vault.read(path);
+      if (existing != null && hashMarkdown(existing) != remoteHash) {
+        throw StateError('冲突副本路径内容不匹配：$id');
+      }
+      if (existing == null) await _vault.write(path, contents);
+      if (previousConflict != null && previousConflict.copyPath != path) {
+        await _vault.delete(previousConflict.copyPath);
+      }
+      await _index.upsertConflict(
+        SyncConflictRecord(
+          resultId: id,
+          remoteHash: remoteHash,
+          remoteEtag: remoteEtag,
+          localHash: conflictLocalHash,
+          copyPath: path,
+          createdAt: DateTime.now(),
+        ),
+      );
+      return path;
+    });
+  }
+
+  Future<List<SyncConflictRecord>> listConflicts() => _index.listConflicts();
+
+  Future<SyncConflictRecord?> findConflict(String id) =>
+      _index.findConflict(id);
+
+  Future<void> removeConflict(String id, String path) =>
+      _withWriteLock(() async {
+        await _index.removeConflict(id);
+        await _vault.delete(path);
+      });
+
+  Future<String?> readManagedResult(String id) => _vault.exclusive(() async {
+    final indexed = await _index.findResult(id);
+    return indexed == null ? null : _vault.read(indexed.mdPath);
+  });
+
+  Future<void> acknowledgeSynced({
+    required String id,
+    required String expectedLocalHash,
+    required String remoteEtag,
+  }) => _withWriteLock(() async {
+    final indexed = await _index.findResult(id);
+    if (indexed == null) throw StateError('本地成果已不存在：$id');
+    final source = await _vault.read(indexed.mdPath);
+    if (source == null || hashMarkdown(source) != expectedLocalHash) {
+      throw StateError('本地成果在同步期间已变化：$id');
+    }
+    await _index.upsertResult(
+      indexed.copyWith(
+        localHash: expectedLocalHash,
+        lastSyncedHash: expectedLocalHash,
+        remoteEtag: remoteEtag,
+        syncState: SyncState.synced,
       ),
     );
-  }
+  });
+
+  Future<void> importRemote({
+    required SyncRemoteObject remote,
+    required String? expectedLocalHash,
+  }) => _withWriteLock(() async {
+    await _recoverPendingTransactions();
+    final document = _codec.decode(remote.content);
+    final old = await _index.findResult(document.id);
+    final current = old == null ? null : await _vault.read(old.mdPath);
+    final currentHash = current == null ? null : hashMarkdown(current);
+    if (currentHash != expectedLocalHash) {
+      throw StateError('本地成果在导入远端前已变化：${document.id}');
+    }
+    final imported = document;
+    await _commitAndIndex(
+      imported,
+      rawContents: remote.content,
+      syncBaseline: _SyncBaseline(remote.hash, remote.etag),
+      allowRevisionReplacement: true,
+    );
+  });
 
   Future<List<String>> listConflictFiles() async {
     final files = await _vault.exclusive(_vault.listMarkdownFiles);
@@ -409,6 +511,9 @@ class ResultRepository {
   Future<void> _commitAndIndex(
     ResultDocument document, {
     IdempotentOperation? operation,
+    String? rawContents,
+    _SyncBaseline? syncBaseline,
+    bool allowRevisionReplacement = false,
   }) async {
     if (!_isSafeResultId(document.id) ||
         document.markdownPath !=
@@ -416,14 +521,25 @@ class ResultRepository {
       throw StateError('成果 ID 或目标路径不合法：${document.id}');
     }
     final old = await _index.findResult(document.id);
-    if (old == null && document.revision != 1) {
+    if (old == null && document.revision != 1 && !allowRevisionReplacement) {
       throw StateError('成果不存在或版本已过期，拒绝覆盖：${document.id}');
     }
-    if (old != null && document.revision != old.revision + 1) {
+    if (old != null &&
+        !allowRevisionReplacement &&
+        document.revision != old.revision + 1) {
       throw StateError('成果版本已变化，拒绝覆盖：${document.id}');
     }
 
-    final markdown = _codec.encode(document);
+    final markdown = rawContents ?? _codec.encode(document);
+    if (syncBaseline != null && syncBaseline.hash != hashMarkdown(markdown)) {
+      throw StateError('同步基线 hash 与提交内容不一致：${document.id}');
+    }
+    final parsedMarkdown = _codec.decode(markdown);
+    if (parsedMarkdown.id != document.id ||
+        parsedMarkdown.markdownPath != document.markdownPath ||
+        parsedMarkdown.revision != document.revision) {
+      throw StateError('成果内容与提交元数据不一致：${document.id}');
+    }
     final previousMarkdown = old == null ? null : await _vault.read(old.mdPath);
     if (old != null && previousMarkdown == null) {
       throw StateError('成果文件缺失，拒绝覆盖：${document.id}');
@@ -465,6 +581,8 @@ class ResultRepository {
         'expected_revision': old?.revision,
         'idempotency_key': operation?.key,
         'payload_hash': operation?.payloadHash,
+        'last_synced_hash': syncBaseline?.hash,
+        'remote_etag': syncBaseline?.etag,
       }),
     );
 
@@ -473,7 +591,7 @@ class ResultRepository {
     if (committed == null || hashMarkdown(committed) != nextHash) {
       throw StateError('成果文件提交校验失败：${document.id}');
     }
-    await _indexDocument(document, old, nextHash);
+    await _indexDocument(document, old, nextHash, syncBaseline: syncBaseline);
     if (operation != null) {
       await _index.upsertOperation(
         operation.copyWith(
@@ -521,6 +639,8 @@ class ResultRepository {
       final expectedRevision = decoded['expected_revision'];
       final idempotencyKey = decoded['idempotency_key'];
       final payloadHash = decoded['payload_hash'];
+      final syncedHash = decoded['last_synced_hash'];
+      final remoteEtag = decoded['remote_etag'];
       if (operationId is! String ||
           !RegExp(r'^[a-f0-9]{32}$').hasMatch(operationId) ||
           resultId is! String ||
@@ -532,6 +652,9 @@ class ResultRepository {
           (expectedRevision != null && expectedRevision is! int) ||
           (idempotencyKey != null && idempotencyKey is! String) ||
           (payloadHash != null && payloadHash is! String) ||
+          (syncedHash != null && syncedHash is! String) ||
+          (remoteEtag != null && remoteEtag is! String) ||
+          ((syncedHash == null) != (remoteEtag == null)) ||
           !_isManagedResultPath(targetPath, resultId) ||
           (previousTarget is String &&
               !_isManagedResultPath(previousTarget, resultId))) {
@@ -617,7 +740,14 @@ class ResultRepository {
                 old.revision != document.revision) {
         throw StateError('成果索引版本与提交日志不匹配，保留恢复材料：$resultId');
       }
-      await _indexDocument(document, old, expectedHash);
+      await _indexDocument(
+        document,
+        old,
+        expectedHash,
+        syncBaseline: syncedHash is String && remoteEtag is String
+            ? _SyncBaseline(syncedHash, remoteEtag)
+            : null,
+      );
       if (idempotencyKey is String && payloadHash is String) {
         final operation = await _index.findOperation(idempotencyKey);
         if (operation == null ||
@@ -662,8 +792,9 @@ class ResultRepository {
   Future<void> _indexDocument(
     ResultDocument document,
     IndexedResult? old,
-    String hash,
-  ) async {
+    String hash, {
+    _SyncBaseline? syncBaseline,
+  }) async {
     final record = IndexedResult(
       id: document.id,
       type: document.type,
@@ -674,12 +805,12 @@ class ResultRepository {
       deleted: document.deleted,
       mdPath: document.markdownPath,
       localHash: hash,
-      lastSyncedHash: old?.lastSyncedHash,
-      remoteEtag: old?.remoteEtag,
+      lastSyncedHash: syncBaseline?.hash ?? old?.lastSyncedHash,
+      remoteEtag: syncBaseline?.etag ?? old?.remoteEtag,
       matterId: document.matterId,
       syncState: document.deleted
           ? SyncState.deleted
-          : hash == old?.lastSyncedHash
+          : hash == (syncBaseline?.hash ?? old?.lastSyncedHash)
           ? SyncState.synced
           : SyncState.pendingUpload,
     );
@@ -799,4 +930,11 @@ class ResultRepository {
         .where((value) => value.isNotEmpty && seen.add(value))
         .toList(growable: false);
   }
+}
+
+class _SyncBaseline {
+  const _SyncBaseline(this.hash, this.etag);
+
+  final String hash;
+  final String etag;
 }

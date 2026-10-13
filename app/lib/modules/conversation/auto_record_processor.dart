@@ -30,8 +30,9 @@ class AutoRecordProcessor {
 
   Future<List<AutoRecordAction>> processToolCalls(
     String assistantMessageId,
-    List<ToolCallAccumulator> calls,
-  ) async {
+    List<ToolCallAccumulator> calls, {
+    DateTime? completedAt,
+  }) async {
     final actions = <AutoRecordAction>[];
     final assistant = await _chatRepository.findMessage(assistantMessageId);
     var sourceUserMessageId = assistantMessageId;
@@ -45,7 +46,7 @@ class AutoRecordProcessor {
         }
       }
     }
-    final createdAt = assistant?.createdAt ?? DateTime.now();
+    final createdAt = completedAt ?? assistant?.createdAt ?? DateTime.now();
     for (final call in calls) {
       if (call.name != 'create_result' || call.arguments.isEmpty) {
         continue;

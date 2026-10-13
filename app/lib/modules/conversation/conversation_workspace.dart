@@ -104,6 +104,7 @@ class ConversationWorkspace extends ChangeNotifier {
       final actions = await _autoRecordProcessor.processToolCalls(
         generation.assistantMessageId,
         calls,
+        completedAt: generation.updatedAt,
       );
       final completedMessage =
           (assistant ??
@@ -435,6 +436,7 @@ class ConversationWorkspace extends ChangeNotifier {
         final actions = await _autoRecordProcessor.processToolCalls(
           assistantMessageId,
           toolCalls.values.toList(growable: false),
+          completedAt: generation.updatedAt,
         );
         assistant = assistant.copyWith(
           status: ChatMessageStatus.complete,

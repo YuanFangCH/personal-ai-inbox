@@ -75,7 +75,7 @@ void main() {
         id: local.id,
         path: local.markdownPath,
         contents: codec.encode(local.copyWith(title: '远端标题')),
-        etag: indexed!.remoteEtag,
+        condition: SyncWriteCondition.matchEtag(indexed!.remoteEtag!),
       );
 
       await workspace.syncNow();
@@ -94,6 +94,79 @@ void main() {
       expect(resolved!.title, '远端标题');
     },
   );
+
+  test('keep-local resolution updates the baseline and converges', () async {
+    final local = await repository.create(
+      type: ResultType.knowledge,
+      title: '原始标题',
+      body: '正文',
+    );
+    await workspace.syncNow();
+    final indexed = await repository.findIndexed(local.id);
+    await repository.save(local.copyWith(title: '本地标题'));
+    await provider.putObject(
+      id: local.id,
+      path: local.markdownPath,
+      contents: codec.encode(local.copyWith(title: '远端标题')),
+      condition: SyncWriteCondition.matchEtag(indexed!.remoteEtag!),
+    );
+    await workspace.syncNow();
+
+    await workspace.resolveConflict(
+      workspace.conflictFiles.single,
+      useRemote: false,
+    );
+    await workspace.syncNow();
+
+    final remote = (await provider.listObjects()).single;
+    final convergedIndex = await repository.findIndexed(local.id);
+    expect(codec.decode(remote.content).title, '本地标题');
+    expect(workspace.lastReport!.failed, 0);
+    expect(workspace.lastReport!.unchanged, 1);
+    expect(convergedIndex!.lastSyncedHash, convergedIndex.localHash);
+    expect(workspace.conflictFiles, isEmpty);
+  });
+
+  test('a newer remote version survives a stale conflict decision', () async {
+    final local = await repository.create(
+      type: ResultType.knowledge,
+      title: '原始标题',
+      body: '正文',
+    );
+    await workspace.syncNow();
+    final indexed = await repository.findIndexed(local.id);
+    await repository.save(local.copyWith(title: '本地标题'));
+    await provider.putObject(
+      id: local.id,
+      path: local.markdownPath,
+      contents: codec.encode(local.copyWith(title: '远端标题')),
+      condition: SyncWriteCondition.matchEtag(indexed!.remoteEtag!),
+    );
+    await workspace.syncNow();
+    final conflictedRemote = (await provider.listObjects()).single;
+    await provider.putObject(
+      id: local.id,
+      path: local.markdownPath,
+      contents: codec.encode(local.copyWith(title: '更新后的远端标题')),
+      condition: SyncWriteCondition.matchEtag(conflictedRemote.etag),
+    );
+
+    await workspace.resolveConflict(
+      workspace.conflictFiles.single,
+      useRemote: false,
+    );
+
+    expect(workspace.errorMessage, contains('远端版本在裁决期间已变化'));
+    expect(workspace.conflictFiles, hasLength(1));
+    expect(
+      codec.decode((await provider.listObjects()).single.content).title,
+      '更新后的远端标题',
+    );
+
+    await workspace.syncNow();
+    expect(workspace.lastReport!.conflicts, 1);
+    expect(workspace.errorMessage, isNull);
+  });
 
   test('syncNow keeps busy true until the engine completes', () async {
     final blockingProvider = _BlockingSyncProvider();

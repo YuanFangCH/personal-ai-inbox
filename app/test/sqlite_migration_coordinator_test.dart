@@ -29,7 +29,7 @@ void main() {
       );
 
       await migration.prepare();
-      _markMigrated(indexPath);
+      _markMigrated(indexPath, version: 2);
       _markMigrated(conversationPath);
       settings.values['device_id'] = 'device-after';
       await migration.rollback();
@@ -94,7 +94,7 @@ void main() {
       await migration.prepare();
       final indexPath = '${directory.path}/index.sqlite3';
       final conversationPath = '${directory.path}/conversations.sqlite3';
-      _markMigrated(indexPath);
+      _markMigrated(indexPath, version: 2);
       await expectLater(migration.complete(), throwsA(isA<StateError>()));
       _markMigrated(conversationPath);
       await migration.complete();
@@ -206,10 +206,10 @@ void _createLegacyDatabase(String path, String table) {
   database.close();
 }
 
-void _markMigrated(String path) {
+void _markMigrated(String path, {int version = 1}) {
   final database = sqlite3.open(path)
     ..execute('CREATE TABLE IF NOT EXISTS migration_change (value TEXT)')
-    ..execute('PRAGMA user_version = 1');
+    ..execute('PRAGMA user_version = $version');
   database.close();
 }
 

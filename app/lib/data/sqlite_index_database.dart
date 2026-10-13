@@ -23,8 +23,8 @@ class SqliteIndexDatabase implements IndexDatabase {
         ..execute('PRAGMA foreign_keys = ON');
       final version =
           _database.select('PRAGMA user_version').single['user_version'] as int;
-      if (version > 1) {
-        throw StateError('索引数据库版本 $version 高于此应用支持的版本 1');
+      if (version > 2) {
+        throw StateError('索引数据库版本 $version 高于此应用支持的版本 2');
       }
       _database.execute('BEGIN EXCLUSIVE');
       _database
@@ -73,8 +73,18 @@ class SqliteIndexDatabase implements IndexDatabase {
           updated_at TEXT NOT NULL
         )
       ''');
-      if (version < 1) {
-        _database.execute('PRAGMA user_version = 1');
+      _database.execute('''
+        CREATE TABLE IF NOT EXISTS sync_conflicts (
+          result_id TEXT PRIMARY KEY,
+          remote_hash TEXT NOT NULL,
+          remote_etag TEXT NOT NULL,
+          local_hash TEXT NOT NULL,
+          copy_path TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        )
+      ''');
+      if (version < 2) {
+        _database.execute('PRAGMA user_version = 2');
       }
       _database.execute('COMMIT');
     } catch (_) {
@@ -269,6 +279,66 @@ class SqliteIndexDatabase implements IndexDatabase {
       "SELECT * FROM actions WHERE state != 'completed' ORDER BY created_at",
     );
     return rows.map(_operationFromRow).toList(growable: false);
+  }
+
+  @override
+  Future<SyncConflictRecord?> findConflict(String resultId) async {
+    final rows = _database.select(
+      'SELECT * FROM sync_conflicts WHERE result_id = ?',
+      [resultId],
+    );
+    return rows.isEmpty ? null : _conflictFromRow(rows.first);
+  }
+
+  @override
+  Future<void> upsertConflict(SyncConflictRecord conflict) async {
+    _database.execute(
+      '''
+      INSERT INTO sync_conflicts (
+        result_id, remote_hash, remote_etag, local_hash, copy_path, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(result_id) DO UPDATE SET
+        remote_hash = excluded.remote_hash,
+        remote_etag = excluded.remote_etag,
+        local_hash = excluded.local_hash,
+        copy_path = excluded.copy_path,
+        created_at = excluded.created_at
+      ''',
+      [
+        conflict.resultId,
+        conflict.remoteHash,
+        conflict.remoteEtag,
+        conflict.localHash,
+        conflict.copyPath,
+        conflict.createdAt.toIso8601String(),
+      ],
+    );
+  }
+
+  @override
+  Future<void> removeConflict(String resultId) async {
+    _database.execute('DELETE FROM sync_conflicts WHERE result_id = ?', [
+      resultId,
+    ]);
+  }
+
+  @override
+  Future<List<SyncConflictRecord>> listConflicts() async {
+    final rows = _database.select(
+      'SELECT * FROM sync_conflicts ORDER BY created_at',
+    );
+    return rows.map(_conflictFromRow).toList(growable: false);
+  }
+
+  SyncConflictRecord _conflictFromRow(Row row) {
+    return SyncConflictRecord(
+      resultId: row['result_id'] as String,
+      remoteHash: row['remote_hash'] as String,
+      remoteEtag: row['remote_etag'] as String,
+      localHash: row['local_hash'] as String,
+      copyPath: row['copy_path'] as String,
+      createdAt: DateTime.parse(row['created_at'] as String),
+    );
   }
 
   IdempotentOperation _operationFromRow(Row row) {
