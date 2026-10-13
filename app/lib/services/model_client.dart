@@ -5,19 +5,26 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 import '../core/models.dart';
+import 'model_capabilities.dart';
 
 class ModelConfiguration {
   const ModelConfiguration({
     required this.baseUrl,
     required this.model,
     required this.apiKey,
-    this.timeout = const Duration(seconds: 45),
+    this.capabilities = ModelCapabilities.textOnly,
+    this.responseHeaderTimeout = const Duration(seconds: 45),
+    this.streamIdleTimeout = const Duration(seconds: 60),
+    this.totalTimeout = const Duration(seconds: 300),
   });
 
   final String baseUrl;
   final String model;
   final String apiKey;
-  final Duration timeout;
+  final ModelCapabilities capabilities;
+  final Duration responseHeaderTimeout;
+  final Duration streamIdleTimeout;
+  final Duration totalTimeout;
 }
 
 class ChatRequestImage {
@@ -46,6 +53,7 @@ class ChatStreamDelta {
     this.toolCallId,
     this.toolCallName,
     this.toolArguments = '',
+    this.termination,
   });
 
   final String content;
@@ -53,7 +61,10 @@ class ChatStreamDelta {
   final String? toolCallId;
   final String? toolCallName;
   final String toolArguments;
+  final ChatStreamTermination? termination;
 }
+
+enum ChatStreamTermination { completed, incomplete }
 
 class ModelClient {
   ModelClient({http.Client? client}) : _client = client ?? http.Client();
@@ -68,44 +79,74 @@ class ModelClient {
     final endpoint = Uri.parse(
       '${configuration.baseUrl.replaceAll(RegExp(r'/$'), '')}/chat/completions',
     );
-    final response = await _client
-        .post(
-          endpoint,
-          headers: {
+    final abortTrigger = Completer<void>();
+    final request =
+        http.AbortableRequest(
+            'POST',
+            endpoint,
+            abortTrigger: abortTrigger.future,
+          )
+          ..headers.addAll({
             'Authorization': 'Bearer ${configuration.apiKey}',
             'Content-Type': 'application/json',
-          },
-          body: jsonEncode({
+          })
+          ..body = jsonEncode({
             'model': configuration.model,
             'temperature': 0,
-            'response_format': {'type': 'json_object'},
+            if (configuration.capabilities.jsonOutput)
+              'response_format': {'type': 'json_object'},
             'messages': [
               {'role': 'system', 'content': _systemPrompt(now)},
               {'role': 'user', 'content': text},
             ],
-          }),
-        )
-        .timeout(configuration.timeout);
+          });
+    final response = await _sendAbortably(
+      request,
+      abortTrigger,
+      configuration.responseHeaderTimeout,
+    );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      unawaited(response.stream.listen((_) {}).cancel());
       throw StateError('Model request failed with HTTP ${response.statusCode}');
     }
 
-    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-    if (decoded is! Map<String, dynamic>) {
-      throw const FormatException('Model response is not an object');
+    final startedAt = DateTime.now();
+    final responseStream = StreamIterator<List<int>>(response.stream);
+    final responseBytes = BytesBuilder(copy: false);
+    var responseBodyCompleted = false;
+    try {
+      while (await _moveNextWithinTimeout(
+        responseStream,
+        startedAt,
+        configuration.streamIdleTimeout,
+        configuration.totalTimeout,
+        abortTrigger,
+      )) {
+        responseBytes.add(responseStream.current);
+      }
+      responseBodyCompleted = true;
+      final decoded = jsonDecode(utf8.decode(responseBytes.takeBytes()));
+      if (decoded is! Map<String, dynamic>) {
+        throw const FormatException('Model response is not an object');
+      }
+      final choices = decoded['choices'];
+      if (choices is! List || choices.isEmpty) {
+        throw const FormatException('Model response is missing choices');
+      }
+      final message = (choices.first as Map)['message'];
+      final content = message is Map ? message['content']?.toString() : null;
+      if (content == null || content.trim().isEmpty) {
+        throw const FormatException('Model response is missing content');
+      }
+      final payload = _extractJsonObject(content);
+      return _candidateFromPayload(payload, text);
+    } finally {
+      unawaited(responseStream.cancel());
+      if (!responseBodyCompleted && !abortTrigger.isCompleted) {
+        abortTrigger.complete();
+      }
     }
-    final choices = decoded['choices'];
-    if (choices is! List || choices.isEmpty) {
-      throw const FormatException('Model response is missing choices');
-    }
-    final message = (choices.first as Map)['message'];
-    final content = message is Map ? message['content']?.toString() : null;
-    if (content == null || content.trim().isEmpty) {
-      throw const FormatException('Model response is missing content');
-    }
-    final payload = _extractJsonObject(content);
-    return _candidateFromPayload(payload, text);
   }
 
   Stream<ChatStreamDelta> streamChat({
@@ -116,82 +157,241 @@ class ModelClient {
     final endpoint = Uri.parse(
       '${configuration.baseUrl.replaceAll(RegExp(r'/$'), '')}/chat/completions',
     );
-    final request = http.Request('POST', endpoint)
-      ..headers.addAll({
-        'Authorization': 'Bearer ${configuration.apiKey}',
-        'Content-Type': 'application/json',
-        'Accept': 'text/event-stream',
-      })
-      ..body = jsonEncode({
-        'model': configuration.model,
-        'temperature': 0.2,
-        'stream': true,
-        'messages': [
-          {'role': 'system', 'content': _chatSystemPrompt(now)},
-          for (final message in messages) _requestMessage(message),
-        ],
-        'tools': [_createResultTool],
-        'tool_choice': 'auto',
-      });
+    final abortTrigger = Completer<void>();
+    final request =
+        http.AbortableRequest(
+            'POST',
+            endpoint,
+            abortTrigger: abortTrigger.future,
+          )
+          ..headers.addAll({
+            'Authorization': 'Bearer ${configuration.apiKey}',
+            'Content-Type': 'application/json',
+            'Accept': 'text/event-stream',
+          })
+          ..body = jsonEncode({
+            'model': configuration.model,
+            'temperature': 0.2,
+            'stream': true,
+            'messages': [
+              {'role': 'system', 'content': _chatSystemPrompt(now)},
+              for (final message in messages) _requestMessage(message),
+            ],
+            if (configuration.capabilities.toolCalls) ...{
+              'tools': [_createResultTool],
+              'tool_choice': 'auto',
+            },
+          });
 
-    final response = await _client.send(request).timeout(configuration.timeout);
+    final response = await _sendAbortably(
+      request,
+      abortTrigger,
+      configuration.responseHeaderTimeout,
+    );
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      final body = await response.stream.bytesToString();
+      unawaited(response.stream.listen((_) {}).cancel());
       throw StateError(
-        'Model chat request failed with HTTP ${response.statusCode}: $body',
+        'Model chat request failed with HTTP ${response.statusCode}',
       );
     }
 
-    await for (final line
-        in response.stream
-            .transform(utf8.decoder)
-            .transform(const LineSplitter())) {
-      final trimmed = line.trim();
-      if (!trimmed.startsWith('data:')) {
-        continue;
-      }
-      final payload = trimmed.substring(5).trim();
-      if (payload.isEmpty || payload == '[DONE]') {
-        continue;
-      }
-      final decoded = jsonDecode(payload);
-      if (decoded is! Map) {
-        continue;
-      }
-      final choices = decoded['choices'];
-      if (choices is! List || choices.isEmpty) {
-        continue;
-      }
-      final choice = choices.first;
-      if (choice is! Map) {
-        continue;
-      }
-      final delta = choice['delta'];
-      if (delta is! Map) {
-        continue;
-      }
-      final content = delta['content']?.toString() ?? '';
-      final toolCalls = delta['tool_calls'];
-      if (content.isNotEmpty) {
-        yield ChatStreamDelta(content: content);
-      }
-      if (toolCalls is List) {
-        for (final rawCall in toolCalls) {
-          if (rawCall is! Map) {
+    final startedAt = DateTime.now();
+    final lines = StreamIterator<String>(
+      response.stream.transform(utf8.decoder).transform(const LineSplitter()),
+    );
+    var terminalSent = false;
+    try {
+      while (await _moveNextWithinTimeout(
+        lines,
+        startedAt,
+        configuration.streamIdleTimeout,
+        configuration.totalTimeout,
+        abortTrigger,
+      )) {
+        final line = lines.current;
+        final trimmed = line.trim();
+        if (trimmed.isEmpty ||
+            trimmed.startsWith(':') ||
+            !trimmed.startsWith('data:')) {
+          continue;
+        }
+        final payload = trimmed.substring(5).trim();
+        if (payload.isEmpty) {
+          continue;
+        }
+        if (terminalSent) {
+          continue;
+        }
+        if (payload == '[DONE]') {
+          terminalSent = true;
+          abortTrigger.complete();
+          yield const ChatStreamDelta(
+            termination: ChatStreamTermination.completed,
+          );
+          return;
+        }
+
+        final decoded = jsonDecode(payload);
+        if (decoded is! Map) {
+          throw const FormatException('Model stream event is not an object');
+        }
+        final choices = decoded['choices'];
+        if (choices is! List) {
+          throw const FormatException('Model stream event is missing choices');
+        }
+        if (choices.isEmpty) {
+          continue;
+        }
+        final choice = choices.first;
+        if (choice is! Map) {
+          throw const FormatException('Model stream choice is not an object');
+        }
+        final finishReason = choice['finish_reason'];
+        final delta = choice['delta'];
+        if (delta != null && delta is! Map) {
+          throw const FormatException('Model stream delta is not an object');
+        }
+        if (delta == null) {
+          if (finishReason == null) {
             continue;
           }
-          final function = rawCall['function'];
+          final completed =
+              finishReason == 'stop' || finishReason == 'tool_calls';
+          terminalSent = true;
+          abortTrigger.complete();
           yield ChatStreamDelta(
-            toolCallIndex: (rawCall['index'] as num?)?.toInt(),
-            toolCallId: rawCall['id']?.toString(),
-            toolCallName: function is Map ? function['name']?.toString() : null,
-            toolArguments: function is Map
-                ? function['arguments']?.toString() ?? ''
-                : '',
+            termination: completed
+                ? ChatStreamTermination.completed
+                : ChatStreamTermination.incomplete,
+          );
+          return;
+        }
+        final content = delta['content'];
+        if (content != null && content is! String) {
+          throw const FormatException('Model stream content is not text');
+        }
+        final toolCalls = delta['tool_calls'];
+        if (toolCalls != null && toolCalls is! List) {
+          throw const FormatException('Model stream tool calls are not a list');
+        }
+        if (content is String && content.isNotEmpty) {
+          yield ChatStreamDelta(content: content);
+        }
+        if (configuration.capabilities.toolCalls && toolCalls is List) {
+          for (final rawCall in toolCalls) {
+            if (rawCall is! Map) {
+              throw const FormatException(
+                'Model stream tool call is not an object',
+              );
+            }
+            final function = rawCall['function'];
+            if (function != null && function is! Map) {
+              throw const FormatException(
+                'Model stream tool function is invalid',
+              );
+            }
+            final rawIndex = rawCall['index'];
+            if (rawIndex is! num || !rawIndex.isFinite || rawIndex < 0) {
+              throw const FormatException('Model stream tool index is invalid');
+            }
+            final toolId = rawCall['id'];
+            final toolName = function?['name'];
+            final arguments = function?['arguments'];
+            if ((toolId != null && toolId is! String) ||
+                (toolName != null && toolName is! String) ||
+                (arguments != null && arguments is! String)) {
+              throw const FormatException(
+                'Model stream tool fields are invalid',
+              );
+            }
+            yield ChatStreamDelta(
+              toolCallIndex: rawIndex.toInt(),
+              toolCallId: toolId as String?,
+              toolCallName: toolName as String?,
+              toolArguments: arguments as String? ?? '',
+            );
+          }
+        } else if (toolCalls is List && toolCalls.isNotEmpty) {
+          throw const FormatException(
+            'Model returned tool calls without tool-call capability',
           );
         }
+        if (finishReason != null) {
+          final completed =
+              finishReason == 'stop' || finishReason == 'tool_calls';
+          terminalSent = true;
+          abortTrigger.complete();
+          yield ChatStreamDelta(
+            termination: completed
+                ? ChatStreamTermination.completed
+                : ChatStreamTermination.incomplete,
+          );
+          return;
+        }
+      }
+    } finally {
+      unawaited(lines.cancel());
+      if (!terminalSent && !abortTrigger.isCompleted) {
+        abortTrigger.complete();
       }
     }
+  }
+
+  Future<http.StreamedResponse> _sendAbortably(
+    http.AbortableRequest request,
+    Completer<void> abortTrigger,
+    Duration timeout,
+  ) async {
+    try {
+      return await _client
+          .send(request)
+          .timeout(
+            timeout,
+            onTimeout: () {
+              if (!abortTrigger.isCompleted) {
+                abortTrigger.complete();
+              }
+              throw TimeoutException('Model response headers timed out');
+            },
+          );
+    } catch (_) {
+      if (!abortTrigger.isCompleted) {
+        abortTrigger.complete();
+      }
+      rethrow;
+    }
+  }
+
+  Future<bool> _moveNextWithinTimeout<T>(
+    StreamIterator<T> iterator,
+    DateTime startedAt,
+    Duration idleTimeout,
+    Duration totalTimeout,
+    Completer<void> abortTrigger,
+  ) {
+    final elapsed = DateTime.now().difference(startedAt);
+    final remainingTotal = totalTimeout - elapsed;
+    if (remainingTotal <= Duration.zero) {
+      if (!abortTrigger.isCompleted) {
+        abortTrigger.complete();
+      }
+      throw TimeoutException('Model response exceeded its total time limit');
+    }
+    final totalExpiresFirst = remainingTotal <= idleTimeout;
+    final wait = totalExpiresFirst ? remainingTotal : idleTimeout;
+    return iterator.moveNext().timeout(
+      wait,
+      onTimeout: () {
+        if (!abortTrigger.isCompleted) {
+          abortTrigger.complete();
+        }
+        throw TimeoutException(
+          totalExpiresFirst
+              ? 'Model response exceeded its total time limit'
+              : 'Model response stream was idle too long',
+        );
+      },
+    );
   }
 
   void close() => _client.close();
@@ -300,6 +500,7 @@ create_result 只用于新建，绝不修改或删除已有成果。
   "needs_review": true,
   "review_reason": "原因或 null"
 }
+
 日期不明确时必须 needs_review=true。不得修改任何用户数据，只返回候选。
 ''';
   }

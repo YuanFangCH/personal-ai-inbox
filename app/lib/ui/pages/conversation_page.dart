@@ -5,6 +5,7 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import '../../core/chat_models.dart';
 import '../../services/app_controller.dart';
 import '../../services/image_input_service.dart';
+import '../../services/model_capabilities.dart';
 import '../app_scope.dart';
 import '../widgets/common.dart';
 import 'document_detail_page.dart';
@@ -76,6 +77,8 @@ class _ConversationPageState extends State<ConversationPage>
     }
     final modelReady = app.settings?.hasModelKey ?? false;
     final imageEgressAllowed = app.settings?.allowImageEgress ?? true;
+    final modelName = app.settings?.modelName ?? '';
+    final imageCapability = ModelCapabilities.forModel(modelName).vision;
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -134,7 +137,7 @@ class _ConversationPageState extends State<ConversationPage>
             controller: _textController,
             attachments: _imageInputs,
             enabled: modelReady,
-            imageEnabled: modelReady && imageEgressAllowed,
+            imageEnabled: modelReady && imageEgressAllowed && imageCapability,
             generating: app.isChatGenerating,
             onPickGallery: _pickGallery,
             onPickCamera: _pickCamera,

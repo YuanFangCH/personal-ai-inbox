@@ -41,6 +41,8 @@ class ConversationWorkspace extends ChangeNotifier {
   String? _pendingOpenConversationId;
   StreamSubscription<ChatStreamDelta>? _chatSubscription;
   Completer<void>? _chatStreamDone;
+  Completer<void>? _chatGenerationFinished;
+  final Map<String, Future<void>> _messageSaveQueues = {};
   bool _cancelChatRequested = false;
   bool _isChatGenerating = false;
 
@@ -179,7 +181,7 @@ class ConversationWorkspace extends ChangeNotifier {
       updatedAt: now,
       attachments: savedAttachments,
     );
-    await _repository.saveMessage(userMessage);
+    await _saveMessage(userMessage);
     _replaceMessage(userMessage);
 
     final isFirstUserMessage = !history.any(
@@ -198,6 +200,15 @@ class ConversationWorkspace extends ChangeNotifier {
     await _repository.saveConversation(updatedConversation);
     _replaceConversation(updatedConversation);
 
+    await _generateReply(conversationId, updatedConversation);
+  }
+
+  Future<void> _generateReply(
+    String conversationId,
+    Conversation updatedConversation, {
+    Set<String> excludedMessageIds = const {},
+  }) async {
+    final now = DateTime.now();
     final assistantMessageId = _repository.newMessageId();
     var assistant = ChatMessage(
       id: assistantMessageId,
@@ -208,66 +219,77 @@ class ConversationWorkspace extends ChangeNotifier {
       createdAt: now,
       updatedAt: now,
     );
-    await _repository.saveMessage(assistant);
+    await _saveMessage(assistant);
     _replaceMessage(assistant);
 
     _isChatGenerating = true;
     _cancelChatRequested = false;
+    _chatGenerationFinished = Completer<void>();
     _activeConversationId = conversationId;
     notifyListeners();
 
     final toolCalls = <int, ToolCallAccumulator>{};
     var lastPersistAt = DateTime.now();
+    ChatStreamTermination? termination;
+    final done = Completer<void>();
+    _chatStreamDone = done;
     try {
       final stream = await _chatService.streamReply(
         conversationId: conversationId,
+        excludedMessageIds: excludedMessageIds,
       );
-      final done = Completer<void>();
-      _chatStreamDone = done;
-      _chatSubscription = stream.listen(
-        (delta) {
-          if (_cancelChatRequested) {
-            return;
-          }
-          if (delta.content.isNotEmpty) {
-            assistant = assistant.copyWith(
-              content: '${assistant.content}${delta.content}',
-              updatedAt: DateTime.now(),
-            );
-            _replaceMessage(assistant);
-          }
-          if (delta.toolCallIndex != null) {
-            final index = delta.toolCallIndex!;
-            final current = toolCalls.putIfAbsent(
-              index,
-              ToolCallAccumulator.new,
-            );
-            current
-              ..id = delta.toolCallId ?? current.id
-              ..name = delta.toolCallName ?? current.name
-              ..arguments.write(delta.toolArguments);
-          }
-          final currentTime = DateTime.now();
-          if (currentTime.difference(lastPersistAt) >
-              const Duration(milliseconds: 140)) {
-            lastPersistAt = currentTime;
-            unawaited(_repository.saveMessage(assistant));
-          }
-          notifyListeners();
-        },
-        onError: (Object error, StackTrace stackTrace) {
-          if (!done.isCompleted) {
-            done.completeError(error, stackTrace);
-          }
-        },
-        onDone: () {
-          if (!done.isCompleted) {
-            done.complete();
-          }
-        },
-        cancelOnError: false,
-      );
-      await done.future;
+      if (!_cancelChatRequested) {
+        _chatSubscription = stream.listen(
+          (delta) {
+            if (_cancelChatRequested || termination != null) {
+              return;
+            }
+            if (delta.termination != null) {
+              termination = delta.termination;
+            }
+            if (delta.content.isNotEmpty) {
+              assistant = assistant.copyWith(
+                content: '${assistant.content}${delta.content}',
+                updatedAt: DateTime.now(),
+              );
+              _replaceMessage(assistant);
+            }
+            if (delta.toolCallIndex != null) {
+              final index = delta.toolCallIndex!;
+              final current = toolCalls.putIfAbsent(
+                index,
+                ToolCallAccumulator.new,
+              );
+              current
+                ..id = delta.toolCallId ?? current.id
+                ..name = delta.toolCallName ?? current.name
+                ..arguments.write(delta.toolArguments);
+            }
+            final currentTime = DateTime.now();
+            if (currentTime.difference(lastPersistAt) >
+                const Duration(milliseconds: 140)) {
+              lastPersistAt = currentTime;
+              unawaited(_saveMessage(assistant));
+            }
+            notifyListeners();
+            if (termination != null && !done.isCompleted) {
+              done.complete();
+            }
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            if (!done.isCompleted) {
+              done.completeError(error, stackTrace);
+            }
+          },
+          onDone: () {
+            if (!done.isCompleted) {
+              done.complete();
+            }
+          },
+          cancelOnError: false,
+        );
+        await done.future;
+      }
 
       if (_cancelChatRequested) {
         assistant = assistant.copyWith(
@@ -275,6 +297,14 @@ class ConversationWorkspace extends ChangeNotifier {
               ? '已停止生成'
               : assistant.content,
           status: ChatMessageStatus.interrupted,
+          updatedAt: DateTime.now(),
+        );
+      } else if (termination != ChatStreamTermination.completed) {
+        assistant = assistant.copyWith(
+          status: ChatMessageStatus.failed,
+          error: termination == ChatStreamTermination.incomplete
+              ? '模型响应不完整，未执行自动记录；可手动重试。'
+              : '连接在确认完成前结束，未执行自动记录；可手动重试。',
           updatedAt: DateTime.now(),
         );
       } else {
@@ -296,22 +326,52 @@ class ConversationWorkspace extends ChangeNotifier {
         updatedAt: DateTime.now(),
       );
     } finally {
-      await _repository.saveMessage(assistant);
-      _replaceMessage(assistant);
-      final latestConversation =
-          await _repository.findConversation(conversationId) ??
-          updatedConversation;
-      final withPreview = latestConversation.copyWith(
-        preview: _messagePreview(assistant.content, false),
-        updatedAt: DateTime.now(),
-      );
-      await _repository.saveConversation(withPreview);
-      _replaceConversation(withPreview);
-      _chatSubscription = null;
-      _chatStreamDone = null;
-      _isChatGenerating = false;
-      notifyListeners();
+      try {
+        await _saveMessage(assistant);
+        _replaceMessage(assistant);
+        final latestConversation =
+            await _repository.findConversation(conversationId) ??
+            updatedConversation;
+        final withPreview = latestConversation.copyWith(
+          preview: _messagePreview(assistant.content, false),
+          updatedAt: DateTime.now(),
+        );
+        await _repository.saveConversation(withPreview);
+        _replaceConversation(withPreview);
+      } catch (_) {
+        // A persistence error must not leave the workspace locked in streaming.
+      } finally {
+        final subscription = _chatSubscription;
+        _chatSubscription = null;
+        _chatStreamDone = null;
+        if (subscription != null) {
+          unawaited(subscription.cancel());
+        }
+        _isChatGenerating = false;
+        _cancelChatRequested = false;
+        final finished = _chatGenerationFinished;
+        _chatGenerationFinished = null;
+        notifyListeners();
+        if (finished != null && !finished.isCompleted) {
+          finished.complete();
+        }
+      }
     }
+  }
+
+  Future<void> _saveMessage(ChatMessage message) {
+    final previous = _messageSaveQueues[message.id] ?? Future<void>.value();
+    late final Future<void> queued;
+    queued = previous
+        .catchError((_) {})
+        .then((_) => _repository.saveMessage(message))
+        .whenComplete(() {
+          if (identical(_messageSaveQueues[message.id], queued)) {
+            _messageSaveQueues.remove(message.id);
+          }
+        });
+    _messageSaveQueues[message.id] = queued;
+    return queued;
   }
 
   Future<void> cancelGeneration() async {
@@ -319,10 +379,14 @@ class ConversationWorkspace extends ChangeNotifier {
       return;
     }
     _cancelChatRequested = true;
-    await _chatSubscription?.cancel();
+    final subscription = _chatSubscription;
+    if (subscription != null) {
+      unawaited(subscription.cancel());
+    }
     if (_chatStreamDone?.isCompleted == false) {
       _chatStreamDone!.complete();
     }
+    await _chatGenerationFinished?.future;
     notifyListeners();
   }
 
@@ -330,7 +394,8 @@ class ConversationWorkspace extends ChangeNotifier {
     final message = await _repository.findMessage(messageId);
     if (message == null ||
         message.role != ChatRole.assistant ||
-        message.status != ChatMessageStatus.failed) {
+        (message.status != ChatMessageStatus.failed &&
+            message.status != ChatMessageStatus.interrupted)) {
       return;
     }
     final messages = await _repository.listMessages(message.conversationId);
@@ -346,31 +411,16 @@ class ConversationWorkspace extends ChangeNotifier {
     if (previousUser == null) {
       return;
     }
-    final inputs = <ChatAttachmentInput>[];
-    for (final attachment in previousUser.attachments) {
-      final bytes = await _repository.readAttachment(attachment);
-      if (bytes != null) {
-        inputs.add(
-          ChatAttachmentInput(
-            bytes: bytes,
-            fileName: attachment.fileName,
-            mimeType: attachment.mimeType,
-          ),
-        );
-      }
-    }
-    await _repository.deleteMessage(messageId);
-    await _repository.deleteMessage(previousUser.id);
-    _messagesByConversation[message.conversationId] = messages
-        .where(
-          (candidate) =>
-              candidate.id != messageId && candidate.id != previousUser!.id,
-        )
-        .toList(growable: false);
-    await sendChatMessage(
+    final conversation = await _repository.findConversation(
       message.conversationId,
-      text: previousUser.content,
-      attachments: inputs,
+    );
+    if (conversation == null) {
+      return;
+    }
+    await _generateReply(
+      message.conversationId,
+      conversation,
+      excludedMessageIds: {message.id},
     );
   }
 

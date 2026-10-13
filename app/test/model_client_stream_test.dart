@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:personal_ai_inbox/services/model_client.dart';
+import 'package:personal_ai_inbox/services/model_capabilities.dart';
 
 void main() {
   test('streamChat parses content and tool call fragments', () async {
@@ -32,6 +34,7 @@ void main() {
             baseUrl: 'https://example.com',
             model: 'test-model',
             apiKey: 'test-key',
+            capabilities: ModelCapabilities.deepseekFlash,
           ),
           now: DateTime(2026, 10, 4),
         )
@@ -48,6 +51,223 @@ void main() {
     final request = jsonDecode(requestBody!) as Map<String, dynamic>;
     expect(request['stream'], true);
     expect(request['tools'], isA<List<dynamic>>());
+    expect(deltas.last.termination, ChatStreamTermination.completed);
+    model.close();
+  });
+
+  test('finish_reason tool_calls is an explicit complete terminal', () async {
+    final client = MockClient.streaming((request, body) async {
+      await body.bytesToString();
+      return http.StreamedResponse(
+        Stream.value(
+          utf8.encode(
+            'data: {"choices":[{"delta":{},"finish_reason":"tool_calls"}]}\n\n',
+          ),
+        ),
+        200,
+      );
+    });
+    final model = ModelClient(client: client);
+    final deltas = await model
+        .streamChat(
+          messages: const [ChatRequestMessage(role: 'user', text: 'hello')],
+          configuration: const ModelConfiguration(
+            baseUrl: 'https://example.com',
+            model: 'custom-text-only',
+            apiKey: 'test-key',
+          ),
+          now: DateTime(2026),
+        )
+        .toList();
+
+    expect(deltas.single.termination, ChatStreamTermination.completed);
+    model.close();
+  });
+
+  test(
+    'finish_reason length remains incomplete even after a tool delta',
+    () async {
+      final client = MockClient.streaming((request, body) async {
+        await body.bytesToString();
+        final event = {
+          'choices': [
+            {
+              'delta': {
+                'tool_calls': [
+                  {
+                    'index': 0,
+                    'function': {
+                      'name': 'create_result',
+                      'arguments': '{"type":"knowledge"}',
+                    },
+                  },
+                ],
+              },
+              'finish_reason': 'length',
+            },
+          ],
+        };
+        return http.StreamedResponse(
+          Stream.value(utf8.encode('data: ${jsonEncode(event)}\n\n')),
+          200,
+        );
+      });
+      final model = ModelClient(client: client);
+      final deltas = await model
+          .streamChat(
+            messages: const [ChatRequestMessage(role: 'user', text: 'hello')],
+            configuration: const ModelConfiguration(
+              baseUrl: 'https://example.com',
+              model: 'test-model',
+              apiKey: 'test-key',
+              capabilities: ModelCapabilities.deepseekFlash,
+            ),
+            now: DateTime(2026),
+          )
+          .toList();
+
+      expect(deltas.any((delta) => delta.toolCallIndex != null), isTrue);
+      expect(deltas.last.termination, ChatStreamTermination.incomplete);
+      model.close();
+    },
+  );
+
+  test('text-only capability omits tools and JSON response mode', () async {
+    late Map<String, dynamic> requestBody;
+    final client = MockClient.streaming((request, body) async {
+      requestBody =
+          jsonDecode(await body.bytesToString()) as Map<String, dynamic>;
+      return http.StreamedResponse(
+        Stream.value(utf8.encode('data: [DONE]\n\n')),
+        200,
+      );
+    });
+    final model = ModelClient(client: client);
+    await model
+        .streamChat(
+          messages: const [ChatRequestMessage(role: 'user', text: 'hello')],
+          configuration: const ModelConfiguration(
+            baseUrl: 'https://example.com',
+            model: 'unregistered',
+            apiKey: 'test-key',
+          ),
+          now: DateTime(2026),
+        )
+        .toList();
+
+    expect(requestBody.containsKey('tools'), false);
+    expect(requestBody.containsKey('tool_choice'), false);
+    expect(requestBody['messages'], isA<List<dynamic>>());
+    model.close();
+  });
+
+  test('EOF without a completion signal is not reported as complete', () async {
+    final client = MockClient.streaming((request, body) async {
+      await body.bytesToString();
+      return http.StreamedResponse(
+        Stream.value(
+          utf8.encode(
+            'data: {"choices":[{"delta":{"content":"partial"}}]}\n\n',
+          ),
+        ),
+        200,
+      );
+    });
+    final model = ModelClient(client: client);
+    final deltas = await model
+        .streamChat(
+          messages: const [ChatRequestMessage(role: 'user', text: 'hello')],
+          configuration: const ModelConfiguration(
+            baseUrl: 'https://example.com',
+            model: 'custom-text-only',
+            apiKey: 'test-key',
+          ),
+          now: DateTime(2026),
+        )
+        .toList();
+
+    expect(deltas.any((delta) => delta.termination != null), false);
+    model.close();
+  });
+
+  test('stream idle timeout applies after response headers', () async {
+    final bytes = StreamController<List<int>>();
+    final client = MockClient.streaming((request, body) async {
+      await body.bytesToString();
+      return http.StreamedResponse(bytes.stream, 200);
+    });
+    final model = ModelClient(client: client);
+
+    await expectLater(
+      model
+          .streamChat(
+            messages: const [ChatRequestMessage(role: 'user', text: 'hello')],
+            configuration: const ModelConfiguration(
+              baseUrl: 'https://example.com',
+              model: 'custom-text-only',
+              apiKey: 'test-key',
+              streamIdleTimeout: Duration(milliseconds: 20),
+              totalTimeout: Duration(seconds: 1),
+            ),
+            now: DateTime(2026),
+          )
+          .toList(),
+      throwsA(isA<TimeoutException>()),
+    );
+    await bytes.close();
+    model.close();
+  });
+
+  test('total timeout applies even while the stream emits no bytes', () async {
+    final bytes = StreamController<List<int>>();
+    final client = MockClient.streaming((request, body) async {
+      await body.bytesToString();
+      return http.StreamedResponse(bytes.stream, 200);
+    });
+    final model = ModelClient(client: client);
+
+    await expectLater(
+      model
+          .streamChat(
+            messages: const [ChatRequestMessage(role: 'user', text: 'hello')],
+            configuration: const ModelConfiguration(
+              baseUrl: 'https://example.com',
+              model: 'custom-text-only',
+              apiKey: 'test-key',
+              streamIdleTimeout: Duration(seconds: 1),
+              totalTimeout: Duration(milliseconds: 20),
+            ),
+            now: DateTime(2026),
+          )
+          .toList(),
+      throwsA(isA<TimeoutException>()),
+    );
+    await bytes.close();
+    model.close();
+  });
+
+  test('response header timeout aborts the outbound request', () async {
+    final client = MockClient.streaming((request, body) async {
+      await body.bytesToString();
+      return Completer<http.StreamedResponse>().future;
+    });
+    final model = ModelClient(client: client);
+
+    await expectLater(
+      model
+          .streamChat(
+            messages: const [ChatRequestMessage(role: 'user', text: 'hello')],
+            configuration: const ModelConfiguration(
+              baseUrl: 'https://example.com',
+              model: 'custom-text-only',
+              apiKey: 'test-key',
+              responseHeaderTimeout: Duration(milliseconds: 20),
+            ),
+            now: DateTime(2026),
+          )
+          .toList(),
+      throwsA(isA<TimeoutException>()),
+    );
     model.close();
   });
 }
