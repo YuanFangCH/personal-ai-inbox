@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
 
 import '../../core/models.dart';
+import '../../data/index_database.dart';
 import '../../data/result_repository.dart';
 import '../../data/sync_engine.dart';
+import '../results/result_library.dart';
 
 /// Application module that owns the visible state of a sync round.
 ///
@@ -13,11 +15,14 @@ class SyncWorkspace extends ChangeNotifier {
   SyncWorkspace({
     required SyncEngine engine,
     required ResultRepository repository,
+    ResultLibrary? results,
   }) : _engine = engine,
-       _repository = repository;
+       _repository = repository,
+       _results = results;
 
   final SyncEngine _engine;
   final ResultRepository _repository;
+  final ResultLibrary? _results;
 
   SyncReport? _lastReport;
   List<String> _conflictFiles = const [];
@@ -60,6 +65,7 @@ class SyncWorkspace extends ChangeNotifier {
     try {
       final report = await _engine.sync();
       _lastReport = report;
+      await _results?.refresh();
       if (report.failed > 0) {
         final reportMessage = report.message?.trim();
         _errorMessage = reportMessage == null || reportMessage.isEmpty
@@ -89,11 +95,13 @@ class SyncWorkspace extends ChangeNotifier {
         return;
       }
 
-      if (useRemote) {
-        await _repository.resolveConflictUsingRemote(normalizedPath);
-      } else {
-        await _repository.keepLocalConflict(normalizedPath);
+      SyncConflictRecord? conflict;
+      for (final candidate in await _repository.listConflicts()) {
+        if (candidate.copyPath == normalizedPath) conflict = candidate;
       }
+      if (conflict == null) throw StateError('冲突记录不存在或已处理');
+      await _engine.resolveConflict(conflict.resultId, useRemote: useRemote);
+      await _results?.refresh();
       _conflictFiles = List.unmodifiable(await _repository.listConflictFiles());
       _errorMessage = null;
     } catch (error) {

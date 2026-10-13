@@ -23,97 +23,156 @@ class SyncEngine {
   Future<SyncReport> sync() async {
     try {
       await _provider.connect();
-      final remote = {
-        for (final object in await _provider.listObjects()) object.id: object,
-      };
-      final local = {
-        for (final object in await _repository.listIndex()) object.id: object,
-      };
+      final objects = await _provider.listObjects();
+      final remote = <String, SyncRemoteObject>{};
+      final invalidIds = <String>{};
+      final failures = <SyncFailure>[];
+      for (final object in objects) {
+        try {
+          _validateRemote(object);
+          if (remote.containsKey(object.id)) {
+            remote.remove(object.id);
+            invalidIds.add(object.id);
+            throw FormatException('远端存在重复成果 ID：${object.id}');
+          }
+          if (!invalidIds.contains(object.id)) remote[object.id] = object;
+        } catch (error) {
+          invalidIds.add(object.id);
+          remote.remove(object.id);
+          failures.add(_failure('validate-remote', object.id, error));
+        }
+      }
 
       var uploaded = 0;
       var downloaded = 0;
       var conflicts = 0;
       var unchanged = 0;
-      final failures = <SyncFailure>[];
-
-      for (final record in local.values) {
-        if (record.status != ResultStatus.canonical) {
-          continue;
-        }
-        final remoteObject = remote.remove(record.id);
+      final local = await _repository.listIndex();
+      final localIds = local.map((entry) => entry.id).toSet();
+      for (final indexed in local) {
+        if (indexed.status != ResultStatus.canonical) continue;
+        if (invalidIds.contains(indexed.id)) continue;
+        final remoteObject = remote.remove(indexed.id);
         try {
-          final action = _decide(record, remoteObject);
-          switch (action) {
-            case _SyncAction.upload:
-              final source = await _repository.readRaw(record.mdPath);
-              if (source == null) {
-                continue;
-              }
-              final stored = await _provider.putObject(
-                id: record.id,
-                path: record.mdPath,
-                contents: source,
-                etag: remoteObject?.etag,
-              );
+          final source = await _repository.readManagedResult(indexed.id);
+          if (source == null) throw StateError('本地成果文件缺失：${indexed.id}');
+          final document = _codec.decode(source);
+          _validateLocal(document, indexed);
+          final actualHash = _repository.hashMarkdown(source);
+          final current = indexed.copyWith(
+            localHash: actualHash,
+            syncState: actualHash == indexed.lastSyncedHash
+                ? SyncState.synced
+                : SyncState.pendingUpload,
+          );
+          if (actualHash != indexed.localHash) {
+            await _repository.updateIndex(current);
+          }
+
+          if (remoteObject == null) {
+            final stored = await _putWithRejudge(
+              id: indexed.id,
+              path: document.markdownPath,
+              contents: source,
+              baselineHash: current.lastSyncedHash,
+              observedRemote: null,
+            );
+            await _repository.acknowledgeSynced(
+              id: indexed.id,
+              expectedLocalHash: actualHash,
+              remoteEtag: stored.etag,
+            );
+            uploaded++;
+            continue;
+          }
+
+          final localChanged = current.lastSyncedHash == null
+              ? actualHash != remoteObject.hash
+              : actualHash != current.lastSyncedHash;
+          final remoteChanged = current.lastSyncedHash == null
+              ? actualHash != remoteObject.hash
+              : remoteObject.hash != current.lastSyncedHash;
+
+          if (actualHash == remoteObject.hash) {
+            await _repository.acknowledgeSynced(
+              id: indexed.id,
+              expectedLocalHash: actualHash,
+              remoteEtag: remoteObject.etag,
+            );
+            unchanged++;
+          } else if (!remoteChanged && localChanged) {
+            final stored = await _putWithRejudge(
+              id: indexed.id,
+              path: document.markdownPath,
+              contents: source,
+              baselineHash: current.lastSyncedHash,
+              observedRemote: remoteObject,
+            );
+            await _repository.acknowledgeSynced(
+              id: indexed.id,
+              expectedLocalHash: actualHash,
+              remoteEtag: stored.etag,
+            );
+            uploaded++;
+          } else if (remoteChanged && !localChanged) {
+            await _repository.importRemote(
+              remote: remoteObject,
+              expectedLocalHash: actualHash,
+            );
+            downloaded++;
+          } else {
+            await _repository.writeConflictCopy(
+              indexed.id,
+              remoteObject.content,
+              remoteEtag: remoteObject.etag,
+              localHash: actualHash,
+            );
+            final conflicted = await _repository.findIndexed(indexed.id);
+            if (conflicted != null) {
               await _repository.updateIndex(
-                record.copyWith(
-                  lastSyncedHash: record.localHash,
-                  remoteEtag: stored.etag,
-                  syncState: SyncState.synced,
-                ),
+                conflicted.copyWith(syncState: SyncState.conflict),
               );
-              uploaded++;
-              break;
-            case _SyncAction.download:
-              await _download(remoteObject!);
-              downloaded++;
-              break;
-            case _SyncAction.conflict:
-              await _repository.writeConflictCopy(
-                record.id,
-                remoteObject!.content,
-              );
+            }
+            conflicts++;
+          }
+        } on _SyncRaceDetected catch (race) {
+          try {
+            await _repository.writeConflictCopy(
+              indexed.id,
+              race.remote.content,
+              remoteEtag: race.remote.etag,
+              localHash: race.localHash,
+            );
+            final conflicted = await _repository.findIndexed(indexed.id);
+            if (conflicted != null) {
               await _repository.updateIndex(
-                record.copyWith(syncState: SyncState.conflict),
+                conflicted.copyWith(syncState: SyncState.conflict),
               );
-              conflicts++;
-              break;
-            case _SyncAction.unchanged:
-              unchanged++;
-              break;
+            }
+            conflicts++;
+          } catch (error) {
+            failures.add(_failure('sync-local', indexed.id, error));
           }
         } catch (error) {
-          failures.add(
-            SyncFailure(
-              stage: 'sync-local',
-              code: 'sync_object_failed',
-              message: error.toString(),
-              objectId: record.id,
-              retryable: true,
-              occurredAt: DateTime.now(),
-            ),
-          );
+          failures.add(_failure('sync-local', indexed.id, error));
         }
       }
 
-      for (final remoteObject in remote.values) {
+      for (final object in remote.values) {
+        if (invalidIds.contains(object.id) || localIds.contains(object.id)) {
+          continue;
+        }
         try {
-          await _download(remoteObject);
+          _validateRemote(object);
+          await _repository.importRemote(
+            remote: object,
+            expectedLocalHash: null,
+          );
           downloaded++;
         } catch (error) {
-          failures.add(
-            SyncFailure(
-              stage: 'download-remote',
-              code: 'sync_object_failed',
-              message: error.toString(),
-              objectId: remoteObject.id,
-              retryable: true,
-              occurredAt: DateTime.now(),
-            ),
-          );
+          failures.add(_failure('download-remote', object.id, error));
         }
       }
-
       return SyncReport(
         uploaded: uploaded,
         downloaded: downloaded,
@@ -124,13 +183,7 @@ class SyncEngine {
         failures: List.unmodifiable(failures),
       );
     } catch (error) {
-      final failure = SyncFailure(
-        stage: 'connect',
-        code: 'sync_round_failed',
-        message: error.toString(),
-        retryable: true,
-        occurredAt: DateTime.now(),
-      );
+      final failure = _failure('connect', null, error);
       return SyncReport(
         uploaded: 0,
         downloaded: 0,
@@ -144,64 +197,140 @@ class SyncEngine {
     }
   }
 
-  _SyncAction _decide(IndexedResult local, SyncRemoteObject? remote) {
-    if (remote == null) {
-      return _SyncAction.upload;
+  Future<void> resolveConflict(
+    String resultId, {
+    required bool useRemote,
+  }) async {
+    await _provider.connect();
+    final conflict = await _repository.findConflict(resultId);
+    if (conflict == null) throw StateError('冲突记录不存在或已处理：$resultId');
+    final currentObjects = await _provider.listObjects();
+    final matching = currentObjects
+        .where((object) => object.id == resultId)
+        .toList();
+    if (matching.length != 1) throw StateError('远端成果身份已变化，请重新同步：$resultId');
+    final remote = matching.single;
+    _validateRemote(remote);
+    if (remote.hash != conflict.remoteHash ||
+        remote.etag != conflict.remoteEtag) {
+      throw StateError('远端版本在裁决期间已变化，请重新同步：$resultId');
     }
-    if (local.lastSyncedHash == null) {
-      return local.localHash == remote.hash
-          ? _SyncAction.unchanged
-          : _SyncAction.conflict;
+    if (useRemote) {
+      final source = await _repository.readManagedResult(resultId);
+      final localHash = source == null
+          ? null
+          : _repository.hashMarkdown(source);
+      if (localHash != conflict.localHash) {
+        throw StateError('本地成果在裁决期间已变化，请重新同步：$resultId');
+      }
+      await _repository.importRemote(
+        remote: remote,
+        expectedLocalHash: localHash,
+      );
+    } else {
+      final source = await _repository.readManagedResult(resultId);
+      if (source == null ||
+          _repository.hashMarkdown(source) != conflict.localHash) {
+        throw StateError('本地成果在裁决期间已变化，请重新同步：$resultId');
+      }
+      final indexed = await _repository.findIndexed(resultId);
+      if (indexed == null) throw StateError('本地成果已不存在：$resultId');
+      final stored = await _provider.putObject(
+        id: resultId,
+        path: indexed.mdPath,
+        contents: source,
+        condition: SyncWriteCondition.matchEtag(conflict.remoteEtag),
+      );
+      await _repository.acknowledgeSynced(
+        id: resultId,
+        expectedLocalHash: conflict.localHash,
+        remoteEtag: stored.etag,
+      );
     }
-    final remoteChanged = remote.hash != local.lastSyncedHash;
-    final localChanged = local.localHash != local.lastSyncedHash;
-    if (!remoteChanged && !localChanged) {
-      return _SyncAction.unchanged;
-    }
-    if (!remoteChanged) {
-      return _SyncAction.upload;
-    }
-    if (!localChanged) {
-      return _SyncAction.download;
-    }
-    return _SyncAction.conflict;
+    await _repository.removeConflict(resultId, conflict.copyPath);
   }
 
-  Future<void> _download(SyncRemoteObject remote) async {
-    final document = _codec.decode(remote.content);
-    final previous = await _repository.findIndexed(document.id);
-    if (previous != null && previous.mdPath != document.markdownPath) {
-      await _repository.deleteRaw(previous.mdPath);
+  Future<SyncRemoteObject> _putWithRejudge({
+    required String id,
+    required String path,
+    required String contents,
+    required String? baselineHash,
+    required SyncRemoteObject? observedRemote,
+  }) async {
+    var remote = observedRemote;
+    var rejudges = 0;
+    while (true) {
+      try {
+        return await _provider.putObject(
+          id: id,
+          path: path,
+          contents: contents,
+          condition: remote == null
+              ? const SyncWriteCondition.createOnly()
+              : SyncWriteCondition.matchEtag(remote.etag),
+        );
+      } on SyncPreconditionFailed {
+        if (rejudges >= 2) rethrow;
+        rejudges++;
+        final refreshed = (await _provider.listObjects())
+            .where((object) => object.id == id)
+            .toList(growable: false);
+        if (refreshed.length > 1) {
+          throw StateError('远端成果 ID 重复，无法重判：$id');
+        }
+        remote = refreshed.isEmpty ? null : refreshed.single;
+        if (remote == null) continue;
+        _validateRemote(remote);
+        final localHash = _repository.hashMarkdown(contents);
+        if (remote.hash == localHash) return remote;
+        if (remote.hash != baselineHash) {
+          throw _SyncRaceDetected(remote, localHash);
+        }
+      }
     }
-    await _repository.saveRawDownload(remote, document);
   }
+
+  void _validateRemote(SyncRemoteObject remote) {
+    if (!RegExp(r'^[A-Za-z0-9_-]{1,128}$').hasMatch(remote.id)) {
+      throw FormatException('远端成果 ID 不合法：${remote.id}');
+    }
+    final document = _codec.decode(remote.content);
+    if (document.id != remote.id ||
+        document.markdownPath != remote.path ||
+        document.status != ResultStatus.canonical ||
+        remote.path != 'vault/${document.type.directory}/${remote.id}.md') {
+      throw FormatException('远端成果身份、类型、状态或路径不匹配：${remote.id}');
+    }
+    if (_repository.hashMarkdown(remote.content) != remote.hash) {
+      throw FormatException('远端成果内容 hash 不匹配：${remote.id}');
+    }
+  }
+
+  void _validateLocal(ResultDocument document, IndexedResult indexed) {
+    if (document.id != indexed.id ||
+        document.markdownPath != indexed.mdPath ||
+        document.status != ResultStatus.canonical ||
+        indexed.mdPath !=
+            'vault/${document.type.directory}/${document.id}.md') {
+      throw StateError('本地成果身份、类型、状态或路径不匹配：${indexed.id}');
+    }
+  }
+
+  SyncFailure _failure(String stage, String? id, Object error) => SyncFailure(
+    stage: stage,
+    code: error is SyncPreconditionFailed
+        ? 'sync_precondition_failed'
+        : 'sync_object_failed',
+    message: error.toString(),
+    objectId: id,
+    retryable: true,
+    occurredAt: DateTime.now(),
+  );
 }
 
-enum _SyncAction { upload, download, conflict, unchanged }
+class _SyncRaceDetected implements Exception {
+  const _SyncRaceDetected(this.remote, this.localHash);
 
-extension on ResultRepository {
-  Future<void> saveRawDownload(
-    SyncRemoteObject remote,
-    ResultDocument document,
-  ) async {
-    final markdown = remote.content;
-    await writeRaw(document.markdownPath, markdown);
-    await updateIndex(
-      IndexedResult(
-        id: document.id,
-        type: document.type,
-        title: document.title,
-        status: document.status,
-        revision: document.revision,
-        updatedAt: document.updatedAt,
-        deleted: document.deleted,
-        mdPath: document.markdownPath,
-        localHash: remote.hash,
-        lastSyncedHash: remote.hash,
-        remoteEtag: remote.etag,
-        matterId: document.matterId,
-        syncState: document.deleted ? SyncState.deleted : SyncState.synced,
-      ),
-    );
-  }
+  final SyncRemoteObject remote;
+  final String localHash;
 }

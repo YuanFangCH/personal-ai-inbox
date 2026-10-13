@@ -88,7 +88,11 @@ class AppController extends ChangeNotifier {
       ),
       imageInputService: imageInputService,
     );
-    final sync = SyncWorkspace(engine: syncEngine, repository: repository);
+    final sync = SyncWorkspace(
+      engine: syncEngine,
+      repository: repository,
+      results: results,
+    );
     return AppController._(
       AppRuntime(
         preferences: preferences,

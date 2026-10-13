@@ -86,7 +86,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('保留本地版本'));
     await tester.pumpAndSettle();
-    expect(controller.conflictFiles, isEmpty);
+    expect(controller.conflictFiles, hasLength(1));
     controller.dispose();
   });
 }

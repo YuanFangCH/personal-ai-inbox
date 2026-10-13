@@ -5,6 +5,7 @@ class MemoryIndexDatabase implements IndexDatabase {
   final Map<String, IndexedResult> _results = {};
   final Map<String, CaptureRecord> _captures = {};
   final Map<String, IdempotentOperation> _operations = {};
+  final Map<String, SyncConflictRecord> _conflicts = {};
 
   @override
   Future<void> open() async {}
@@ -81,4 +82,22 @@ class MemoryIndexDatabase implements IndexDatabase {
         .where((operation) => operation.state != OperationState.completed)
         .toList(growable: false);
   }
+
+  @override
+  Future<SyncConflictRecord?> findConflict(String resultId) async =>
+      _conflicts[resultId];
+
+  @override
+  Future<void> upsertConflict(SyncConflictRecord conflict) async {
+    _conflicts[conflict.resultId] = conflict;
+  }
+
+  @override
+  Future<void> removeConflict(String resultId) async {
+    _conflicts.remove(resultId);
+  }
+
+  @override
+  Future<List<SyncConflictRecord>> listConflicts() async =>
+      _conflicts.values.toList(growable: false);
 }

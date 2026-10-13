@@ -16,9 +16,9 @@ class SqliteMigrationCoordinator {
     required SettingsService settings,
   }) : _settings = settings;
 
-  static const currentVersion = 1;
   static const _indexFile = 'index.sqlite3';
   static const _conversationFile = 'conversations.sqlite3';
+  static const _supportedVersions = {_indexFile: 2, _conversationFile: 1};
 
   final String supportPath;
   final SettingsService _settings;
@@ -58,14 +58,17 @@ class SqliteMigrationCoordinator {
     final versions = <String, int>{};
     for (final database in databases) {
       versions[database] = await _readUserVersion(database) ?? 0;
-      if (versions[database]! > currentVersion) {
+      final supported = _supportedVersions[p.basename(database)]!;
+      if (versions[database]! > supported) {
         throw StateError(
           '数据库 ${p.basename(database)} 版本 ${versions[database]} '
-          '高于当前应用支持的版本 $currentVersion。',
+          '高于当前应用支持的版本 $supported。',
         );
       }
     }
-    if (versions.values.every((version) => version == currentVersion)) {
+    if (versions.entries.every(
+      (entry) => entry.value == _supportedVersions[p.basename(entry.key)],
+    )) {
       return;
     }
 
@@ -120,10 +123,10 @@ class SqliteMigrationCoordinator {
       await _releaseLock();
       return;
     }
-    for (final name in const [_indexFile, _conversationFile]) {
-      final version = await _readUserVersion(p.join(supportPath, name));
-      if (version != currentVersion) {
-        throw StateError('数据库 $name migration 未到达版本 $currentVersion。');
+    for (final entry in _supportedVersions.entries) {
+      final version = await _readUserVersion(p.join(supportPath, entry.key));
+      if (version != entry.value) {
+        throw StateError('数据库 ${entry.key} migration 未到达版本 ${entry.value}。');
       }
     }
     await _writeState({...pending, 'status': 'complete'});

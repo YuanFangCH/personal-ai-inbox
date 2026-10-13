@@ -15,7 +15,7 @@ void main() {
     final versionDatabase = sqlite3.open('${directory.path}/index.sqlite3');
     expect(
       versionDatabase.select('PRAGMA user_version').single['user_version'],
-      1,
+      2,
     );
     versionDatabase.close();
 
@@ -42,6 +42,15 @@ void main() {
       updatedAt: DateTime(2026, 10, 4, 12),
     );
     await database.upsertOperation(operation);
+    final conflict = SyncConflictRecord(
+      resultId: record.id,
+      remoteHash: 'sha256:remote',
+      remoteEtag: 'etag-1',
+      localHash: record.localHash,
+      copyPath: 'vault/conflicts/${record.id}.md',
+      createdAt: DateTime(2026, 10, 4, 12),
+    );
+    await database.upsertConflict(conflict);
     await database.insertCapture(
       CaptureRecord(
         id: 'cap-1',
@@ -59,6 +68,7 @@ void main() {
     expect((await reopened.findResult(record.id))!.title, '持久化知识');
     expect(await reopened.listCaptures(reviewOnly: true), hasLength(1));
     expect((await reopened.findOperation(operation.key))?.resultId, record.id);
+    expect((await reopened.findConflict(record.id))?.remoteEtag, 'etag-1');
     await reopened.clear();
     expect(await reopened.findResult(record.id), isNull);
     expect(await reopened.findOperation(operation.key), isNotNull);

@@ -275,4 +275,19 @@ class _RecordingIndexDatabase implements IndexDatabase {
   @override
   Future<List<IdempotentOperation>> listIncompleteOperations() =>
       _delegate.listIncompleteOperations();
+
+  @override
+  Future<SyncConflictRecord?> findConflict(String resultId) =>
+      _delegate.findConflict(resultId);
+
+  @override
+  Future<void> upsertConflict(SyncConflictRecord conflict) =>
+      _delegate.upsertConflict(conflict);
+
+  @override
+  Future<void> removeConflict(String resultId) =>
+      _delegate.removeConflict(resultId);
+
+  @override
+  Future<List<SyncConflictRecord>> listConflicts() => _delegate.listConflicts();
 }

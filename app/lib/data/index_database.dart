@@ -30,6 +30,14 @@ abstract interface class IndexDatabase {
   Future<void> upsertOperation(IdempotentOperation operation);
 
   Future<List<IdempotentOperation>> listIncompleteOperations();
+
+  Future<SyncConflictRecord?> findConflict(String resultId);
+
+  Future<void> upsertConflict(SyncConflictRecord conflict);
+
+  Future<void> removeConflict(String resultId);
+
+  Future<List<SyncConflictRecord>> listConflicts();
 }
 
 enum OperationState {
@@ -69,4 +77,22 @@ class IdempotentOperation {
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
+}
+
+class SyncConflictRecord {
+  const SyncConflictRecord({
+    required this.resultId,
+    required this.remoteHash,
+    required this.remoteEtag,
+    required this.localHash,
+    required this.copyPath,
+    required this.createdAt,
+  });
+
+  final String resultId;
+  final String remoteHash;
+  final String remoteEtag;
+  final String localHash;
+  final String copyPath;
+  final DateTime createdAt;
 }
