@@ -44,4 +44,66 @@ void main() {
   test('rejects markdown without closed frontmatter', () {
     expect(() => codec.decode('---\nid: broken\n'), throwsFormatException);
   });
+
+  test('preserves unknown frontmatter fields through an edit', () {
+    const source = '''
+---
+id: kn_extension
+type: knowledge
+title: Extension
+status: canonical
+origin_device: test-device
+revision: 1
+created_at: 2026-10-04T09:12:00+08:00
+updated_at: 2026-10-04T09:12:00+08:00
+deleted: false
+vendor_metadata:
+  color: blue
+  priority: 3
+---
+Original body
+''';
+    final decoded = codec.decode(source);
+    final saved = codec.decode(
+      codec.encode(decoded.copyWith(title: 'Edited title')),
+    );
+
+    expect(saved.title, 'Edited title');
+    expect(saved.schemaVersion, 1);
+    expect(saved.extensionFields['vendor_metadata'], {
+      'color': 'blue',
+      'priority': 3,
+    });
+  });
+
+  test('rejects future schema and malformed known fields', () {
+    const base = '''
+---
+id: kn_schema
+type: knowledge
+title: Schema
+status: canonical
+origin_device: test-device
+revision: 1
+created_at: 2026-10-04T09:12:00+08:00
+updated_at: 2026-10-04T09:12:00+08:00
+deleted: false
+---
+Body
+''';
+    expect(
+      () => codec.decode(
+        base.replaceFirst('id: kn_schema', 'schema_version: 99\nid: kn_schema'),
+      ),
+      throwsFormatException,
+    );
+    expect(
+      () => codec.decode(base.replaceFirst('revision: 1', 'revision: no')),
+      throwsFormatException,
+    );
+    expect(
+      () => codec.decode(base.replaceFirst('deleted: false', 'deleted: maybe')),
+      throwsFormatException,
+    );
+  });
 }

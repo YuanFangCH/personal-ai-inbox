@@ -1,3 +1,5 @@
+import '../core/models.dart';
+
 /// Capabilities that the client may safely request from an OpenAI-compatible
 /// endpoint. Unknown models use the conservative text-only profile.
 class ModelCapabilities {
@@ -23,5 +25,15 @@ class ModelCapabilities {
       'deepseek-flash' => deepseekFlash,
       _ => textOnly,
     };
+  }
+
+  static ModelCapabilities resolve(AppSettings settings) {
+    final defaults = forModel(settings.modelName);
+    final overrides = settings.capabilityOverrides;
+    return ModelCapabilities(
+      vision: overrides.vision ?? defaults.vision,
+      toolCalls: overrides.toolCalls ?? defaults.toolCalls,
+      jsonOutput: overrides.jsonOutput ?? defaults.jsonOutput,
+    );
   }
 }

@@ -145,6 +145,35 @@ void main() {
   );
 
   test(
+    'saving a legacy Markdown file retains unknown extension fields',
+    () async {
+      final document = await repository.create(
+        type: ResultType.knowledge,
+        title: 'Legacy extension',
+        body: 'Original body',
+      );
+      final source = vault.files[document.markdownPath]!;
+      final withExtension = source.replaceFirst(
+        'deleted: false\n',
+        'deleted: false\nvendor_field: keep-me\n',
+      );
+      await vault.write(document.markdownPath, withExtension);
+      await repository.rebuildIndex();
+
+      final loaded = await repository.readDocument(document.id);
+      expect(loaded!.extensionFields['vendor_field'], 'keep-me');
+      await repository.save(loaded.copyWith(title: 'Edited legacy extension'));
+
+      final saved = await repository.readRaw(document.markdownPath);
+      expect(saved, contains('vendor_field: "keep-me"'));
+      expect(
+        (await repository.readDocument(document.id))!.title,
+        'Edited legacy extension',
+      );
+    },
+  );
+
+  test(
     'replays an idempotent create without producing a second result',
     () async {
       final timestamp = DateTime(2026, 10, 13, 10);

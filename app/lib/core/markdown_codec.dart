@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:yaml/yaml.dart';
 
 import 'models.dart';
@@ -5,18 +7,43 @@ import 'models.dart';
 class MarkdownCodec {
   const MarkdownCodec();
 
+  static const _schemaVersion = 1;
+  static const _knownFrontmatterFields = {
+    'schema_version',
+    'id',
+    'type',
+    'title',
+    'status',
+    'origin_device',
+    'revision',
+    'created_at',
+    'updated_at',
+    'deleted',
+    'tags',
+    'links',
+    'due',
+    'done',
+    'matter',
+    'start',
+    'end',
+    'all_day',
+    'recurrence',
+    'source_event_ids',
+    'source_hashes',
+  };
+
   ResultDocument decode(String source) {
     final normalized = source.replaceAll('\r\n', '\n');
     if (!normalized.startsWith('---\n')) {
       throw const FormatException('Markdown frontmatter is missing');
     }
 
-    final end = normalized.indexOf('\n---', 4);
-    if (end < 0) {
+    final frontmatterEnd = normalized.indexOf('\n---', 4);
+    if (frontmatterEnd < 0) {
       throw const FormatException('Markdown frontmatter is not closed');
     }
 
-    final yamlText = normalized.substring(4, end);
+    final yamlText = normalized.substring(4, frontmatterEnd);
     final loaded = loadYaml(yamlText);
     if (loaded is! YamlMap) {
       throw const FormatException('Markdown frontmatter is not a map');
@@ -27,11 +54,56 @@ class MarkdownCodec {
       map[entry.key.toString()] = _normalizeYaml(entry.value);
     }
 
+    final schemaVersion = map['schema_version'] ?? 1;
+    if (schemaVersion is! int || schemaVersion < 1) {
+      throw const FormatException('Markdown schema_version is invalid');
+    }
+    if (schemaVersion > _schemaVersion) {
+      throw FormatException(
+        'Unsupported Markdown schema_version: $schemaVersion',
+      );
+    }
     final id = _requiredString(map, 'id');
     final type = ResultType.parse(_requiredString(map, 'type'));
     final createdAt = _requiredDate(map, 'created_at');
     final updatedAt = _requiredDate(map, 'updated_at');
-    final bodyStart = end + 4;
+    final title = _optionalString(map, 'title') ?? id;
+    final statusName = _optionalString(map, 'status') ?? 'draft';
+    final status = ResultStatus.values.where(
+      (value) => value.wireName == statusName,
+    );
+    if (status.isEmpty) {
+      throw FormatException('Markdown status is invalid: $statusName');
+    }
+    final revision = _optionalInt(map, 'revision') ?? 1;
+    if (revision < 1) {
+      throw const FormatException('Markdown revision must be positive');
+    }
+    final originDevice = _optionalString(map, 'origin_device') ?? 'unknown';
+    final deleted = _optionalBool(map, 'deleted') ?? false;
+    final tags = _strictStringList(map, 'tags');
+    final links = _strictStringList(map, 'links');
+    final done = _optionalBool(map, 'done') ?? false;
+    final allDay = _optionalBool(map, 'all_day') ?? false;
+    final matterId = _optionalString(map, 'matter');
+    final recurrence = _optionalString(map, 'recurrence');
+    final due = _optionalDate(map, 'due');
+    final start = _optionalDate(map, 'start');
+    final eventEnd = _optionalDate(map, 'end');
+    final sourceEventIds = _strictStringList(map, 'source_event_ids');
+    final sourceHashes = _strictStringList(map, 'source_hashes');
+    if (type == ResultType.event &&
+        start != null &&
+        eventEnd != null &&
+        !eventEnd.isAfter(start)) {
+      throw const FormatException('Markdown event end must be after start');
+    }
+    final extensions = <String, Object?>{
+      for (final entry in map.entries)
+        if (!_knownFrontmatterFields.contains(entry.key))
+          entry.key: entry.value,
+    };
+    final bodyStart = frontmatterEnd + 4;
     final body = bodyStart >= normalized.length
         ? ''
         : normalized.substring(bodyStart).trimLeft().trimRight();
@@ -39,31 +111,40 @@ class MarkdownCodec {
     return ResultDocument(
       id: id,
       type: type,
-      title: _string(map['title'], fallback: id),
-      status: ResultStatus.parse(_string(map['status'], fallback: 'draft')),
-      originDevice: _string(map['origin_device'], fallback: 'unknown'),
-      revision: _int(map['revision'], fallback: 1),
+      title: title,
+      status: status.first,
+      originDevice: originDevice,
+      revision: revision,
       createdAt: createdAt,
       updatedAt: updatedAt,
-      deleted: map['deleted'] == true,
-      tags: _stringList(map['tags']),
-      links: _stringList(map['links']),
+      schemaVersion: schemaVersion,
+      extensionFields: Map.unmodifiable(extensions),
+      deleted: deleted,
+      tags: tags,
+      links: links,
       body: body,
-      due: _optionalDate(map['due']),
-      done: map['done'] == true,
-      matterId: _nullableString(map['matter']),
-      start: _optionalDate(map['start']),
-      end: _optionalDate(map['end']),
-      allDay: map['all_day'] == true,
-      recurrence: _nullableString(map['recurrence']),
-      sourceEventIds: _stringList(map['source_event_ids']),
-      sourceHashes: _stringList(map['source_hashes']),
+      due: due,
+      done: done,
+      matterId: matterId,
+      start: start,
+      end: eventEnd,
+      allDay: allDay,
+      recurrence: recurrence,
+      sourceEventIds: sourceEventIds,
+      sourceHashes: sourceHashes,
     );
   }
 
   String encode(ResultDocument document) {
+    if (document.schemaVersion > _schemaVersion) {
+      throw FormatException(
+        'Refusing to write unsupported Markdown schema_version: '
+        '${document.schemaVersion}',
+      );
+    }
     final buffer = StringBuffer()
       ..writeln('---')
+      ..writeln('schema_version: ${document.schemaVersion}')
       ..writeln('id: ${_scalar(document.id)}')
       ..writeln('type: ${document.type.wireName}')
       ..writeln('title: ${_scalar(document.title)}')
@@ -122,6 +203,15 @@ class MarkdownCodec {
         break;
     }
 
+    for (final entry in document.extensionFields.entries) {
+      if (_knownFrontmatterFields.contains(entry.key)) {
+        throw FormatException(
+          'Extension field shadows a known Markdown field: ${entry.key}',
+        );
+      }
+      buffer.writeln('${_scalar(entry.key)}: ${_yamlValue(entry.value)}');
+    }
+
     buffer
       ..writeln('---')
       ..writeln()
@@ -144,56 +234,123 @@ class MarkdownCodec {
   }
 
   String _requiredString(Map<String, dynamic> map, String key) {
-    final value = _nullableString(map[key]);
+    final value = _optionalString(map, key);
     if (value == null || value.isEmpty) {
       throw FormatException('Markdown frontmatter key is required: $key');
     }
     return value;
   }
 
+  String? _optionalString(Map<String, dynamic> map, String key) {
+    final value = map[key];
+    if (value == null) return null;
+    if (value is! String) {
+      throw FormatException(
+        'Markdown frontmatter field must be a string: $key',
+      );
+    }
+    return value.trim().isEmpty ? null : value.trim();
+  }
+
   DateTime _requiredDate(Map<String, dynamic> map, String key) {
-    final value = _optionalDate(map[key]);
+    final value = _optionalDate(map, key);
     if (value == null) {
       throw FormatException('Markdown frontmatter date is invalid: $key');
     }
     return value;
   }
 
-  String _string(dynamic value, {required String fallback}) {
-    return _nullableString(value) ?? fallback;
+  DateTime? _optionalDate(Map<String, dynamic> map, String key) {
+    if (!map.containsKey(key) || map[key] == null) return null;
+    final value = map[key];
+    final text = value is DateTime ? value.toIso8601String() : value;
+    if (text is! String) {
+      throw FormatException('Markdown frontmatter date must be a string: $key');
+    }
+    final parsed = DateTime.tryParse(text);
+    if (parsed == null) {
+      throw FormatException('Markdown frontmatter date is invalid: $key');
+    }
+    return parsed.toLocal();
   }
 
-  int _int(dynamic value, {required int fallback}) {
-    if (value is int) {
+  int? _optionalInt(Map<String, dynamic> map, String key) {
+    if (!map.containsKey(key) || map[key] == null) return null;
+    final value = map[key];
+    if (value is! int) {
+      throw FormatException(
+        'Markdown frontmatter field must be an integer: $key',
+      );
+    }
+    return value;
+  }
+
+  bool? _optionalBool(Map<String, dynamic> map, String key) {
+    if (!map.containsKey(key) || map[key] == null) return null;
+    final value = map[key];
+    if (value is! bool) {
+      throw FormatException(
+        'Markdown frontmatter field must be a boolean: $key',
+      );
+    }
+    return value;
+  }
+
+  List<String> _strictStringList(Map<String, dynamic> map, String key) {
+    if (!map.containsKey(key) || map[key] == null) return const [];
+    final value = map[key];
+    if (value is! List || value.any((item) => item is! String)) {
+      throw FormatException(
+        'Markdown frontmatter field must be a string list: $key',
+      );
+    }
+    return value
+        .cast<String>()
+        .map((item) => item.trim())
+        .toList(growable: false);
+  }
+
+  String _yamlValue(Object? value) {
+    if (value is DateTime) return _iso8601(value);
+    if (value is List) {
+      return jsonEncode(value.map(_jsonSafeValue).toList(growable: false));
+    }
+    if (value is Map) {
+      final normalized = <String, Object?>{};
+      for (final entry in value.entries) {
+        if (entry.key is! String) {
+          throw const FormatException(
+            'Markdown extension keys must be strings',
+          );
+        }
+        normalized[entry.key as String] = _jsonSafeValue(entry.value);
+      }
+      return jsonEncode(normalized);
+    }
+    return jsonEncode(value);
+  }
+
+  Object? _jsonSafeValue(Object? value) {
+    if (value is DateTime) return _iso8601(value);
+    if (value is List) return value.map(_jsonSafeValue).toList(growable: false);
+    if (value is Map) {
+      final result = <String, Object?>{};
+      for (final entry in value.entries) {
+        if (entry.key is! String) {
+          throw const FormatException(
+            'Markdown extension keys must be strings',
+          );
+        }
+        result[entry.key as String] = _jsonSafeValue(entry.value);
+      }
+      return result;
+    }
+    if (value == null || value is String || value is num || value is bool) {
       return value;
     }
-    return int.tryParse(value?.toString() ?? '') ?? fallback;
-  }
-
-  String? _nullableString(dynamic value) {
-    if (value == null) {
-      return null;
-    }
-    final text = value.toString().trim();
-    return text.isEmpty ? null : text;
-  }
-
-  DateTime? _optionalDate(dynamic value) {
-    final text = _nullableString(value);
-    if (text == null) {
-      return null;
-    }
-    return DateTime.tryParse(text)?.toLocal();
-  }
-
-  List<String> _stringList(dynamic value) {
-    if (value is List) {
-      return value
-          .map((item) => item?.toString().trim() ?? '')
-          .where((item) => item.isNotEmpty)
-          .toList(growable: false);
-    }
-    return const [];
+    throw FormatException(
+      'Unsupported Markdown extension value: ${value.runtimeType}',
+    );
   }
 
   String _inlineList(List<String> values) {

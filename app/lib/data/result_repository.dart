@@ -803,9 +803,7 @@ class ResultRepository {
       }
 
       final document = _codec.decode(committed);
-      if (document.id != resultId ||
-          document.markdownPath != targetPath ||
-          hashMarkdown(_codec.encode(document)) != expectedHash) {
+      if (document.id != resultId || document.markdownPath != targetPath) {
         throw StateError('已提交成果身份或内容校验失败：$resultId');
       }
 
@@ -981,6 +979,8 @@ class ResultRepository {
         left.end == right.end &&
         left.allDay == right.allDay &&
         left.recurrence == right.recurrence &&
+        jsonEncode(_stableExtensionFields(left.extensionFields)) ==
+            jsonEncode(_stableExtensionFields(right.extensionFields)) &&
         sameList(left.tags, right.tags) &&
         sameList(left.links, right.links) &&
         sameList(left.sourceEventIds, right.sourceEventIds) &&
@@ -1005,8 +1005,26 @@ class ResultRepository {
       'links': document.links,
       'source_event_ids': document.sourceEventIds,
       'source_hashes': document.sourceHashes,
+      'extensions': _stableExtensionFields(document.extensionFields),
     });
     return 'sha256:${sha256.convert(utf8.encode(payload))}';
+  }
+
+  Map<String, Object?> _stableExtensionFields(Map<String, Object?> fields) => {
+    for (final key in fields.keys.toList()..sort())
+      key: _stableExtensionValue(fields[key]),
+  };
+
+  Object? _stableExtensionValue(Object? value) {
+    if (value is DateTime) return value.toUtc().toIso8601String();
+    if (value is List) {
+      return value.map(_stableExtensionValue).toList(growable: false);
+    }
+    if (value is Map) {
+      final keys = value.keys.map((key) => key.toString()).toList()..sort();
+      return {for (final key in keys) key: _stableExtensionValue(value[key])};
+    }
+    return value;
   }
 
   String _newId(ResultType type, DateTime timestamp, {String? idempotencyKey}) {

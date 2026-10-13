@@ -1,6 +1,8 @@
 enum ThemePreference { system, light, dark }
 
 class AppSettings {
+  static const currentSchemaVersion = 2;
+
   const AppSettings({
     required this.deviceId,
     required this.themeMode,
@@ -10,6 +12,15 @@ class AppSettings {
     required this.showCompletedTodos,
     required this.calendarMonthDetailed,
     this.allowImageEgress = true,
+    this.schemaVersion = currentSchemaVersion,
+    this.modelKeySlotId,
+    this.capabilityOverrides = const ModelCapabilityOverrides(),
+    this.responseHeaderTimeoutSeconds = 45,
+    this.streamIdleTimeoutSeconds = 60,
+    this.totalTimeoutSeconds = 300,
+    this.contextMessageLimit = 20,
+    this.imageMessageLimit = 4,
+    this.imageLimit = 8,
   });
 
   final String deviceId;
@@ -20,6 +31,60 @@ class AppSettings {
   final bool showCompletedTodos;
   final bool calendarMonthDetailed;
   final bool allowImageEgress;
+  final int schemaVersion;
+  final String? modelKeySlotId;
+  final ModelCapabilityOverrides capabilityOverrides;
+  final int responseHeaderTimeoutSeconds;
+  final int streamIdleTimeoutSeconds;
+  final int totalTimeoutSeconds;
+  final int contextMessageLimit;
+  final int imageMessageLimit;
+  final int imageLimit;
+
+  List<String> validate() {
+    final errors = <String>[];
+    final uri = Uri.tryParse(modelBaseUrl.trim());
+    if (uri == null ||
+        !uri.hasScheme ||
+        uri.host.isEmpty ||
+        uri.userInfo.isNotEmpty ||
+        uri.hasQuery ||
+        uri.hasFragment ||
+        uri.path.toLowerCase().endsWith('/chat/completions')) {
+      errors.add('Base URL 必须是有效 API 根地址，不能包含凭据、查询或 fragment');
+    } else if (uri.scheme != 'https' &&
+        !(uri.scheme == 'http' && _isLoopback(uri.host))) {
+      errors.add('Base URL 仅允许 HTTPS；HTTP 只允许本机回环地址');
+    }
+    if (modelName.trim().isEmpty) errors.add('模型名称不能为空');
+    if (responseHeaderTimeoutSeconds < 5 ||
+        responseHeaderTimeoutSeconds > 120) {
+      errors.add('响应头等待必须在 5–120 秒之间');
+    }
+    if (streamIdleTimeoutSeconds < 10 || streamIdleTimeoutSeconds > 180) {
+      errors.add('流空闲期限必须在 10–180 秒之间');
+    }
+    if (totalTimeoutSeconds < 30 || totalTimeoutSeconds > 600) {
+      errors.add('请求总时限必须在 30–600 秒之间');
+    }
+    if (totalTimeoutSeconds < responseHeaderTimeoutSeconds ||
+        totalTimeoutSeconds < streamIdleTimeoutSeconds) {
+      errors.add('请求总时限不能小于响应头或流空闲期限');
+    }
+    if (contextMessageLimit < 2 || contextMessageLimit > 20) {
+      errors.add('上下文消息数必须在 2–20 条之间');
+    }
+    if (imageMessageLimit < 0 || imageMessageLimit > 4) {
+      errors.add('含图历史消息数必须在 0–4 条之间');
+    }
+    if (imageLimit < 0 || imageLimit > 8) {
+      errors.add('图片总数必须在 0–8 张之间');
+    }
+    return List.unmodifiable(errors);
+  }
+
+  static bool _isLoopback(String host) =>
+      host.toLowerCase() == 'localhost' || host == '127.0.0.1' || host == '::1';
 
   AppSettings copyWith({
     String? deviceId,
@@ -30,6 +95,15 @@ class AppSettings {
     bool? showCompletedTodos,
     bool? calendarMonthDetailed,
     bool? allowImageEgress,
+    int? schemaVersion,
+    String? modelKeySlotId,
+    ModelCapabilityOverrides? capabilityOverrides,
+    int? responseHeaderTimeoutSeconds,
+    int? streamIdleTimeoutSeconds,
+    int? totalTimeoutSeconds,
+    int? contextMessageLimit,
+    int? imageMessageLimit,
+    int? imageLimit,
   }) => AppSettings(
     deviceId: deviceId ?? this.deviceId,
     themeMode: themeMode ?? this.themeMode,
@@ -39,8 +113,49 @@ class AppSettings {
     showCompletedTodos: showCompletedTodos ?? this.showCompletedTodos,
     calendarMonthDetailed: calendarMonthDetailed ?? this.calendarMonthDetailed,
     allowImageEgress: allowImageEgress ?? this.allowImageEgress,
+    schemaVersion: schemaVersion ?? this.schemaVersion,
+    modelKeySlotId: modelKeySlotId ?? this.modelKeySlotId,
+    capabilityOverrides: capabilityOverrides ?? this.capabilityOverrides,
+    responseHeaderTimeoutSeconds:
+        responseHeaderTimeoutSeconds ?? this.responseHeaderTimeoutSeconds,
+    streamIdleTimeoutSeconds:
+        streamIdleTimeoutSeconds ?? this.streamIdleTimeoutSeconds,
+    totalTimeoutSeconds: totalTimeoutSeconds ?? this.totalTimeoutSeconds,
+    contextMessageLimit: contextMessageLimit ?? this.contextMessageLimit,
+    imageMessageLimit: imageMessageLimit ?? this.imageMessageLimit,
+    imageLimit: imageLimit ?? this.imageLimit,
   );
 }
+
+class ModelCapabilityOverrides {
+  const ModelCapabilityOverrides({
+    this.vision,
+    this.toolCalls,
+    this.jsonOutput,
+  });
+
+  final bool? vision;
+  final bool? toolCalls;
+  final bool? jsonOutput;
+
+  ModelCapabilityOverrides copyWith({
+    Object? vision = _unchangedCapability,
+    Object? toolCalls = _unchangedCapability,
+    Object? jsonOutput = _unchangedCapability,
+  }) => ModelCapabilityOverrides(
+    vision: identical(vision, _unchangedCapability)
+        ? this.vision
+        : vision as bool?,
+    toolCalls: identical(toolCalls, _unchangedCapability)
+        ? this.toolCalls
+        : toolCalls as bool?,
+    jsonOutput: identical(jsonOutput, _unchangedCapability)
+        ? this.jsonOutput
+        : jsonOutput as bool?,
+  );
+}
+
+const _unchangedCapability = Object();
 
 enum ResultType {
   matter('matter'),
@@ -155,6 +270,8 @@ class ResultDocument {
     required this.createdAt,
     required this.updatedAt,
     required this.body,
+    this.schemaVersion = 1,
+    this.extensionFields = const {},
     this.deleted = false,
     this.tags = const [],
     this.links = const [],
@@ -178,6 +295,8 @@ class ResultDocument {
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool deleted;
+  final int schemaVersion;
+  final Map<String, Object?> extensionFields;
   final List<String> tags;
   final List<String> links;
   final String body;
@@ -206,6 +325,8 @@ class ResultDocument {
     int? revision,
     DateTime? createdAt,
     DateTime? updatedAt,
+    int? schemaVersion,
+    Map<String, Object?>? extensionFields,
     bool? deleted,
     List<String>? tags,
     List<String>? links,
@@ -229,6 +350,8 @@ class ResultDocument {
       revision: revision ?? this.revision,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      schemaVersion: schemaVersion ?? this.schemaVersion,
+      extensionFields: extensionFields ?? this.extensionFields,
       deleted: deleted ?? this.deleted,
       tags: tags ?? this.tags,
       links: links ?? this.links,

@@ -538,6 +538,8 @@ class ConversationWorkspace extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<String> testModelConnection() => _chatService.testConnection();
+
   Future<void> shutdown() => _shutdownFuture ??= _shutdown();
 
   Future<void> _shutdown() async {

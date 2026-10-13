@@ -196,6 +196,13 @@ final class _FakeSettingsService extends SettingsService {
     bool? showCompletedTodos,
     bool? calendarMonthDetailed,
     bool? allowImageEgress,
+    ModelCapabilityOverrides? capabilityOverrides,
+    int? responseHeaderTimeoutSeconds,
+    int? streamIdleTimeoutSeconds,
+    int? totalTimeoutSeconds,
+    int? contextMessageLimit,
+    int? imageMessageLimit,
+    int? imageLimit,
   }) async {
     saveGeneralCalls++;
     _settings = _settings.copyWith(
@@ -205,6 +212,13 @@ final class _FakeSettingsService extends SettingsService {
       showCompletedTodos: showCompletedTodos,
       calendarMonthDetailed: calendarMonthDetailed,
       allowImageEgress: allowImageEgress,
+      capabilityOverrides: capabilityOverrides,
+      responseHeaderTimeoutSeconds: responseHeaderTimeoutSeconds,
+      streamIdleTimeoutSeconds: streamIdleTimeoutSeconds,
+      totalTimeoutSeconds: totalTimeoutSeconds,
+      contextMessageLimit: contextMessageLimit,
+      imageMessageLimit: imageMessageLimit,
+      imageLimit: imageLimit,
     );
   }
 
@@ -216,5 +230,19 @@ final class _FakeSettingsService extends SettingsService {
     final normalized = apiKey.trim();
     modelKey = normalized.isEmpty ? null : normalized;
     _settings = _settings.copyWith(hasModelKey: modelKey != null);
+  }
+
+  @override
+  Future<AppSettings> saveConfiguration(
+    AppSettings configuration, {
+    String? apiKey,
+    bool replaceApiKey = false,
+  }) async {
+    saveGeneralCalls++;
+    if (replaceApiKey) {
+      modelKey = apiKey?.trim().isEmpty == true ? null : apiKey?.trim();
+    }
+    _settings = configuration.copyWith(hasModelKey: modelKey != null);
+    return _settings;
   }
 }

@@ -40,6 +40,15 @@ class CaptureService {
       return CaptureAnalysis(candidate: deterministic, usedModel: false);
     }
 
+    final invalidSettings = settings.validate();
+    if (invalidSettings.isNotEmpty) {
+      return CaptureAnalysis(
+        candidate: deterministic,
+        usedModel: false,
+        warning: '模型配置需要修正，已按本地规则整理：${invalidSettings.join('；')}',
+      );
+    }
+
     final apiKey = await _settings.readModelKey();
     if (apiKey == null || apiKey.trim().isEmpty) {
       return CaptureAnalysis(candidate: deterministic, usedModel: false);
@@ -53,7 +62,14 @@ class CaptureService {
           baseUrl: settings.modelBaseUrl,
           model: settings.modelName,
           apiKey: apiKey,
-          capabilities: ModelCapabilities.forModel(settings.modelName),
+          capabilities: ModelCapabilities.resolve(settings),
+          responseHeaderTimeout: Duration(
+            seconds: settings.responseHeaderTimeoutSeconds,
+          ),
+          streamIdleTimeout: Duration(
+            seconds: settings.streamIdleTimeoutSeconds,
+          ),
+          totalTimeout: Duration(seconds: settings.totalTimeoutSeconds),
         ),
       );
       final merged = _mergeWithRules(
