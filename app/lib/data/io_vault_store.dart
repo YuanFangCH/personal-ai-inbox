@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -6,7 +7,14 @@ import 'package:path_provider/path_provider.dart';
 import 'vault_store.dart';
 
 class IoVaultStore implements VaultStore {
+  static final Map<String, Future<void>> _processWriteTails = {};
+
   IoVaultStore._(this._root);
+
+  /// Creates a vault adapter rooted at an explicitly supplied directory.
+  ///
+  /// This also lets recovery tests use an isolated temporary directory.
+  factory IoVaultStore.at(Directory root) => IoVaultStore._(root);
 
   final Directory _root;
 
@@ -19,6 +27,41 @@ class IoVaultStore implements VaultStore {
 
   @override
   Future<void> initialize() => _root.create(recursive: true);
+
+  @override
+  Future<T> exclusive<T>(Future<T> Function() operation) {
+    final rootKey = p.normalize(p.absolute(_root.path));
+    final previous = _processWriteTails[rootKey] ?? Future<void>.value();
+    final finished = Completer<void>();
+    _processWriteTails[rootKey] = finished.future;
+    return () async {
+      await previous;
+      try {
+        final lockDirectory = Directory(
+          p.join(_root.path, '.local-transactions'),
+        );
+        await lockDirectory.create(recursive: true);
+        final lockFile = File(p.join(lockDirectory.path, 'write.lock'));
+        final handle = await lockFile.open(mode: FileMode.append);
+        var locked = false;
+        try {
+          await handle.lock(FileLock.exclusive);
+          locked = true;
+          return await operation();
+        } finally {
+          if (locked) {
+            await handle.unlock();
+          }
+          await handle.close();
+        }
+      } finally {
+        if (identical(_processWriteTails[rootKey], finished.future)) {
+          _processWriteTails.remove(rootKey);
+        }
+        finished.complete();
+      }
+    }();
+  }
 
   @override
   Future<String?> read(String relativePath) async {

@@ -139,6 +139,50 @@ class SettingsService {
     }
   }
 
+  /// Returns portable device preferences for a migration safety snapshot.
+  /// The model API key is deliberately excluded; it stays in secure storage.
+  Future<Map<String, Object?>> exportMigrationPreferences() async {
+    final values = <String, Object?>{};
+    for (final key in const [
+      _deviceIdKey,
+      _themeKey,
+      _modelUrlKey,
+      _modelNameKey,
+    ]) {
+      values[key] = await _prefs.getString(key);
+    }
+    for (final key in const [
+      _showCompletedKey,
+      _calendarMonthDetailedKey,
+      _allowImageEgressKey,
+    ]) {
+      values[key] = await _prefs.getBool(key);
+    }
+    return values;
+  }
+
+  Future<void> restoreMigrationPreferences(Map<String, dynamic> values) async {
+    const keys = [
+      _deviceIdKey,
+      _themeKey,
+      _modelUrlKey,
+      _modelNameKey,
+      _showCompletedKey,
+      _calendarMonthDetailedKey,
+      _allowImageEgressKey,
+    ];
+    for (final key in keys) {
+      final value = values[key];
+      if (value is String) {
+        await _prefs.setString(key, value);
+      } else if (value is bool) {
+        await _prefs.setBool(key, value);
+      } else {
+        await _prefs.remove(key);
+      }
+    }
+  }
+
   ThemeMode _parseTheme(String? value) {
     return switch (value) {
       'light' => ThemeMode.light,

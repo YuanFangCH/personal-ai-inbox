@@ -146,6 +146,26 @@ void main() {
     expect(events, isNot(contains('analyze')));
   });
 
+  test('startup moves interrupted processing captures to review', () async {
+    final capture = CaptureRecord(
+      id: 'cap_interrupted',
+      deviceId: 'test-device',
+      capturedAt: DateTime(2026, 10, 13, 9),
+      sourceType: CaptureSourceType.text,
+      text: '应用关闭前的原文',
+      status: CaptureStatus.processing,
+    );
+    await storage.insertCapture(capture);
+    final workflow = createWorkflow();
+
+    await workflow.initialize();
+
+    expect(workflow.reviewCaptures, hasLength(1));
+    expect(workflow.reviewCaptures.single.text, '应用关闭前的原文');
+    expect(workflow.reviewCaptures.single.reviewReason, contains('原文已保留'));
+    workflow.dispose();
+  });
+
   test('analysis failure moves the persisted original into review', () async {
     final workflow = createWorkflow(
       analyze: (text, now, preferModel) {
@@ -243,4 +263,16 @@ class _RecordingIndexDatabase implements IndexDatabase {
 
   @override
   Future<void> clear() => _delegate.clear();
+
+  @override
+  Future<IdempotentOperation?> findOperation(String key) =>
+      _delegate.findOperation(key);
+
+  @override
+  Future<void> upsertOperation(IdempotentOperation operation) =>
+      _delegate.upsertOperation(operation);
+
+  @override
+  Future<List<IdempotentOperation>> listIncompleteOperations() =>
+      _delegate.listIncompleteOperations();
 }

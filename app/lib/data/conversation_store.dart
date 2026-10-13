@@ -19,6 +19,14 @@ abstract interface class ConversationStore {
 
   Future<void> upsertMessage(ChatMessage message);
 
+  Future<GenerationRun?> findGeneration(String assistantMessageId);
+
+  Future<void> upsertGeneration(GenerationRun generation);
+
+  Future<void> deleteGeneration(String assistantMessageId);
+
+  Future<List<GenerationRun>> listRecoverableGenerations();
+
   Future<void> deleteMessage(String id);
 
   Future<AutoRecordAction?> findAutoRecordAction(String id);

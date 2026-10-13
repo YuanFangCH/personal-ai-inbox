@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'vault_store.dart';
@@ -8,6 +10,7 @@ class WebVaultStore implements VaultStore {
   static const _prefix = 'personal_ai_inbox.vault.';
 
   final SharedPreferences _preferences;
+  Future<void> _exclusiveTail = Future<void>.value();
 
   static Future<WebVaultStore> create() async {
     return WebVaultStore(await SharedPreferences.getInstance());
@@ -15,6 +18,21 @@ class WebVaultStore implements VaultStore {
 
   @override
   Future<void> initialize() async {}
+
+  @override
+  Future<T> exclusive<T>(Future<T> Function() operation) {
+    final previous = _exclusiveTail;
+    final finished = Completer<void>();
+    _exclusiveTail = finished.future;
+    return () async {
+      await previous;
+      try {
+        return await operation();
+      } finally {
+        finished.complete();
+      }
+    }();
+  }
 
   @override
   Future<String?> read(String relativePath) async {

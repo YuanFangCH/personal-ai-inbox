@@ -19,6 +19,7 @@ import '../data/memory_conversation_store.dart';
 import '../data/result_repository.dart';
 import '../data/settings_service.dart';
 import '../data/share_payload.dart';
+import '../data/sqlite_migration_coordinator.dart';
 import '../data/sync_engine.dart';
 import '../data/sync_provider.dart';
 import '../data/vault_store.dart';
@@ -118,45 +119,73 @@ class AppController extends ChangeNotifier {
     final supportPath = vaultOverride == null
         ? await appSupportPath()
         : 'memory';
-    final index =
-        indexOverride ?? await createPlatformIndexDatabase(supportPath);
     final settingsService = SettingsService();
-    final settings = await settingsService.load();
-    final repository = ResultRepository(
-      vault: vault,
-      index: index,
-      deviceId: settings.deviceId,
-    );
-    final provider = MemorySyncProvider();
-    final syncEngine = SyncEngine(
-      repository: repository,
-      provider: provider,
-      deviceId: settings.deviceId,
-    );
-    final chatRepository = ChatRepository(
-      store:
+    final migration = supportPath == 'memory'
+        ? null
+        : SqliteMigrationCoordinator(
+            supportPath: supportPath,
+            settings: settingsService,
+          );
+    try {
+      await migration?.prepare();
+    } catch (_) {
+      await migration?.rollback();
+      rethrow;
+    }
+
+    IndexDatabase? index;
+    ConversationStore? conversationStore;
+    ChatRepository? chatRepository;
+    AppController? controller;
+    try {
+      index = indexOverride ?? await createPlatformIndexDatabase(supportPath);
+      final settings = await settingsService.load();
+      final repository = ResultRepository(
+        vault: vault,
+        index: index,
+        deviceId: settings.deviceId,
+      );
+      final syncEngine = SyncEngine(
+        repository: repository,
+        provider: MemorySyncProvider(),
+        deviceId: settings.deviceId,
+      );
+      conversationStore =
           conversationStoreOverride ??
-          await createConversationStore(supportPath),
-      attachments: attachmentStoreOverride ?? await createAttachmentStore(),
-    );
-    final controller = AppController(
-      repository: repository,
-      indexDatabase: index,
-      captureService: CaptureService(
-        settings: settingsService,
-        parser: const DeterministicParser(),
-      ),
-      settingsService: settingsService,
-      syncEngine: syncEngine,
-      chatRepository: chatRepository,
-      chatService: ChatService(
-        settings: settingsService,
-        repository: chatRepository,
-        modelClient: modelClient,
-      ),
-    );
-    await controller.initialize();
-    return controller;
+          await createConversationStore(supportPath);
+      chatRepository = ChatRepository(
+        store: conversationStore,
+        attachments: attachmentStoreOverride ?? await createAttachmentStore(),
+      );
+      controller = AppController(
+        repository: repository,
+        indexDatabase: index,
+        captureService: CaptureService(
+          settings: settingsService,
+          parser: const DeterministicParser(),
+        ),
+        settingsService: settingsService,
+        syncEngine: syncEngine,
+        chatRepository: chatRepository,
+        chatService: ChatService(
+          settings: settingsService,
+          repository: chatRepository,
+          modelClient: modelClient,
+        ),
+      );
+      await controller.initialize();
+      if (controller.errorMessage != null) {
+        throw StateError(controller.errorMessage!);
+      }
+      await migration?.complete();
+      return controller;
+    } catch (error, stackTrace) {
+      controller?.dispose();
+      await chatRepository?.close();
+      await index?.close();
+      await migration?.rollback();
+      Error.throwWithStackTrace(error, stackTrace);
+    }
   }
 
   final AppRuntime _runtime;

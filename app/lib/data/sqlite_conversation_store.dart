@@ -22,10 +22,18 @@ class SqliteConversationStore implements ConversationStore {
     final parent = Directory(p.dirname(path));
     await parent.create(recursive: true);
     _database = sqlite3.open(path);
-    _database
-      ..execute('PRAGMA journal_mode = WAL')
-      ..execute('PRAGMA foreign_keys = ON')
-      ..execute('''
+    try {
+      _database
+        ..execute('PRAGMA journal_mode = WAL')
+        ..execute('PRAGMA foreign_keys = ON');
+      final version =
+          _database.select('PRAGMA user_version').single['user_version'] as int;
+      if (version > 1) {
+        throw StateError('会话数据库版本 $version 高于此应用支持的版本 1');
+      }
+      _database.execute('BEGIN EXCLUSIVE');
+      _database
+        ..execute('''
         CREATE TABLE IF NOT EXISTS conversations (
           id TEXT PRIMARY KEY,
           title TEXT NOT NULL,
@@ -35,7 +43,7 @@ class SqliteConversationStore implements ConversationStore {
           preview TEXT NOT NULL
         )
       ''')
-      ..execute('''
+        ..execute('''
         CREATE TABLE IF NOT EXISTS chat_messages (
           id TEXT PRIMARY KEY,
           conversation_id TEXT NOT NULL,
@@ -51,10 +59,41 @@ class SqliteConversationStore implements ConversationStore {
             REFERENCES conversations(id) ON DELETE CASCADE
         )
       ''')
-      ..execute(
-        'CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation '
-        'ON chat_messages(conversation_id, created_at)',
-      );
+        ..execute(
+          'CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation '
+          'ON chat_messages(conversation_id, created_at)',
+        )
+        ..execute('''
+        CREATE TABLE IF NOT EXISTS generation_runs (
+          assistant_message_id TEXT PRIMARY KEY,
+          conversation_id TEXT NOT NULL,
+          user_message_id TEXT NOT NULL,
+          status TEXT NOT NULL CHECK (
+            status IN ('requesting', 'response_ready', 'completed', 'interrupted', 'failed')
+          ),
+          response_text TEXT NOT NULL,
+          tool_calls_json TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          error TEXT,
+          FOREIGN KEY (conversation_id)
+            REFERENCES conversations(id) ON DELETE CASCADE,
+          FOREIGN KEY (assistant_message_id)
+            REFERENCES chat_messages(id) ON DELETE CASCADE
+        )
+      ''');
+      if (version < 1) {
+        _database.execute('PRAGMA user_version = 1');
+      }
+      _database.execute('COMMIT');
+    } catch (_) {
+      try {
+        _database.execute('ROLLBACK');
+      } catch (_) {}
+      _database.close();
+      _opened = false;
+      rethrow;
+    }
     _opened = true;
   }
 
@@ -160,6 +199,82 @@ class SqliteConversationStore implements ConversationStore {
         jsonEncode(message.actions.map((action) => action.toJson()).toList()),
         message.error,
       ],
+    );
+  }
+
+  @override
+  Future<GenerationRun?> findGeneration(String assistantMessageId) async {
+    final rows = _database.select(
+      'SELECT * FROM generation_runs WHERE assistant_message_id = ?',
+      [assistantMessageId],
+    );
+    return rows.isEmpty ? null : _generationFromRow(rows.first);
+  }
+
+  @override
+  Future<void> upsertGeneration(GenerationRun generation) async {
+    _database.execute(
+      '''
+      INSERT INTO generation_runs (
+        assistant_message_id, conversation_id, user_message_id, status,
+        response_text, tool_calls_json, created_at, updated_at, error
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(assistant_message_id) DO UPDATE SET
+        status = excluded.status,
+        response_text = excluded.response_text,
+        tool_calls_json = excluded.tool_calls_json,
+        updated_at = excluded.updated_at,
+        error = excluded.error
+      ''',
+      [
+        generation.assistantMessageId,
+        generation.conversationId,
+        generation.userMessageId,
+        generation.status.wireName,
+        generation.responseText,
+        jsonEncode(generation.toolCalls),
+        generation.createdAt.toIso8601String(),
+        generation.updatedAt.toIso8601String(),
+        generation.error,
+      ],
+    );
+  }
+
+  @override
+  Future<void> deleteGeneration(String assistantMessageId) async {
+    _database.execute(
+      'DELETE FROM generation_runs WHERE assistant_message_id = ?',
+      [assistantMessageId],
+    );
+  }
+
+  @override
+  Future<List<GenerationRun>> listRecoverableGenerations() async {
+    final rows = _database.select(
+      "SELECT * FROM generation_runs WHERE status IN ('requesting', 'response_ready')",
+    );
+    return rows.map(_generationFromRow).toList(growable: false);
+  }
+
+  GenerationRun _generationFromRow(Row row) {
+    final rawCalls = jsonDecode(row['tool_calls_json'] as String) as List;
+    return GenerationRun(
+      assistantMessageId: row['assistant_message_id'] as String,
+      conversationId: row['conversation_id'] as String,
+      userMessageId: row['user_message_id'] as String,
+      status: GenerationStatus.parse(row['status'] as String),
+      responseText: row['response_text'] as String,
+      toolCalls: rawCalls
+          .whereType<Map>()
+          .map(
+            (call) => call.map(
+              (key, value) => MapEntry(key.toString(), value.toString()),
+            ),
+          )
+          .toList(growable: false),
+      createdAt: DateTime.parse(row['created_at'] as String),
+      updatedAt: DateTime.parse(row['updated_at'] as String),
+      error: row['error'] as String?,
     );
   }
 

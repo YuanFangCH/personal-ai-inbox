@@ -41,7 +41,20 @@ class CaptureWorkflow extends ChangeNotifier {
 
   List<CaptureRecord> get reviewCaptures => _reviewCaptures;
 
-  Future<void> initialize() => refresh();
+  Future<void> initialize() async {
+    for (final capture in await _indexDatabase.listCaptures()) {
+      if (capture.status != CaptureStatus.processing) {
+        continue;
+      }
+      await _indexDatabase.updateCapture(
+        capture.copyWith(
+          status: CaptureStatus.needsReview,
+          reviewReason: '应用在整理期间关闭；原文已保留，请手动继续。',
+        ),
+      );
+    }
+    await refresh();
+  }
 
   Future<void> refresh() async {
     final captures = await _indexDatabase.listCaptures();
@@ -110,7 +123,7 @@ class CaptureWorkflow extends ChangeNotifier {
 
     final ResultDocument document;
     try {
-      document = await _createFromCandidate(candidate);
+      document = await _createFromCandidate(candidate, capture);
     } catch (error) {
       return _moveToReview(
         updated,
@@ -140,6 +153,8 @@ class CaptureWorkflow extends ChangeNotifier {
           : capture.candidateTitle ?? '待整理',
       body: capture.text,
       status: ResultStatus.canonical,
+      idempotencyKey: 'capture:${capture.id}',
+      createdAt: capture.capturedAt,
       due: effectiveType == ResultType.todo ? capture.candidateAt : null,
       start: effectiveType == ResultType.event ? capture.candidateAt : null,
       end: effectiveType == ResultType.event && capture.candidateAt != null
@@ -190,8 +205,13 @@ class CaptureWorkflow extends ChangeNotifier {
 
   Future<ResultDocument> _createFromCandidate(
     ClassificationCandidate candidate,
+    CaptureRecord capture,
   ) {
-    return _results.createFromCandidate(candidate);
+    return _results.createFromCandidate(
+      candidate,
+      idempotencyKey: 'capture:${capture.id}',
+      createdAt: capture.capturedAt,
+    );
   }
 
   CaptureSourceType _sourceType(String text) {

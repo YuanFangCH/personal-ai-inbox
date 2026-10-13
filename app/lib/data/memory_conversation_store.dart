@@ -4,6 +4,7 @@ import 'conversation_store.dart';
 class MemoryConversationStore implements ConversationStore {
   final Map<String, Conversation> _conversations = {};
   final Map<String, ChatMessage> _messages = {};
+  final Map<String, GenerationRun> _generations = {};
 
   @override
   Future<void> open() async {}
@@ -30,6 +31,9 @@ class MemoryConversationStore implements ConversationStore {
   Future<void> deleteConversation(String id) async {
     _conversations.remove(id);
     _messages.removeWhere((_, message) => message.conversationId == id);
+    _generations.removeWhere(
+      (_, generation) => generation.conversationId == id,
+    );
   }
 
   @override
@@ -51,8 +55,34 @@ class MemoryConversationStore implements ConversationStore {
   }
 
   @override
+  Future<GenerationRun?> findGeneration(String assistantMessageId) async =>
+      _generations[assistantMessageId];
+
+  @override
+  Future<void> upsertGeneration(GenerationRun generation) async {
+    _generations[generation.assistantMessageId] = generation;
+  }
+
+  @override
+  Future<void> deleteGeneration(String assistantMessageId) async {
+    _generations.remove(assistantMessageId);
+  }
+
+  @override
+  Future<List<GenerationRun>> listRecoverableGenerations() async {
+    return _generations.values
+        .where(
+          (generation) =>
+              generation.status == GenerationStatus.requesting ||
+              generation.status == GenerationStatus.responseReady,
+        )
+        .toList(growable: false);
+  }
+
+  @override
   Future<void> deleteMessage(String id) async {
     _messages.remove(id);
+    _generations.remove(id);
   }
 
   @override
@@ -71,5 +101,6 @@ class MemoryConversationStore implements ConversationStore {
   Future<void> clear() async {
     _conversations.clear();
     _messages.clear();
+    _generations.clear();
   }
 }

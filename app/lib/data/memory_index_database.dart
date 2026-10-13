@@ -4,6 +4,7 @@ import 'index_database.dart';
 class MemoryIndexDatabase implements IndexDatabase {
   final Map<String, IndexedResult> _results = {};
   final Map<String, CaptureRecord> _captures = {};
+  final Map<String, IdempotentOperation> _operations = {};
 
   @override
   Future<void> open() async {}
@@ -63,5 +64,21 @@ class MemoryIndexDatabase implements IndexDatabase {
   Future<void> clear() async {
     _results.clear();
     _captures.clear();
+  }
+
+  @override
+  Future<IdempotentOperation?> findOperation(String key) async =>
+      _operations[key];
+
+  @override
+  Future<void> upsertOperation(IdempotentOperation operation) async {
+    _operations[operation.key] = operation;
+  }
+
+  @override
+  Future<List<IdempotentOperation>> listIncompleteOperations() async {
+    return _operations.values
+        .where((operation) => operation.state != OperationState.completed)
+        .toList(growable: false);
   }
 }

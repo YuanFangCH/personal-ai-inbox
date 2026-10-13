@@ -58,6 +58,20 @@ void main() {
           ],
         ),
       );
+      await store.upsertGeneration(
+        GenerationRun(
+          assistantMessageId: 'msg_test',
+          conversationId: conversation.id,
+          userMessageId: 'msg_user',
+          status: GenerationStatus.responseReady,
+          responseText: '已记录',
+          toolCalls: const [
+            {'index': '0', 'name': 'create_result', 'arguments': '{}'},
+          ],
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
 
       await store.close();
       final reopened = SqliteConversationStore(path);
@@ -69,10 +83,14 @@ void main() {
       expect(message.attachments.single.fileName, 'test.jpg');
       expect(message.actions.single.resultId, 'td_test');
       expect((await reopened.findAutoRecordAction('act_test'))?.title, '测试待办');
+      final generation = await reopened.findGeneration('msg_test');
+      expect(generation?.status, GenerationStatus.responseReady);
+      expect(generation?.toolCalls.single['name'], 'create_result');
 
       await reopened.deleteConversation('cnv_test');
       expect(await reopened.listConversations(), isEmpty);
       expect(await reopened.listMessages('cnv_test'), isEmpty);
+      expect(await reopened.findGeneration('msg_test'), isNull);
       await reopened.close();
       await directory.delete(recursive: true);
     },

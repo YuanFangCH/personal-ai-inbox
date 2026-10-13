@@ -77,6 +77,18 @@ class ChatRepository {
   Future<void> saveMessage(ChatMessage message) =>
       _store.upsertMessage(message);
 
+  Future<GenerationRun?> findGeneration(String assistantMessageId) {
+    return _store.findGeneration(assistantMessageId);
+  }
+
+  Future<void> saveGeneration(GenerationRun generation) {
+    return _store.upsertGeneration(generation);
+  }
+
+  Future<List<GenerationRun>> listRecoverableGenerations() {
+    return _store.listRecoverableGenerations();
+  }
+
   Future<void> deleteMessage(String id) async {
     final message = await _store.findMessage(id);
     if (message != null) {
