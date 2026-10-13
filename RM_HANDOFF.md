@@ -10,7 +10,7 @@
 | 最后更新时间 | 2026-10-13 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.1.1+3` 预发布后的架构审查已完成；294 项主机回归通过，但当前静态分析有 1 条 lint，可靠性与配置门禁存在待修复问题 |
+| 当前阶段 | 架构整改阶段 A 已完成：持久化/同步契约、文档口径与 Flutter 3.47.6 工具链已固定；格式、静态分析、294 项主机测试和 PowerShell 验证全部通过 |
 | 总体状态 | `app/` 已形成可运行的 Flutter 客户端，本地核心拆分为端配置、成果库、捕获、会话和同步模块，`AppController` 降为迁移期兼容 facade；日历视图、快速新建和对话页已拆分。开发工具链已从 C 盘迁移到 `E:\DevTools`，迁移后 Dart 格式、`flutter analyze`、294 项主机回归、Web/Windows/Android release 构建、Windows 原生冒烟和双 AVD 验收均重新通过。`v1.1.1` 已是当前 GitHub 预发布版，发布 Android APK、Windows x64 安装包、便携 ZIP 和校验文件；公开树已移除设备指纹、个人设备披露、测试报告与生活化测试主题，APK 仍使用 Debug 证书，Windows 包仍未代码签名。产品边界继续保留：OneDrive、百度网盘、本地通知和真实跨端同步尚未完成。 |
 
 ## 2. 一句话交接
@@ -49,7 +49,7 @@
 - 公开发布使用干净单根提交；迁移前本地历史保留在 `archive/pre-open-source`，不推送。
 - GitHub Release 采用 `v<major>.<minor>.<patch>` 标签；首发 `v1.0.0` 为预发布，同时提供 Android APK、Windows x64 安装包和便携 ZIP。
 - Windows 安装器使用 Inno Setup，按用户安装并提供开始菜单、可选桌面快捷方式、卸载和安装后启动。
-- OneDrive OAuth、百度网盘归档、Windows 原生运行验证和真实云端模型回归尚未完成。
+- OneDrive OAuth、百度网盘归档和真实云端模型回归尚未完成；Windows 原生运行验证已在既往完成。
 - 个人服务器、端到端加密、多人协作和实时同步不在当前实现范围。
 
 ## 4. 权威文件
@@ -86,6 +86,8 @@
 ### 已完成
 
 - 已完成 2026-10-13 架构审查，按当前代码区分已复现问题、代码审阅风险和未完成能力；报告记录 12 项发现、文档冲突与建议验收。
+- 架构整改阶段 A 已新增逐阶段执行方案与 ADR 0015/0016，明确可恢复文件提交、幂等动作、数据库/设置迁移、同步身份校验和版本绑定裁决；修正文档中的成果类型、SQLite 恢复范围、Key 复用、向量检索与静态站口径。
+- CI、Release 和 PowerShell 验证入口统一固定 Flutter 3.47.6 / Dart 3.13.5；新增机器版本断言脚本；场景生成器 lint 已修复并保持日期字符串内容不变。
 - 已形成 `CONTEXT.md`、可执行方案、同步协议、模型接入和 14 条 ADR。
 - 已完成知识捕获、日历提醒、AI/OCR 自动化调研。
 - 已定义 RM 交接文档的固定结构和只追加变更记录。
@@ -125,6 +127,7 @@
 ### 验证
 
 - 2026-10-13：`flutter test --no-pub --reporter expanded` 294/294 通过；`flutter analyze` 失败，现有 `app/tool/generate_large_scenarios.dart:160` 有 1 条 `unnecessary_brace_in_string_interps` info lint，本轮未修复。临时故障探针修正被否定的坏 YAML 阻断假设后 7/7 符合观察：6 个行为问题复现、1 个坏文件静默排除行为确认。`git diff --check` 通过。未执行 release 构建、原生/AVD 验收、真实模型/云盘联调、磁盘故障注入或性能基准。
+- 2026-10-13 架构整改阶段 A：Dart 格式检查 137 文件零变化；`flutter analyze` 无问题；`flutter test --no-pub --reporter expanded` 294/294 通过；7 个 PowerShell 验证脚本解析通过，本机 Flutter 3.47.6 / Dart 3.13.5 版本断言通过；`git diff --check` 通过。未执行 release 构建、原生/AVD、真实模型/云盘、磁盘故障注入或性能基准。
 - 2026-10-09 在 `E:\DevTools` 迁移后重新执行：`flutter pub get` 成功；`dart format` 137 个 Dart 文件 0 变化；`flutter analyze` 无问题；完整主机回归 294/294 通过。
 - 迁移后 `flutter build web --release`、`flutter build windows --release` 和 `flutter build apk --release` 全部通过；Windows integration smoke 通过；Android release APK 为 63.8 MB。
 - 迁移后 APK SHA-256 为 `0BC340C2E979D1487B2EE9D978870636B4C2D2A0F28F34870C14F7526F3EB491`；Windows release EXE SHA-256 为 `C555EB7B8D58E2E4B05A0ACCCE6387FF12B4ACAB98F9FA038C91670B2BF4F54B`。
@@ -211,7 +214,8 @@
 
 ### 风险与边界
 
-- 2026-10-13 架构审查发现文档口径冲突，尚未更改既有决定：可执行方案第 7.1 节使用 `kind`，同步协议与实现使用 `type`；方案第 7.2/阶段 5 仍出现 embedding/向量索引，与同步协议禁止向量索引冲突；方案第 6.5 节允许 MkDocs 发布，而第 14 节明确不发布静态站；方案第 5.4 节把全部 SQLite 表称为可由 Markdown 重建，但捕获账本和会话并不能由成果文件恢复。模型 Key 的“每端独立”与模型接入第 8 节“三端共用”也应明确为按端存储、是否复用由用户配置。
+- 2026-10-13 架构整改已收敛可执行方案、模型接入和同步协议中的五组口径冲突：成果字段统一为 `type`，正式范围不含向量/静态站，SQLite 按成果派生索引与独立捕获/会话/账本区分，Key 独立存储且可由用户手动复用。此项取代同日审查记录中“尚未更改既有决定”的状态说明。
+- 2026-10-13 架构整改阶段 A 已通过并提交；阶段 B 模型流、图片策略和自动记录校验尚未开始，其余 C–F 待序贯实施。
 - 2026-10-13 实测发现：关闭图片出网仍会发送历史图片；无 SSE 完成标记仍自动创建成果；缺少必填 `sensitive` 字段仍通过；远端对象元数据/内容身份错配可覆盖另一成果；保留本地冲突裁决后下轮再次冲突；同步下载后成果库快照不刷新。详见架构审查 F1/F2/F4–F7，尚未修复。
 - Markdown 写入先删除旧文件再 rename，存在权威副本丢失窗口和固定临时路径并发风险；本轮仅代码审阅，没有执行磁盘故障注入。schema migration、任务恢复/幂等、模型能力声明和策略配置仍不完整。
 - 当前状态纠正：本文件当前范围中的“Windows 原生运行验证尚未完成”已被后续验证取代；图片对话已实现，但不能据此宣称独立视觉 OCR 工作流已完成。“294 项测试通过”不能覆盖当前 lint、真实云盘或通知可靠性。
@@ -239,14 +243,22 @@
 
 ### 下一步
 
-1. 后续公开开发直接在干净 `main` 上增量提交，禁止推送 `archive/pre-open-source`；新版本必须同步提升 `pubspec.yaml` 版本并新增 `docs/releases/v<version>.md`。
-2. 配置 Android 独立签名和 Windows 代码签名，为后续稳定版准备正式证书。
-3. 在两台设备上验证电池优化、自启动、后台冻结和本地通知恢复。
-4. 登记 Microsoft public client，完成 OneDrive App Folder、delta、eTag 和 PKCE 联调。
+1. 按执行方案实施阶段 B 模型策略和校验，通过门槛后提交。
+2. 逐阶段完成 C–F；每阶段通过门槛、更新交接并提交后再继续。真实云盘与通知保持独立待办。
 6. 继续维护性升级第二阶段：页面改读模块快照、抽模型/同步纯策略、增加 schema migration 和增量刷新，最终删除 `AppController`。
 7. 将 2026-10-13 架构审查 F1–F6 的数据/隐私风险和静态门禁失败纳入待修复范围，逐项制定故障回归与恢复验收；审查建议本身不替代既有实施顺序。
 
 ## 8. 变更记录
+
+### 2026-10-13 / 建立架构整改执行基线
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 固化 F1–F12 的分阶段行动计划；统一成果与恢复语义；记录可恢复写入/幂等动作及同步裁决 ADR；固定 Flutter 与 Dart 工具链 |
+| 变更文件 | `docs/architecture/maintainability-upgrade-plan.md`、`docs/adr/0015-recoverable-local-commits-and-idempotent-actions.md`、`docs/adr/0016-sync-validation-and-version-bound-conflict-decisions.md`、ADR 索引、同步协议、可执行方案、模型接入、CI/Release、版本断言及验证脚本、场景生成器、`RM_HANDOFF.md` |
+| 验证 | Dart 格式 137 文件零变化；`flutter analyze` 通过；主机测试 294/294；7 个 PowerShell 脚本语法解析通过；Flutter 3.47.6 / Dart 3.13.5 断言通过；`git diff --check` 通过 |
+| 提交标题 | `chore(architecture): 固定整改基线与恢复契约` |
+| 遗留事项 | 阶段 B–F 尚未实施；未运行三端 release 构建、原生/AVD、真实云服务、故障注入或性能基准 |
 
 ### 2026-10-13 / 审查可维护性、可靠性与可配置性
 

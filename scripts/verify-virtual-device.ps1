@@ -288,6 +288,7 @@ function Invoke-VirtualProfile {
 }
 
 $script:Flutter = Resolve-Flutter
+. (Join-Path $PSScriptRoot 'assert-flutter-version.ps1') -FlutterExecutable $script:Flutter
 $script:AndroidSdk = Resolve-AndroidSdk
 $script:Adb = Join-Path $script:AndroidSdk 'platform-tools\adb.exe'
 if (-not (Test-Path -LiteralPath $script:Adb)) {

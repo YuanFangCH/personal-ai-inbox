@@ -157,7 +157,8 @@ DateTime _at(String value) => DateTime.parse(value);
 String _fixtureAt(int day, int hour) {
   final dayText = day.toString().padLeft(2, '0');
   final hourText = hour.toString().padLeft(2, '0');
-  return '2026-11-${dayText}T${hourText}:00:00+08:00';
+  const separator = 'T';
+  return '2026-11-$dayText$separator$hourText:00:00+08:00';
 }
 
 String _friendly(DateTime value) {
