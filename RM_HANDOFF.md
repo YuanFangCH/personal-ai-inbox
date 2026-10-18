@@ -10,7 +10,8 @@
 | 最后更新时间 | 2026-10-18 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | DeepSeek Harness (deepseek-flash) |
-| 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。知识查询基于 SQLite v3 规范化索引按 50 项分页；Markdown 仍为成果权威副本。工具链固定 Flutter 3.47.6 / Dart 3.13.5。本轮为主机测试与三端模拟器/桌面验收，未连接真实云盘或真实模型 Key。`v1.1.1` GitHub 预发布版仍使用 Debug 证书，Windows 包未代码签名；OneDrive、百度网盘、通知和真实跨端同步尚未完成。 |
+| 当前阶段 | 架构整改 A–F 与 100 条真实端到端矩阵均已推送并通过 CI；`v1.1.2` 预发布已通过标签工作流发布（Release 运行 `39108705557` success），四个资产齐备且 SHA-256 与校验文件一致 |
+| 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。知识查询基于 SQLite v3 规范化索引按 50 项分页；Markdown 仍为成果权威副本。工具链固定 Flutter 3.47.6 / Dart 3.13.5。本轮为主机测试与三端模拟器/桌面验收，未连接真实云盘或真实模型 Key。`v1.1.2` GitHub 预发布版仍使用 Debug 证书，Windows 包未代码签名；OneDrive、百度网盘、通知和真实跨端同步尚未完成。 |
 
 ## 2. 一句话交接
 
@@ -83,6 +84,7 @@
 
 ### 已完成
 
+- 2026-10-18：`v1.1.2` 预发布已发布：Release 工作流 `39108705557` 在 Windows 2022 上完成标签校验、格式、分析、376 项主机测试、Android/Windows release 构建、APK 元数据与 Debug 证书校验、Inno Setup 编译、安装/卸载冒烟、便携包校验和上传；Release 为非草稿预发布，含 APK、Windows 安装包、便携 ZIP 与 `SHA256SUMS.txt`。
 - 2026-10-18：准备 `v1.1.2` 预发布：`app/pubspec.yaml` 升至 `1.1.2+4`，新增 [发行说明](docs/releases/v1.1.2.md)，更新 README 下载入口；本地 Android/Windows release 构建通过，APK `versionName=1.1.2`、`versionCode=4`、minSdk 24、targetSdk 36、含 INTERNET 权限。
 - 2026-10-18：`main` 上 7 个架构整改提交已快进推送到 `origin/main`（`ced0755..1927647`），GitHub Flutter CI 运行 `1927647` 成功；未使用 `--no-verify` 或强推。
 - 2026-10-18：矩阵修复了 `StatusPill` 在手机 1.15x 字体下的 7.1px 横向溢出，并新增 `status_pill_test.dart` 回归；`AppRuntime.bootstrap` 新增可选 `SyncProvider` 注入，使同步注入契约有测试覆盖。
@@ -134,6 +136,7 @@
 
 ### 验证
 
+- 2026-10-18 v1.1.2 发布：Release 工作流 `39108705557` 全部步骤 success，耗时约 20 分钟（标签 `v1.1.2` 于 07:39 UTC 推送，07:59 完成）；GitHub Release 确认 `prerelease=true`、`draft=false`，四个资产存在：APK 64.40 MB、Windows 安装包 11.80 MB、便携 ZIP 14.10 MB、`SHA256SUMS.txt`。重新下载三个二进制资产后计算 SHA-256，与校验文件完全一致（APK `97ce79a8…bb4c0e`、安装包 `f629c0d3…eabe16`、便携包 `df5c3b81…8dfb`）。未连接真实云盘或真实模型 Key。
 - 2026-10-18 推送与 CI：`git push origin main` 输出 `ced0755..1927647 main -> main`，`git ls-remote` 与本地 HEAD 一致；GitHub Flutter CI 对 `1927647` 的结论为 success（上一提交 `ced0755` 的 Analyze 曾失败，本轮已通过）。推送前 `scripts/scan-public-release.ps1 -CurrentTreeOnly`、`git diff --check origin/main..HEAD` 通过。
 - 迁移后 `flutter build web --release`、`flutter build windows --release` 和 `flutter build apk --release` 全部通过；Windows integration smoke 通过；Android release APK 为 63.8 MB。
 - 迁移后 APK SHA-256 为 `0BC340C2E979D1487B2EE9D978870636B4C2D2A0F28F34870C14F7526F3EB491`；Windows release EXE SHA-256 为 `C555EB7B8D58E2E4B05A0ACCCE6387FF12B4ACAB98F9FA038C91670B2BF4F54B`。
