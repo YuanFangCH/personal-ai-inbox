@@ -280,6 +280,7 @@
 | 任务 | 将 `main` 的 7 个架构整改提交推送到 `origin/main`；新增 100 条多步骤真实场景，在手机 AVD、平板 AVD 和 Windows 桌面执行；修复矩阵发现的布局缺陷并补回归 |
 | 变更文件 | `app/lib/ui/widgets/common.dart`、`app/lib/bootstrap/app_runtime.dart`、`app/test/app_runtime_test.dart`、`app/test/status_pill_test.dart`、`app/test/e2e/**`、`app/integration_test/realistic_100_android_test.dart`、`app/integration_test/realistic_100_windows_test.dart`、`app/tool/generate_realistic_scenarios.dart`、`scripts/verify-realistic-e2e.ps1`、`docs/architecture/realistic-e2e-matrix.md`、`RM_HANDOFF.md` |
 | 验证 | 推送：`ced0755..1927647` 快进，CI `1927647` success；矩阵：手机 50/50（8m10s）、平板 25/25（4m27s）、Windows 25/25（3m11s），主机预跑 94/94；回归：格式 163 文件零变化、`dart analyze` 零问题、主机 376/376；`git diff --check` 通过。未执行 release 构建、真实 Key 或真实云盘联调 |
+| 推送记录 | 2026-10-18：本提交 `d59c932` 已推送（`1927647..d59c932`），GitHub Flutter CI 运行 `39107906024` 在 Ubuntu 上格式、分析、测试三步全部 success；远端 `main` 与本地一致，工作区干净 |
 | 提交标题 | `test(e2e): 增加 100 条真实场景三端矩阵` |
 | 遗留事项 | 矩阵使用脚本化模型与同步通道；持久化分类仅在设备/桌面腿运行；真机后台策略、通知与真实云盘仍待验收 |
 
