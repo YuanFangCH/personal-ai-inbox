@@ -10,7 +10,7 @@
 | 最后更新时间 | 2026-10-18 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | DeepSeek Harness (deepseek-flash) |
-| 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。知识查询基于 SQLite v3 规范化索引按 50 项分页；Markdown 仍为成果权威副本。工具链固定 Flutter 3.47.6 / Dart 3.13.5。本轮为主机测试与三端模拟器/桌面验收，未连接真实云盘或真实模型 Key。既有 `v1.1.1` GitHub 预发布版仍使用 Debug 证书，Windows 包未代码签名；OneDrive、百度网盘、通知和真实跨端同步尚未完成。 |
+| 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。知识查询基于 SQLite v3 规范化索引按 50 项分页；Markdown 仍为成果权威副本。工具链固定 Flutter 3.47.6 / Dart 3.13.5。本轮为主机测试与三端模拟器/桌面验收，未连接真实云盘或真实模型 Key。`v1.1.1` GitHub 预发布版仍使用 Debug 证书，Windows 包未代码签名；OneDrive、百度网盘、通知和真实跨端同步尚未完成。 |
 
 ## 2. 一句话交接
 
@@ -83,6 +83,7 @@
 
 ### 已完成
 
+- 2026-10-18：准备 `v1.1.2` 预发布：`app/pubspec.yaml` 升至 `1.1.2+4`，新增 [发行说明](docs/releases/v1.1.2.md)，更新 README 下载入口；本地 Android/Windows release 构建通过，APK `versionName=1.1.2`、`versionCode=4`、minSdk 24、targetSdk 36、含 INTERNET 权限。
 - 2026-10-18：`main` 上 7 个架构整改提交已快进推送到 `origin/main`（`ced0755..1927647`），GitHub Flutter CI 运行 `1927647` 成功；未使用 `--no-verify` 或强推。
 - 2026-10-18：矩阵修复了 `StatusPill` 在手机 1.15x 字体下的 7.1px 横向溢出，并新增 `status_pill_test.dart` 回归；`AppRuntime.bootstrap` 新增可选 `SyncProvider` 注入，使同步注入契约有测试覆盖。
 - 架构整改阶段 F 已实现 schema v2 完整设置快照、旧偏好迁移、能力覆盖和请求期限校验；API Key 通过安全存储槽轮换，导入/导出排除端标识和凭据，恢复默认保留本地身份/凭据；设置页支持高级选项、差异预览与固定文本连接诊断。Markdown 增加 schema_version 与未知 frontmatter 往返保留，未来 schema/非法已知字段拒绝写入；Web 通过条件迁移工厂隔离 SQLite FFI。
