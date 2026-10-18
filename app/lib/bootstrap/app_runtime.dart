@@ -39,6 +39,7 @@ final class AppRuntime {
     AttachmentStore? attachmentStoreOverride,
     SettingsService? settingsOverride,
     ModelClient? modelClient,
+    SyncProvider? syncProvider,
   }) async {
     final vault = vaultOverride ?? await createPlatformVaultStore();
     final supportPath = vaultOverride == null
@@ -71,7 +72,7 @@ final class AppRuntime {
       );
       final syncEngine = SyncEngine(
         repository: repository,
-        provider: MemorySyncProvider(),
+        provider: syncProvider ?? MemorySyncProvider(),
         deviceId: settings.deviceId,
       );
       final conversationStore =
@@ -103,6 +104,7 @@ final class AppRuntime {
         captureService: CaptureService(
           settings: settingsService,
           parser: const DeterministicParser(),
+          modelClient: modelClient,
         ),
       );
       final conversations = ConversationWorkspace(

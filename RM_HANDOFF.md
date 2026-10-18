@@ -7,17 +7,19 @@
 | 字段 | 当前值 |
 |---|---|
 | 项目名称 | 个人 AI 收件箱与提醒系统 |
-| 最后更新时间 | 2026-10-13 |
+| 最后更新时间 | 2026-10-18 |
 | 时区 | Asia/Hong_Kong |
-| 最后修改 Agent | Codex |
-| 当前阶段 | 架构整改阶段 A–F 已完成：模型与自动记录门禁、可恢复存储/迁移、同步冲突收敛、模块化组合根、按需订阅/增量知识查询及分层配置均已实现；阶段 F 的受影响测试、静态分析、格式检查和平台构建通过，未重跑全量套件 |
-| 总体状态 | `app/` 生产启动现由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除，剩余测试装配器位于 `app/test/support/`。知识查询基于 SQLite v3 规范化索引按 50 项分页；Markdown 仍为成果权威副本。工具链固定 Flutter 3.47.6 / Dart 3.13.5。既有 `v1.1.1` GitHub 预发布版仍使用 Debug 证书，Windows 包未代码签名；OneDrive、百度网盘、通知和真实跨端同步尚未完成。 |
+| 最后修改 Agent | DeepSeek Harness (deepseek-flash) |
+| 当前阶段 | 架构整改 A–F 已推送至 `origin/main` 并通过 CI；新增 100 条真实端到端测试矩阵，手机 AVD 50/50、平板 AVD 25/25、Windows 25/25 全部通过，主机全量 376/376 |
+| 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。知识查询基于 SQLite v3 规范化索引按 50 项分页；Markdown 仍为成果权威副本。工具链固定 Flutter 3.47.6 / Dart 3.13.5。本轮为主机测试与三端模拟器/桌面验收，未连接真实云盘或真实模型 Key。既有 `v1.1.1` GitHub 预发布版仍使用 Debug 证书，Windows 包未代码签名；OneDrive、百度网盘、通知和真实跨端同步尚未完成。 |
 
 ## 2. 一句话交接
 
 架构整改阶段 A–F 已完成并按阶段提交。阶段 E 的全量主机回归为 339/339；阶段 F 仅运行受影响测试（64 项通过），静态分析、格式检查、Web/Windows/Android release 构建及 Windows 冒烟通过。当前无连接 Android 设备，因此 AVD 冒烟未执行；未重跑全量测试。真实云盘、通知、代码签名、真实用户目录升级和物理断电仍为未验收能力。
 
 2026-10-13 补充：已完成[架构审查](docs/architecture/architecture-audit-2026-10-13.md)。架构方向合理，当前仍部分满足可维护性和基础可配置性，尚不满足高可靠性；本轮只形成审查与建议，没有修复运行代码，也未替代既有 ADR 或正式实施顺序。
+
+2026-10-18 补充：2026-10-18 将 `main` 上 7 个整改提交推送到 `origin/main`（`ced0755..1927647`，快进，无强推），GitHub Flutter CI 运行成功。同日新增[真实端到端测试矩阵](docs/architecture/realistic-e2e-matrix.md)：100 条多步骤跨模块场景，在 Pixel 6 AVD（50 条）、2560×1600 平板 AVD（25 条）和 Windows 桌面（25 条）上全部通过；主机全量回归 376/376。矩阵发现并修复了 `StatusPill` 在手机 1.15x 字体下的 7.1px 横向溢出。
 
 ## 3. 当前目标与范围
 
@@ -85,6 +87,9 @@
 
 ### 已完成
 
+- 2026-10-18：`main` 上 7 个架构整改提交已快进推送到 `origin/main`（`ced0755..1927647`），GitHub Flutter CI 运行 `1927647` 成功；未使用 `--no-verify` 或强推。
+- 2026-10-18：新增 100 条[真实端到端测试矩阵](docs/architecture/realistic-e2e-matrix.md)，覆盖 12 个分类、12 种步骤与 15 种断言；手机 AVD 50/50、平板 AVD 25/25、Windows 25/25 全部通过，主机全量 376/376。
+- 2026-10-18：矩阵修复了 `StatusPill` 在手机 1.15x 字体下的 7.1px 横向溢出，并新增 `status_pill_test.dart` 回归；`AppRuntime.bootstrap` 新增可选 `SyncProvider` 注入，使同步注入契约有测试覆盖。
 - 架构整改阶段 F 已实现 schema v2 完整设置快照、旧偏好迁移、能力覆盖和请求期限校验；API Key 通过安全存储槽轮换，导入/导出排除端标识和凭据，恢复默认保留本地身份/凭据；设置页支持高级选项、差异预览与固定文本连接诊断。Markdown 增加 schema_version 与未知 frontmatter 往返保留，未来 schema/非法已知字段拒绝写入；Web 通过条件迁移工厂隔离 SQLite FFI。
 - 阶段 F 定向测试 64/64 通过：设置/模型/请求流/Markdown/成果库等 10 个测试文件 59 项；AppRuntime 与 SQLite migration 两个测试文件 5 项。`flutter analyze` 零问题，修改的 27 个 Dart 文件格式检查零差异。
 - 阶段 F 的 Web、Windows、Android release 构建及 Windows integration smoke 均通过；当前 `adb devices` 为空，Android AVD 冒烟未执行。未重跑 339 项全量套件；最近全量结果仍是阶段 E 的 339/339。
@@ -135,6 +140,9 @@
 
 ### 验证
 
+- 2026-10-18 推送与 CI：`git push origin main` 输出 `ced0755..1927647 main -> main`，`git ls-remote` 与本地 HEAD 一致；GitHub Flutter CI 对 `1927647` 的结论为 success（上一提交 `ced0755` 的 Analyze 曾失败，本轮已通过）。推送前 `scripts/scan-public-release.ps1 -CurrentTreeOnly`、`git diff --check origin/main..HEAD` 通过。
+- 2026-10-18 真实端到端矩阵：主机预跑（除持久化分类）94/94 通过、46 秒；Android 手机 AVD（Pixel 6，`aitext_honor_phone`，端口 5560）50/50 通过、8 分 10 秒；Android 平板 AVD（`aitext_galaxy_tab`，端口 5562，2560×1600）25/25 通过、4 分 27 秒；Windows 桌面（1440×900 逻辑视口）25/25 通过、3 分 11 秒。日志位于 `app/build/realistic-e2e/<时间戳>/`。
+- 2026-10-18 主机回归：`dart format --output=none --set-exit-if-changed lib test integration_test tool` 163 文件零变化；`dart analyze` 零问题；`flutter test --no-pub` 376/376 通过。未执行 release 构建、真实模型 Key 或真实云盘联调。
 - 2026-10-13：`flutter test --no-pub --reporter expanded` 294/294 通过；`flutter analyze` 失败，现有 `app/tool/generate_large_scenarios.dart:160` 有 1 条 `unnecessary_brace_in_string_interps` info lint，本轮未修复。临时故障探针修正被否定的坏 YAML 阻断假设后 7/7 符合观察：6 个行为问题复现、1 个坏文件静默排除行为确认。`git diff --check` 通过。未执行 release 构建、原生/AVD 验收、真实模型/云盘联调、磁盘故障注入或性能基准。
 - 2026-10-13 架构整改阶段 A：Dart 格式检查 137 文件零变化；`flutter analyze` 无问题；`flutter test --no-pub --reporter expanded` 294/294 通过；7 个 PowerShell 验证脚本解析通过，本机 Flutter 3.47.6 / Dart 3.13.5 版本断言通过；`git diff --check` 通过。未执行 release 构建、原生/AVD、真实模型/云盘、磁盘故障注入或性能基准。
 - 架构整改阶段 B：`dart format --output=none --set-exit-if-changed lib test integration_test tool` 140 文件零变化；`flutter analyze` 无问题；完整 `flutter test --no-pub --reporter expanded` 312/312 通过，覆盖请求策略、图片出网、终态/超时/取消、工具参数和重试。未执行 release 构建、原生/AVD 或真实模型联调。
@@ -225,6 +233,9 @@
 
 ### 风险与边界
 
+- 2026-10-18 真实端到端矩阵使用脚本化 SSE 模型与内存同步通道，验证应用侧流程与持久化语义，不验证真实网关时延、限流、真实云盘或线上抽取准确率。
+- 2026-10-18 持久化分类使用真实文件 vault；主机 `testWidgets` 的 fake async 不驱动真实文件 IO，因此该分类只在两条 Android 腿和 Windows 腿运行，主机用 recovery 分类覆盖冷启动语义。
+- 2026-10-18 三端执行串行（避免双 AVD 争用 16 GB 内存），纯用例耗时约 16 分钟，不含 Android 首次构建与 AVD 启动；模拟器通过不等于真机通过，MagicOS/One UI 后台策略、通知、相机和第三方图片分享仍需真机证据。
 - 2026-10-13 架构整改已收敛可执行方案、模型接入和同步协议中的五组口径冲突：成果字段统一为 `type`，正式范围不含向量/静态站，SQLite 按成果派生索引与独立捕获/会话/账本区分，Key 独立存储且可由用户手动复用。此项取代同日审查记录中“尚未更改既有决定”的状态说明。
 - 2026-10-13 架构整改阶段 A–F 已完成并提交；阶段 F 只运行受影响的 64 项测试，不以阶段 E 的 339/339 冒充本阶段全量验证。
 - 阶段 B 已修复并覆盖测试：图片关闭后旧附件不出网；未确认完整流不执行工具；缺失 `sensitive`、越界置信度和未知字段不会自动创建；重试保留用户消息；停止后生成状态释放。
@@ -256,10 +267,21 @@
 
 ### 下一步
 
-1. 发布前按发布门禁运行完整测试套件，并在 Android AVD 可用时执行设备冒烟；用户明确将全量测试安排在发布阶段。
+1. 发布前按发布门禁运行完整测试套件，并在三端执行 `scripts/verify-realistic-e2e.ps1`；矩阵已可重复运行，但每次约需 16 分钟纯用例时间。
 2. 若转入生产用户数据，先执行升级与备份恢复演练；真实云盘、通知、签名和物理断电专项需另行验收。
+3. 接入真实 OneDrive Provider 后，把 sync 分类从脚本通道切换为真实通道回归，并补齐令牌失效、限流与离线重试场景。
 
 ## 8. 变更记录
+
+### 2026-10-18 / 推送整改提交并新增 100 条真实端到端矩阵
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 将 `main` 的 7 个架构整改提交推送到 `origin/main`；新增 100 条多步骤真实场景，在手机 AVD、平板 AVD 和 Windows 桌面执行；修复矩阵发现的布局缺陷并补回归 |
+| 变更文件 | `app/lib/ui/widgets/common.dart`、`app/lib/bootstrap/app_runtime.dart`、`app/test/app_runtime_test.dart`、`app/test/status_pill_test.dart`、`app/test/e2e/**`、`app/integration_test/realistic_100_android_test.dart`、`app/integration_test/realistic_100_windows_test.dart`、`app/tool/generate_realistic_scenarios.dart`、`scripts/verify-realistic-e2e.ps1`、`docs/architecture/realistic-e2e-matrix.md`、`RM_HANDOFF.md` |
+| 验证 | 推送：`ced0755..1927647` 快进，CI `1927647` success；矩阵：手机 50/50（8m10s）、平板 25/25（4m27s）、Windows 25/25（3m11s），主机预跑 94/94；回归：格式 163 文件零变化、`dart analyze` 零问题、主机 376/376；`git diff --check` 通过。未执行 release 构建、真实 Key 或真实云盘联调 |
+| 提交标题 | `test(e2e): 增加 100 条真实场景三端矩阵` |
+| 遗留事项 | 矩阵使用脚本化模型与同步通道；持久化分类仅在设备/桌面腿运行；真机后台策略、通知与真实云盘仍待验收 |
 
 ### 2026-10-13 / 执行阶段 F 高级配置与整改验收
 
