@@ -10,8 +10,8 @@
 | 最后更新时间 | 2026-10-18 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | DeepSeek Harness (deepseek-flash) |
-| 当前阶段 | 架构整改 A–F 已推送至 `origin/main` 并通过 CI；新增 100 条真实端到端测试矩阵，手机 AVD 50/50、平板 AVD 25/25、Windows 25/25 全部通过，主机全量 376/376 |
-| 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。知识查询基于 SQLite v3 规范化索引按 50 项分页；Markdown 仍为成果权威副本。工具链固定 Flutter 3.47.6 / Dart 3.13.5。本轮为主机测试与三端模拟器/桌面验收，未连接真实云盘或真实模型 Key。既有 `v1.1.1` GitHub 预发布版仍使用 Debug 证书，Windows 包未代码签名；OneDrive、百度网盘、通知和真实跨端同步尚未完成。 |
+| 当前阶段 | 架构整改 A–F 与 100 条真实端到端矩阵均已推送并通过 CI；`v1.1.2` 预发布准备完成（版本 `1.1.2+4`、发行说明、下载入口），本地 release 构建与 376 项主机回归通过，等待标签触发发布工作流 |
+| 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。知识查询基于 SQLite v3 规范化索引按 50 项分页；Markdown 仍为成果权威副本。工具链固定 Flutter 3.47.6 / Dart 3.13.5。本轮为主机测试与三端模拟器/桌面验收，未连接真实云盘或真实模型 Key。`v1.1.1` GitHub 预发布版仍使用 Debug 证书，Windows 包未代码签名；OneDrive、百度网盘、通知和真实跨端同步尚未完成。 |
 
 ## 2. 一句话交接
 
@@ -87,6 +87,7 @@
 
 ### 已完成
 
+- 2026-10-18：准备 `v1.1.2` 预发布：`app/pubspec.yaml` 升至 `1.1.2+4`，新增 [发行说明](docs/releases/v1.1.2.md)，更新 README 下载入口；本地 Android/Windows release 构建通过，APK `versionName=1.1.2`、`versionCode=4`、minSdk 24、targetSdk 36、含 INTERNET 权限。
 - 2026-10-18：`main` 上 7 个架构整改提交已快进推送到 `origin/main`（`ced0755..1927647`），GitHub Flutter CI 运行 `1927647` 成功；未使用 `--no-verify` 或强推。
 - 2026-10-18：新增 100 条[真实端到端测试矩阵](docs/architecture/realistic-e2e-matrix.md)，覆盖 12 个分类、12 种步骤与 15 种断言；手机 AVD 50/50、平板 AVD 25/25、Windows 25/25 全部通过，主机全量 376/376。
 - 2026-10-18：矩阵修复了 `StatusPill` 在手机 1.15x 字体下的 7.1px 横向溢出，并新增 `status_pill_test.dart` 回归；`AppRuntime.bootstrap` 新增可选 `SyncProvider` 注入，使同步注入契约有测试覆盖。
@@ -140,6 +141,7 @@
 
 ### 验证
 
+- 2026-10-18 v1.1.2 发布准备：`dart format --output=none --set-exit-if-changed lib test integration_test tool` 163 文件零变化；`dart analyze` 零问题；`flutter test --no-pub` 376/376 通过；`scripts/scan-public-release.ps1 -CurrentTreeOnly` 通过。`flutter build apk --release` 成功（64.4 MB，SHA-256 `F3E623C8A99406599215CB7B234372591D0558B7B47CF4A8DD7FBCC4C5423E3D`），`flutter build windows --release` 成功（EXE SHA-256 `E34881DF0B854836D16988007C58387F4E6C8B6D4D741873F9E6B8C52FDA0812`）；`aapt2` 确认 `versionCode=4`、`versionName=1.1.2`、minSdk 24、targetSdk 36、INTERNET 权限。未执行安装器编译、AVD 冒烟或真实模型联调。
 - 2026-10-18 推送与 CI：`git push origin main` 输出 `ced0755..1927647 main -> main`，`git ls-remote` 与本地 HEAD 一致；GitHub Flutter CI 对 `1927647` 的结论为 success（上一提交 `ced0755` 的 Analyze 曾失败，本轮已通过）。推送前 `scripts/scan-public-release.ps1 -CurrentTreeOnly`、`git diff --check origin/main..HEAD` 通过。
 - 2026-10-18 真实端到端矩阵：主机预跑（除持久化分类）94/94 通过、46 秒；Android 手机 AVD（Pixel 6，`aitext_honor_phone`，端口 5560）50/50 通过、8 分 10 秒；Android 平板 AVD（`aitext_galaxy_tab`，端口 5562，2560×1600）25/25 通过、4 分 27 秒；Windows 桌面（1440×900 逻辑视口）25/25 通过、3 分 11 秒。日志位于 `app/build/realistic-e2e/<时间戳>/`。
 - 2026-10-18 主机回归：`dart format --output=none --set-exit-if-changed lib test integration_test tool` 163 文件零变化；`dart analyze` 零问题；`flutter test --no-pub` 376/376 通过。未执行 release 构建、真实模型 Key 或真实云盘联调。
@@ -272,6 +274,16 @@
 3. 接入真实 OneDrive Provider 后，把 sync 分类从脚本通道切换为真实通道回归，并补齐令牌失效、限流与离线重试场景。
 
 ## 8. 变更记录
+
+### 2026-10-18 / 准备发布 v1.1.2 预发布
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 将版本提升到 `1.1.2+4`，编写发行说明与下载入口，准备通过 `v1.1.2` 标签触发三端 Release |
+| 变更文件 | `app/pubspec.yaml`、`docs/releases/v1.1.2.md`、`README.md`、`RM_HANDOFF.md` |
+| 验证 | 格式 163 文件零变化；`dart analyze` 零问题；主机 376/376；公开发布扫描通过；Android release APK 64.4 MB（versionName 1.1.2 / versionCode 4 / minSdk 24 / targetSdk 36 / INTERNET）与 Windows release 构建成功并记录 SHA-256；未执行安装器编译、AVD 冒烟或真实模型联调 |
+| 提交标题 | `build(release): 准备 v1.1.2 预发布` |
+| 遗留事项 | 需要推送 `main`、创建 `v1.1.2` 标签并核验 GitHub Release 资产 |
 
 ### 2026-10-18 / 推送整改提交并新增 100 条真实端到端矩阵
 
