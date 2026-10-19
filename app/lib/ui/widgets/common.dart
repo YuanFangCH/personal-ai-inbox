@@ -134,7 +134,10 @@ class SurfacePanel extends StatelessWidget {
           color: isDark ? const Color(0xFF2B383D) : const Color(0xFFD7DDD9),
         ),
       ),
-      child: Padding(padding: padding, child: child),
+      child: Material(
+        type: MaterialType.transparency,
+        child: Padding(padding: padding, child: child),
+      ),
     );
   }
 }

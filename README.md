@@ -28,7 +28,7 @@
 
 ## 当前规划
 
-已细化 [S0–S12 实施任务与完成门禁](docs/secretary-implementation-plan.md)，安排业务修改完成后执行[三端 100 例新功能验收](docs/testing/secretary-100-case-plan.md)：手机模拟器 50、平板模拟器 25、Windows 桌面 25。当前仅完成计划，100 例尚未执行，不代表授权整个项目全量测试。
+已细化 [S0–S12 实施任务与完成门禁](docs/secretary-implementation-plan.md)，安排业务修改完成后执行[三端 100 例新功能验收](docs/testing/secretary-100-case-plan.md)：手机模拟器 50、平板模拟器 25、Windows 桌面 25。当前已实现 S1 会话权限快照、默认值与旧数据迁移；检索、成果操作、全局知识和新矩阵仍在后续阶段，100 例尚未执行。
 
 追加规划已确认：软件显示名称改为“懒狗秘书”，AI 默认担任秘书型助理；全局知识库随成果三端同步，AI 按需检索且受读取权限控制，新增、修改、删除均须人工确认。见[角色与全局知识库补充计划](docs/secretary-and-global-knowledge-plan.md)；运行版本尚未更名或实现知识库。
 

@@ -86,6 +86,7 @@ class TestAppHost extends ChangeNotifier {
         captures: capture,
         deviceId: () => repository.deviceId,
       ),
+      defaultPermissions: () => preferences.settings.defaultAiPermissions,
       imageInputService: imageInputService,
     );
     final sync = SyncWorkspace(
@@ -437,6 +438,7 @@ class TestAppHost extends ChangeNotifier {
     bool? showCompletedTodos,
     bool? calendarMonthDetailed,
     bool? allowImageEgress,
+    AiPermissions? defaultAiPermissions,
   }) async {
     await _runtime.preferences.update(
       themeMode: themeMode,
@@ -446,6 +448,7 @@ class TestAppHost extends ChangeNotifier {
       showCompletedTodos: showCompletedTodos,
       calendarMonthDetailed: calendarMonthDetailed,
       allowImageEgress: allowImageEgress,
+      defaultAiPermissions: defaultAiPermissions,
     );
     settings = _runtime.preferences.settings;
     notifyListeners();

@@ -1,7 +1,59 @@
 enum ThemePreference { system, light, dark }
 
+/// Default capabilities copied into newly created AI conversations.
+/// Each conversation then stores its own immutable snapshot.
+class AiPermissions {
+  const AiPermissions({
+    this.read = true,
+    this.create = true,
+    this.modifyDelete = true,
+  });
+
+  final bool read;
+  final bool create;
+  final bool modifyDelete;
+
+  AiPermissions copyWith({bool? read, bool? create, bool? modifyDelete}) =>
+      AiPermissions(
+        read: read ?? this.read,
+        create: create ?? this.create,
+        modifyDelete: modifyDelete ?? this.modifyDelete,
+      );
+
+  Map<String, Object?> toJson() => {
+    'read': read,
+    'create': create,
+    'modify_delete': modifyDelete,
+  };
+
+  static AiPermissions fromJson(Map<String, dynamic>? json) {
+    if (json == null) return const AiPermissions();
+    bool flag(String key) {
+      final value = json[key];
+      if (value is! bool) throw FormatException('AI 权限字段 $key 类型错误');
+      return value;
+    }
+
+    return AiPermissions(
+      read: flag('read'),
+      create: flag('create'),
+      modifyDelete: flag('modify_delete'),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is AiPermissions &&
+      other.read == read &&
+      other.create == create &&
+      other.modifyDelete == modifyDelete;
+
+  @override
+  int get hashCode => Object.hash(read, create, modifyDelete);
+}
+
 class AppSettings {
-  static const currentSchemaVersion = 2;
+  static const currentSchemaVersion = 3;
 
   const AppSettings({
     required this.deviceId,
@@ -21,6 +73,7 @@ class AppSettings {
     this.contextMessageLimit = 20,
     this.imageMessageLimit = 4,
     this.imageLimit = 8,
+    this.defaultAiPermissions = const AiPermissions(),
   });
 
   final String deviceId;
@@ -40,6 +93,7 @@ class AppSettings {
   final int contextMessageLimit;
   final int imageMessageLimit;
   final int imageLimit;
+  final AiPermissions defaultAiPermissions;
 
   List<String> validate() {
     final errors = <String>[];
@@ -104,6 +158,7 @@ class AppSettings {
     int? contextMessageLimit,
     int? imageMessageLimit,
     int? imageLimit,
+    AiPermissions? defaultAiPermissions,
   }) => AppSettings(
     deviceId: deviceId ?? this.deviceId,
     themeMode: themeMode ?? this.themeMode,
@@ -124,6 +179,7 @@ class AppSettings {
     contextMessageLimit: contextMessageLimit ?? this.contextMessageLimit,
     imageMessageLimit: imageMessageLimit ?? this.imageMessageLimit,
     imageLimit: imageLimit ?? this.imageLimit,
+    defaultAiPermissions: defaultAiPermissions ?? this.defaultAiPermissions,
   );
 }
 

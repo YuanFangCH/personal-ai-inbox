@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:personal_ai_inbox/core/chat_models.dart';
 import 'package:personal_ai_inbox/core/deterministic_parser.dart';
+import 'package:personal_ai_inbox/core/models.dart';
 import 'package:personal_ai_inbox/data/chat_repository.dart';
 import 'package:personal_ai_inbox/data/memory_attachment_store.dart';
 import 'package:personal_ai_inbox/data/memory_conversation_store.dart';
@@ -78,6 +79,11 @@ void main() {
         );
       }),
     );
+    var defaultPermissions = const AiPermissions(
+      read: false,
+      create: true,
+      modifyDelete: false,
+    );
     final workspace = ConversationWorkspace(
       repository: chatRepository,
       results: library,
@@ -92,10 +98,29 @@ void main() {
         captures: capture,
         deviceId: () => 'test-device',
       ),
+      defaultPermissions: () => defaultPermissions,
     );
     await workspace.initialize();
 
     final conversation = await workspace.createConversation();
+    expect(
+      conversation.aiPermissions,
+      const AiPermissions(read: false, create: true, modifyDelete: false),
+    );
+    defaultPermissions = const AiPermissions(
+      read: true,
+      create: false,
+      modifyDelete: true,
+    );
+    final secondConversation = await workspace.createConversation();
+    expect(
+      secondConversation.aiPermissions,
+      const AiPermissions(read: true, create: false, modifyDelete: true),
+    );
+    expect(
+      (await chatRepository.findConversation(conversation.id))!.aiPermissions,
+      const AiPermissions(read: false, create: true, modifyDelete: false),
+    );
     await workspace.sendChatMessage(conversation.id, text: '记住周五提交材料');
 
     final message = workspace.messagesFor(conversation.id).last;

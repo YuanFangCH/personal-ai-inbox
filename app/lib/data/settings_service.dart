@@ -155,6 +155,7 @@ class SettingsService {
     bool? showCompletedTodos,
     bool? calendarMonthDetailed,
     bool? allowImageEgress,
+    AiPermissions? defaultAiPermissions,
     ModelCapabilityOverrides? capabilityOverrides,
     int? responseHeaderTimeoutSeconds,
     int? streamIdleTimeoutSeconds,
@@ -171,6 +172,7 @@ class SettingsService {
       showCompletedTodos: showCompletedTodos,
       calendarMonthDetailed: calendarMonthDetailed,
       allowImageEgress: allowImageEgress,
+      defaultAiPermissions: defaultAiPermissions,
       capabilityOverrides: capabilityOverrides,
       responseHeaderTimeoutSeconds: responseHeaderTimeoutSeconds,
       streamIdleTimeoutSeconds: streamIdleTimeoutSeconds,
@@ -241,6 +243,7 @@ class SettingsService {
       'show_completed_todos': settings.showCompletedTodos,
       'calendar_month_detailed': settings.calendarMonthDetailed,
       'allow_image_egress': settings.allowImageEgress,
+      'default_ai_permissions': settings.defaultAiPermissions.toJson(),
       'capability_overrides': {
         'vision': settings.capabilityOverrides.vision,
         'tool_calls': settings.capabilityOverrides.toolCalls,
@@ -266,6 +269,7 @@ class SettingsService {
       'show_completed_todos',
       'calendar_month_detailed',
       'allow_image_egress',
+      'default_ai_permissions',
       'capability_overrides',
       'response_header_timeout_seconds',
       'stream_idle_timeout_seconds',
@@ -286,6 +290,7 @@ class SettingsService {
     if (capabilities is! Map<String, dynamic>) {
       throw const FormatException('模型能力覆盖格式错误');
     }
+    final defaultAiPermissions = _readPortableAiPermissions(values);
     final candidate = current.copyWith(
       themeMode: _parseTheme(_stringValue(values, 'theme_mode')),
       modelBaseUrl: _requiredString(values, 'model_base_url'),
@@ -293,6 +298,7 @@ class SettingsService {
       showCompletedTodos: _requiredBool(values, 'show_completed_todos'),
       calendarMonthDetailed: _requiredBool(values, 'calendar_month_detailed'),
       allowImageEgress: _requiredBool(values, 'allow_image_egress'),
+      defaultAiPermissions: defaultAiPermissions,
       capabilityOverrides: ModelCapabilityOverrides(
         vision: _nullableBool(capabilities, 'vision'),
         toolCalls: _nullableBool(capabilities, 'tool_calls'),
@@ -312,6 +318,15 @@ class SettingsService {
       imageLimit: _requiredInt(values, 'image_limit'),
     );
     return saveConfiguration(candidate);
+  }
+
+  AiPermissions _readPortableAiPermissions(Map<String, dynamic> values) {
+    final raw = values['default_ai_permissions'];
+    if (raw == null) return const AiPermissions();
+    if (raw is! Map) throw const FormatException('默认 AI 权限配置格式错误');
+    return AiPermissions.fromJson(
+      raw.map((key, value) => MapEntry(key.toString(), value)),
+    );
   }
 
   Future<AppSettings> restoreDefaults() async {
@@ -383,6 +398,7 @@ class SettingsService {
     'show_completed_todos': settings.showCompletedTodos,
     'calendar_month_detailed': settings.calendarMonthDetailed,
     'allow_image_egress': settings.allowImageEgress,
+    'default_ai_permissions': settings.defaultAiPermissions.toJson(),
     'capability_overrides': {
       'vision': settings.capabilityOverrides.vision,
       'tool_calls': settings.capabilityOverrides.toolCalls,
@@ -415,6 +431,7 @@ class SettingsService {
       showCompletedTodos: _boolValue(map, 'show_completed_todos') ?? false,
       calendarMonthDetailed: _boolValue(map, 'calendar_month_detailed') ?? true,
       allowImageEgress: _boolValue(map, 'allow_image_egress') ?? true,
+      defaultAiPermissions: _readAiPermissions(map),
       schemaVersion: map['schema_version'] as int,
       modelKeySlotId: modelKeySlotId as String?,
       capabilityOverrides: ModelCapabilityOverrides(
@@ -430,6 +447,17 @@ class SettingsService {
       contextMessageLimit: _intValue(map, 'context_message_limit') ?? 20,
       imageMessageLimit: _intValue(map, 'image_message_limit') ?? 4,
       imageLimit: _intValue(map, 'image_limit') ?? 8,
+    );
+  }
+
+  AiPermissions _readAiPermissions(Map<String, dynamic> map) {
+    final value = map['default_ai_permissions'];
+    if (value == null) return const AiPermissions();
+    if (value is! Map) {
+      throw const FormatException('默认 AI 权限配置格式错误；原始配置已保留。');
+    }
+    return AiPermissions.fromJson(
+      value.map((key, item) => MapEntry(key.toString(), item)),
     );
   }
 

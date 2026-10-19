@@ -117,6 +117,7 @@ final class AppRuntime {
           captures: capture,
           deviceId: () => repository.deviceId,
         ),
+        defaultPermissions: () => preferences.settings.defaultAiPermissions,
         imageInputService: ImageInputService(),
       );
       final sync = SyncWorkspace(

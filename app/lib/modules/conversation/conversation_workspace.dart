@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../core/chat_models.dart';
+import '../../core/models.dart';
 import '../../data/chat_repository.dart';
 import '../../data/share_payload.dart';
 import '../../services/chat_service.dart';
@@ -22,17 +23,21 @@ class ConversationWorkspace extends ChangeNotifier {
     required ResultLibrary results,
     required ChatService chatService,
     required AutoRecordProcessor autoRecordProcessor,
+    AiPermissions Function()? defaultPermissions,
     ImageInputService? imageInputService,
   }) : _repository = repository,
        _results = results,
        _chatService = chatService,
        _autoRecordProcessor = autoRecordProcessor,
+       _defaultPermissions =
+           defaultPermissions ?? (() => const AiPermissions()),
        _imageInputService = imageInputService ?? ImageInputService();
 
   final ChatRepository _repository;
   final ResultLibrary _results;
   final ChatService _chatService;
   final AutoRecordProcessor _autoRecordProcessor;
+  final AiPermissions Function() _defaultPermissions;
   final ImageInputService _imageInputService;
 
   List<Conversation> _conversations = const [];
@@ -176,7 +181,9 @@ class ConversationWorkspace extends ChangeNotifier {
   }
 
   Future<Conversation> createConversation() async {
-    final conversation = await _repository.createConversation();
+    final conversation = await _repository.createConversation(
+      aiPermissions: _defaultPermissions(),
+    );
     _conversations = [
       conversation,
       ..._conversations.where((item) => item.id != conversation.id),

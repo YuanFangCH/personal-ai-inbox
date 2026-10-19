@@ -53,6 +53,7 @@ class DevicePreferences extends ChangeNotifier {
     int? contextMessageLimit,
     int? imageMessageLimit,
     int? imageLimit,
+    AiPermissions? defaultAiPermissions,
   }) {
     return _enqueue<void>(() async {
       final current = _settings ?? await _adapter.load();
@@ -70,6 +71,7 @@ class DevicePreferences extends ChangeNotifier {
         contextMessageLimit: contextMessageLimit,
         imageMessageLimit: imageMessageLimit,
         imageLimit: imageLimit,
+        defaultAiPermissions: defaultAiPermissions,
       );
       final next = await _guard<AppSettings>(
         code: 'settings_update_failed',
@@ -198,6 +200,7 @@ abstract interface class DevicePreferencesAdapter {
     bool? showCompletedTodos,
     bool? calendarMonthDetailed,
     bool? allowImageEgress,
+    AiPermissions? defaultAiPermissions,
   });
 
   Future<String?> readModelKey();
@@ -234,6 +237,7 @@ final class SettingsServiceDevicePreferencesAdapter
     bool? showCompletedTodos,
     bool? calendarMonthDetailed,
     bool? allowImageEgress,
+    AiPermissions? defaultAiPermissions,
   }) {
     return _settingsService.saveGeneral(
       themeMode: themeMode,
@@ -242,6 +246,7 @@ final class SettingsServiceDevicePreferencesAdapter
       showCompletedTodos: showCompletedTodos,
       calendarMonthDetailed: calendarMonthDetailed,
       allowImageEgress: allowImageEgress,
+      defaultAiPermissions: defaultAiPermissions,
     );
   }
 

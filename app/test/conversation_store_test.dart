@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqlite3/sqlite3.dart';
 import 'package:personal_ai_inbox/core/chat_models.dart';
 import 'package:personal_ai_inbox/core/models.dart';
 import 'package:personal_ai_inbox/data/sqlite_conversation_store.dart';
@@ -25,6 +26,11 @@ void main() {
         updatedAt: now,
         autoTitle: false,
         preview: '你好',
+        aiPermissions: const AiPermissions(
+          read: false,
+          create: true,
+          modifyDelete: false,
+        ),
       );
       await store.upsertConversation(conversation);
       await store.upsertMessage(
@@ -77,7 +83,12 @@ void main() {
       final reopened = SqliteConversationStore(path);
       await reopened.open();
 
-      expect((await reopened.listConversations()).single.title, '测试会话');
+      final persistedConversation = (await reopened.listConversations()).single;
+      expect(persistedConversation.title, '测试会话');
+      expect(
+        persistedConversation.aiPermissions,
+        const AiPermissions(read: false, create: true, modifyDelete: false),
+      );
       final message = (await reopened.listMessages('cnv_test')).single;
       expect(message.content, '已记录');
       expect(message.attachments.single.fileName, 'test.jpg');
@@ -95,4 +106,53 @@ void main() {
       await directory.delete(recursive: true);
     },
   );
+
+  test('migrates v1 conversations with all AI permissions enabled', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'conversation-permission-migration',
+    );
+    final path = '${directory.path}${Platform.pathSeparator}chat.sqlite3';
+    final oldDatabase = sqlite3.open(path);
+    oldDatabase
+      ..execute('''
+        CREATE TABLE conversations (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          auto_title INTEGER NOT NULL,
+          preview TEXT NOT NULL
+        )
+      ''')
+      ..execute('''
+        INSERT INTO conversations VALUES (
+          'cnv_legacy', '旧会话', '2026-01-01T00:00:00.000',
+          '2026-01-01T00:00:00.000', 0, ''
+        )
+      ''')
+      ..execute('PRAGMA user_version = 1')
+      ..close();
+
+    final migrated = SqliteConversationStore(path);
+    await migrated.open();
+    expect(
+      (await migrated.findConversation('cnv_legacy'))?.aiPermissions,
+      const AiPermissions(),
+    );
+
+    final updated = (await migrated.findConversation('cnv_legacy'))!.copyWith(
+      aiPermissions: const AiPermissions(read: false, modifyDelete: false),
+    );
+    await migrated.upsertConversation(updated);
+    await migrated.close();
+
+    final reopened = SqliteConversationStore(path);
+    await reopened.open();
+    expect(
+      (await reopened.findConversation('cnv_legacy'))?.aiPermissions,
+      const AiPermissions(read: false, create: true, modifyDelete: false),
+    );
+    await reopened.close();
+    await directory.delete(recursive: true);
+  });
 }
