@@ -2,7 +2,7 @@
 
 > 版本：v2.7（AI 对话改造目标待实现）
 > 日期：2026-10-20
-> 追加规划：产品显示名“懒狗秘书”、秘书型助理与人工确认写入的全局知识库；见 [ADR 0018](adr/0018-confirmed-global-knowledge-for-secretary.md) 和[补充计划](secretary-and-global-knowledge-plan.md)。全局知识新增/修改是普通成果直接写入规则的例外，共享和读取等范围待答，均尚未实现。
+> 追加规划已确认：产品显示名“懒狗秘书”、秘书型助理与全局知识库；见 [ADR 0018](adr/0018-confirmed-global-knowledge-for-secretary.md) 和[补充计划](secretary-and-global-knowledge-plan.md)。全局知识随成果三端同步、受读取权限控制并按需检索，增改删均需人工确认，是普通成果直接操作规则的例外，均尚未实现。
 > 目标环境：Android 手机、Android 平板、Windows 11、OneDrive、百度网盘、可选自有服务器（独立主机 + 公网 IP）
 > 配套调研：
 > - [收集入口与知识库](research/01-knowledge-capture.md)
