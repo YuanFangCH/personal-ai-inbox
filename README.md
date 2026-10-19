@@ -1,4 +1,4 @@
-# 个人 AI 收件箱
+# 懒狗秘书
 
 [![Flutter CI](https://github.com/YuanFangCH/personal-ai-inbox/actions/workflows/flutter.yml/badge.svg)](https://github.com/YuanFangCH/personal-ai-inbox/actions/workflows/flutter.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -18,21 +18,21 @@
 
 - 本地优先：文本、分享内容和图片先在本端落盘，离线时捕获、编辑和查看不受影响。
 - Markdown 主库：一个成果一个 `.md` 文件，SQLite 保存派生索引、同步游标和本地操作/撤销账本。Markdown 仍是成果正文权威副本；可撤销的前一版本仅在本地账本短暂保留，现采用 10 分钟窗口。
-- AI 对话：本地多会话、SSE 流式回复、停止与重试、会话级上下文隔离。
+- AI 秘书对话：会话管理、SSE 多轮工具回复；按会话保存读取/新增/修改删除权限，直接操作普通成果并可撤销。
 - 图片输入：相册、拍照、Android 图片分享、自动缩放和 EXIF 清理。
-- 受控自动记录：模型只可请求新建高置信、非敏感、无日期歧义且未重复的成果，修改和删除永不自动执行。
-- 行动与知识：内置事项、日历工作区、知识、确认队列和同步状态页面；日历统一承载日程、我的一天和待办，并提供事件/待办快速新建。
+- 受控自动记录：模型可请求新建高置信、非敏感、无日期歧义且未重复的普通成果；普通成果改删按权限执行并支持撤销，全局知识改动始终需人工确认。
+- 行动与知识：内置事项、日历、全局知识管理、独立待处理和同步状态页面；日历统一承载日程、我的一天和待办，并提供事件/待办快速新建。
 - 系统接入：Android 注册 `ACTION_SEND` 与 `ACTION_PROCESS_TEXT`，支持从其他 App 分享文本和图片。
 - 多端形态：同一套 Flutter 代码适配手机、平板、Windows 和 Web 预览。
 
 ## 当前规划
 
 
-追加规划已确认：软件显示名称改为“懒狗秘书”，AI 默认担任秘书型助理；全局知识库随成果三端同步，AI 按需检索且受读取权限控制，新增、修改、删除均须人工确认。见[角色与全局知识库补充计划](docs/secretary-and-global-knowledge-plan.md)；运行版本尚未更名或实现知识库。
+追加规划已确认：软件显示名称为“懒狗秘书”，AI 默认担任秘书型助理；全局知识库以 `knowledge` 成果承载，候选本地留端，确认后的事实按成果同步，AI 按需检索且受读取权限控制，新增、修改、删除均须人工确认。界面与审批核心已实现；真实 OneDrive 接入和三端同步仍未完成。见[角色与全局知识库补充计划](docs/secretary-and-global-knowledge-plan.md)。
 
 检索以节省开销与响应时间为目标：当前会话足够则不检索，必要时定向查询、少量返回、足够即停，复用有效结果并在内容变化后失效。见[检索策略与预算](docs/ai-retrieval-policy.md)，尚未实现或测量提速。
 
-已确认将收件箱改为参考 DeepSeek 手机端的 AI 对话界面：每次进入显示新对话，待处理独立成页，三组会话权限默认开启，成果改删直接执行并可撤销。文件、语音转文字、回复朗读和深度思考纳入计划；联网仅用当前模型接口内置能力，不支持则禁用。见 [改造计划](docs/ai-conversation-redesign-plan.md) 与 [ADR 0017](docs/adr/0017-conversation-permissions-and-reversible-result-actions.md)。目前仅完成规划，上述新增能力尚未实现；上方核心能力描述仍对应运行版本。
+已确认将收件箱改为参考 DeepSeek 手机端的 AI 对话界面：每次进入显示新对话，待处理独立成页，三组会话权限默认开启，普通成果改删直接执行并可撤销。界面、权限和普通成果操作已实现；文件、语音转文字、回复朗读和深度思考仍在计划中。联网仅用当前模型接口内置能力，不支持则禁用。见 [改造计划](docs/ai-conversation-redesign-plan.md) 与 [ADR 0017](docs/adr/0017-conversation-permissions-and-reversible-result-actions.md)。
 
 ## 模型配置
 

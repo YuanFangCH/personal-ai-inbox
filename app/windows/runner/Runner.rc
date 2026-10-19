@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.yuanfang.aitext" "\0"
-            VALUE "FileDescription", "personal_ai_inbox" "\0"
+            VALUE "FileDescription", "懒狗秘书" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "personal_ai_inbox" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.yuanfang.aitext. All rights reserved." "\0"
             VALUE "OriginalFilename", "personal_ai_inbox.exe" "\0"
-            VALUE "ProductName", "personal_ai_inbox" "\0"
+            VALUE "ProductName", "懒狗秘书" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

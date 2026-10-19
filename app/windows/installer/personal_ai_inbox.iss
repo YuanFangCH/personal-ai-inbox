@@ -1,4 +1,4 @@
-#define MyAppName "个人 AI 收件箱"
+#define MyAppName "懒狗秘书"
 
 #ifndef MyAppVersion
   #define MyAppVersion "1.1.0"

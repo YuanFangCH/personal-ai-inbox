@@ -1,11 +1,11 @@
 {
-    "name": "个人 AI 收件箱",
-    "short_name": "AI 收件箱",
+    "name": "懒狗秘书",
+    "short_name": "懒狗秘书",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#F5F5F1",
     "theme_color": "#1D6573",
-    "description": "本地优先的 Markdown 成果库与提醒 App。",
+    "description": "懒狗秘书：本地优先的个人事务、日历与知识助理。",
     "prefer_related_applications": false,
     "icons": [
         {
