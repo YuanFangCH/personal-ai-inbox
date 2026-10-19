@@ -306,6 +306,19 @@ class _RecordingIndexDatabase implements IndexDatabase {
       _delegate.removeReversibleAction(id);
 
   @override
+  Future<GlobalKnowledgeCandidate?> findGlobalKnowledgeCandidate(String id) =>
+      _delegate.findGlobalKnowledgeCandidate(id);
+
+  @override
+  Future<List<GlobalKnowledgeCandidate>> listGlobalKnowledgeCandidates() =>
+      _delegate.listGlobalKnowledgeCandidates();
+
+  @override
+  Future<void> upsertGlobalKnowledgeCandidate(
+    GlobalKnowledgeCandidate candidate,
+  ) => _delegate.upsertGlobalKnowledgeCandidate(candidate);
+
+  @override
   Future<SyncConflictRecord?> findConflict(String resultId) =>
       _delegate.findConflict(resultId);
 

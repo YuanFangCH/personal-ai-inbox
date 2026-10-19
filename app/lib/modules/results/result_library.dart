@@ -1,4 +1,8 @@
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../core/models.dart';
 import '../../data/result_repository.dart';
@@ -45,6 +49,7 @@ class ResultLibrary extends ChangeNotifier {
   List<ResultDocument> _events = const [];
   List<ResultDocument> _matters = const [];
   List<ResultDocument> _knowledge = const [];
+  List<GlobalKnowledgeCandidate> _globalKnowledgeCandidates = const [];
   String _vaultRoot = '';
 
   List<ResultDocument> get documents => _documents;
@@ -60,6 +65,17 @@ class ResultLibrary extends ChangeNotifier {
   List<ResultDocument> get matters => _matters;
 
   List<ResultDocument> get knowledge => _knowledge;
+
+  List<GlobalKnowledgeCandidate> get globalKnowledgeCandidates =>
+      _globalKnowledgeCandidates;
+
+  List<GlobalKnowledgeCandidate> get pendingGlobalKnowledgeCandidates =>
+      List.unmodifiable(
+        _globalKnowledgeCandidates.where(
+          (candidate) =>
+              candidate.status == GlobalKnowledgeCandidateStatus.pending,
+        ),
+      );
 
   String get vaultRoot => _vaultRoot;
 
@@ -86,6 +102,8 @@ class ResultLibrary extends ChangeNotifier {
 
   Future<void> initialize() async {
     await _repository.initialize();
+    await refresh();
+    await _resumeApprovedGlobalKnowledgeChanges();
     await refresh();
   }
 
@@ -114,6 +132,9 @@ class ResultLibrary extends ChangeNotifier {
     );
     _knowledge = List<ResultDocument>.unmodifiable(
       canonical.where((document) => document.type == ResultType.knowledge),
+    );
+    _globalKnowledgeCandidates = List<GlobalKnowledgeCandidate>.unmodifiable(
+      await _repository.listGlobalKnowledgeCandidates(),
     );
     _vaultRoot = await _repository.describeVaultRoot();
     notifyListeners();
@@ -151,6 +172,522 @@ class ResultLibrary extends ChangeNotifier {
     );
     _publishDocument(document);
     return document;
+  }
+
+  Future<GlobalKnowledgeCandidate> proposeGlobalKnowledgeChange({
+    required GlobalKnowledgeOperation operation,
+    required Map<String, Object?> proposal,
+    String? targetId,
+    int? expectedRevision,
+    String? expectedHash,
+    String? sourceConversationId,
+    String? sourceMessageId,
+    String? candidateId,
+  }) async {
+    final normalized = _normalizeGlobalProposal(operation, proposal);
+    final digest = _globalKnowledgeDigest(
+      operation: operation,
+      targetId: targetId,
+      expectedRevision: expectedRevision,
+      expectedHash: expectedHash,
+      proposal: normalized,
+    );
+    final stableId =
+        candidateId ??
+        (sourceMessageId == null
+            ? 'gkc_${const Uuid().v4().replaceAll('-', '')}'
+            : 'gkc_${sha256.convert(utf8.encode('$sourceConversationId:$sourceMessageId:${operation.name}:$targetId:$digest')).toString().substring(0, 32)}');
+    if (!RegExp(r'^gkc_[A-Za-z0-9_-]{1,64}$').hasMatch(stableId)) {
+      throw ArgumentError.value(stableId, 'candidateId');
+    }
+    final existing = await _repository.findGlobalKnowledgeCandidate(stableId);
+    if (existing != null) {
+      if (existing.digest != digest) {
+        throw StateError('全局知识候选 ID 已绑定其他内容：$stableId');
+      }
+      return existing;
+    }
+    if (operation == GlobalKnowledgeOperation.create) {
+      if (targetId != null ||
+          expectedRevision != null ||
+          expectedHash != null) {
+        throw ArgumentError('全局知识新增不能包含目标版本');
+      }
+    } else {
+      final id = targetId;
+      final revision = expectedRevision;
+      final hash = expectedHash;
+      if (id == null || revision == null || hash == null) {
+        throw ArgumentError('全局知识修改/删除必须绑定目标 ID、revision 和 hash');
+      }
+      final target = await _repository.findDocument(id);
+      final indexed = await _repository.findIndexed(id);
+      final source = await _repository.readManagedResult(id);
+      if (target == null ||
+          target.type != ResultType.knowledge ||
+          indexed == null ||
+          source == null ||
+          target.revision != revision ||
+          indexed.revision != revision ||
+          _repository.hashMarkdown(source) != hash ||
+          indexed.localHash != hash ||
+          !target.isGlobalKnowledge) {
+        throw StateError('全局知识目标已变化或不符合操作范围，请重新读取：$id');
+      }
+    }
+    final now = DateTime.now();
+    final candidate = GlobalKnowledgeCandidate(
+      id: stableId,
+      operation: operation,
+      status: GlobalKnowledgeCandidateStatus.pending,
+      proposal: normalized,
+      digest: digest,
+      targetId: targetId,
+      expectedRevision: expectedRevision,
+      expectedHash: expectedHash,
+      sourceConversationId: sourceConversationId,
+      sourceMessageId: sourceMessageId,
+      createdAt: now,
+      updatedAt: now,
+    );
+    await _repository.saveGlobalKnowledgeCandidate(candidate);
+    _setGlobalKnowledgeCandidate(candidate);
+    return candidate;
+  }
+
+  Future<GlobalKnowledgeCandidate> rejectGlobalKnowledgeChange(
+    String candidateId, {
+    required String displayedDigest,
+  }) async {
+    final candidate = await _requirePendingCandidate(
+      candidateId,
+      displayedDigest,
+    );
+    final rejected = candidate.copyWith(
+      status: GlobalKnowledgeCandidateStatus.rejected,
+      updatedAt: DateTime.now(),
+      error: null,
+    );
+    await _repository.saveGlobalKnowledgeCandidate(rejected);
+    _setGlobalKnowledgeCandidate(rejected);
+    return rejected;
+  }
+
+  Future<ResultActionResult> confirmGlobalKnowledgeChange(
+    String candidateId, {
+    required String displayedDigest,
+  }) async {
+    final candidate = await _requirePendingCandidate(
+      candidateId,
+      displayedDigest,
+    );
+    await _verifyGlobalCandidateTarget(candidate);
+    final approved = candidate.copyWith(
+      status: GlobalKnowledgeCandidateStatus.approved,
+      updatedAt: DateTime.now(),
+      error: null,
+    );
+    await _repository.saveGlobalKnowledgeCandidate(approved);
+    _setGlobalKnowledgeCandidate(approved);
+    try {
+      return await _applyApprovedGlobalCandidate(approved);
+    } on StateError catch (error) {
+      final current = await _repository.findGlobalKnowledgeCandidate(
+        candidateId,
+      );
+      final completedAction = current == null
+          ? null
+          : await _repository.findReversibleAction('gk_${current.id}');
+      if (current != null &&
+          completedAction?.status == ReversibleActionStatus.applied) {
+        final result = await _repository.readDocument(
+          completedAction!.resultId,
+        );
+        if (result != null) {
+          final applied = current.copyWith(
+            status: GlobalKnowledgeCandidateStatus.applied,
+            resultId: result.id,
+            updatedAt: DateTime.now(),
+            error: null,
+          );
+          await _repository.saveGlobalKnowledgeCandidate(applied);
+          _setGlobalKnowledgeCandidate(applied);
+          _publishDocument(result);
+          return ResultActionResult(document: result, action: completedAction);
+        }
+      }
+      if (current?.status == GlobalKnowledgeCandidateStatus.approved &&
+          await _globalCandidateTargetChanged(current!)) {
+        final stale = current.copyWith(
+          status: GlobalKnowledgeCandidateStatus.stale,
+          updatedAt: DateTime.now(),
+          error: error.message,
+        );
+        await _repository.saveGlobalKnowledgeCandidate(stale);
+        _setGlobalKnowledgeCandidate(stale);
+      } else if (current?.status == GlobalKnowledgeCandidateStatus.approved) {
+        final retryable = current!.copyWith(
+          updatedAt: DateTime.now(),
+          error: error.message,
+        );
+        await _repository.saveGlobalKnowledgeCandidate(retryable);
+        _setGlobalKnowledgeCandidate(retryable);
+      }
+      rethrow;
+    }
+  }
+
+  Future<ResultActionResult> retryApprovedGlobalKnowledgeChange(
+    String candidateId,
+  ) async {
+    final candidate = await _repository.findGlobalKnowledgeCandidate(
+      candidateId,
+    );
+    if (candidate == null ||
+        candidate.status != GlobalKnowledgeCandidateStatus.approved) {
+      throw StateError('只有已确认的全局知识变更可重试：$candidateId');
+    }
+    return _applyApprovedGlobalCandidate(candidate);
+  }
+
+  Future<GlobalKnowledgeCandidate> _requirePendingCandidate(
+    String candidateId,
+    String displayedDigest,
+  ) async {
+    final candidate = await _repository.findGlobalKnowledgeCandidate(
+      candidateId,
+    );
+    if (candidate == null ||
+        candidate.status != GlobalKnowledgeCandidateStatus.pending ||
+        candidate.digest != displayedDigest ||
+        candidate.digest !=
+            _globalKnowledgeDigest(
+              operation: candidate.operation,
+              targetId: candidate.targetId,
+              expectedRevision: candidate.expectedRevision,
+              expectedHash: candidate.expectedHash,
+              proposal: candidate.proposal,
+            )) {
+      throw StateError('全局知识候选已变化或不再等待确认：$candidateId');
+    }
+    return candidate;
+  }
+
+  Future<void> _verifyGlobalCandidateTarget(
+    GlobalKnowledgeCandidate candidate,
+  ) async {
+    if (candidate.operation == GlobalKnowledgeOperation.create) return;
+    if (await _globalCandidateTargetChanged(candidate)) {
+      final stale = candidate.copyWith(
+        status: GlobalKnowledgeCandidateStatus.stale,
+        updatedAt: DateTime.now(),
+        error: '目标版本已变化，请重新检索并展示新差异。',
+      );
+      await _repository.saveGlobalKnowledgeCandidate(stale);
+      _setGlobalKnowledgeCandidate(stale);
+      throw StateError(stale.error!);
+    }
+  }
+
+  Future<bool> _globalCandidateTargetChanged(
+    GlobalKnowledgeCandidate candidate,
+  ) async {
+    if (candidate.operation == GlobalKnowledgeOperation.create) return false;
+    final id = candidate.targetId;
+    final expectedRevision = candidate.expectedRevision;
+    final expectedHash = candidate.expectedHash;
+    if (id == null || expectedRevision == null || expectedHash == null) {
+      return true;
+    }
+    final current = await _repository.readDocument(id);
+    final indexed = await _repository.findIndexed(id);
+    final source = await _repository.readManagedResult(id);
+    return current == null ||
+        indexed == null ||
+        source == null ||
+        current.type != ResultType.knowledge ||
+        current.revision != expectedRevision ||
+        indexed.revision != expectedRevision ||
+        indexed.localHash != expectedHash ||
+        _repository.hashMarkdown(source) != expectedHash ||
+        !current.isGlobalKnowledge;
+  }
+
+  Future<ResultActionResult> _applyApprovedGlobalCandidate(
+    GlobalKnowledgeCandidate candidate,
+  ) async {
+    if (candidate.digest !=
+        _globalKnowledgeDigest(
+          operation: candidate.operation,
+          targetId: candidate.targetId,
+          expectedRevision: candidate.expectedRevision,
+          expectedHash: candidate.expectedHash,
+          proposal: candidate.proposal,
+        )) {
+      throw StateError('全局知识审批内容与候选摘要不一致：${candidate.id}');
+    }
+    final proposal = candidate.proposal;
+    final actionId = 'gk_${candidate.id}';
+    final approvedAt = candidate.updatedAt;
+    late final ResultDocument result;
+    switch (candidate.operation) {
+      case GlobalKnowledgeOperation.create:
+        final metadata = _globalKnowledgeFields(
+          proposal,
+          candidate.digest,
+          approvedAt,
+        );
+        result = await _repository.create(
+          type: ResultType.knowledge,
+          title: proposal['title'] as String,
+          body: proposal['body'] as String,
+          status: ResultStatus.canonical,
+          extensionFields: metadata,
+          createdAt: candidate.createdAt,
+          idempotencyKey: 'global-kb:${candidate.id}',
+          reversibleActionId: actionId,
+          approvedGlobalCandidateId: candidate.id,
+          approvedGlobalCandidateDigest: candidate.digest,
+        );
+        break;
+      case GlobalKnowledgeOperation.update:
+        final current = await _requireGlobalKnowledgeTarget(candidate);
+        final next = current.copyWith(
+          title: proposal['title'] as String,
+          body: proposal['body'] as String,
+          deleted: false,
+          extensionFields: {
+            ...current.extensionFields,
+            ..._globalKnowledgeFields(proposal, candidate.digest, approvedAt),
+          },
+        );
+        result = await _repository.saveWithUndo(
+          document: next,
+          expectedRevision: candidate.expectedRevision!,
+          expectedHash: candidate.expectedHash!,
+          actionId: actionId,
+          approvedGlobalCandidateId: candidate.id,
+          approvedGlobalCandidateDigest: candidate.digest,
+        );
+        break;
+      case GlobalKnowledgeOperation.delete:
+        await _requireGlobalKnowledgeTarget(candidate);
+        result = await _repository.deleteWithUndo(
+          id: candidate.targetId!,
+          expectedRevision: candidate.expectedRevision!,
+          expectedHash: candidate.expectedHash!,
+          actionId: actionId,
+          approvedGlobalCandidateId: candidate.id,
+          approvedGlobalCandidateDigest: candidate.digest,
+        );
+        break;
+    }
+    final applied = candidate.copyWith(
+      status: GlobalKnowledgeCandidateStatus.applied,
+      resultId: result.id,
+      updatedAt: DateTime.now(),
+      error: null,
+    );
+    await _repository.saveGlobalKnowledgeCandidate(applied);
+    _setGlobalKnowledgeCandidate(applied);
+    _publishDocument(result);
+    return ResultActionResult(
+      document: result,
+      action: (await _repository.findReversibleAction(actionId))!,
+    );
+  }
+
+  Future<ResultDocument> _requireGlobalKnowledgeTarget(
+    GlobalKnowledgeCandidate candidate,
+  ) async {
+    final id = candidate.targetId;
+    if (id == null) throw StateError('全局知识候选缺少目标 ID');
+    final target = await _repository.readDocument(id);
+    if (target == null ||
+        target.type != ResultType.knowledge ||
+        !target.isGlobalKnowledge) {
+      throw StateError('全局知识目标不存在或已不属于全局知识范围：$id');
+    }
+    return target;
+  }
+
+  Map<String, Object?> _globalKnowledgeFields(
+    Map<String, Object?> proposal,
+    String digest,
+    DateTime approvedAt,
+  ) => {
+    globalKnowledgeScopeKey: globalKnowledgeScopeValue,
+    'global_facts': proposal['facts'],
+    'global_approval_digest': digest,
+    'global_approved_at': approvedAt.toUtc().toIso8601String(),
+    if (proposal['applies_to'] != null)
+      'global_applies_to': proposal['applies_to'],
+    if (proposal['valid_from'] != null)
+      'global_valid_from': proposal['valid_from'],
+    if (proposal['valid_until'] != null)
+      'global_valid_until': proposal['valid_until'],
+    if (proposal['timezone'] != null) 'global_timezone': proposal['timezone'],
+  };
+
+  Future<void> _resumeApprovedGlobalKnowledgeChanges() async {
+    for (final candidate in await _repository.listGlobalKnowledgeCandidates()) {
+      if (candidate.status != GlobalKnowledgeCandidateStatus.approved) continue;
+      try {
+        await _applyApprovedGlobalCandidate(candidate);
+      } on StateError catch (error) {
+        if (candidate.operation != GlobalKnowledgeOperation.create &&
+            await _globalCandidateTargetChanged(candidate)) {
+          final stale = candidate.copyWith(
+            status: GlobalKnowledgeCandidateStatus.stale,
+            updatedAt: DateTime.now(),
+            error: error.message,
+          );
+          await _repository.saveGlobalKnowledgeCandidate(stale);
+          _setGlobalKnowledgeCandidate(stale);
+        }
+      }
+    }
+  }
+
+  void _setGlobalKnowledgeCandidate(GlobalKnowledgeCandidate candidate) {
+    _globalKnowledgeCandidates = List.unmodifiable([
+      candidate,
+      ..._globalKnowledgeCandidates.where((item) => item.id != candidate.id),
+    ]);
+    notifyListeners();
+  }
+
+  Map<String, Object?> _normalizeGlobalProposal(
+    GlobalKnowledgeOperation operation,
+    Map<String, Object?> source,
+  ) {
+    if (operation == GlobalKnowledgeOperation.delete) {
+      if (source.isNotEmpty) throw ArgumentError('全局知识删除候选不能携带替换正文');
+      return const {};
+    }
+    const allowed = {
+      'title',
+      'body',
+      'facts',
+      'applies_to',
+      'valid_from',
+      'valid_until',
+      'timezone',
+    };
+    final unknown = source.keys.where((key) => !allowed.contains(key));
+    if (unknown.isNotEmpty) {
+      throw ArgumentError('全局知识候选含不支持字段：${unknown.join('、')}');
+    }
+    final title = source['title'];
+    final body = source['body'];
+    final facts = source['facts'];
+    if (title is! String || title.trim().isEmpty || title.length > 160) {
+      throw ArgumentError('全局知识标题必须为 1–160 个字符');
+    }
+    if (body is! String || body.length > 6000) {
+      throw ArgumentError('全局知识说明必须不超过 6000 个字符');
+    }
+    if (facts is! Map || facts.isEmpty || facts.length > 32) {
+      throw ArgumentError('全局知识必须包含 1–32 个结构化事实');
+    }
+    final normalizedFacts = _normalizeJsonMap(facts);
+    final normalized = <String, Object?>{
+      'title': title.trim(),
+      'body': body.trim(),
+      'facts': normalizedFacts,
+    };
+    for (final field in const [
+      'applies_to',
+      'valid_from',
+      'valid_until',
+      'timezone',
+    ]) {
+      final value = source[field];
+      if (value == null) continue;
+      if (value is! String || value.trim().isEmpty || value.length > 120) {
+        throw ArgumentError('全局知识字段 $field 格式错误');
+      }
+      normalized[field] = value.trim();
+    }
+    final from = normalized['valid_from'];
+    final until = normalized['valid_until'];
+    if (from != null && DateTime.tryParse(from as String) == null) {
+      throw ArgumentError('生效日期格式无效');
+    }
+    if (until != null && DateTime.tryParse(until as String) == null) {
+      throw ArgumentError('失效日期格式无效');
+    }
+    if (from != null &&
+        until != null &&
+        !DateTime.parse(until as String)
+            .isAfter(DateTime.parse(from as String))) {
+      throw ArgumentError('失效日期必须晚于生效日期');
+    }
+    if (jsonEncode(normalized).length > 8000) {
+      throw ArgumentError('全局知识候选超过 8000 个字符');
+    }
+    return Map.unmodifiable(normalized);
+  }
+
+  Map<String, Object?> _normalizeJsonMap(Map<dynamic, dynamic> source) {
+    final normalized = <String, Object?>{};
+    for (final key in source.keys) {
+      if (key is! String || key.trim().isEmpty || key.length > 120) {
+        throw ArgumentError('全局事实名称格式错误');
+      }
+      normalized[key] = _normalizeJsonValue(source[key], 0);
+    }
+    return Map.unmodifiable(normalized);
+  }
+
+  Object? _normalizeJsonValue(Object? value, int depth) {
+    if (depth > 6) throw ArgumentError('全局事实嵌套层级过深');
+    if (value == null || value is String || value is bool || value is num) {
+      return value;
+    }
+    if (value is List) {
+      if (value.length > 32) throw ArgumentError('全局事实列表过长');
+      return List.unmodifiable(
+        value.map((item) => _normalizeJsonValue(item, depth + 1)),
+      );
+    }
+    if (value is Map) {
+      final entries = <String, Object?>{};
+      for (final key in value.keys) {
+        if (key is! String || key.isEmpty || key.length > 120) {
+          throw ArgumentError('全局事实子字段名称格式错误');
+        }
+        entries[key] = _normalizeJsonValue(value[key], depth + 1);
+      }
+      return Map.unmodifiable(entries);
+    }
+    throw ArgumentError('全局事实只允许 JSON 数据类型');
+  }
+
+  String _globalKnowledgeDigest({
+    required GlobalKnowledgeOperation operation,
+    required String? targetId,
+    required int? expectedRevision,
+    required String? expectedHash,
+    required Map<String, Object?> proposal,
+  }) {
+    final canonical = _canonicalJsonValue({
+      'operation': operation.name,
+      'target_id': targetId,
+      'expected_revision': expectedRevision,
+      'expected_hash': expectedHash,
+      'proposal': proposal,
+    });
+    return 'sha256:${sha256.convert(utf8.encode(jsonEncode(canonical)))}';
+  }
+
+  Object? _canonicalJsonValue(Object? value) {
+    if (value is Map) {
+      final keys = value.keys.cast<String>().toList()..sort();
+      return {for (final key in keys) key: _canonicalJsonValue(value[key])};
+    }
+    if (value is List) return value.map(_canonicalJsonValue).toList();
+    return value;
   }
 
   Future<ResultActionResult> createManualWithUndo({
@@ -239,6 +776,10 @@ class ResultLibrary extends ChangeNotifier {
   }
 
   Future<void> saveDocument(ResultDocument document) async {
+    final current = await _repository.readDocument(document.id);
+    if (document.isGlobalKnowledge || current?.isGlobalKnowledge == true) {
+      throw StateError('全局知识修改必须通过待确认候选完成');
+    }
     final saved = await _repository.save(document);
     _publishDocument(saved);
   }
@@ -260,6 +801,10 @@ class ResultLibrary extends ChangeNotifier {
   }
 
   Future<void> deleteDocument(String id) async {
+    final current = await _repository.readDocument(id);
+    if (current?.isGlobalKnowledge == true) {
+      throw StateError('全局知识删除必须通过待确认候选完成');
+    }
     final deleted = await _repository.delete(id);
     if (deleted != null) _publishDocument(deleted);
   }

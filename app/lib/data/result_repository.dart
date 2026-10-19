@@ -118,13 +118,23 @@ class ResultRepository {
     String? recurrence,
     List<String> sourceEventIds = const [],
     List<String> sourceHashes = const [],
+    Map<String, Object?> extensionFields = const {},
     DateTime? createdAt,
     String? idempotencyKey,
     String? reversibleActionId,
+    String? approvedGlobalCandidateId,
+    String? approvedGlobalCandidateDigest,
     Duration undoWindow = defaultUndoWindow,
   }) async {
     return _withWriteLock(() async {
       await _recoverPendingTransactions();
+      await _requireGlobalWriteApproval(
+        type: type,
+        extensionFields: extensionFields,
+        candidateId: approvedGlobalCandidateId,
+        digest: approvedGlobalCandidateDigest,
+        operation: GlobalKnowledgeOperation.create,
+      );
       if (reversibleActionId != null && idempotencyKey == null) {
         throw ArgumentError(
           'A reversible result creation requires a stable idempotency key',
@@ -169,6 +179,7 @@ class ResultRepository {
         recurrence: recurrence,
         sourceEventIds: _deduplicate(sourceEventIds),
         sourceHashes: _deduplicate(sourceHashes),
+        extensionFields: Map.unmodifiable(extensionFields),
       );
       final payloadHash = _idempotencyPayloadHash(document);
       IdempotentOperation? operation;
@@ -247,6 +258,14 @@ class ResultRepository {
       if (action == null || action.status != ReversibleActionStatus.applied) {
         throw StateError('操作不可撤销或已撤销：$actionId');
       }
+      final currentBeforeUndo = await _readDocument(action.resultId);
+      final priorDocument = action.previousMarkdown == null
+          ? null
+          : _codec.decode(action.previousMarkdown!);
+      if (currentBeforeUndo?.isGlobalKnowledge == true ||
+          priorDocument?.isGlobalKnowledge == true) {
+        throw StateError('全局知识的撤销必须先提交并确认新的变更候选：$actionId');
+      }
       final timestamp = now ?? DateTime.now();
       if (!action.undoUntil.isAfter(timestamp)) {
         throw StateError('操作撤销期限已过：$actionId');
@@ -306,11 +325,41 @@ class ResultRepository {
     });
   }
 
+  Future<GlobalKnowledgeCandidate?> findGlobalKnowledgeCandidate(String id) {
+    return _index.findGlobalKnowledgeCandidate(id);
+  }
+
+  Future<List<GlobalKnowledgeCandidate>> listGlobalKnowledgeCandidates() {
+    return _index.listGlobalKnowledgeCandidates();
+  }
+
+  Future<GlobalKnowledgeCandidate> saveGlobalKnowledgeCandidate(
+    GlobalKnowledgeCandidate candidate,
+  ) {
+    return _withWriteLock(() async {
+      final existing = await _index.findGlobalKnowledgeCandidate(candidate.id);
+      if (existing != null && existing.digest != candidate.digest) {
+        throw StateError('全局知识候选 ID 已绑定其他内容：${candidate.id}');
+      }
+      if (existing != null &&
+          !_isAllowedCandidateTransition(existing, candidate)) {
+        throw StateError(
+          '全局知识候选状态不可从 ${existing.status.name} 变为 ${candidate.status.name}',
+        );
+      }
+      await _index.upsertGlobalKnowledgeCandidate(candidate);
+      return candidate;
+    });
+  }
+
   Future<ResultDocument> save(
     ResultDocument document, {
     bool incrementRevision = true,
   }) async {
     final previous = await readDocument(document.id);
+    if (document.isGlobalKnowledge || previous?.isGlobalKnowledge == true) {
+      throw StateError('全局知识的新增、修改和删除必须经人工确认候选');
+    }
     final saved = document.copyWith(
       originDevice: deviceId,
       revision: incrementRevision && previous != null
@@ -328,6 +377,8 @@ class ResultRepository {
     required int expectedRevision,
     required String expectedHash,
     required String actionId,
+    String? approvedGlobalCandidateId,
+    String? approvedGlobalCandidateDigest,
     Duration undoWindow = defaultUndoWindow,
   }) {
     return _withWriteLock(() async {
@@ -346,6 +397,14 @@ class ResultRepository {
       if (document.type != current.type || document.deleted) {
         throw StateError('修改不能改变成果类型或墓碑状态：${document.id}');
       }
+      await _requireGlobalWriteApproval(
+        type: current.type,
+        extensionFields: document.extensionFields,
+        candidateId: approvedGlobalCandidateId,
+        digest: approvedGlobalCandidateDigest,
+        operation: GlobalKnowledgeOperation.update,
+        target: current,
+      );
       final next = document.copyWith(
         originDevice: deviceId,
         revision: current.revision + 1,
@@ -377,6 +436,8 @@ class ResultRepository {
     required int expectedRevision,
     required String expectedHash,
     required String actionId,
+    String? approvedGlobalCandidateId,
+    String? approvedGlobalCandidateDigest,
     Duration undoWindow = defaultUndoWindow,
   }) {
     return _withWriteLock(() async {
@@ -391,6 +452,14 @@ class ResultRepository {
         id,
         expectedRevision: expectedRevision,
         expectedHash: expectedHash,
+      );
+      await _requireGlobalWriteApproval(
+        type: current.type,
+        extensionFields: current.extensionFields,
+        candidateId: approvedGlobalCandidateId,
+        digest: approvedGlobalCandidateDigest,
+        operation: GlobalKnowledgeOperation.delete,
+        target: current,
       );
       final source = await _vault.read(current.markdownPath);
       if (source == null) throw StateError('成果文件缺失，拒绝删除：$id');
@@ -453,6 +522,9 @@ class ResultRepository {
     if (document == null) {
       return null;
     }
+    if (document.isGlobalKnowledge) {
+      throw StateError('全局知识的新增、修改和删除必须经人工确认候选');
+    }
     final tombstone = document.copyWith(
       deleted: true,
       body: '',
@@ -464,6 +536,68 @@ class ResultRepository {
     );
     await _writeAndIndex(tombstone);
     return tombstone;
+  }
+
+  Future<void> _requireGlobalWriteApproval({
+    required ResultType type,
+    required Map<String, Object?> extensionFields,
+    required String? candidateId,
+    required String? digest,
+    required GlobalKnowledgeOperation operation,
+    ResultDocument? target,
+  }) async {
+    final touchesGlobalKnowledge =
+        target?.isGlobalKnowledge == true ||
+        extensionFields[globalKnowledgeScopeKey] == globalKnowledgeScopeValue;
+    if (!touchesGlobalKnowledge) return;
+    if (type != ResultType.knowledge || candidateId == null || digest == null) {
+      throw StateError('全局知识的新增、修改和删除必须经人工确认候选');
+    }
+    final candidate = await _index.findGlobalKnowledgeCandidate(candidateId);
+    if (candidate == null ||
+        candidate.status != GlobalKnowledgeCandidateStatus.approved ||
+        candidate.operation != operation ||
+        candidate.digest != digest ||
+        (target == null
+            ? candidate.targetId != null
+            : candidate.targetId != target.id ||
+                  candidate.expectedRevision != target.revision ||
+                  candidate.expectedHash !=
+                      hashMarkdown(
+                        (await _vault.read(target.markdownPath))!,
+                      ))) {
+      throw StateError('全局知识候选尚未确认，或候选与目标版本不匹配');
+    }
+  }
+
+  bool _isAllowedCandidateTransition(
+    GlobalKnowledgeCandidate previous,
+    GlobalKnowledgeCandidate next,
+  ) {
+    if (previous.operation != next.operation ||
+        previous.digest != next.digest ||
+        previous.targetId != next.targetId ||
+        previous.expectedRevision != next.expectedRevision ||
+        previous.expectedHash != next.expectedHash ||
+        previous.sourceConversationId != next.sourceConversationId ||
+        previous.sourceMessageId != next.sourceMessageId ||
+        previous.createdAt != next.createdAt ||
+        jsonEncode(previous.proposal) != jsonEncode(next.proposal)) {
+      return false;
+    }
+    return switch (previous.status) {
+      GlobalKnowledgeCandidateStatus.pending =>
+        next.status == GlobalKnowledgeCandidateStatus.pending ||
+            next.status == GlobalKnowledgeCandidateStatus.approved ||
+            next.status == GlobalKnowledgeCandidateStatus.rejected ||
+            next.status == GlobalKnowledgeCandidateStatus.stale,
+      GlobalKnowledgeCandidateStatus.approved =>
+        next.status == GlobalKnowledgeCandidateStatus.approved ||
+            next.status == GlobalKnowledgeCandidateStatus.applied ||
+            next.status == GlobalKnowledgeCandidateStatus.stale ||
+            next.status == GlobalKnowledgeCandidateStatus.failed,
+      _ => next.status == previous.status,
+    };
   }
 
   Future<ResultDocument?> findDocument(String id) async {

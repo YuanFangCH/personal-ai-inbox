@@ -9,6 +9,7 @@ import 'package:personal_ai_inbox/data/memory_index_database.dart';
 import 'package:personal_ai_inbox/data/memory_vault_store.dart';
 import 'package:personal_ai_inbox/data/result_repository.dart';
 import 'package:personal_ai_inbox/data/vault_store.dart';
+import 'package:personal_ai_inbox/modules/results/result_library.dart';
 
 void main() {
   late MemoryVaultStore vault;
@@ -61,6 +62,116 @@ void main() {
     expect(indexed!.deleted, isTrue);
     expect(await repository.listDocuments(), isEmpty);
   });
+
+  test(
+    'global knowledge requires exact human approval at every write path',
+    () async {
+      final library = ResultLibrary(repository: repository);
+      await library.initialize();
+      final candidate = await library.proposeGlobalKnowledgeChange(
+        operation: GlobalKnowledgeOperation.create,
+        candidateId: 'gkc_create_approval',
+        proposal: const {
+          'title': '本学期安排',
+          'body': '2026 秋季学期共有 16 周。',
+          'facts': {'semester_start': '2026-09-01', 'week_count': 16},
+        },
+      );
+
+      expect(candidate.status, GlobalKnowledgeCandidateStatus.pending);
+      expect(await repository.listDocuments(), isEmpty);
+      await expectLater(
+        library.confirmGlobalKnowledgeChange(
+          candidate.id,
+          displayedDigest: 'sha256:changed',
+        ),
+        throwsStateError,
+      );
+      await expectLater(
+        repository.create(
+          type: ResultType.knowledge,
+          title: '绕过确认',
+          body: '不允许',
+          extensionFields: const {
+            globalKnowledgeScopeKey: globalKnowledgeScopeValue,
+          },
+        ),
+        throwsStateError,
+      );
+
+      final created = await library.confirmGlobalKnowledgeChange(
+        candidate.id,
+        displayedDigest: candidate.digest,
+      );
+      expect(created.document.isGlobalKnowledge, isTrue);
+      expect(created.document.extensionFields['global_facts'], {
+        'semester_start': '2026-09-01',
+        'week_count': 16,
+      });
+      expect(
+        (await repository.findGlobalKnowledgeCandidate(candidate.id))?.status,
+        GlobalKnowledgeCandidateStatus.applied,
+      );
+
+      final raw = vault.files[created.document.markdownPath]!;
+      final currentHash = repository.hashMarkdown(raw);
+      await expectLater(
+        repository.save(created.document.copyWith(body: '直接篡改')),
+        throwsStateError,
+      );
+      await expectLater(
+        repository.delete(created.document.id),
+        throwsStateError,
+      );
+      await expectLater(
+        library.undoAction(created.action.id),
+        throwsStateError,
+      );
+
+      final updateCandidate = await library.proposeGlobalKnowledgeChange(
+        operation: GlobalKnowledgeOperation.update,
+        candidateId: 'gkc_update_approval',
+        targetId: created.document.id,
+        expectedRevision: created.document.revision,
+        expectedHash: currentHash,
+        proposal: const {
+          'title': '本学期安排（修订）',
+          'body': '2026 秋季学期共有 17 周。',
+          'facts': {'semester_start': '2026-09-01', 'week_count': 17},
+        },
+      );
+      final updated = await library.confirmGlobalKnowledgeChange(
+        updateCandidate.id,
+        displayedDigest: updateCandidate.digest,
+      );
+      expect(updated.document.title, '本学期安排（修订）');
+      expect(updated.document.isGlobalKnowledge, isTrue);
+
+      final updatedHash = repository.hashMarkdown(
+        vault.files[updated.document.markdownPath]!,
+      );
+      final deleteCandidate = await library.proposeGlobalKnowledgeChange(
+        operation: GlobalKnowledgeOperation.delete,
+        candidateId: 'gkc_delete_approval',
+        targetId: updated.document.id,
+        expectedRevision: updated.document.revision,
+        expectedHash: updatedHash,
+        proposal: const {},
+      );
+      final deleted = await library.confirmGlobalKnowledgeChange(
+        deleteCandidate.id,
+        displayedDigest: deleteCandidate.digest,
+      );
+      expect(deleted.document.deleted, isTrue);
+      expect(deleted.document.isGlobalKnowledge, isTrue);
+      await expectLater(
+        library.undoAction(deleted.action.id),
+        throwsStateError,
+      );
+      await library.shutdown();
+      library.dispose();
+    },
+  );
 
   test(
     'reversible result operations use CAS and undo with new revisions',

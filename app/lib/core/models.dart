@@ -238,6 +238,10 @@ enum ResultType {
   }
 }
 
+const globalKnowledgeScopeKey = 'knowledge_scope';
+
+const globalKnowledgeScopeValue = 'global';
+
 enum ResultStatus {
   draft('draft'),
   reviewed('reviewed'),
@@ -336,6 +340,81 @@ class ReversibleResultAction {
 }
 
 const _unsetReversibleValue = Object();
+
+enum GlobalKnowledgeOperation { create, update, delete }
+
+enum GlobalKnowledgeCandidateStatus {
+  pending,
+  approved,
+  applied,
+  rejected,
+  stale,
+  failed,
+}
+
+/// One exact, local proposal for a global knowledge change.
+/// [digest] binds approval to its operation, target version and payload.
+class GlobalKnowledgeCandidate {
+  GlobalKnowledgeCandidate({
+    required this.id,
+    required this.operation,
+    required this.status,
+    required Map<String, Object?> proposal,
+    required this.digest,
+    required this.createdAt,
+    required this.updatedAt,
+    this.targetId,
+    this.expectedRevision,
+    this.expectedHash,
+    this.sourceConversationId,
+    this.sourceMessageId,
+    this.resultId,
+    this.error,
+  }) : proposal = Map.unmodifiable(proposal);
+
+  final String id;
+  final GlobalKnowledgeOperation operation;
+  final GlobalKnowledgeCandidateStatus status;
+  final Map<String, Object?> proposal;
+  final String digest;
+  final String? targetId;
+  final int? expectedRevision;
+  final String? expectedHash;
+  final String? sourceConversationId;
+  final String? sourceMessageId;
+  final String? resultId;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final String? error;
+
+  GlobalKnowledgeCandidate copyWith({
+    GlobalKnowledgeCandidateStatus? status,
+    Object? resultId = _unsetGlobalKnowledge,
+    Object? error = _unsetGlobalKnowledge,
+    DateTime? updatedAt,
+  }) => GlobalKnowledgeCandidate(
+    id: id,
+    operation: operation,
+    status: status ?? this.status,
+    proposal: proposal,
+    digest: digest,
+    targetId: targetId,
+    expectedRevision: expectedRevision,
+    expectedHash: expectedHash,
+    sourceConversationId: sourceConversationId,
+    sourceMessageId: sourceMessageId,
+    resultId: identical(resultId, _unsetGlobalKnowledge)
+        ? this.resultId
+        : resultId as String?,
+    createdAt: createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    error: identical(error, _unsetGlobalKnowledge)
+        ? this.error
+        : error as String?,
+  );
+}
+
+const _unsetGlobalKnowledge = Object();
 
 class IndexRebuildDiagnostic {
   const IndexRebuildDiagnostic({required this.path, required this.message});
@@ -451,6 +530,10 @@ class ResultDocument {
   bool get isActionable => type == ResultType.todo || type == ResultType.event;
 
   bool get isInboxItem => status == ResultStatus.draft;
+
+  bool get isGlobalKnowledge =>
+      type == ResultType.knowledge &&
+      extensionFields[globalKnowledgeScopeKey] == globalKnowledgeScopeValue;
 
   ResultDocument copyWith({
     String? id,

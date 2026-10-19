@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -23,8 +24,8 @@ class SqliteIndexDatabase implements IndexDatabase {
         ..execute('PRAGMA foreign_keys = ON');
       final version =
           _database.select('PRAGMA user_version').single['user_version'] as int;
-      if (version > 4) {
-        throw StateError('索引数据库版本 $version 高于此应用支持的版本 4');
+      if (version > 5) {
+        throw StateError('索引数据库版本 $version 高于此应用支持的版本 5');
       }
       _database.execute('BEGIN EXCLUSIVE');
       _database
@@ -103,6 +104,26 @@ class SqliteIndexDatabase implements IndexDatabase {
           error TEXT
         )
       ''');
+      _database.execute('''
+        CREATE TABLE IF NOT EXISTS global_knowledge_candidates (
+          id TEXT PRIMARY KEY,
+          operation TEXT NOT NULL CHECK (operation IN ('create', 'update', 'delete')),
+          status TEXT NOT NULL CHECK (
+            status IN ('pending', 'approved', 'applied', 'rejected', 'stale', 'failed')
+          ),
+          target_id TEXT,
+          expected_revision INTEGER,
+          expected_hash TEXT,
+          proposal_json TEXT NOT NULL,
+          digest TEXT NOT NULL,
+          source_conversation_id TEXT,
+          source_message_id TEXT,
+          result_id TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          error TEXT
+        )
+      ''');
       if (version < 2) {
         _database.execute('PRAGMA user_version = 2');
       }
@@ -112,7 +133,7 @@ class SqliteIndexDatabase implements IndexDatabase {
           "ALTER TABLE objects ADD COLUMN search_text TEXT NOT NULL DEFAULT ''",
         );
       }
-      if (version < 4) _database.execute('PRAGMA user_version = 4');
+      if (version < 5) _database.execute('PRAGMA user_version = 5');
       _database.execute('COMMIT');
     } catch (_) {
       try {
@@ -391,6 +412,61 @@ class SqliteIndexDatabase implements IndexDatabase {
   }
 
   @override
+  Future<GlobalKnowledgeCandidate?> findGlobalKnowledgeCandidate(
+    String id,
+  ) async {
+    final rows = _database.select(
+      'SELECT * FROM global_knowledge_candidates WHERE id = ?',
+      [id],
+    );
+    return rows.isEmpty ? null : _globalKnowledgeCandidateFromRow(rows.first);
+  }
+
+  @override
+  Future<List<GlobalKnowledgeCandidate>> listGlobalKnowledgeCandidates() async {
+    final rows = _database.select(
+      'SELECT * FROM global_knowledge_candidates ORDER BY updated_at DESC',
+    );
+    return rows.map(_globalKnowledgeCandidateFromRow).toList(growable: false);
+  }
+
+  @override
+  Future<void> upsertGlobalKnowledgeCandidate(
+    GlobalKnowledgeCandidate candidate,
+  ) async {
+    _database.execute(
+      '''
+      INSERT INTO global_knowledge_candidates (
+        id, operation, status, target_id, expected_revision, expected_hash,
+        proposal_json, digest, source_conversation_id, source_message_id,
+        result_id, created_at, updated_at, error
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        status = excluded.status,
+        result_id = excluded.result_id,
+        updated_at = excluded.updated_at,
+        error = excluded.error
+      ''',
+      [
+        candidate.id,
+        candidate.operation.name,
+        candidate.status.name,
+        candidate.targetId,
+        candidate.expectedRevision,
+        candidate.expectedHash,
+        jsonEncode(candidate.proposal),
+        candidate.digest,
+        candidate.sourceConversationId,
+        candidate.sourceMessageId,
+        candidate.resultId,
+        candidate.createdAt.toIso8601String(),
+        candidate.updatedAt.toIso8601String(),
+        candidate.error,
+      ],
+    );
+  }
+
+  @override
   Future<SyncConflictRecord?> findConflict(String resultId) async {
     final rows = _database.select(
       'SELECT * FROM sync_conflicts WHERE result_id = ?',
@@ -464,6 +540,33 @@ class SqliteIndexDatabase implements IndexDatabase {
       undoUntil: DateTime.parse(row['undo_until'] as String),
       undoRevision: row['undo_revision'] as int?,
       undoHash: row['undo_hash'] as String?,
+      error: row['error'] as String?,
+    );
+  }
+
+  GlobalKnowledgeCandidate _globalKnowledgeCandidateFromRow(Row row) {
+    final proposal = jsonDecode(row['proposal_json'] as String);
+    if (proposal is! Map<String, dynamic>) {
+      throw const FormatException('全局知识候选 proposal_json 格式错误');
+    }
+    return GlobalKnowledgeCandidate(
+      id: row['id'] as String,
+      operation: GlobalKnowledgeOperation.values.byName(
+        row['operation'] as String,
+      ),
+      status: GlobalKnowledgeCandidateStatus.values.byName(
+        row['status'] as String,
+      ),
+      targetId: row['target_id'] as String?,
+      expectedRevision: row['expected_revision'] as int?,
+      expectedHash: row['expected_hash'] as String?,
+      proposal: proposal,
+      digest: row['digest'] as String,
+      sourceConversationId: row['source_conversation_id'] as String?,
+      sourceMessageId: row['source_message_id'] as String?,
+      resultId: row['result_id'] as String?,
+      createdAt: DateTime.parse(row['created_at'] as String),
+      updatedAt: DateTime.parse(row['updated_at'] as String),
       error: row['error'] as String?,
     );
   }
