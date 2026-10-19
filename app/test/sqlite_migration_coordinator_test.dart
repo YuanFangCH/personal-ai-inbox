@@ -30,7 +30,7 @@ void main() {
 
       await migration.prepare();
       _markMigrated(indexPath, version: 6);
-      _markMigrated(conversationPath, version: 3);
+      _markMigrated(conversationPath, version: 5);
       settings.values['device_id'] = 'device-after';
       await migration.rollback();
 
@@ -96,7 +96,7 @@ void main() {
       final conversationPath = '${directory.path}/conversations.sqlite3';
       _markMigrated(indexPath, version: 6);
       await expectLater(migration.complete(), throwsA(isA<StateError>()));
-      _markMigrated(conversationPath, version: 3);
+      _markMigrated(conversationPath, version: 5);
       await migration.complete();
 
       final state = jsonDecode(
@@ -178,6 +178,8 @@ void main() {
         ..execute('DROP TRIGGER IF EXISTS chat_messages_fts_delete')
         ..execute('DROP TABLE chat_messages_fts')
         ..execute('ALTER TABLE conversations DROP COLUMN ai_permissions_json')
+        ..execute('ALTER TABLE chat_messages DROP COLUMN reasoning_content')
+        ..execute('ALTER TABLE chat_messages DROP COLUMN tool_transcript_json')
         ..execute('PRAGMA user_version = 0');
       legacyChat.close();
 

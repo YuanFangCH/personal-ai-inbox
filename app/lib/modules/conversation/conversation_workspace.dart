@@ -264,6 +264,7 @@ class ConversationWorkspace extends ChangeNotifier {
     String conversationId, {
     String text = '',
     List<ChatAttachmentInput> attachments = const [],
+    bool thinkingEnabled = false,
   }) async {
     final normalized = text.trim();
     if (normalized.isEmpty && attachments.isEmpty) {
@@ -319,6 +320,7 @@ class ConversationWorkspace extends ChangeNotifier {
       conversationId,
       updatedConversation,
       userMessageId: userMessage.id,
+      thinkingEnabled: thinkingEnabled,
     );
   }
 
@@ -326,6 +328,7 @@ class ConversationWorkspace extends ChangeNotifier {
     String conversationId,
     Conversation updatedConversation, {
     required String userMessageId,
+    bool thinkingEnabled = false,
     Set<String> excludedMessageIds = const {},
   }) async {
     final now = DateTime.now();
@@ -360,6 +363,8 @@ class ConversationWorkspace extends ChangeNotifier {
     notifyListeners();
 
     final toolCalls = <int, ToolCallAccumulator>{};
+    final reasoningContent = StringBuffer();
+    final toolTranscript = <Map<String, dynamic>>[];
     var lastPersistAt = DateTime.now();
     ChatStreamTermination? termination;
     final done = Completer<void>();
@@ -368,6 +373,7 @@ class ConversationWorkspace extends ChangeNotifier {
       final stream = await _chatService.streamReply(
         conversationId: conversationId,
         excludedMessageIds: excludedMessageIds,
+        thinkingEnabled: thinkingEnabled,
       );
       if (!_cancelChatRequested) {
         _chatSubscription = stream.listen(
@@ -384,6 +390,12 @@ class ConversationWorkspace extends ChangeNotifier {
                 updatedAt: DateTime.now(),
               );
               _replaceMessage(assistant);
+            }
+            if (delta.reasoningContent.isNotEmpty) {
+              reasoningContent.write(delta.reasoningContent);
+            }
+            if (delta.toolTranscript.isNotEmpty) {
+              toolTranscript.addAll(delta.toolTranscript);
             }
             if (delta.toolCallIndex != null) {
               final index = delta.toolCallIndex!;
@@ -440,6 +452,13 @@ class ConversationWorkspace extends ChangeNotifier {
           updatedAt: DateTime.now(),
         );
       } else {
+        assistant = assistant.copyWith(
+          reasoningContent: reasoningContent.toString(),
+          toolTranscript: List.unmodifiable(toolTranscript),
+          updatedAt: DateTime.now(),
+        );
+        await _saveMessage(assistant);
+        _replaceMessage(assistant);
         generation = generation.copyWith(
           status: GenerationStatus.responseReady,
           responseText: assistant.content,

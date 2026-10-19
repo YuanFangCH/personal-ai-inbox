@@ -82,6 +82,26 @@ void main() {
               operation: AutoRecordOperation.update,
             ),
           ],
+          reasoningContent: 'hidden model reasoning',
+          toolTranscript: const [
+            {
+              'role': 'assistant',
+              'reasoning_content': 'hidden tool reasoning',
+              'tool_calls': [
+                {
+                  'id': 'call_search',
+                  'type': 'function',
+                  'function': {'name': 'search_results', 'arguments': '{}'},
+                },
+              ],
+            },
+            {
+              'role': 'tool',
+              'tool_call_id': 'call_search',
+              'name': 'search_results',
+              'content': '{"hits":[]}',
+            },
+          ],
         ),
       );
       await store.upsertGeneration(
@@ -116,6 +136,8 @@ void main() {
       expect(message.attachments.single.fileName, 'test.jpg');
       expect(message.actions.single.resultId, 'td_test');
       expect(message.actions.single.operation, AutoRecordOperation.update);
+      expect(message.reasoningContent, 'hidden model reasoning');
+      expect(message.toolTranscript, hasLength(2));
       expect(
         (await reopened.searchMessages(
           query: '十六周',

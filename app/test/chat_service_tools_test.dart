@@ -74,6 +74,7 @@ void main() {
             'choices': [
               {
                 'delta': {
+                  'reasoning_content': '内部推理不得展示。',
                   'tool_calls': [
                     {
                       'index': 0,
@@ -107,6 +108,7 @@ void main() {
 
       final deltas = await (await service.streamReply(
         conversationId: current.id,
+        thinkingEnabled: true,
       )).toList();
       expect(requests, hasLength(2));
       final firstTools = requests.first['tools'] as List;
@@ -115,12 +117,24 @@ void main() {
         contains('search_other_conversations'),
       );
       final secondMessages = requests.last['messages'] as List;
+      expect(requests.first['thinking'], {'type': 'enabled'});
+      expect(requests.first['reasoning_effort'], 'high');
+      expect(requests.last['thinking'], {'type': 'enabled'});
+      final assistantToolMessage = secondMessages.cast<Map>().singleWhere(
+        (message) =>
+            message['role'] == 'assistant' && message['tool_calls'] != null,
+      );
+      expect(assistantToolMessage['reasoning_content'], '内部推理不得展示。');
       final toolMessage = secondMessages.cast<Map>().singleWhere(
         (message) => message['role'] == 'tool',
       );
       expect(toolMessage['content'], contains('数学作业在周五提交'));
       expect(toolMessage['content'], contains(previous.id));
       expect(deltas.map((delta) => delta.content).join(), '上次记录为周五提交。');
+      expect(
+        deltas.map((delta) => delta.reasoningContent).join(),
+        isNot(contains('内部推理')),
+      );
       expect(deltas.last.termination, ChatStreamTermination.completed);
       service.close();
       await chats.close();

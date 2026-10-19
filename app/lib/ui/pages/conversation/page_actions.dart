@@ -11,6 +11,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
   String? _conversationId;
   AiPermissions _temporaryPermissions = const AiPermissions();
   bool _temporaryPermissionsInitialized = false;
+  bool _thinkingEnabled = false;
 
   void _initializeConversationPage() {
     _conversationId = widget.conversationId;
@@ -56,6 +57,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
         conversationId,
         text: text,
         attachments: attachments,
+        thinkingEnabled: _thinkingEnabled,
       );
     } finally {
       if (mounted) {
@@ -117,6 +119,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
         _textController.clear();
         _imageInputs.clear();
         _historySearchController.clear();
+        _thinkingEnabled = false;
         _lastMessageCount = 0;
       });
       return;
@@ -347,6 +350,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
       _lastMessageCount = -1;
       _textController.clear();
       _imageInputs.clear();
+      _thinkingEnabled = false;
     });
   }
 
@@ -516,6 +520,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
         _lastMessageCount = 0;
         _textController.clear();
         _imageInputs.clear();
+        _thinkingEnabled = false;
       });
     } else if (mounted && conversation.id == _conversationId) {
       Navigator.pop(context);

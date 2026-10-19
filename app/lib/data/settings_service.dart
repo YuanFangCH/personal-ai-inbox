@@ -248,6 +248,7 @@ class SettingsService {
         'vision': settings.capabilityOverrides.vision,
         'tool_calls': settings.capabilityOverrides.toolCalls,
         'json_output': settings.capabilityOverrides.jsonOutput,
+        'thinking': settings.capabilityOverrides.thinking,
       },
       'response_header_timeout_seconds': settings.responseHeaderTimeoutSeconds,
       'stream_idle_timeout_seconds': settings.streamIdleTimeoutSeconds,
@@ -303,6 +304,7 @@ class SettingsService {
         vision: _nullableBool(capabilities, 'vision'),
         toolCalls: _nullableBool(capabilities, 'tool_calls'),
         jsonOutput: _nullableBool(capabilities, 'json_output'),
+        thinking: _nullableBool(capabilities, 'thinking'),
       ),
       responseHeaderTimeoutSeconds: _requiredInt(
         values,
@@ -403,6 +405,7 @@ class SettingsService {
       'vision': settings.capabilityOverrides.vision,
       'tool_calls': settings.capabilityOverrides.toolCalls,
       'json_output': settings.capabilityOverrides.jsonOutput,
+      'thinking': settings.capabilityOverrides.thinking,
     },
     'response_header_timeout_seconds': settings.responseHeaderTimeoutSeconds,
     'stream_idle_timeout_seconds': settings.streamIdleTimeoutSeconds,
@@ -438,6 +441,7 @@ class SettingsService {
         vision: _nullableBool(overrides, 'vision'),
         toolCalls: _nullableBool(overrides, 'tool_calls'),
         jsonOutput: _nullableBool(overrides, 'json_output'),
+        thinking: _nullableBool(overrides, 'thinking'),
       ),
       responseHeaderTimeoutSeconds:
           _intValue(map, 'response_header_timeout_seconds') ?? 45,

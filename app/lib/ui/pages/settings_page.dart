@@ -31,6 +31,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool? _visionOverride;
   bool? _toolCallsOverride;
   bool? _jsonOutputOverride;
+  bool? _thinkingOverride;
   bool _allowImageEgress = true;
   AiPermissions _defaultAiPermissions = const AiPermissions();
   bool _initialized = false;
@@ -67,6 +68,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _visionOverride = settings.capabilityOverrides.vision;
     _toolCallsOverride = settings.capabilityOverrides.toolCalls;
     _jsonOutputOverride = settings.capabilityOverrides.jsonOutput;
+    _thinkingOverride = settings.capabilityOverrides.thinking;
     _themeMode = materialThemeMode(settings.themeMode);
     _allowImageEgress = settings.allowImageEgress;
     _defaultAiPermissions = settings.defaultAiPermissions;
@@ -317,6 +319,12 @@ class _SettingsPageState extends State<SettingsPage> {
                     onChanged: (value) =>
                         setState(() => _jsonOutputOverride = value),
                   ),
+                  _capabilityDropdown(
+                    label: '深度思考能力',
+                    value: _thinkingOverride,
+                    onChanged: (value) =>
+                        setState(() => _thinkingOverride = value),
+                  ),
                   const SizedBox(height: 12),
                   _numberField(_headerTimeout, '响应头等待（5–120 秒）'),
                   _numberField(_idleTimeout, '流空闲期限（10–180 秒）'),
@@ -410,6 +418,7 @@ class _SettingsPageState extends State<SettingsPage> {
           vision: _visionOverride,
           toolCalls: _toolCallsOverride,
           jsonOutput: _jsonOutputOverride,
+          thinking: _thinkingOverride,
         ),
         responseHeaderTimeoutSeconds: _intOrInvalid(_headerTimeout),
         streamIdleTimeoutSeconds: _intOrInvalid(_idleTimeout),
@@ -499,6 +508,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _visionOverride = settings.capabilityOverrides.vision;
     _toolCallsOverride = settings.capabilityOverrides.toolCalls;
     _jsonOutputOverride = settings.capabilityOverrides.jsonOutput;
+    _thinkingOverride = settings.capabilityOverrides.thinking;
     _headerTimeout.text = '${settings.responseHeaderTimeoutSeconds}';
     _idleTimeout.text = '${settings.streamIdleTimeoutSeconds}';
     _totalTimeout.text = '${settings.totalTimeoutSeconds}';
@@ -697,6 +707,7 @@ class _SettingsPageState extends State<SettingsPage> {
       'vision': current.capabilityOverrides.vision,
       'tool_calls': current.capabilityOverrides.toolCalls,
       'json_output': current.capabilityOverrides.jsonOutput,
+      'thinking': current.capabilityOverrides.thinking,
     };
     if (nextCapabilities is Map<String, dynamic> &&
         jsonEncode(nextCapabilities) != jsonEncode(currentCapabilities)) {

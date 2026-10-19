@@ -19,7 +19,7 @@ class SqliteMigrationCoordinator implements MigrationCoordinator {
 
   static const _indexFile = 'index.sqlite3';
   static const _conversationFile = 'conversations.sqlite3';
-  static const _supportedVersions = {_indexFile: 6, _conversationFile: 3};
+  static const _supportedVersions = {_indexFile: 6, _conversationFile: 5};
 
   final String supportPath;
   final SettingsService _settings;

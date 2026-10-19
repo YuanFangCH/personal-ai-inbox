@@ -110,8 +110,8 @@ class _ConversationPageState extends State<ConversationPage>
     }
     final modelReady = settings.hasModelKey;
     final imageEgressAllowed = settings.allowImageEgress;
-    final modelName = settings.modelName;
-    final imageCapability = ModelCapabilities.forModel(modelName).vision;
+    final modelCapabilities = ModelCapabilities.resolve(settings);
+    final imageCapability = modelCapabilities.vision;
     final activeCandidates = results.globalKnowledgeCandidates
         .where(
           (candidate) =>
@@ -154,6 +154,11 @@ class _ConversationPageState extends State<ConversationPage>
           attachments: _imageInputs,
           enabled: modelReady,
           imageEnabled: modelReady && imageEgressAllowed && imageCapability,
+          thinkingAvailable: modelReady && modelCapabilities.thinking,
+          thinkingEnabled: _thinkingEnabled,
+          webSearchAvailable: modelReady && modelCapabilities.webSearch,
+          onThinkingChanged: (value) =>
+              setState(() => _thinkingEnabled = value),
           generating: app.isChatGenerating,
           onPickGallery: _pickGallery,
           onPickCamera: _pickCamera,

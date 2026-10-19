@@ -6,6 +6,10 @@ class _Composer extends StatelessWidget {
     required this.attachments,
     required this.enabled,
     required this.imageEnabled,
+    required this.thinkingAvailable,
+    required this.thinkingEnabled,
+    required this.webSearchAvailable,
+    required this.onThinkingChanged,
     required this.generating,
     required this.onPickGallery,
     required this.onPickCamera,
@@ -19,6 +23,10 @@ class _Composer extends StatelessWidget {
   final List<ChatAttachmentInput> attachments;
   final bool enabled;
   final bool imageEnabled;
+  final bool thinkingAvailable;
+  final bool thinkingEnabled;
+  final bool webSearchAvailable;
+  final ValueChanged<bool> onThinkingChanged;
   final bool generating;
   final VoidCallback onPickGallery;
   final VoidCallback onPickCamera;
@@ -124,16 +132,22 @@ class _Composer extends StatelessWidget {
                             scrollDirection: Axis.horizontal,
                             child: Row(
                               children: [
-                                const _UnavailableComposerChip(
+                                _ComposerCapabilityChip(
                                   icon: Icons.blur_on_outlined,
                                   label: '深度思考',
+                                  enabled: thinkingAvailable,
+                                  selected: thinkingEnabled,
                                   tooltip: '当前模型端点暂不支持此能力',
+                                  onSelected: onThinkingChanged,
                                 ),
                                 const SizedBox(width: 6),
-                                const _UnavailableComposerChip(
+                                _ComposerCapabilityChip(
                                   icon: Icons.public,
                                   label: '智能搜索',
+                                  enabled: webSearchAvailable,
+                                  selected: false,
                                   tooltip: '当前模型接口未声明内置联网搜索能力',
+                                  onSelected: null,
                                 ),
                               ],
                             ),
@@ -232,24 +246,32 @@ class _Composer extends StatelessWidget {
   }
 }
 
-class _UnavailableComposerChip extends StatelessWidget {
-  const _UnavailableComposerChip({
+class _ComposerCapabilityChip extends StatelessWidget {
+  const _ComposerCapabilityChip({
     required this.icon,
     required this.label,
+    required this.enabled,
+    required this.selected,
     required this.tooltip,
+    this.onSelected,
   });
 
   final IconData icon;
   final String label;
+  final bool enabled;
+  final bool selected;
   final String tooltip;
+  final ValueChanged<bool>? onSelected;
 
   @override
   Widget build(BuildContext context) => Tooltip(
     message: tooltip,
-    child: ActionChip(
+    child: FilterChip(
       avatar: Icon(icon, size: 17),
       label: Text(label),
-      onPressed: null,
+      selected: selected,
+      showCheckmark: false,
+      onSelected: enabled ? onSelected : null,
       visualDensity: VisualDensity.compact,
     ),
   );

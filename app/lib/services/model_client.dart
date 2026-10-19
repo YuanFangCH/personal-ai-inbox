@@ -13,6 +13,7 @@ class ModelConfiguration {
     required this.model,
     required this.apiKey,
     this.capabilities = ModelCapabilities.textOnly,
+    this.thinkingParameterSupported = false,
     this.responseHeaderTimeout = const Duration(seconds: 45),
     this.streamIdleTimeout = const Duration(seconds: 60),
     this.totalTimeout = const Duration(seconds: 300),
@@ -22,6 +23,7 @@ class ModelConfiguration {
   final String model;
   final String apiKey;
   final ModelCapabilities capabilities;
+  final bool thinkingParameterSupported;
   final Duration responseHeaderTimeout;
   final Duration streamIdleTimeout;
   final Duration totalTimeout;
@@ -42,6 +44,7 @@ class ChatRequestMessage {
     this.toolCalls = const [],
     this.toolCallId,
     this.name,
+    this.reasoningContent = '',
   });
 
   final String role;
@@ -50,6 +53,7 @@ class ChatRequestMessage {
   final List<Map<String, dynamic>> toolCalls;
   final String? toolCallId;
   final String? name;
+  final String reasoningContent;
 }
 
 class ChatStreamDelta {
@@ -59,6 +63,8 @@ class ChatStreamDelta {
     this.toolCallId,
     this.toolCallName,
     this.toolArguments = '',
+    this.reasoningContent = '',
+    this.toolTranscript = const [],
     this.termination,
   });
 
@@ -67,6 +73,8 @@ class ChatStreamDelta {
   final String? toolCallId;
   final String? toolCallName;
   final String toolArguments;
+  final String reasoningContent;
+  final List<Map<String, dynamic>> toolTranscript;
   final ChatStreamTermination? termination;
 }
 
@@ -161,6 +169,7 @@ class ModelClient {
     required DateTime now,
     String? systemPrompt,
     List<Map<String, dynamic>>? tools,
+    bool thinkingEnabled = false,
   }) async* {
     final endpoint = Uri.parse(
       '${configuration.baseUrl.replaceAll(RegExp(r'/$'), '')}/chat/completions',
@@ -181,6 +190,16 @@ class ModelClient {
             'model': configuration.model,
             'temperature': 0.2,
             'stream': true,
+            if (configuration.thinkingParameterSupported ||
+                configuration.capabilities.thinking) ...{
+              'thinking': {
+                'type': thinkingEnabled && configuration.capabilities.thinking
+                    ? 'enabled'
+                    : 'disabled',
+              },
+              if (thinkingEnabled && configuration.capabilities.thinking)
+                'reasoning_effort': 'high',
+            },
             'messages': [
               {
                 'role': 'system',
@@ -287,6 +306,15 @@ class ModelClient {
         }
         if (content is String && content.isNotEmpty) {
           yield ChatStreamDelta(content: content);
+        }
+        final reasoningContent = delta['reasoning_content'];
+        if (reasoningContent != null && reasoningContent is! String) {
+          throw const FormatException(
+            'Model stream reasoning content is not text',
+          );
+        }
+        if (reasoningContent is String && reasoningContent.isNotEmpty) {
+          yield ChatStreamDelta(reasoningContent: reasoningContent);
         }
         if (configuration.capabilities.toolCalls && toolCalls is List) {
           for (final rawCall in toolCalls) {
@@ -420,7 +448,16 @@ class ModelClient {
       return {
         'role': 'assistant',
         'content': message.text.isEmpty ? null : message.text,
+        if (message.reasoningContent.isNotEmpty)
+          'reasoning_content': message.reasoningContent,
         'tool_calls': message.toolCalls,
+      };
+    }
+    if (message.role == 'assistant' && message.reasoningContent.isNotEmpty) {
+      return {
+        'role': 'assistant',
+        'content': message.text,
+        'reasoning_content': message.reasoningContent,
       };
     }
     if (message.images.isEmpty) {

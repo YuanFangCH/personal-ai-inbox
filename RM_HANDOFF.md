@@ -6,12 +6,12 @@
 
 | 字段 | 当前值 |
 |---|---|
-| 项目名称 | 懒狗秘书（新显示名已确认，运行版本仍使用个人 AI 收件箱） |
+| 项目名称 | 懒狗秘书（已应用各端可见名称，旧版 `v1.1.2` 资产不重写） |
 | 最后更新时间 | 2026-10-20 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.1.2` 已预发布；懒狗秘书改造 S1 权限快照、S2 成果 CAS/撤销、S3 全局知识审批、S4 本地检索、S5 工具编排、S6 对话界面及 S7 各端显示名已实现并局部验证；扩展功能和 100 例矩阵仍在进行 |
-| 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。成果索引 SQLite v6、会话库 v3（新增跨会话 FTS5 索引）；Markdown 仍为成果权威副本，未确认全局知识候选留在本地索引库。工具链固定 Flutter 3.47.6 / Dart 3.13.5。本轮为主机测试与三端模拟器/桌面验收，未连接真实云盘或真实模型 Key。`v1.1.2` GitHub 预发布版仍使用 Debug 证书，Windows 包未代码签名；OneDrive、百度网盘、通知和真实跨端同步尚未完成。 |
+| 当前阶段 | `v1.1.2` 已预发布；懒狗秘书改造 S1–S8（权限、成果操作、知识审批、检索、模型工具、界面、更名、thinking mode）已实现并局部验证；文件、语音及三端 100 例矩阵仍在进行 |
+| 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。成果索引 SQLite v6、会话库 v5（跨会话 FTS5、隐藏 reasoning 与 tool transcript）；Markdown 仍为成果权威副本，未确认全局知识候选留在本地索引库。工具链固定 Flutter 3.47.6 / Dart 3.13.5。thinking 仅对已知 DeepSeek API host 启用/可手工覆盖；当前 Chat Completions 没有原生联网能力，联网按钮禁用。未连接真实云盘或模型 Key。OneDrive、百度网盘、通知和真实跨端同步尚未完成。`v1.1.2` GitHub 预发布版仍使用 Debug 证书，Windows 包未代码签名。 |
 
 ## 2. 一句话交接
 
@@ -114,6 +114,8 @@
 - 2026-10-20：S6 收件箱现直接打开未发送的新对话；会话抽屉可搜索、分组、继续及管理对话，桌面宽屏显示侧栏；顶部权限按会话保存，新对话继承总设置；待处理独立页包括草稿/采集确认/同步冲突/知识候选，设置页新增全局知识管理，候选在对话和待处理页共用同一审批状态；全局资料编辑/删除通过确认候选执行，通用成果编辑入口不显示。UI/设置/Workspace/生命周期/运行定向测试 16/16 通过，指定 analysis 无问题。报告见 [验证记录](test-results/secretary-s6-conversation-ui/verification.md)。文件、语音、思考/联网能力仍待后续阶段。
 
 - 2026-10-20：S7 将用户可见名统一为“懒狗秘书”：Android 标签、Flutter MaterialApp 标题、Windows 窗口标题/版本资源/安装器开始菜单和快捷方式、Web 页面/manifest、根与客户端 README、包描述。Android 包 ID、pub package 名、Windows AppId/安装目录/EXE 内名与数据路径均保持。标题 widget 测试 1/1 通过；Android release APK、Windows release、Web release 构建通过，APK badging 确认 label 并确认 package ID `com.yuanfang.aitext.personal_ai_inbox` 未变。指定分析无问题。Inno Setup 编译器本机未安装，安装器脚本只完成源文案检查，未执行编译。见 [验证记录](test-results/secretary-s7-branding/verification.md)。
+
+- 2026-10-20：S8 接入 DeepSeek `deepseek-flash` 在已知 `api.deepseek.com` Chat Completions 上的 thinking 参数和 reasoning/tool transcript 回传；配置覆盖可关闭或声明其他端点能力，未知端点默认关闭。隐藏推理存于会话 SQLite v5，不显示、不进入成果同步。联网因当前 `/chat/completions` 无服务器内置 `web_search` 声明而禁用，不调用独立 Search API 或切 Responses 协议。九个定向测试文件 37/37 通过，指定 analysis 无问题；依据见[模型接入](docs/model-integration.md)，未使用真实模型 Key。
 
 - 2026-10-20：S2 普通成果 CAS 更新/删除与持久化撤销账本已实现，索引迁移升至 v4；28 项 repository/index/migration/capture 定向测试及指定文件 analysis 均通过。报告见 [验证记录](test-results/secretary-s2-result-actions/verification.md)。AI 工具尚未连接。
 
@@ -329,7 +331,7 @@
 
 ### 下一步
 
-当前优先：实现 S8–S10 深度思考/内置联网、文件和语音能力，随后建立/执行三端矩阵；已完成 S1–S7 不重跑同范围验证。无需重问已确认产品选择；业务修改完成后执行 SEC-001–100 三端矩阵（50/25/25），保存逐例证据并对受影响例定向重跑。新增收费语音服务需呈现具体选择；受控 Provider 不能冒充真实云盘接入。以下为既有后续工作。
+当前优先：实现 S9 文件处理与 S10 语音，再做 S11–S12 新矩阵接线与 50/25/25 验收；已完成 S1–S8 不重跑同范围验证。无需重问已确认产品选择；业务修改完成后执行 SEC-001–100 三端矩阵（50/25/25），保存逐例证据并对受影响例定向重跑。新增收费语音服务需呈现具体选择；受控 Provider 不能冒充真实云盘接入。以下为既有后续工作。
 
 1. 发布前按发布门禁运行完整测试套件，并在三端执行 `scripts/verify-realistic-e2e.ps1`；矩阵已可重复运行，但每次约需 16 分钟纯用例时间。
 2. 若转入生产用户数据，先执行升级与备份恢复演练；真实云盘、通知、签名和物理断电专项需另行验收。
@@ -337,6 +339,16 @@
 4. 后续代码任务按 `AGENTS.md` 的增量测试范围执行；测试结论记录执行范围与未验证项，临时测试仅在用户要求时清理。
 
 ## 8. 变更记录
+
+### 2026-10-20 / 实现 S8 DeepSeek thinking mode 与联网能力边界
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 为已声明支持的 DeepSeek Chat Completions 加会话级 thinking 开关；按官方工具往返契约保留隐藏 reasoning/tool transcript 于本机并回传；未知端点默认禁用，设置可覆盖思考能力；联网按钮因当前 API 路径未声明原生 `web_search` 而保持禁用 |
+| 变更文件 | `core/models.dart` 设置能力覆盖、settings service/page、`services/model_capabilities.dart`/`model_client.dart`/`chat_service.dart`、会话消息 schema v5 与迁移协调器、会话/模型/工具/能力/设置/迁移测试、模型接入说明和验证记录 |
+| 验证 | 10 个定向 Flutter 测试文件 37/37 通过；reasoning 参数、工具往返及隐藏推理、会话 transcript 存储/迁移、默认禁用联网和能力声明均覆盖；指定 analysis 无问题，格式零差异。未连接真实模型 Key；未执行设备矩阵/全项目全量测试 |
+| 提交标题 | `feat(ai): 支持thinking模式并禁用未支持联网` |
+| 遗留事项 | DeepSeek Thinking Mode 未做真实计费/工具流联调；联网搜索只有在当前接口未来原生支持后才启用；文件与语音进入 S9/S10 |
 
 ### 2026-10-20 / 完成 S7 懒狗秘书各端显示名称
 

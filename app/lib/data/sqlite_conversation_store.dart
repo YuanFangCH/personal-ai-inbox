@@ -29,8 +29,8 @@ class SqliteConversationStore implements ConversationStore {
         ..execute('PRAGMA foreign_keys = ON');
       final version =
           _database.select('PRAGMA user_version').single['user_version'] as int;
-      if (version > 3) {
-        throw StateError('会话数据库版本 $version 高于此应用支持的版本 3');
+      if (version > 5) {
+        throw StateError('会话数据库版本 $version 高于此应用支持的版本 5');
       }
       _database.execute('BEGIN EXCLUSIVE');
       _database
@@ -56,6 +56,8 @@ class SqliteConversationStore implements ConversationStore {
           attachments_json TEXT NOT NULL,
           actions_json TEXT NOT NULL,
           error TEXT,
+          reasoning_content TEXT NOT NULL DEFAULT '',
+          tool_transcript_json TEXT NOT NULL DEFAULT '[]',
           FOREIGN KEY (conversation_id)
             REFERENCES conversations(id) ON DELETE CASCADE
         )
@@ -87,6 +89,19 @@ class SqliteConversationStore implements ConversationStore {
         _database.execute(
           '''ALTER TABLE conversations ADD COLUMN ai_permissions_json
           TEXT NOT NULL DEFAULT '{"read":true,"create":true,"modify_delete":true}' ''',
+        );
+      }
+      final messageColumns = _database.select(
+        'PRAGMA table_info(chat_messages)',
+      );
+      if (!messageColumns.any((row) => row['name'] == 'reasoning_content')) {
+        _database.execute(
+          "ALTER TABLE chat_messages ADD COLUMN reasoning_content TEXT NOT NULL DEFAULT ''",
+        );
+      }
+      if (!messageColumns.any((row) => row['name'] == 'tool_transcript_json')) {
+        _database.execute(
+          "ALTER TABLE chat_messages ADD COLUMN tool_transcript_json TEXT NOT NULL DEFAULT '[]'",
         );
       }
       _database
@@ -121,7 +136,7 @@ class SqliteConversationStore implements ConversationStore {
           );
         }
       }
-      _database.execute('PRAGMA user_version = 3');
+      _database.execute('PRAGMA user_version = 5');
       _database.execute('COMMIT');
     } catch (_) {
       try {
@@ -256,15 +271,18 @@ class SqliteConversationStore implements ConversationStore {
       '''
       INSERT INTO chat_messages (
         id, conversation_id, role, content, status, created_at, updated_at,
-        attachments_json, actions_json, error
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        attachments_json, actions_json, error, reasoning_content,
+        tool_transcript_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         content = excluded.content,
         status = excluded.status,
         updated_at = excluded.updated_at,
         attachments_json = excluded.attachments_json,
         actions_json = excluded.actions_json,
-        error = excluded.error
+        error = excluded.error,
+        reasoning_content = excluded.reasoning_content,
+        tool_transcript_json = excluded.tool_transcript_json
       ''',
       [
         message.id,
@@ -279,6 +297,8 @@ class SqliteConversationStore implements ConversationStore {
         ),
         jsonEncode(message.actions.map((action) => action.toJson()).toList()),
         message.error,
+        message.reasoningContent,
+        jsonEncode(message.toolTranscript),
       ],
     );
     _database.execute('DELETE FROM chat_messages_fts WHERE id = ?', [
@@ -471,6 +491,14 @@ class SqliteConversationStore implements ConversationStore {
           )
           .toList(growable: false),
       error: row['error'] as String?,
+      reasoningContent: row['reasoning_content'] as String? ?? '',
+      toolTranscript: _decodeList(row['tool_transcript_json'])
+          .whereType<Map>()
+          .map(
+            (value) =>
+                value.map((key, value) => MapEntry(key.toString(), value)),
+          )
+          .toList(growable: false),
     );
   }
 
