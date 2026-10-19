@@ -46,6 +46,14 @@ abstract interface class IndexDatabase {
 
   Future<void> removeReversibleAction(String id);
 
+  Future<GlobalKnowledgeCandidate?> findGlobalKnowledgeCandidate(String id);
+
+  Future<List<GlobalKnowledgeCandidate>> listGlobalKnowledgeCandidates();
+
+  Future<void> upsertGlobalKnowledgeCandidate(
+    GlobalKnowledgeCandidate candidate,
+  );
+
   Future<SyncConflictRecord?> findConflict(String resultId);
 
   Future<void> upsertConflict(SyncConflictRecord conflict);

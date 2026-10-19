@@ -7,6 +7,7 @@ class MemoryIndexDatabase implements IndexDatabase {
   final Map<String, IdempotentOperation> _operations = {};
   final Map<String, SyncConflictRecord> _conflicts = {};
   final Map<String, ReversibleResultAction> _reversibleActions = {};
+  final Map<String, GlobalKnowledgeCandidate> _globalKnowledgeCandidates = {};
 
   @override
   Future<void> open() async {}
@@ -127,6 +128,38 @@ class MemoryIndexDatabase implements IndexDatabase {
   @override
   Future<void> removeReversibleAction(String id) async {
     _reversibleActions.remove(id);
+  }
+
+  @override
+  Future<GlobalKnowledgeCandidate?> findGlobalKnowledgeCandidate(
+    String id,
+  ) async => _globalKnowledgeCandidates[id];
+
+  @override
+  Future<List<GlobalKnowledgeCandidate>>
+  listGlobalKnowledgeCandidates() async =>
+      _globalKnowledgeCandidates.values.toList(growable: false);
+
+  @override
+  Future<void> upsertGlobalKnowledgeCandidate(
+    GlobalKnowledgeCandidate candidate,
+  ) async {
+    _globalKnowledgeCandidates[candidate.id] = GlobalKnowledgeCandidate(
+      id: candidate.id,
+      operation: candidate.operation,
+      status: candidate.status,
+      proposal: candidate.proposal,
+      digest: candidate.digest,
+      targetId: candidate.targetId,
+      expectedRevision: candidate.expectedRevision,
+      expectedHash: candidate.expectedHash,
+      sourceConversationId: candidate.sourceConversationId,
+      sourceMessageId: candidate.sourceMessageId,
+      resultId: candidate.resultId,
+      createdAt: candidate.createdAt,
+      updatedAt: candidate.updatedAt,
+      error: candidate.error,
+    );
   }
 
   @override
