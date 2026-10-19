@@ -8,6 +8,7 @@ import '../app_scope.dart';
 import '../presentation/domain_presentation.dart';
 import '../widgets/common.dart';
 import 'document_editor_page.dart';
+import 'global_knowledge_page.dart';
 
 class DocumentDetailPage extends StatelessWidget {
   const DocumentDetailPage({super.key, required this.documentId});
@@ -42,26 +43,38 @@ class DocumentDetailPage extends StatelessWidget {
       appBar: AppBar(
         title: Text(resultTypeLabel(document.type)),
         actions: [
-          IconButton(
-            tooltip: '编辑',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => DocumentEditorPage(document: document),
+          if (document.isGlobalKnowledge)
+            IconButton(
+              tooltip: '管理全局知识',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const GlobalKnowledgePage(),
+                ),
               ),
+              icon: const Icon(Icons.lightbulb_outline),
+            )
+          else ...[
+            IconButton(
+              tooltip: '编辑',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => DocumentEditorPage(document: document),
+                ),
+              ),
+              icon: const Icon(Icons.edit_outlined),
             ),
-            icon: const Icon(Icons.edit_outlined),
-          ),
-          PopupMenuButton<String>(
-            tooltip: '更多',
-            onSelected: (value) async {
-              if (value == 'delete') {
-                await _confirmDelete(context, document);
-              }
-            },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'delete', child: Text('删除并保留墓碑')),
-            ],
-          ),
+            PopupMenuButton<String>(
+              tooltip: '更多',
+              onSelected: (value) async {
+                if (value == 'delete') {
+                  await _confirmDelete(context, document);
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'delete', child: Text('删除并保留墓碑')),
+              ],
+            ),
+          ],
         ],
       ),
       body: PageFrame(

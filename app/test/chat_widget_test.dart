@@ -102,15 +102,12 @@ void main() {
 
     await tester.tap(find.byKey(const Key('nav_inbox')));
     await tester.pumpAndSettle();
+    expect(find.byKey(const Key('chat_input')), findsOneWidget);
+    expect(find.text('你好，我是懒狗秘书'), findsOneWidget);
     await tester.tap(find.byKey(const Key('inbox_new_conversation')));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('chat_input')), findsOneWidget);
-    expect(controller.conversations, isEmpty);
-
-    await tester.pageBack();
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('page_inbox')), findsOneWidget);
     expect(controller.conversations, isEmpty);
     controller.dispose();
   });

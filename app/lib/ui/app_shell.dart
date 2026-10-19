@@ -13,7 +13,7 @@ import 'widgets/capture_sheet.dart';
 
 enum AppPage {
   home('首页', Icons.space_dashboard_outlined),
-  inbox('收件箱', Icons.inbox_outlined),
+  inbox('秘书', Icons.forum_outlined),
   calendar('日历', Icons.calendar_month_outlined),
   matters('事项', Icons.account_tree_outlined),
   knowledge('知识', Icons.menu_book_outlined),
@@ -95,7 +95,7 @@ class _AppShellState extends State<AppShell> {
           ),
         );
         return Scaffold(
-          resizeToAvoidBottomInset: false,
+          resizeToAvoidBottomInset: true,
           body: Stack(
             children: [
               Positioned.fill(
@@ -135,20 +135,15 @@ class _AppShellState extends State<AppShell> {
               ),
             ],
           ),
-          floatingActionButton: constraints.maxWidth < 600
+          floatingActionButton:
+              constraints.maxWidth < 600 || _page == AppPage.inbox
               ? null
               : FloatingActionButton.extended(
                   key: const Key('capture_button'),
-                  onPressed: _page == AppPage.inbox
-                      ? _newConversation
-                      : () => showCaptureSheet(context),
-                  icon: Icon(
-                    _page == AppPage.inbox
-                        ? Icons.add_comment_outlined
-                        : Icons.add,
-                  ),
-                  label: Text(_page == AppPage.inbox ? '新对话' : '收下'),
-                  tooltip: _page == AppPage.inbox ? '新对话' : '捕获',
+                  onPressed: () => showCaptureSheet(context),
+                  icon: const Icon(Icons.add),
+                  label: const Text('收下'),
+                  tooltip: '捕获',
                 ),
           bottomNavigationBar: wide
               ? null
@@ -176,7 +171,7 @@ class _AppShellState extends State<AppShell> {
                     NavigationDestination(
                       icon: Icon(Icons.inbox_outlined, key: Key('nav_inbox')),
                       selectedIcon: Icon(Icons.inbox, key: Key('nav_inbox')),
-                      label: '收件箱',
+                      label: '秘书',
                     ),
                     NavigationDestination(
                       icon: Icon(
@@ -202,10 +197,6 @@ class _AppShellState extends State<AppShell> {
         );
       },
     );
-  }
-
-  Future<void> _newConversation() async {
-    await openNewConversationPage(context);
   }
 
   Widget _pageFor(AppPage page) {
@@ -290,7 +281,7 @@ class _WideNavigation extends StatelessWidget {
                   Icon(Icons.all_inbox, color: theme.colorScheme.primary),
                   const SizedBox(width: 9),
                   Text(
-                    '个人收件箱',
+                    '懒狗秘书',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -316,7 +307,7 @@ class _WideNavigation extends StatelessWidget {
   IconData _selectedIcon(AppPage page) {
     return switch (page) {
       AppPage.home => Icons.space_dashboard,
-      AppPage.inbox => Icons.inbox,
+      AppPage.inbox => Icons.forum,
       AppPage.calendar => Icons.calendar_month,
       AppPage.matters => Icons.account_tree,
       AppPage.knowledge => Icons.menu_book,

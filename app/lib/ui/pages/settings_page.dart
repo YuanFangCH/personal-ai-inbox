@@ -8,6 +8,7 @@ import '../../domain/app_failure.dart';
 import '../app_scope.dart';
 import '../presentation/domain_presentation.dart';
 import '../widgets/common.dart';
+import 'global_knowledge_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -142,6 +143,22 @@ class _SettingsPageState extends State<SettingsPage> {
                       setState(() => _themeMode = value.first),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SurfacePanel(
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              key: const Key('settings_global_knowledge'),
+              leading: const Icon(Icons.lightbulb_outline),
+              title: const Text('全局知识库'),
+              subtitle: const Text('管理经确认并同步的基础事实'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const GlobalKnowledgePage(),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 16),

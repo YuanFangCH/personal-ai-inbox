@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/chat_models.dart';
+import '../../core/models.dart';
 import '../../modules/conversation/conversation_workspace.dart';
 import '../../services/image_input_service.dart';
 import '../../services/model_capabilities.dart';
@@ -10,6 +12,9 @@ import '../app_scope.dart';
 import '../presentation/domain_presentation.dart';
 import '../widgets/common.dart';
 import 'document_detail_page.dart';
+import 'global_knowledge_page.dart';
+import 'pending_page.dart';
+import '../widgets/global_knowledge_candidate_card.dart';
 
 part 'conversation/attachment_preview.dart';
 part 'conversation/auto_record_card.dart';
@@ -31,9 +36,10 @@ Future<void> openNewConversationPage(BuildContext context) {
 }
 
 class ConversationPage extends StatefulWidget {
-  const ConversationPage({super.key, this.conversationId});
+  const ConversationPage({super.key, this.conversationId, this.isRoot = false});
 
   final String? conversationId;
+  final bool isRoot;
 
   @override
   State<ConversationPage> createState() => _ConversationPageState();
@@ -41,6 +47,17 @@ class ConversationPage extends StatefulWidget {
 
 class _ConversationPageState extends State<ConversationPage>
     with _ConversationPageActions {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_temporaryPermissionsInitialized) {
+      _temporaryPermissions = AppScope.preferences(context)
+          .settings
+          .defaultAiPermissions;
+      _temporaryPermissionsInitialized = true;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -59,6 +76,9 @@ class _ConversationPageState extends State<ConversationPage>
       animation: Listenable.merge([
         AppScope.conversations(context),
         AppScope.preferences(context),
+        AppScope.results(context),
+        AppScope.capture(context),
+        AppScope.sync(context),
       ]),
       builder: (context, _) => _buildConversation(context),
     );
@@ -67,6 +87,7 @@ class _ConversationPageState extends State<ConversationPage>
   Widget _buildConversation(BuildContext context) {
     final app = AppScope.conversations(context);
     final settings = AppScope.preferences(context).settings;
+    final results = AppScope.results(context);
     final conversationId = _conversationId;
     final conversation = conversationId == null
         ? null
@@ -91,16 +112,97 @@ class _ConversationPageState extends State<ConversationPage>
     final imageEgressAllowed = settings.allowImageEgress;
     final modelName = settings.modelName;
     final imageCapability = ModelCapabilities.forModel(modelName).vision;
+    final activeCandidates = results.globalKnowledgeCandidates
+        .where(
+          (candidate) =>
+              candidate.sourceConversationId == conversationId &&
+              candidate.status != GlobalKnowledgeCandidateStatus.rejected,
+        )
+        .toList(growable: false);
+    final body = Column(
+      children: [
+        Expanded(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 980),
+              child: messages.isEmpty && activeCandidates.isEmpty
+                  ? const _SecretaryWelcome()
+                  : ListView(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+                      children: [
+                        for (final message in messages)
+                          _MessageBubble(message: message, app: app),
+                        for (final candidate in activeCandidates) ...[
+                          const SizedBox(height: 10),
+                          GlobalKnowledgeCandidateCard(
+                            candidate: candidate,
+                            results: results,
+                            showActions:
+                                candidate.status ==
+                                GlobalKnowledgeCandidateStatus.pending,
+                          ),
+                        ],
+                      ],
+                    ),
+            ),
+          ),
+        ),
+        _Composer(
+          controller: _textController,
+          attachments: _imageInputs,
+          enabled: modelReady,
+          imageEnabled: modelReady && imageEgressAllowed && imageCapability,
+          generating: app.isChatGenerating,
+          onPickGallery: _pickGallery,
+          onPickCamera: _pickCamera,
+          onPaste: _pasteText,
+          onRemoveImage: (index) =>
+              setState(() => _imageInputs.removeAt(index)),
+          onSend: _send,
+          onStop: app.cancelGeneration,
+        ),
+      ],
+    );
     return Scaffold(
+      drawer: Drawer(
+        child: SafeArea(
+          child: Builder(
+            builder: (drawerContext) => _buildSessionManager(
+              drawerContext,
+              app,
+              conversation,
+              inDrawer: true,
+            ),
+          ),
+        ),
+      ),
       appBar: AppBar(
+        leading: Builder(
+          builder: (context) => IconButton(
+            key: const Key('conversation_manage'),
+            tooltip: '对话管理',
+            onPressed: () => Scaffold.of(context).openDrawer(),
+            icon: const Icon(Icons.menu),
+          ),
+        ),
         title: Text(
-          conversation?.title ?? '新对话',
+          widget.isRoot ? '懒狗秘书' : conversation?.title ?? '懒狗秘书',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
         actions: [
           IconButton(
-            key: const Key('conversation_new'),
+            key: const Key('conversation_permissions'),
+            tooltip: '当前对话权限',
+            onPressed: () => _showPermissions(conversation),
+            icon: const Icon(Icons.tune_outlined),
+          ),
+          IconButton(
+            key: Key(
+              widget.isRoot ? 'inbox_new_conversation' : 'conversation_new',
+            ),
             tooltip: '新对话',
             onPressed: _newConversation,
             icon: const Icon(Icons.add_comment_outlined),
@@ -122,44 +224,65 @@ class _ConversationPageState extends State<ConversationPage>
             ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 980),
-                child: messages.isEmpty
-                    ? const EmptyState(
-                        icon: Icons.forum_outlined,
-                        title: '开始记录',
-                        message: '发送文字、粘贴内容或选择图片。',
-                      )
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
-                        itemCount: messages.length,
-                        itemBuilder: (context, index) =>
-                            _MessageBubble(message: messages[index], app: app),
-                      ),
+      body: LayoutBuilder(
+        builder: (context, constraints) =>
+            constraints.maxWidth >= 1200 && widget.isRoot
+            ? Row(
+                children: [
+                  SizedBox(
+                    width: 300,
+                    child: _buildSessionManager(
+                      context,
+                      app,
+                      conversation,
+                      inDrawer: false,
+                    ),
+                  ),
+                  const VerticalDivider(width: 1),
+                  Expanded(child: body),
+                ],
+              )
+            : body,
+      ),
+    );
+  }
+}
+
+class _SecretaryWelcome extends StatelessWidget {
+  const _SecretaryWelcome();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.auto_awesome,
+              size: 42,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(height: 18),
+            Text(
+              '你好，我是懒狗秘书',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
               ),
             ),
-          ),
-          _Composer(
-            controller: _textController,
-            attachments: _imageInputs,
-            enabled: modelReady,
-            imageEnabled: modelReady && imageEgressAllowed && imageCapability,
-            generating: app.isChatGenerating,
-            onPickGallery: _pickGallery,
-            onPickCamera: _pickCamera,
-            onPaste: _pasteText,
-            onRemoveImage: (index) =>
-                setState(() => _imageInputs.removeAt(index)),
-            onSend: _send,
-            onStop: app.cancelGeneration,
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              '可以帮你整理信息、安排日程、跟进待办和管理知识。',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

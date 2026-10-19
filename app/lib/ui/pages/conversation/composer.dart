@@ -32,115 +32,144 @@ class _Composer extends StatelessWidget {
     final theme = Theme.of(context);
     return SafeArea(
       top: false,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          border: Border(top: BorderSide(color: theme.dividerColor)),
-        ),
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 980),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (!enabled)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        '请先在设置中配置云端模型 API Key',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.error,
-                        ),
-                      ),
-                    ),
-                  if (attachments.isNotEmpty)
-                    SizedBox(
-                      height: 76,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: attachments.length,
-                        separatorBuilder: (_, _) => const SizedBox(width: 8),
-                        itemBuilder: (context, index) {
-                          final attachment = attachments[index];
-                          return Stack(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.memory(
-                                  attachment.bytes,
-                                  width: 72,
-                                  height: 72,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                              Positioned(
-                                top: 2,
-                                right: 2,
-                                child: IconButton.filledTonal(
-                                  visualDensity: VisualDensity.compact,
-                                  tooltip: '移除图片',
-                                  onPressed: () => onRemoveImage(index),
-                                  icon: const Icon(Icons.close, size: 16),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      IconButton(
-                        key: const Key('chat_gallery'),
-                        tooltip: '选择图片',
-                        onPressed: imageEnabled ? onPickGallery : null,
-                        icon: const Icon(Icons.photo_library_outlined),
-                      ),
-                      IconButton(
-                        key: const Key('chat_camera'),
-                        tooltip: '拍照',
-                        onPressed: imageEnabled ? onPickCamera : null,
-                        icon: const Icon(Icons.photo_camera_outlined),
-                      ),
-                      IconButton(
-                        key: const Key('chat_paste'),
-                        tooltip: '粘贴文本',
-                        onPressed: enabled ? onPaste : null,
-                        icon: const Icon(Icons.content_paste_outlined),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: TextField(
-                          key: const Key('chat_input'),
-                          controller: controller,
-                          enabled: enabled,
-                          minLines: 1,
-                          maxLines: 6,
-                          textInputAction: TextInputAction.newline,
-                          decoration: const InputDecoration(hintText: '输入消息'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton.filled(
-                        key: const Key('chat_send'),
-                        tooltip: generating ? '停止生成' : '发送',
-                        onPressed: enabled
-                            ? generating
-                                  ? onStop
-                                  : onSend
-                            : null,
-                        icon: Icon(
-                          generating ? Icons.stop : Icons.arrow_upward,
-                        ),
-                      ),
-                    ],
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 980),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(color: theme.dividerColor),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 18,
+                    offset: const Offset(0, 4),
                   ),
                 ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 8, 10, 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (!enabled)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Text(
+                          '请先在设置中配置云端模型 API Key',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    if (attachments.isNotEmpty) ...[
+                      SizedBox(
+                        height: 72,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: attachments.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 8),
+                          itemBuilder: (context, index) {
+                            final attachment = attachments[index];
+                            return Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.memory(
+                                    attachment.bytes,
+                                    width: 68,
+                                    height: 68,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 0,
+                                  right: 0,
+                                  child: IconButton.filledTonal(
+                                    visualDensity: VisualDensity.compact,
+                                    tooltip: '移除附件',
+                                    onPressed: () => onRemoveImage(index),
+                                    icon: const Icon(Icons.close, size: 16),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
+                    TextField(
+                      key: const Key('chat_input'),
+                      controller: controller,
+                      enabled: enabled,
+                      minLines: 1,
+                      maxLines: 6,
+                      textInputAction: TextInputAction.newline,
+                      decoration: const InputDecoration(
+                        hintText: '发消息给懒狗秘书',
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(vertical: 8),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                const _UnavailableComposerChip(
+                                  icon: Icons.blur_on_outlined,
+                                  label: '深度思考',
+                                  tooltip: '当前模型端点暂不支持此能力',
+                                ),
+                                const SizedBox(width: 6),
+                                const _UnavailableComposerChip(
+                                  icon: Icons.public,
+                                  label: '智能搜索',
+                                  tooltip: '当前模型接口未声明内置联网搜索能力',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          key: const Key('chat_attachment_menu'),
+                          tooltip: '添加附件',
+                          onPressed: enabled
+                              ? () => _showAttachmentMenu(context)
+                              : null,
+                          icon: const Icon(Icons.add_circle_outline),
+                        ),
+                        IconButton(
+                          key: const Key('chat_voice_input'),
+                          tooltip: '语音转文字',
+                          onPressed: null,
+                          icon: const Icon(Icons.mic_none_outlined),
+                        ),
+                        const SizedBox(width: 2),
+                        IconButton.filled(
+                          key: const Key('chat_send'),
+                          tooltip: generating ? '停止生成' : '发送',
+                          onPressed: enabled
+                              ? generating
+                                    ? onStop
+                                    : onSend
+                              : null,
+                          icon: Icon(
+                            generating ? Icons.stop : Icons.arrow_upward,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -148,4 +177,108 @@ class _Composer extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _showAttachmentMenu(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _AttachmentMenuButton(
+                icon: Icons.photo_camera_outlined,
+                label: '拍照',
+                onPressed: imageEnabled
+                    ? () {
+                        Navigator.pop(context);
+                        onPickCamera();
+                      }
+                    : null,
+              ),
+              _AttachmentMenuButton(
+                icon: Icons.photo_library_outlined,
+                label: '相册',
+                onPressed: imageEnabled
+                    ? () {
+                        Navigator.pop(context);
+                        onPickGallery();
+                      }
+                    : null,
+              ),
+              const _AttachmentMenuButton(
+                icon: Icons.attach_file,
+                label: '文件',
+                onPressed: null,
+              ),
+              _AttachmentMenuButton(
+                icon: Icons.content_paste_outlined,
+                label: '粘贴文字',
+                onPressed: enabled
+                    ? () {
+                        Navigator.pop(context);
+                        onPaste();
+                      }
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UnavailableComposerChip extends StatelessWidget {
+  const _UnavailableComposerChip({
+    required this.icon,
+    required this.label,
+    required this.tooltip,
+  });
+
+  final IconData icon;
+  final String label;
+  final String tooltip;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: tooltip,
+    child: ActionChip(
+      avatar: Icon(icon, size: 17),
+      label: Text(label),
+      onPressed: null,
+      visualDensity: VisualDensity.compact,
+    ),
+  );
+}
+
+class _AttachmentMenuButton extends StatelessWidget {
+  const _AttachmentMenuButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 104,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton.filledTonal(
+          onPressed: onPressed,
+          tooltip: label,
+          icon: Icon(icon),
+        ),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
+      ],
+    ),
+  );
 }

@@ -72,6 +72,13 @@ void main() {
     await tester.tap(find.byKey(const Key('nav_inbox')));
     await tester.pumpAndSettle();
 
+    expect(find.byKey(const Key('chat_input')), findsOneWidget);
+    expect(find.text('待确认'), findsNothing);
+    await tester.tap(find.byKey(const Key('conversation_manage')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('conversation_pending_page')));
+    await tester.pumpAndSettle();
+
     expect(find.text('待确认'), findsOneWidget);
     expect(find.text('按建议生成'), findsOneWidget);
     expect(find.text('调整'), findsOneWidget);
