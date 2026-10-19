@@ -180,9 +180,9 @@ class ConversationWorkspace extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<Conversation> createConversation() async {
+  Future<Conversation> createConversation({AiPermissions? permissions}) async {
     final conversation = await _repository.createConversation(
-      aiPermissions: _defaultPermissions(),
+      aiPermissions: permissions ?? _defaultPermissions(),
     );
     _conversations = [
       conversation,
@@ -192,6 +192,21 @@ class ConversationWorkspace extends ChangeNotifier {
     _activeConversationId = conversation.id;
     notifyListeners();
     return conversation;
+  }
+
+  Future<void> setConversationPermissions(
+    String conversationId,
+    AiPermissions permissions,
+  ) async {
+    final conversation = await _repository.findConversation(conversationId);
+    if (conversation == null) throw StateError('对话不存在：$conversationId');
+    final updated = conversation.copyWith(
+      aiPermissions: permissions,
+      updatedAt: DateTime.now(),
+    );
+    await _repository.saveConversation(updated);
+    _replaceConversation(updated);
+    notifyListeners();
   }
 
   String? consumePendingConversationId() {
