@@ -28,6 +28,8 @@
 
 ## 当前规划
 
+追加规划：软件显示名称改为“懒狗秘书”，AI 默认担任秘书型助理；新增跨会话使用的全局知识库，AI 自动识别或按人工命令提出候选，写入前必须人工确认。见[角色与全局知识库补充计划](docs/secretary-and-global-knowledge-plan.md)，共享和读取范围尚待确认；运行版本尚未更名或实现知识库。
+
 已确认将收件箱改为参考 DeepSeek 手机端的 AI 对话界面：每次进入显示新对话，待处理独立成页，三组会话权限默认开启，成果改删直接执行并可撤销。文件、语音转文字、回复朗读和深度思考纳入计划；联网仅用当前模型接口内置能力，不支持则禁用。见 [改造计划](docs/ai-conversation-redesign-plan.md) 与 [ADR 0017](docs/adr/0017-conversation-permissions-and-reversible-result-actions.md)。目前仅完成规划，上述新增能力尚未实现；上方核心能力描述仍对应运行版本。
 
 ## 模型配置
