@@ -26,6 +26,7 @@ import '../services/capture_service.dart';
 import '../services/chat_service.dart';
 import '../services/image_input_service.dart';
 import '../services/file_input_service.dart';
+import '../services/voice_service.dart';
 import '../services/model_client.dart';
 
 /// Composition root for the local core.
@@ -42,6 +43,7 @@ final class AppRuntime {
     ModelClient? modelClient,
     SyncProvider? syncProvider,
     FileInputService? fileInputService,
+    VoiceService? voiceService,
   }) async {
     final vault = vaultOverride ?? await createPlatformVaultStore();
     final supportPath = vaultOverride == null
@@ -135,6 +137,7 @@ final class AppRuntime {
         conversations: conversations,
         sync: sync,
         fileInputService: fileInputService ?? const FileInputService(),
+        voiceService: voiceService ?? SystemVoiceService(),
         closeAdapters: () async {
           await chatRepository!.close();
           await index!.close();
@@ -162,8 +165,9 @@ final class AppRuntime {
     required this.conversations,
     required this.sync,
     this.fileInputService = const FileInputService(),
+    VoiceService? voiceService,
     this.closeAdapters,
-  });
+  }) : voiceService = voiceService ?? SystemVoiceService();
 
   final DevicePreferences preferences;
   final ResultLibrary results;
@@ -171,6 +175,7 @@ final class AppRuntime {
   final ConversationWorkspace conversations;
   final SyncWorkspace sync;
   final FileInputService fileInputService;
+  final VoiceService voiceService;
   final Future<void> Function()? closeAdapters;
   bool _disposed = false;
   Future<void>? _shutdownFuture;
@@ -195,6 +200,7 @@ final class AppRuntime {
     if (_disposed) return;
     _disposed = true;
     conversations.dispose();
+    voiceService.dispose();
     sync.dispose();
     capture.dispose();
     results.dispose();
@@ -206,6 +212,7 @@ final class AppRuntime {
   Future<void> _shutdown() async {
     try {
       await conversations.shutdown();
+      await voiceService.close();
       await sync.shutdown();
       await results.shutdown();
       await preferences.shutdown();

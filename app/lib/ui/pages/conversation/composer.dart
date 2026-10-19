@@ -11,6 +11,8 @@ class _Composer extends StatelessWidget {
     required this.thinkingEnabled,
     required this.webSearchAvailable,
     required this.onThinkingChanged,
+    required this.voiceService,
+    required this.onVoiceInput,
     required this.generating,
     required this.onPickGallery,
     required this.onPickCamera,
@@ -31,6 +33,8 @@ class _Composer extends StatelessWidget {
   final bool thinkingEnabled;
   final bool webSearchAvailable;
   final ValueChanged<bool> onThinkingChanged;
+  final VoiceService voiceService;
+  final VoidCallback onVoiceInput;
   final bool generating;
   final VoidCallback onPickGallery;
   final VoidCallback onPickCamera;
@@ -198,9 +202,17 @@ class _Composer extends StatelessWidget {
                         ),
                         IconButton(
                           key: const Key('chat_voice_input'),
-                          tooltip: '语音转文字',
-                          onPressed: null,
-                          icon: const Icon(Icons.mic_none_outlined),
+                          tooltip: voiceService.isListening
+                              ? '结束语音输入'
+                              : '离线语音转文字',
+                          onPressed: enabled && voiceService.canTrySpeechInput
+                              ? onVoiceInput
+                              : null,
+                          icon: Icon(
+                            voiceService.isListening
+                                ? Icons.mic
+                                : Icons.mic_none_outlined,
+                          ),
                         ),
                         const SizedBox(width: 2),
                         IconButton.filled(

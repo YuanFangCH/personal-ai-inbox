@@ -9,6 +9,7 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final voice = AppScope.voice(context);
     final isUser = message.isUser;
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -77,6 +78,40 @@ class _MessageBubble extends StatelessWidget {
             for (final action in message.actions) ...[
               const SizedBox(height: 10),
               _AutoRecordCard(action: action, app: app),
+            ],
+            if (!isUser &&
+                message.status == ChatMessageStatus.complete &&
+                message.content.trim().isNotEmpty &&
+                voice.canSpeak) ...[
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  key: Key('reply_speech_${message.id}'),
+                  tooltip: voice.isSpeaking ? '停止朗读' : '朗读回复',
+                  onPressed: () async {
+                    try {
+                      if (voice.isSpeaking) {
+                        await voice.stopSpeaking();
+                      } else {
+                        await voice.speak(message.content);
+                      }
+                    } on Object catch (error) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('系统朗读不可用：$error')),
+                        );
+                      }
+                    }
+                  },
+                  icon: Icon(
+                    voice.isSpeaking
+                        ? Icons.stop_circle_outlined
+                        : Icons.volume_up_outlined,
+                    size: 20,
+                  ),
+                ),
+              ),
             ],
           ],
         ),

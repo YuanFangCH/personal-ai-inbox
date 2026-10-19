@@ -6,6 +6,7 @@ import '../modules/results/result_library.dart';
 import '../modules/settings/device_preferences.dart';
 import '../modules/sync/sync_workspace.dart';
 import '../services/file_input_service.dart';
+import '../services/voice_service.dart';
 
 class AppModules {
   const AppModules({
@@ -15,6 +16,7 @@ class AppModules {
     required this.preferences,
     required this.sync,
     required this.fileInputService,
+    required this.voiceService,
   });
 
   final ResultLibrary results;
@@ -23,6 +25,7 @@ class AppModules {
   final DevicePreferences preferences;
   final SyncWorkspace sync;
   final FileInputService fileInputService;
+  final VoiceService voiceService;
 }
 
 class AppScope extends InheritedWidget {
@@ -50,6 +53,8 @@ class AppScope extends InheritedWidget {
 
   static FileInputService fileInput(BuildContext context) =>
       of(context).fileInputService;
+
+  static VoiceService voice(BuildContext context) => of(context).voiceService;
 
   @override
   bool updateShouldNotify(AppScope oldWidget) =>

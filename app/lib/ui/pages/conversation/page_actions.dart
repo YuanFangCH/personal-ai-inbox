@@ -10,6 +10,9 @@ mixin _ConversationPageActions on State<ConversationPage> {
   bool _sending = false;
   int _lastMessageCount = -1;
   String? _conversationId;
+  String _voiceBaseText = '';
+  int _voiceInsertStart = 0;
+  int _voiceReplaceEnd = 0;
   AiPermissions _temporaryPermissions = const AiPermissions();
   bool _temporaryPermissionsInitialized = false;
   bool _thinkingEnabled = false;
@@ -37,6 +40,8 @@ mixin _ConversationPageActions on State<ConversationPage> {
         _sending) {
       return;
     }
+    final voice = AppScope.voice(context);
+    if (voice.isListening) await voice.stopListening();
     setState(() => _sending = true);
     try {
       final attachments = List<ChatAttachmentInput>.from(_imageInputs);
@@ -92,6 +97,41 @@ mixin _ConversationPageActions on State<ConversationPage> {
       return;
     }
     setState(() => _imageInputs.addAll(values));
+  }
+
+  Future<void> _toggleVoiceInput() async {
+    final voice = AppScope.voice(context);
+    if (voice.isListening) {
+      await voice.stopListening();
+      return;
+    }
+    final text = _textController.text;
+    final selection = _textController.selection;
+    _voiceBaseText = text;
+    _voiceInsertStart = selection.isValid ? selection.start : text.length;
+    _voiceReplaceEnd = selection.isValid ? selection.end : text.length;
+    final started = await voice.startListening((recognized, isFinal) {
+      if (!mounted || recognized.isEmpty) return;
+      final before = _voiceBaseText.substring(0, _voiceInsertStart);
+      final after = _voiceBaseText.substring(_voiceReplaceEnd);
+      final separator = before.isNotEmpty && !RegExp(r'\s$').hasMatch(before)
+          ? ' '
+          : '';
+      final inserted = '$separator$recognized';
+      final updated = '$before$inserted$after';
+      _textController.value = TextEditingValue(
+        text: updated,
+        selection: TextSelection.collapsed(
+          offset: before.length + inserted.length,
+        ),
+      );
+      setState(() {});
+    });
+    if (!started && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(voice.lastError ?? '离线语音识别不可用，请检查麦克风权限和中文语言包。')),
+      );
+    }
   }
 
   Future<void> _pickFile() async {
@@ -159,6 +199,10 @@ mixin _ConversationPageActions on State<ConversationPage> {
     if (!mounted) {
       return;
     }
+    if (AppScope.voice(context).isListening) {
+      await AppScope.voice(context).stopListening();
+    }
+    if (!mounted) return;
     if (widget.isRoot) {
       setState(() {
         _conversationId = null;
@@ -393,7 +437,12 @@ mixin _ConversationPageActions on State<ConversationPage> {
 
   Future<void> _openManagedConversation(String id) async {
     _historySearchController.clear();
-    await AppScope.conversations(context).openConversation(id);
+    final voice = AppScope.voice(context);
+    final app = AppScope.conversations(context);
+    if (voice.isListening) {
+      await voice.stopListening();
+    }
+    await app.openConversation(id);
     if (!mounted) return;
     setState(() {
       _conversationId = id;
