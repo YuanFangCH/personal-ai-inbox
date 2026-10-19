@@ -54,6 +54,8 @@ dependencies:
   pdfrx: ^2.6.5
   archive: ^4.3.0
   xml: ^6.6.1
+  speech_to_text: ^7.5.0
+  flutter_tts: ^4.2.5
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -28,13 +28,13 @@
 
 ## 当前规划
 
-已细化 [S0–S12 实施任务与完成门禁](docs/secretary-implementation-plan.md)，安排业务修改完成后执行[三端 100 例新功能验收](docs/testing/secretary-100-case-plan.md)：手机模拟器 50、平板模拟器 25、Windows 桌面 25。S1–S8 权限、成果操作、全局知识、预算检索、工具编排、界面/更名和 DeepSeek thinking mode，以及 S9 本地文件文本提取均已实现并局部验证；语音和新矩阵仍在后续阶段，100 例尚未执行。
+已细化 [S0–S12 实施任务与完成门禁](docs/secretary-implementation-plan.md)，安排业务修改完成后执行[三端 100 例新功能验收](docs/testing/secretary-100-case-plan.md)：手机模拟器 50、平板模拟器 25、Windows 桌面 25。S1–S10 已实现并局部验证，包含离线语音转文字和回复朗读；S11–S12 的专用矩阵执行器与 100 例验收仍在进行。
 
 追加规划已确认：软件显示名称为“懒狗秘书”，AI 默认担任秘书型助理；全局知识库以 `knowledge` 成果承载，候选本地留端，确认后的事实按成果同步，AI 按需检索且受读取权限控制，新增、修改、删除均须人工确认。界面与审批核心已实现；真实 OneDrive 接入和三端同步仍未完成。见[角色与全局知识库补充计划](docs/secretary-and-global-knowledge-plan.md)。
 
 检索以节省开销与响应时间为目标：当前会话足够则不检索，必要时定向查询、少量返回、足够即停，复用有效结果并在内容变化后失效。见[检索策略与预算](docs/ai-retrieval-policy.md)，尚未实现或测量提速。
 
-已确认将收件箱改为参考 DeepSeek 手机端的 AI 对话界面：每次进入显示新对话，待处理独立成页，三组会话权限默认开启，普通成果改删直接执行并可撤销。界面、权限、普通成果操作、支持端点的深度思考和本地文件文本提取已实现；语音转写/朗读仍在计划中。当前 Chat Completions 未声明内置联网能力，联网按钮禁用。见 [改造计划](docs/ai-conversation-redesign-plan.md) 与 [ADR 0017](docs/adr/0017-conversation-permissions-and-reversible-result-actions.md)。
+已确认将收件箱改为参考 DeepSeek 手机端的 AI 对话界面：每次进入显示新对话，待处理独立成页，三组会话权限默认开启，普通成果改删直接执行并可撤销。界面、权限、普通成果操作、支持端点的深度思考、本地文件文本提取、离线语音转写与系统回复朗读已实现；三端 100 例尚未执行。当前 Chat Completions 未声明内置联网能力，联网按钮禁用。见 [改造计划](docs/ai-conversation-redesign-plan.md) 与 [ADR 0017](docs/adr/0017-conversation-permissions-and-reversible-result-actions.md)。
 
 ## 模型配置
 

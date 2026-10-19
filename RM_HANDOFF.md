@@ -10,8 +10,8 @@
 | 最后更新时间 | 2026-10-20 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.1.2` 已预发布；懒狗秘书改造 S1–S9（权限、成果操作、全局知识、检索/工具、UI、更名、thinking 与本地文件解析）已实现并局部验证；语音及三端 100 例矩阵仍在进行 |
-| 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。成果索引 SQLite v6、会话库 v5（跨会话 FTS5、隐藏 reasoning/tool transcript）；Markdown 仍为成果权威副本，未确认全局知识候选留在本地索引库。工具链固定 Flutter 3.47.6 / Dart 3.13.5。thinking 仅对已知 DeepSeek API host 启用/可手工覆盖；当前 Chat Completions 没有原生联网能力，联网按钮禁用。文件在本端提取文本后发送，不传原始文件，扫描 PDF 不 OCR。未连接真实云盘或模型 Key；OneDrive、百度网盘、通知和真实跨端同步尚未完成。`v1.1.2` GitHub 预发布版仍使用 Debug 证书，Windows 包未代码签名。 |
+| 当前阶段 | `v1.1.2` 已预发布；懒狗秘书改造 S1–S10（权限、成果操作、全局知识、检索/工具、UI、更名、thinking、文件、语音）已实现并局部验证；S11–S12 专用三端 100 例矩阵进行中 |
+| 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。成果索引 SQLite v6、会话库 v5（跨会话 FTS5、隐藏 reasoning/tool transcript）；Markdown 仍为成果权威副本，未确认全局知识候选留在本地索引库。工具链固定 Flutter 3.47.6 / Dart 3.13.5。thinking 仅对已知 DeepSeek API host 启用/可手工覆盖；当前 Chat Completions 没有原生联网能力，联网按钮禁用。文件在本端提取文本后发送，不传原始文件，扫描 PDF 不 OCR。Android/Windows 离线语音输入和系统朗读已接入，需真实设备探针验证麦克风/扬声器。未连接真实云盘或模型 Key；OneDrive、百度网盘、通知和真实跨端同步尚未完成。`v1.1.2` GitHub 预发布版仍使用 Debug 证书，Windows 包未代码签名。 |
 
 ## 2. 一句话交接
 
@@ -333,7 +333,7 @@
 
 ### 下一步
 
-当前优先：实现 S10 语音，再做 S11–S12 新矩阵接线与 50/25/25 验收；已完成 S1–S9 不重跑同范围验证。无需重问已确认产品选择；业务修改完成后执行 SEC-001–100 三端矩阵（50/25/25），保存逐例证据并对受影响例定向重跑。新增收费语音服务需呈现具体选择；受控 Provider 不能冒充真实云盘接入。以下为既有后续工作。
+当前优先：完成 S11 新功能矩阵数据、完整性校验、设备入口和按 ID 结果归档，再依序执行 SEC-001–100 手机/平板/Windows 50/25/25，修复失败并定向重跑。S10 定向测试与 Android/Windows/Web Release 构建已通过；真实麦克风/扬声器探针未执行。受控 Provider 不能冒充真实云盘接入。以下为既有后续工作。
 
 1. 发布前按发布门禁运行完整测试套件，并在三端执行 `scripts/verify-realistic-e2e.ps1`；矩阵已可重复运行，但每次约需 16 分钟纯用例时间。
 2. 若转入生产用户数据，先执行升级与备份恢复演练；真实云盘、通知、签名和物理断电专项需另行验收。
@@ -341,6 +341,16 @@
 4. 后续代码任务按 `AGENTS.md` 的增量测试范围执行；测试结论记录执行范围与未验证项，临时测试仅在用户要求时清理。
 
 ## 8. 变更记录
+
+### 2026-10-20 / 实现 S10 Android 与 Windows 离线语音
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 增加按需请求的系统离线语音识别、转写后可编辑、秘书回复朗读/停止；AppRuntime 注入语音服务，初始化时不提前触发麦克风权限或原生插件 |
+| 变更文件 | `voice_service.dart`、AppRuntime/AppScope、对话 composer 与回复卡、Android manifest、插件锁文件和语音 UI 测试；同步 README、改造计划和本交接 |
+| 验证 | 5 个定向 Flutter 测试文件 9/9 通过，指定 Dart analysis 无问题；Android Release APK、Windows Release、Web Release 构建通过。Windows 首次构建因缺少 `nuget.exe` 失败，使用 `app/build/tooling` 忽略目录内工具重试通过。Web Wasm 预检有插件 lint 警告，但普通 Web Release 成功。真实录音/出声、系统文件选取及多端矩阵未执行 |
+| 提交标题 | `feat(ai): 添加离线语音输入与回复朗读` |
+| 遗留事项 | Windows 语音识别插件仍为 beta；Android 需安装离线中文识别包；真实设备探针与 SEC-001–100 仍待完成 |
 
 ### 2026-10-20 / 实现 S9 本地文件解析与对话输入
 

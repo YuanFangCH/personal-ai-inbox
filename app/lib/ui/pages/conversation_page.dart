@@ -9,6 +9,7 @@ import '../../modules/conversation/conversation_workspace.dart';
 import '../../services/file_input_service.dart';
 import '../../services/image_input_service.dart';
 import '../../services/model_capabilities.dart';
+import '../../services/voice_service.dart';
 import '../app_scope.dart';
 import '../presentation/domain_presentation.dart';
 import '../widgets/common.dart';
@@ -80,6 +81,7 @@ class _ConversationPageState extends State<ConversationPage>
         AppScope.results(context),
         AppScope.capture(context),
         AppScope.sync(context),
+        AppScope.voice(context),
       ]),
       builder: (context, _) => _buildConversation(context),
     );
@@ -159,6 +161,8 @@ class _ConversationPageState extends State<ConversationPage>
           thinkingAvailable: modelReady && modelCapabilities.thinking,
           thinkingEnabled: _thinkingEnabled,
           webSearchAvailable: modelReady && modelCapabilities.webSearch,
+          voiceService: AppScope.voice(context),
+          onVoiceInput: _toggleVoiceInput,
           onThinkingChanged: (value) =>
               setState(() => _thinkingEnabled = value),
           generating: app.isChatGenerating,
