@@ -88,15 +88,16 @@ final class AppRuntime {
                 ? MemoryAttachmentStore()
                 : await createAttachmentStore()),
       );
-      final chatService = ChatService(
-        settings: settingsService,
-        repository: chatRepository,
-        modelClient: modelClient,
-      );
       final preferences = DevicePreferences(
         adapter: SettingsServiceDevicePreferencesAdapter(settingsService),
       );
       final results = ResultLibrary(repository: repository);
+      final chatService = ChatService(
+        settings: settingsService,
+        repository: chatRepository,
+        results: results,
+        modelClient: modelClient,
+      );
       final capture = CaptureWorkflow(
         repository: repository,
         results: results,

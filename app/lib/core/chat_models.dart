@@ -54,6 +54,8 @@ enum AutoRecordStatus {
   }
 }
 
+enum AutoRecordOperation { create, update, delete }
+
 enum GenerationStatus {
   requesting('requesting'),
   responseReady('response_ready'),
@@ -214,6 +216,7 @@ class AutoRecordAction {
     this.captureId,
     this.reason,
     this.undoUntil,
+    this.operation = AutoRecordOperation.create,
   });
 
   final String id;
@@ -225,6 +228,7 @@ class AutoRecordAction {
   final String? captureId;
   final String? reason;
   final DateTime? undoUntil;
+  final AutoRecordOperation operation;
 
   bool get canUndo =>
       status == AutoRecordStatus.created &&
@@ -232,7 +236,11 @@ class AutoRecordAction {
       undoUntil != null &&
       undoUntil!.isAfter(DateTime.now());
 
-  AutoRecordAction copyWith({AutoRecordStatus? status, String? reason}) {
+  AutoRecordAction copyWith({
+    AutoRecordStatus? status,
+    String? reason,
+    AutoRecordOperation? operation,
+  }) {
     return AutoRecordAction(
       id: id,
       type: type,
@@ -243,6 +251,7 @@ class AutoRecordAction {
       captureId: captureId,
       reason: reason ?? this.reason,
       undoUntil: undoUntil,
+      operation: operation ?? this.operation,
     );
   }
 
@@ -257,6 +266,7 @@ class AutoRecordAction {
       'capture_id': captureId,
       'reason': reason,
       'undo_until': undoUntil?.toIso8601String(),
+      'operation': operation.name,
     };
   }
 
@@ -273,6 +283,10 @@ class AutoRecordAction {
       captureId: json['capture_id']?.toString(),
       reason: json['reason']?.toString(),
       undoUntil: DateTime.tryParse(json['undo_until']?.toString() ?? ''),
+      operation: AutoRecordOperation.values.firstWhere(
+        (value) => value.name == json['operation'],
+        orElse: () => AutoRecordOperation.create,
+      ),
     );
   }
 }

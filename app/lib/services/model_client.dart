@@ -39,11 +39,17 @@ class ChatRequestMessage {
     required this.role,
     required this.text,
     this.images = const [],
+    this.toolCalls = const [],
+    this.toolCallId,
+    this.name,
   });
 
   final String role;
   final String text;
   final List<ChatRequestImage> images;
+  final List<Map<String, dynamic>> toolCalls;
+  final String? toolCallId;
+  final String? name;
 }
 
 class ChatStreamDelta {
@@ -153,6 +159,8 @@ class ModelClient {
     required List<ChatRequestMessage> messages,
     required ModelConfiguration configuration,
     required DateTime now,
+    String? systemPrompt,
+    List<Map<String, dynamic>>? tools,
   }) async* {
     final endpoint = Uri.parse(
       '${configuration.baseUrl.replaceAll(RegExp(r'/$'), '')}/chat/completions',
@@ -174,11 +182,14 @@ class ModelClient {
             'temperature': 0.2,
             'stream': true,
             'messages': [
-              {'role': 'system', 'content': _chatSystemPrompt(now)},
+              {
+                'role': 'system',
+                'content': systemPrompt ?? _chatSystemPrompt(now),
+              },
               for (final message in messages) _requestMessage(message),
             ],
             if (configuration.capabilities.toolCalls) ...{
-              'tools': [_createResultTool],
+              'tools': tools ?? [_createResultTool],
               'tool_choice': 'auto',
             },
           });
@@ -397,6 +408,21 @@ class ModelClient {
   void close() => _client.close();
 
   Map<String, dynamic> _requestMessage(ChatRequestMessage message) {
+    if (message.toolCallId != null) {
+      return {
+        'role': 'tool',
+        'tool_call_id': message.toolCallId,
+        if (message.name != null) 'name': message.name,
+        'content': message.text,
+      };
+    }
+    if (message.toolCalls.isNotEmpty) {
+      return {
+        'role': 'assistant',
+        'content': message.text.isEmpty ? null : message.text,
+        'tool_calls': message.toolCalls,
+      };
+    }
     if (message.images.isEmpty) {
       return {'role': message.role, 'content': message.text};
     }
@@ -464,18 +490,18 @@ class ModelClient {
 
   String _chatSystemPrompt(DateTime now) {
     return '''
-你是个人 AI 收件箱中的长期记录助手。使用简体中文回答，内容可读、简洁。
+你是“懒狗秘书”，用户的个人秘书型助理。使用简体中文回答，简洁、清楚，帮助管理事项、待办、日历与知识。
 当前时间：${now.toIso8601String()}
 时区：Asia/Hong_Kong
 
-你会看到当前会话最近的消息和图片。不要引用其他会话。
+只使用当前会话和用户本轮提供的信息。读取权限允许且答案确实缺少个人事实时，才使用本地搜索工具；寒暄、改写、总结已给内容和通用问题不要检索。每次搜索先选最小来源，命中足够即停，不得换词循环或自动搜索全库。
 当对话或图片中包含明确、非敏感、值得长期保存的新内容时，调用 create_result：
 - knowledge：可复用的知识、结论、资料摘要
 - todo：明确行动；有截止时间时写入 due
 - event：明确发生的日程；写入 start / end
 - matter：需要聚合多个行动的独立事项
 
-create_result 只用于新建，绝不修改或删除已有成果。
+create_result 只用于新建。update_result 与 delete_result 只按用户明确要求操作普通成果；不得操作会话或历史消息。全局知识的变更只能提议，未获用户确认前不会生效。
 日期、金额、身份或指令含义不清楚时，不要调用工具。
 重复规则、敏感内容、过去日程不要自动创建。
 如果用户只是普通聊天，直接回答，不要强行提取。

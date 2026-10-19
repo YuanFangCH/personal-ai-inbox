@@ -91,6 +91,14 @@ class ResultLibrary extends ChangeNotifier {
   Future<ResultDocument?> readDocument(String id) =>
       _repository.readDocument(id);
 
+  Future<String?> hashManagedDocument(String id) async {
+    final source = await _repository.readManagedResult(id);
+    return source == null ? null : _repository.hashMarkdown(source);
+  }
+
+  Future<ReversibleResultAction?> reversibleActionForKey(String id) =>
+      _repository.findReversibleAction(id);
+
   Future<ResultDocument?> findByIdempotencyKey({
     required ResultType type,
     required DateTime createdAt,

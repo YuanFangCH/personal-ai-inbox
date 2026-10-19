@@ -8,10 +8,10 @@ import '../../data/chat_repository.dart';
 import '../capture/capture_workflow.dart';
 import '../results/result_library.dart';
 
-/// Applies the guarded auto-record rules after a complete model stream.
+/// Applies permission-checked result actions after a complete model stream.
 ///
-/// This module only creates new results. It never updates or deletes an
-/// existing result, and it routes uncertain candidates into the review queue.
+/// New results retain the guarded auto-record rules; modifications and deletes
+/// use revision-bound reversible actions and cannot target global knowledge.
 class AutoRecordProcessor {
   AutoRecordProcessor({
     required ChatRepository chatRepository,
@@ -35,6 +35,12 @@ class AutoRecordProcessor {
   }) async {
     final actions = <AutoRecordAction>[];
     final assistant = await _chatRepository.findMessage(assistantMessageId);
+    final conversation = assistant == null
+        ? null
+        : await _chatRepository.findConversation(assistant.conversationId);
+    final permissions =
+        conversation?.aiPermissions ??
+        const AiPermissions(read: false, create: false, modifyDelete: false);
     var sourceUserMessageId = assistantMessageId;
     if (assistant != null) {
       for (final message in await _chatRepository.listMessages(
@@ -48,7 +54,7 @@ class AutoRecordProcessor {
     }
     final createdAt = completedAt ?? assistant?.createdAt ?? DateTime.now();
     for (final call in calls) {
-      if (call.name != 'create_result' || call.arguments.isEmpty) {
+      if (call.arguments.isEmpty) {
         continue;
       }
       final stableKey =
@@ -62,11 +68,22 @@ class AutoRecordProcessor {
         actions.add(existingAction);
         continue;
       }
-      final action = await _process(
-        stableKey,
-        createdAt,
-        call.arguments.toString(),
-      );
+      final action = switch (call.name) {
+        'create_result' =>
+          permissions.create
+              ? await _process(stableKey, createdAt, call.arguments.toString())
+              : _skipped(actionId, createdAt, '当前会话未开启新增权限'),
+        'update_result' || 'delete_result' =>
+          permissions.modifyDelete
+              ? await _processModifyDelete(
+                  call.name!,
+                  actionId,
+                  createdAt,
+                  call.arguments.toString(),
+                )
+              : _skipped(actionId, createdAt, '当前会话未开启修改和删除权限'),
+        _ => null,
+      };
       if (action != null) {
         actions.add(action);
       }
@@ -145,6 +162,7 @@ class AutoRecordProcessor {
       )) {
         return _skipped(actionId, createdAt, '同一自动记录请求对应的成果内容不同');
       }
+      final action = await _results.reversibleActionForKey(actionId);
       return AutoRecordAction(
         id: actionId,
         type: type,
@@ -152,7 +170,7 @@ class AutoRecordProcessor {
         status: AutoRecordStatus.created,
         createdAt: previouslyCreated.createdAt,
         resultId: previouslyCreated.id,
-        undoUntil: previouslyCreated.createdAt.add(const Duration(minutes: 10)),
+        undoUntil: action?.undoUntil,
       );
     }
 
@@ -220,7 +238,7 @@ class AutoRecordProcessor {
       );
     }
 
-    final document = await _results.createManual(
+    final operation = await _results.createManualWithUndo(
       type: type,
       title: title,
       body: body,
@@ -230,18 +248,116 @@ class AutoRecordProcessor {
       start: type == ResultType.event ? start : null,
       end: type == ResultType.event ? end : null,
       allDay: allDay,
+      actionId: actionId,
       idempotencyKey: idempotencyKey,
       createdAt: createdAt,
     );
+    final document = operation.document;
     return AutoRecordAction(
       id: actionId,
       type: type,
       title: document.title,
       status: AutoRecordStatus.created,
-      createdAt: createdAt,
+      createdAt: document.createdAt,
       resultId: document.id,
-      undoUntil: createdAt.add(const Duration(minutes: 10)),
+      undoUntil: operation.action.undoUntil,
     );
+  }
+
+  Future<AutoRecordAction?> _processModifyDelete(
+    String operation,
+    String actionId,
+    DateTime createdAt,
+    String rawArguments,
+  ) async {
+    dynamic decoded;
+    try {
+      decoded = jsonDecode(rawArguments);
+    } on FormatException {
+      return _skipped(actionId, createdAt, '模型返回的成果操作结构无效');
+    }
+    if (decoded is! Map) {
+      return _skipped(actionId, createdAt, '模型返回的成果操作结构无效');
+    }
+    final payload = decoded.map(
+      (key, value) => MapEntry(key.toString(), value),
+    );
+    const allowed = {'id', 'expected_revision', 'title', 'body'};
+    if (payload.keys.any((key) => !allowed.contains(key)) ||
+        (payload['title'] != null && payload['title'] is! String) ||
+        (payload['body'] != null && payload['body'] is! String)) {
+      return _skipped(actionId, createdAt, '成果操作字段无效');
+    }
+    final id = payload['id'];
+    final expectedRevision = payload['expected_revision'];
+    if (id is! String || expectedRevision is! num) {
+      return _skipped(actionId, createdAt, '成果操作缺少稳定 ID 或版本');
+    }
+    final previousAction = await _results.reversibleActionForKey(actionId);
+    if (previousAction != null &&
+        previousAction.status != ReversibleActionStatus.prepared &&
+        previousAction.status != ReversibleActionStatus.failed) {
+      final current = await _results.readDocument(id);
+      if (current == null) {
+        return _skipped(actionId, createdAt, '已提交成果操作缺少当前对象');
+      }
+      return AutoRecordAction(
+        id: actionId,
+        type: current.type,
+        title: current.title,
+        status: previousAction.status == ReversibleActionStatus.undone
+            ? AutoRecordStatus.undone
+            : AutoRecordStatus.created,
+        createdAt: previousAction.createdAt,
+        resultId: id,
+        undoUntil: previousAction.undoUntil,
+        operation: AutoRecordOperation.values.byName(previousAction.kind.name),
+      );
+    }
+    final document = await _results.readDocument(id);
+    if (document == null ||
+        document.deleted ||
+        document.status != ResultStatus.canonical ||
+        document.isGlobalKnowledge ||
+        document.revision != expectedRevision.toInt()) {
+      return _skipped(actionId, createdAt, '成果已变化或不属于普通成果，请重新读取');
+    }
+    final expectedHash = await _results.hashManagedDocument(id);
+    if (expectedHash == null) {
+      return _skipped(actionId, createdAt, '成果文件不可读取');
+    }
+    try {
+      final result = operation == 'delete_result'
+          ? await _results.deleteWithUndo(
+              id: id,
+              expectedRevision: document.revision,
+              expectedHash: expectedHash,
+              actionId: actionId,
+            )
+          : await _results.modifyWithUndo(
+              document: document.copyWith(
+                title: payload['title'] as String? ?? document.title,
+                body: payload['body'] as String? ?? document.body,
+              ),
+              expectedRevision: document.revision,
+              expectedHash: expectedHash,
+              actionId: actionId,
+            );
+      return AutoRecordAction(
+        id: actionId,
+        type: document.type,
+        title: result.document.title,
+        status: AutoRecordStatus.created,
+        createdAt: createdAt,
+        resultId: document.id,
+        undoUntil: result.action.undoUntil,
+        operation: operation == 'delete_result'
+            ? AutoRecordOperation.delete
+            : AutoRecordOperation.update,
+      );
+    } on StateError catch (error) {
+      return _skipped(actionId, createdAt, error.message);
+    }
   }
 
   AutoRecordAction _skipped(

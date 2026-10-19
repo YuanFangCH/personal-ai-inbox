@@ -16,7 +16,11 @@ class _AutoRecordCard extends StatelessWidget {
       AutoRecordStatus.skipped => StatusTone.danger,
     };
     final label = switch (action.status) {
-      AutoRecordStatus.created => '已自动创建',
+      AutoRecordStatus.created => switch (action.operation) {
+        AutoRecordOperation.create => '已自动创建',
+        AutoRecordOperation.update => '已修改',
+        AutoRecordOperation.delete => '已删除',
+      },
       AutoRecordStatus.undone => '已撤销',
       AutoRecordStatus.review => '待人工确认',
       AutoRecordStatus.skipped => '未创建',
@@ -49,6 +53,7 @@ class _AutoRecordCard extends StatelessWidget {
             ),
           ),
           if (action.status == AutoRecordStatus.created &&
+              action.operation != AutoRecordOperation.delete &&
               action.resultId != null)
             IconButton(
               tooltip: '打开成果',
