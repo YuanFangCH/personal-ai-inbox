@@ -50,6 +50,10 @@ dependencies:
   http: ^1.6.0
   image_picker: ^1.2.3
   image: ^4.10.1
+  file_picker: ^13.1.0
+  pdfrx: ^2.6.5
+  archive: ^4.3.0
+  xml: ^6.6.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

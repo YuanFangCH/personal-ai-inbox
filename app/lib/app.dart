@@ -32,6 +32,7 @@ class _PersonalAiInboxAppState extends State<PersonalAiInboxApp>
       conversations: runtime.conversations,
       preferences: runtime.preferences,
       sync: runtime.sync,
+      fileInputService: runtime.fileInputService,
     );
   }
 

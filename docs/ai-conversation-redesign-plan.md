@@ -1,6 +1,6 @@
 # AI 对话界面与操作权限改造计划
 
-日期：2026-10-20。状态：两轮产品选择均已确认；S1–S8 权限、成果操作、全局知识审批、检索/工具编排、对话 UI、跨端显示名及 DeepSeek thinking mode 已实现并定向验证；S9 文件、S10 语音、S11–S12 三端矩阵尚待完成。已确认架构边界见 [ADR 0017](adr/0017-conversation-permissions-and-reversible-result-actions.md)。下文明确区分用户决定和实施建议。
+日期：2026-10-20。状态：两轮产品选择均已确认；S1–S9 权限、成果操作、全局知识审批、检索/工具编排、对话 UI、跨端显示名、DeepSeek thinking mode 及本地文件解析已实现并定向验证；S10 语音、S11–S12 三端矩阵尚待完成。已确认架构边界见 [ADR 0017](adr/0017-conversation-permissions-and-reversible-result-actions.md)。下文明确区分用户决定和实施建议。
 
 
 2026-10-20 追加第 3/4 项已确认：软件名称改为“懒狗秘书”，AI 默认担任秘书型助理；全局知识随成果三端同步，AI 按需检索且受读取权限控制，新增/修改/删除均须人工确认。见[补充计划](secretary-and-global-knowledge-plan.md)。普通成果的直接操作规则保持不变，全局知识作为审批例外。

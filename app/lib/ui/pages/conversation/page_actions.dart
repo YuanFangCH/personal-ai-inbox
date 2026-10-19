@@ -5,6 +5,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
   final _scrollController = ScrollController();
   final _imageInputs = <ChatAttachmentInput>[];
   final _imagePicker = ImageInputService();
+  final _fileTexts = <ExtractedFileText>[];
   final _historySearchController = TextEditingController();
   bool _sending = false;
   int _lastMessageCount = -1;
@@ -30,7 +31,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
 
   Future<void> _send() async {
     final app = AppScope.conversations(context);
-    final text = _textController.text;
+    final text = _composeMessageText(_textController.text);
     if ((text.trim().isEmpty && _imageInputs.isEmpty) ||
         app.isChatGenerating ||
         _sending) {
@@ -51,7 +52,10 @@ mixin _ConversationPageActions on State<ConversationPage> {
       }
       if (mounted) {
         _textController.clear();
-        setState(() => _imageInputs.clear());
+        setState(() {
+          _imageInputs.clear();
+          _fileTexts.clear();
+        });
       }
       await app.sendChatMessage(
         conversationId,
@@ -90,6 +94,51 @@ mixin _ConversationPageActions on State<ConversationPage> {
     setState(() => _imageInputs.addAll(values));
   }
 
+  Future<void> _pickFile() async {
+    const maxMessageChars = 24000;
+    final used = _fileTexts.fold<int>(
+      0,
+      (total, file) => total + file.text.runes.length,
+    );
+    final remaining = maxMessageChars - used;
+    if (remaining <= 0 || _fileTexts.length >= 3) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('每条消息最多添加 3 个文件、共 24,000 个字符。')),
+      );
+      return;
+    }
+    try {
+      final file = await AppScope.fileInput(context).pickAndExtract(
+        maxTextChars: remaining < FileInputService.maxFileTextChars
+            ? remaining
+            : FileInputService.maxFileTextChars,
+      );
+      if (!mounted || file == null) return;
+      setState(() => _fileTexts.add(file));
+      if (file.truncated) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${file.fileName} 内容超过预算，已截取可读部分。')),
+        );
+      }
+    } on FileInputException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+  }
+
+  String _composeMessageText(String typedText) {
+    final output = StringBuffer(typedText.trim());
+    for (final file in _fileTexts) {
+      if (output.isNotEmpty) output.write('\n\n');
+      output
+        ..write('【文件：${file.fileName}${file.truncated ? '（已截取）' : ''}】\n')
+        ..write(file.text);
+    }
+    return output.toString();
+  }
+
   Future<void> _pasteText() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     final text = data?.text;
@@ -118,6 +167,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
             .defaultAiPermissions;
         _textController.clear();
         _imageInputs.clear();
+        _fileTexts.clear();
         _historySearchController.clear();
         _thinkingEnabled = false;
         _lastMessageCount = 0;
@@ -350,6 +400,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
       _lastMessageCount = -1;
       _textController.clear();
       _imageInputs.clear();
+      _fileTexts.clear();
       _thinkingEnabled = false;
     });
   }
@@ -520,6 +571,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
         _lastMessageCount = 0;
         _textController.clear();
         _imageInputs.clear();
+        _fileTexts.clear();
         _thinkingEnabled = false;
       });
     } else if (mounted && conversation.id == _conversationId) {
