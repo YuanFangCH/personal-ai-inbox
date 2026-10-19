@@ -20,6 +20,7 @@
 | [0014](0014-modular-local-core-and-compatibility-migration.md) | 采用模块化本地核心，并以兼容 facade 分阶段迁移 | accepted |
 | [0015](0015-recoverable-local-commits-and-idempotent-actions.md) | 本地持久化使用可恢复提交与幂等动作 | accepted |
 | [0016](0016-sync-validation-and-version-bound-conflict-decisions.md) | 同步对象经过校验，冲突裁决绑定观察到的远端版本 | accepted |
+| [0017](0017-conversation-permissions-and-reversible-result-actions.md) | AI 对话按会话授权读取及可撤销成果操作，待处理独立成页（待实现） | accepted |
 
 相关文档：
 
