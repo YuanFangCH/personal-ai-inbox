@@ -56,15 +56,17 @@ class ResultRepository {
 
   Future<List<ResultDocument>> searchDocuments({
     required String query,
-    required ResultType type,
+    ResultType? type,
     required int offset,
     int limit = 50,
+    bool globalKnowledgeOnly = false,
   }) async {
     final records = await _index.searchResults(
       query: query,
       type: type,
       limit: limit.clamp(1, 50),
       offset: offset < 0 ? 0 : offset,
+      globalKnowledgeOnly: globalKnowledgeOnly,
     );
     final documents = <ResultDocument>[];
     for (final record in records) {
@@ -709,6 +711,7 @@ class ResultRepository {
             mdPath: path,
             localHash: hash,
             searchText: _searchText(document),
+            globalKnowledge: document.isGlobalKnowledge,
             lastSyncedHash: old?.lastSyncedHash,
             remoteEtag: old?.remoteEtag,
             matterId: document.matterId,
@@ -1494,6 +1497,7 @@ class ResultRepository {
       mdPath: document.markdownPath,
       localHash: hash,
       searchText: _searchText(document),
+      globalKnowledge: document.isGlobalKnowledge,
       lastSyncedHash: syncBaseline?.hash ?? old?.lastSyncedHash,
       remoteEtag: syncBaseline?.etag ?? old?.remoteEtag,
       matterId: document.matterId,
@@ -1510,6 +1514,8 @@ class ResultRepository {
     document.title,
     document.body,
     ...document.tags,
+    if (document.isGlobalKnowledge)
+      jsonEncode(document.extensionFields['global_facts'] ?? const {}),
   ].join('\n').toLowerCase();
 
   bool _sameIndexRecord(IndexedResult left, IndexedResult right) =>

@@ -15,7 +15,7 @@ void main() {
     final versionDatabase = sqlite3.open('${directory.path}/index.sqlite3');
     expect(
       versionDatabase.select('PRAGMA user_version').single['user_version'],
-      5,
+      6,
     );
     versionDatabase.close();
 
@@ -32,6 +32,7 @@ void main() {
       lastSyncedHash: null,
       syncState: SyncState.pendingUpload,
       searchText: '标题 包含 100%_ 字符',
+      globalKnowledge: true,
     );
     await database.upsertResult(record);
     expect(
@@ -40,6 +41,15 @@ void main() {
         limit: 50,
         offset: 0,
         type: ResultType.knowledge,
+      ),
+      hasLength(1),
+    );
+    expect(
+      await database.searchResults(
+        query: '100%_',
+        limit: 50,
+        offset: 0,
+        globalKnowledgeOnly: true,
       ),
       hasLength(1),
     );
@@ -103,6 +113,7 @@ void main() {
     final reopened = SqliteIndexDatabase('${directory.path}/index.sqlite3');
     await reopened.open();
     expect((await reopened.findResult(record.id))!.title, '持久化知识');
+    expect((await reopened.findResult(record.id))!.globalKnowledge, isTrue);
     expect(await reopened.listCaptures(reviewOnly: true), hasLength(1));
     expect((await reopened.findOperation(operation.key))?.resultId, record.id);
     expect((await reopened.findConflict(record.id))?.remoteEtag, 'etag-1');
@@ -136,7 +147,7 @@ void main() {
     await reopened.close();
   });
 
-  test('migrates an index v4 database while preserving records and creating candidate storage', () async {
+  test('migrates an index v4 database while preserving records and global scope query', () async {
     final directory = await Directory.systemTemp.createTemp(
       'ai-inbox-index-v4',
     );
@@ -163,6 +174,7 @@ void main() {
 
     final v4 = sqlite3.open(path)
       ..execute('DROP TABLE global_knowledge_candidates')
+      ..execute('ALTER TABLE objects DROP COLUMN global_knowledge')
       ..execute('PRAGMA user_version = 4');
     v4.close();
 
@@ -172,7 +184,7 @@ void main() {
     final migratedVersion = sqlite3.open(path);
     expect(
       migratedVersion.select('PRAGMA user_version').single['user_version'],
-      5,
+      6,
     );
     migratedVersion.close();
     await migrated.upsertReversibleAction(

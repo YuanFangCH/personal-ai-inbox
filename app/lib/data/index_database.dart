@@ -16,6 +16,7 @@ abstract interface class IndexDatabase {
     required int limit,
     required int offset,
     ResultType? type,
+    bool globalKnowledgeOnly = false,
   });
 
   Future<IndexedResult?> findResult(String id);

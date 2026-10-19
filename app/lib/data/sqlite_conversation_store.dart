@@ -29,8 +29,8 @@ class SqliteConversationStore implements ConversationStore {
         ..execute('PRAGMA foreign_keys = ON');
       final version =
           _database.select('PRAGMA user_version').single['user_version'] as int;
-      if (version > 2) {
-        throw StateError('会话数据库版本 $version 高于此应用支持的版本 2');
+      if (version > 3) {
+        throw StateError('会话数据库版本 $version 高于此应用支持的版本 3');
       }
       _database.execute('BEGIN EXCLUSIVE');
       _database
@@ -89,11 +89,39 @@ class SqliteConversationStore implements ConversationStore {
           TEXT NOT NULL DEFAULT '{"read":true,"create":true,"modify_delete":true}' ''',
         );
       }
-      if (version < 1) {
-        _database.execute('PRAGMA user_version = 2');
-      } else if (version < 2) {
-        _database.execute('PRAGMA user_version = 2');
+      _database
+        ..execute('''
+          CREATE VIRTUAL TABLE IF NOT EXISTS chat_messages_fts USING fts5(
+            id UNINDEXED,
+            conversation_id UNINDEXED,
+            content,
+            tokenize = 'unicode61'
+          )
+        ''')
+        ..execute('DROP TRIGGER IF EXISTS chat_messages_fts_insert')
+        ..execute('DROP TRIGGER IF EXISTS chat_messages_fts_update')
+        ..execute('DROP TRIGGER IF EXISTS chat_messages_fts_delete');
+      if (version < 3) {
+        _database.execute('DELETE FROM chat_messages_fts');
+        for (final row in _database.select(
+          "SELECT * FROM chat_messages WHERE status = 'complete'",
+        )) {
+          final message = _messageFromRow(row);
+          _database.execute(
+            '''
+            INSERT INTO chat_messages_fts (rowid, id, conversation_id, content)
+            VALUES (?, ?, ?, ?)
+            ''',
+            [
+              row['rowid'],
+              message.id,
+              message.conversationId,
+              _ftsContent(message.content),
+            ],
+          );
+        }
       }
+      _database.execute('PRAGMA user_version = 3');
       _database.execute('COMMIT');
     } catch (_) {
       try {
@@ -157,6 +185,10 @@ class SqliteConversationStore implements ConversationStore {
 
   @override
   Future<void> deleteConversation(String id) async {
+    _database.execute(
+      'DELETE FROM chat_messages_fts WHERE conversation_id = ?',
+      [id],
+    );
     _database.execute('DELETE FROM conversations WHERE id = ?', [id]);
   }
 
@@ -169,6 +201,43 @@ class SqliteConversationStore implements ConversationStore {
       ORDER BY created_at ASC
       ''',
       [conversationId],
+    );
+    return rows.map(_messageFromRow).toList(growable: false);
+  }
+
+  @override
+  Future<List<ChatMessage>> searchMessages({
+    required String query,
+    required String excludedConversationId,
+    required int limit,
+  }) async {
+    final terms = <String>[];
+    for (final match in RegExp(
+      r'[\p{L}\p{N}_]+',
+      unicode: true,
+    ).allMatches(query)) {
+      final token = match.group(0)!;
+      if (RegExp(r'^\p{Script=Han}+$', unicode: true).hasMatch(token)) {
+        terms.addAll(token.runes.map(String.fromCharCode));
+      } else {
+        terms.add(token);
+      }
+    }
+    if (terms.isEmpty) return const [];
+    final expression = terms
+        .map((term) => '"${term.replaceAll('"', '""')}"')
+        .join(' AND ');
+    final rows = _database.select(
+      '''
+      SELECT m.* FROM chat_messages_fts
+      JOIN chat_messages m ON m.id = chat_messages_fts.id
+      WHERE chat_messages_fts MATCH ?
+        AND m.conversation_id != ?
+        AND m.status = 'complete'
+      ORDER BY bm25(chat_messages_fts), m.created_at DESC
+      LIMIT ?
+      ''',
+      [expression, excludedConversationId, limit.clamp(1, 5)],
     );
     return rows.map(_messageFromRow).toList(growable: false);
   }
@@ -212,6 +281,27 @@ class SqliteConversationStore implements ConversationStore {
         message.error,
       ],
     );
+    _database.execute('DELETE FROM chat_messages_fts WHERE id = ?', [
+      message.id,
+    ]);
+    if (message.status == ChatMessageStatus.complete) {
+      final row = _database.select(
+        'SELECT rowid FROM chat_messages WHERE id = ?',
+        [message.id],
+      ).single;
+      _database.execute(
+        '''
+        INSERT INTO chat_messages_fts (rowid, id, conversation_id, content)
+        VALUES (?, ?, ?, ?)
+        ''',
+        [
+          row['rowid'],
+          message.id,
+          message.conversationId,
+          _ftsContent(message.content),
+        ],
+      );
+    }
   }
 
   @override
@@ -292,7 +382,26 @@ class SqliteConversationStore implements ConversationStore {
 
   @override
   Future<void> deleteMessage(String id) async {
+    _database.execute('DELETE FROM chat_messages_fts WHERE id = ?', [id]);
     _database.execute('DELETE FROM chat_messages WHERE id = ?', [id]);
+  }
+
+  String _ftsContent(String value) {
+    final output = StringBuffer();
+    for (final rune in value.runes) {
+      final isHan =
+          (rune >= 0x3400 && rune <= 0x9fff) ||
+          (rune >= 0xf900 && rune <= 0xfaff) ||
+          (rune >= 0x20000 && rune <= 0x2fa1f);
+      if (isHan) {
+        output
+          ..writeCharCode(rune)
+          ..write(' ');
+      } else {
+        output.writeCharCode(rune);
+      }
+    }
+    return output.toString();
   }
 
   @override
@@ -317,6 +426,7 @@ class SqliteConversationStore implements ConversationStore {
   @override
   Future<void> clear() async {
     _database
+      ..execute('DELETE FROM chat_messages_fts')
       ..execute('DELETE FROM chat_messages')
       ..execute('DELETE FROM conversations');
   }

@@ -36,6 +36,7 @@ class MemoryIndexDatabase implements IndexDatabase {
     required int limit,
     required int offset,
     ResultType? type,
+    bool globalKnowledgeOnly = false,
   }) async {
     final normalized = query.trim().toLowerCase();
     final matches =
@@ -45,6 +46,7 @@ class MemoryIndexDatabase implements IndexDatabase {
                   !result.deleted &&
                   result.status == ResultStatus.canonical &&
                   (type == null || result.type == type) &&
+                  (!globalKnowledgeOnly || result.globalKnowledge) &&
                   (normalized.isEmpty ||
                       result.searchText.contains(normalized)),
             )

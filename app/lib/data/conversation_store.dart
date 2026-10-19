@@ -15,6 +15,12 @@ abstract interface class ConversationStore {
 
   Future<List<ChatMessage>> listMessages(String conversationId);
 
+  Future<List<ChatMessage>> searchMessages({
+    required String query,
+    required String excludedConversationId,
+    required int limit,
+  });
+
   Future<ChatMessage?> findMessage(String id);
 
   Future<void> upsertMessage(ChatMessage message);
