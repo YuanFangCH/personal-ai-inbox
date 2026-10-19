@@ -10,7 +10,7 @@
 | 最后更新时间 | 2026-10-20 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.1.2` 已预发布；懒狗秘书改造 S1 权限快照、S2 成果 CAS/撤销、S3 全局知识审批、S4 本地检索、S5 工具编排及 S6 对话/待处理/知识管理界面已实现并局部验证；扩展输入/更名与 100 例矩阵仍在进行 |
+| 当前阶段 | `v1.1.2` 已预发布；懒狗秘书改造 S1 权限快照、S2 成果 CAS/撤销、S3 全局知识审批、S4 本地检索、S5 工具编排、S6 对话界面及 S7 各端显示名已实现并局部验证；扩展功能和 100 例矩阵仍在进行 |
 | 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。成果索引 SQLite v6、会话库 v3（新增跨会话 FTS5 索引）；Markdown 仍为成果权威副本，未确认全局知识候选留在本地索引库。工具链固定 Flutter 3.47.6 / Dart 3.13.5。本轮为主机测试与三端模拟器/桌面验收，未连接真实云盘或真实模型 Key。`v1.1.2` GitHub 预发布版仍使用 Debug 证书，Windows 包未代码签名；OneDrive、百度网盘、通知和真实跨端同步尚未完成。 |
 
 ## 2. 一句话交接
@@ -112,6 +112,8 @@
 - 2026-10-20：S5 本地工具编排已实现：秘书角色提示；模型按会话权限获得有限成果/跨会话读取、普通成果新增/改删及全局知识提议工具；只读结果最多两轮，本地复用统一预算。普通成果动作在完整流结束后由本地处理器再查权限、成果类型和版本，写入 CAS 撤销账本；重启可幂等恢复，操作卡区分新建/修改/删除。工具/Workspace/权限/撤销/运行装配定向测试 44/44、AppRuntime/架构 5/5、会话消息操作类型持久化 2/2 通过；指定 analysis 无问题。报告见 [验证记录](test-results/secretary-s5-model-tools/verification.md)。未连接真实模型 Key。
 
 - 2026-10-20：S6 收件箱现直接打开未发送的新对话；会话抽屉可搜索、分组、继续及管理对话，桌面宽屏显示侧栏；顶部权限按会话保存，新对话继承总设置；待处理独立页包括草稿/采集确认/同步冲突/知识候选，设置页新增全局知识管理，候选在对话和待处理页共用同一审批状态；全局资料编辑/删除通过确认候选执行，通用成果编辑入口不显示。UI/设置/Workspace/生命周期/运行定向测试 16/16 通过，指定 analysis 无问题。报告见 [验证记录](test-results/secretary-s6-conversation-ui/verification.md)。文件、语音、思考/联网能力仍待后续阶段。
+
+- 2026-10-20：S7 将用户可见名统一为“懒狗秘书”：Android 标签、Flutter MaterialApp 标题、Windows 窗口标题/版本资源/安装器开始菜单和快捷方式、Web 页面/manifest、根与客户端 README、包描述。Android 包 ID、pub package 名、Windows AppId/安装目录/EXE 内名与数据路径均保持。标题 widget 测试 1/1 通过；Android release APK、Windows release、Web release 构建通过，APK badging 确认 label 并确认 package ID `com.yuanfang.aitext.personal_ai_inbox` 未变。指定分析无问题。Inno Setup 编译器本机未安装，安装器脚本只完成源文案检查，未执行编译。见 [验证记录](test-results/secretary-s7-branding/verification.md)。
 
 - 2026-10-20：S2 普通成果 CAS 更新/删除与持久化撤销账本已实现，索引迁移升至 v4；28 项 repository/index/migration/capture 定向测试及指定文件 analysis 均通过。报告见 [验证记录](test-results/secretary-s2-result-actions/verification.md)。AI 工具尚未连接。
 
@@ -327,7 +329,7 @@
 
 ### 下一步
 
-当前优先：实现 S7 软件显示名更改，再做 S8–S10 深度思考/内置联网、文件和语音能力，随后建立/执行三端矩阵；已完成 S1–S6 不重跑同范围验证。无需重问已确认产品选择；业务修改完成后执行 SEC-001–100 三端矩阵（50/25/25），保存逐例证据并对受影响例定向重跑。新增收费语音服务需呈现具体选择；受控 Provider 不能冒充真实云盘接入。以下为既有后续工作。
+当前优先：实现 S8–S10 深度思考/内置联网、文件和语音能力，随后建立/执行三端矩阵；已完成 S1–S7 不重跑同范围验证。无需重问已确认产品选择；业务修改完成后执行 SEC-001–100 三端矩阵（50/25/25），保存逐例证据并对受影响例定向重跑。新增收费语音服务需呈现具体选择；受控 Provider 不能冒充真实云盘接入。以下为既有后续工作。
 
 1. 发布前按发布门禁运行完整测试套件，并在三端执行 `scripts/verify-realistic-e2e.ps1`；矩阵已可重复运行，但每次约需 16 分钟纯用例时间。
 2. 若转入生产用户数据，先执行升级与备份恢复演练；真实云盘、通知、签名和物理断电专项需另行验收。
@@ -335,6 +337,16 @@
 4. 后续代码任务按 `AGENTS.md` 的增量测试范围执行；测试结论记录执行范围与未验证项，临时测试仅在用户要求时清理。
 
 ## 8. 变更记录
+
+### 2026-10-20 / 完成 S7 懒狗秘书各端显示名称
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 将 Android 启动器、Flutter 标题、Windows 窗口/产品资源/安装器显示、Web 页面与 manifest 及仓库说明统一为“懒狗秘书”；保留包 ID、AppId、EXE/安装目录和持久化路径 |
+| 变更文件 | `app/android/app/src/main/AndroidManifest.xml`、`app/lib/app.dart`、Windows runner/resource/installer、`app/web/index.html`/manifest、pubspec 描述、README 和显示名测试 |
+| 验证 | branding widget test 1/1；Android APK、Windows Release、Web Release 构建通过；`aapt dump badging` 确认 `application-label='懒狗秘书'` 且原 package ID 不变；Dart analysis 无问题。Inno Setup 编译未执行（本机未安装编译器）；未跑设备矩阵/全项目全量测试 |
+| 提交标题 | `feat(app): 更名为懒狗秘书` |
+| 遗留事项 | 下一版本发布时需使用新名称；旧的 `v1.1.2` 发布资产不重写；S8–S12 继续执行 |
 
 ### 2026-10-20 / 实现 S6 秘书对话、待处理与知识管理界面
 

@@ -60,7 +60,7 @@ class _PersonalAiInboxAppState extends State<PersonalAiInboxApp>
             widget.runtime.preferences.settings.themeMode,
           );
           return MaterialApp(
-            title: '个人 AI 收件箱',
+            title: '懒狗秘书',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light(),
             darkTheme: AppTheme.dark(),
