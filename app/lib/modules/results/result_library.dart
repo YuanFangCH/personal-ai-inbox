@@ -153,6 +153,91 @@ class ResultLibrary extends ChangeNotifier {
     return document;
   }
 
+  Future<ResultActionResult> createManualWithUndo({
+    required ResultType type,
+    required String title,
+    required String body,
+    required String actionId,
+    required String idempotencyKey,
+    required DateTime createdAt,
+    ResultStatus status = ResultStatus.canonical,
+    DateTime? due,
+    String? matterId,
+    DateTime? start,
+    DateTime? end,
+    bool allDay = false,
+    String? recurrence,
+    List<String> tags = const [],
+  }) async {
+    final document = await _repository.create(
+      type: type,
+      title: title,
+      body: body,
+      status: status,
+      due: due,
+      matterId: matterId,
+      start: start,
+      end: end,
+      allDay: allDay,
+      recurrence: recurrence,
+      tags: tags,
+      idempotencyKey: idempotencyKey,
+      createdAt: createdAt,
+      reversibleActionId: actionId,
+    );
+    final action = await _repository.findReversibleAction(actionId);
+    if (action == null) throw StateError('创建操作撤销记录缺失：$actionId');
+    _publishDocument(document);
+    return ResultActionResult(document: document, action: action);
+  }
+
+  Future<ResultActionResult> modifyWithUndo({
+    required ResultDocument document,
+    required int expectedRevision,
+    required String expectedHash,
+    required String actionId,
+  }) async {
+    final saved = await _repository.saveWithUndo(
+      document: document,
+      expectedRevision: expectedRevision,
+      expectedHash: expectedHash,
+      actionId: actionId,
+    );
+    final action = await _repository.findReversibleAction(actionId);
+    if (action == null) throw StateError('修改操作撤销记录缺失：$actionId');
+    _publishDocument(saved);
+    return ResultActionResult(document: saved, action: action);
+  }
+
+  Future<ResultActionResult> deleteWithUndo({
+    required String id,
+    required int expectedRevision,
+    required String expectedHash,
+    required String actionId,
+  }) async {
+    final deleted = await _repository.deleteWithUndo(
+      id: id,
+      expectedRevision: expectedRevision,
+      expectedHash: expectedHash,
+      actionId: actionId,
+    );
+    final action = await _repository.findReversibleAction(actionId);
+    if (action == null) throw StateError('删除操作撤销记录缺失：$actionId');
+    _publishDocument(deleted);
+    return ResultActionResult(document: deleted, action: action);
+  }
+
+  Future<ResultActionResult> undoAction(
+    String actionId, {
+    DateTime? now,
+  }) async {
+    final action = await _repository.undoAction(actionId, now: now);
+    final document = await _repository.readDocument(action.resultId);
+    if (document == null) throw StateError('撤销成果缺失：${action.resultId}');
+    _publishDocument(document);
+    return ResultActionResult(document: document, action: action);
+  }
+
   Future<void> saveDocument(ResultDocument document) async {
     final saved = await _repository.save(document);
     _publishDocument(saved);
@@ -252,6 +337,13 @@ class ResultLibrary extends ChangeNotifier {
       ),
     );
   }
+}
+
+class ResultActionResult {
+  const ResultActionResult({required this.document, required this.action});
+
+  final ResultDocument document;
+  final ReversibleResultAction action;
 }
 
 class _ResultLibraryInternal implements ResultLibraryInternal {

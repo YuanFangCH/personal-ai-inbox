@@ -23,8 +23,8 @@ class SqliteIndexDatabase implements IndexDatabase {
         ..execute('PRAGMA foreign_keys = ON');
       final version =
           _database.select('PRAGMA user_version').single['user_version'] as int;
-      if (version > 3) {
-        throw StateError('索引数据库版本 $version 高于此应用支持的版本 3');
+      if (version > 4) {
+        throw StateError('索引数据库版本 $version 高于此应用支持的版本 4');
       }
       _database.execute('BEGIN EXCLUSIVE');
       _database
@@ -84,6 +84,25 @@ class SqliteIndexDatabase implements IndexDatabase {
           created_at TEXT NOT NULL
         )
       ''');
+      _database.execute('''
+        CREATE TABLE IF NOT EXISTS reversible_actions (
+          id TEXT PRIMARY KEY,
+          result_id TEXT NOT NULL,
+          kind TEXT NOT NULL CHECK (kind IN ('create', 'update', 'delete')),
+          status TEXT NOT NULL CHECK (
+            status IN ('prepared', 'applied', 'undoing', 'undone', 'expired', 'failed')
+          ),
+          expected_revision INTEGER NOT NULL,
+          expected_hash TEXT NOT NULL,
+          previous_markdown TEXT,
+          previous_hash TEXT,
+          created_at TEXT NOT NULL,
+          undo_until TEXT NOT NULL,
+          undo_revision INTEGER,
+          undo_hash TEXT,
+          error TEXT
+        )
+      ''');
       if (version < 2) {
         _database.execute('PRAGMA user_version = 2');
       }
@@ -93,7 +112,7 @@ class SqliteIndexDatabase implements IndexDatabase {
           "ALTER TABLE objects ADD COLUMN search_text TEXT NOT NULL DEFAULT ''",
         );
       }
-      if (version < 3) _database.execute('PRAGMA user_version = 3');
+      if (version < 4) _database.execute('PRAGMA user_version = 4');
       _database.execute('COMMIT');
     } catch (_) {
       try {
@@ -315,6 +334,63 @@ class SqliteIndexDatabase implements IndexDatabase {
   }
 
   @override
+  Future<ReversibleResultAction?> findReversibleAction(String id) async {
+    final rows = _database.select(
+      'SELECT * FROM reversible_actions WHERE id = ?',
+      [id],
+    );
+    return rows.isEmpty ? null : _reversibleActionFromRow(rows.first);
+  }
+
+  @override
+  Future<List<ReversibleResultAction>> listReversibleActions() async {
+    final rows = _database.select(
+      'SELECT * FROM reversible_actions ORDER BY created_at',
+    );
+    return rows.map(_reversibleActionFromRow).toList(growable: false);
+  }
+
+  @override
+  Future<void> upsertReversibleAction(ReversibleResultAction action) async {
+    _database.execute(
+      '''
+      INSERT INTO reversible_actions (
+        id, result_id, kind, status, expected_revision, expected_hash,
+        previous_markdown, previous_hash, created_at, undo_until,
+        undo_revision, undo_hash, error
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        status = excluded.status,
+        previous_markdown = excluded.previous_markdown,
+        previous_hash = excluded.previous_hash,
+        undo_revision = excluded.undo_revision,
+        undo_hash = excluded.undo_hash,
+        error = excluded.error
+      ''',
+      [
+        action.id,
+        action.resultId,
+        action.kind.name,
+        action.status.name,
+        action.expectedRevision,
+        action.expectedHash,
+        action.previousMarkdown,
+        action.previousHash,
+        action.createdAt.toIso8601String(),
+        action.undoUntil.toIso8601String(),
+        action.undoRevision,
+        action.undoHash,
+        action.error,
+      ],
+    );
+  }
+
+  @override
+  Future<void> removeReversibleAction(String id) async {
+    _database.execute('DELETE FROM reversible_actions WHERE id = ?', [id]);
+  }
+
+  @override
   Future<SyncConflictRecord?> findConflict(String resultId) async {
     final rows = _database.select(
       'SELECT * FROM sync_conflicts WHERE result_id = ?',
@@ -371,6 +447,24 @@ class SqliteIndexDatabase implements IndexDatabase {
       localHash: row['local_hash'] as String,
       copyPath: row['copy_path'] as String,
       createdAt: DateTime.parse(row['created_at'] as String),
+    );
+  }
+
+  ReversibleResultAction _reversibleActionFromRow(Row row) {
+    return ReversibleResultAction(
+      id: row['id'] as String,
+      resultId: row['result_id'] as String,
+      kind: ReversibleActionKind.values.byName(row['kind'] as String),
+      status: ReversibleActionStatus.values.byName(row['status'] as String),
+      expectedRevision: row['expected_revision'] as int,
+      expectedHash: row['expected_hash'] as String,
+      previousMarkdown: row['previous_markdown'] as String?,
+      previousHash: row['previous_hash'] as String?,
+      createdAt: DateTime.parse(row['created_at'] as String),
+      undoUntil: DateTime.parse(row['undo_until'] as String),
+      undoRevision: row['undo_revision'] as int?,
+      undoHash: row['undo_hash'] as String?,
+      error: row['error'] as String?,
     );
   }
 

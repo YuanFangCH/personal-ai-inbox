@@ -6,6 +6,7 @@ class MemoryIndexDatabase implements IndexDatabase {
   final Map<String, CaptureRecord> _captures = {};
   final Map<String, IdempotentOperation> _operations = {};
   final Map<String, SyncConflictRecord> _conflicts = {};
+  final Map<String, ReversibleResultAction> _reversibleActions = {};
 
   @override
   Future<void> open() async {}
@@ -108,6 +109,24 @@ class MemoryIndexDatabase implements IndexDatabase {
     return _operations.values
         .where((operation) => operation.state != OperationState.completed)
         .toList(growable: false);
+  }
+
+  @override
+  Future<ReversibleResultAction?> findReversibleAction(String id) async =>
+      _reversibleActions[id];
+
+  @override
+  Future<List<ReversibleResultAction>> listReversibleActions() async =>
+      _reversibleActions.values.toList(growable: false);
+
+  @override
+  Future<void> upsertReversibleAction(ReversibleResultAction action) async {
+    _reversibleActions[action.id] = action;
+  }
+
+  @override
+  Future<void> removeReversibleAction(String id) async {
+    _reversibleActions.remove(id);
   }
 
   @override
