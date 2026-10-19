@@ -30,7 +30,7 @@ void main() {
 
       await migration.prepare();
       _markMigrated(indexPath, version: 3);
-      _markMigrated(conversationPath);
+      _markMigrated(conversationPath, version: 2);
       settings.values['device_id'] = 'device-after';
       await migration.rollback();
 
@@ -96,7 +96,7 @@ void main() {
       final conversationPath = '${directory.path}/conversations.sqlite3';
       _markMigrated(indexPath, version: 3);
       await expectLater(migration.complete(), throwsA(isA<StateError>()));
-      _markMigrated(conversationPath);
+      _markMigrated(conversationPath, version: 2);
       await migration.complete();
 
       final state = jsonDecode(
@@ -173,6 +173,7 @@ void main() {
       await chat.close();
       final legacyChat = sqlite3.open(conversationPath)
         ..execute('DROP TABLE generation_runs')
+        ..execute('ALTER TABLE conversations DROP COLUMN ai_permissions_json')
         ..execute('PRAGMA user_version = 0');
       legacyChat.close();
 

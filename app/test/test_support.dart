@@ -8,6 +8,7 @@ class FakeSettingsService extends SettingsService {
     String modelBaseUrl = 'https://api.deepseek.com',
     String modelName = 'deepseek-flash',
     String? modelKey,
+    AiPermissions defaultAiPermissions = const AiPermissions(),
   }) : _settings = AppSettings(
          deviceId: deviceId,
          themeMode: themeMode,
@@ -17,6 +18,7 @@ class FakeSettingsService extends SettingsService {
          showCompletedTodos: false,
          calendarMonthDetailed: true,
          allowImageEgress: true,
+         defaultAiPermissions: defaultAiPermissions,
        ),
        _modelKey = modelKey;
 
@@ -59,6 +61,7 @@ class FakeSettingsService extends SettingsService {
     bool? showCompletedTodos,
     bool? calendarMonthDetailed,
     bool? allowImageEgress,
+    AiPermissions? defaultAiPermissions,
     ModelCapabilityOverrides? capabilityOverrides,
     int? responseHeaderTimeoutSeconds,
     int? streamIdleTimeoutSeconds,
@@ -74,6 +77,7 @@ class FakeSettingsService extends SettingsService {
       showCompletedTodos: showCompletedTodos,
       calendarMonthDetailed: calendarMonthDetailed,
       allowImageEgress: allowImageEgress,
+      defaultAiPermissions: defaultAiPermissions,
       capabilityOverrides: capabilityOverrides,
       responseHeaderTimeoutSeconds: responseHeaderTimeoutSeconds,
       streamIdleTimeoutSeconds: streamIdleTimeoutSeconds,

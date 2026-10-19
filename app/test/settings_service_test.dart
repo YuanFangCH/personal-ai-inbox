@@ -28,6 +28,7 @@ void main() {
       expect(settings.modelBaseUrl, 'not a valid URL');
       expect(settings.allowImageEgress, isFalse);
       expect(settings.hasModelKey, isTrue);
+      expect(settings.defaultAiPermissions, const AiPermissions());
       expect(settings.validate(), isNotEmpty);
       expect(
         jsonDecode(persisted!)['schema_version'],
@@ -112,8 +113,16 @@ void main() {
       keyStore: _MemorySecureKeyStore(),
     );
     final initial = await service.load();
+    const permissions = AiPermissions(
+      read: false,
+      create: true,
+      modifyDelete: false,
+    );
+    final withPermissions = await service.saveConfiguration(
+      initial.copyWith(defaultAiPermissions: permissions),
+    );
     final keyed = await service.saveConfiguration(
-      initial,
+      withPermissions,
       apiKey: 'local-secret',
       replaceApiKey: true,
     );
@@ -133,9 +142,24 @@ void main() {
     final imported = await service.importPortableSettings(portable);
 
     expect(imported.modelName, 'portable-model');
+    expect(imported.defaultAiPermissions, permissions);
     expect(imported.deviceId, 'device-local');
     expect(imported.modelKeySlotId, keyed.modelKeySlotId);
     expect(await service.readModelKey(), 'local-secret');
+  });
+
+  test('legacy portable settings enable all AI permission defaults', () async {
+    final service = SettingsService(
+      preferenceStore: _MemoryPreferencesStore({'device_id': 'device-import'}),
+      keyStore: _MemorySecureKeyStore(),
+    );
+    await service.load();
+    final legacy = await service.exportPortableSettings();
+    legacy.remove('default_ai_permissions');
+
+    final imported = await service.importPortableSettings(legacy);
+
+    expect(imported.defaultAiPermissions, const AiPermissions());
   });
 
   test('reset defaults preserves device ID and secure key reference', () async {
@@ -145,7 +169,15 @@ void main() {
     );
     final initial = await service.load();
     final configured = await service.saveConfiguration(
-      initial.copyWith(modelName: 'custom-model', allowImageEgress: false),
+      initial.copyWith(
+        modelName: 'custom-model',
+        allowImageEgress: false,
+        defaultAiPermissions: const AiPermissions(
+          read: false,
+          create: false,
+          modifyDelete: false,
+        ),
+      ),
       apiKey: 'local-secret',
       replaceApiKey: true,
     );
@@ -157,6 +189,7 @@ void main() {
     expect(restored.hasModelKey, isTrue);
     expect(restored.modelName, 'deepseek-flash');
     expect(restored.allowImageEgress, isTrue);
+    expect(restored.defaultAiPermissions, const AiPermissions());
   });
 
   test('accepts loopback HTTP and enforces timeout and context ranges', () {

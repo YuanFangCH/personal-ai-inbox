@@ -127,6 +127,7 @@ class Conversation {
     required this.updatedAt,
     required this.autoTitle,
     this.preview = '',
+    this.aiPermissions = const AiPermissions(),
   });
 
   final String id;
@@ -135,12 +136,14 @@ class Conversation {
   final DateTime updatedAt;
   final bool autoTitle;
   final String preview;
+  final AiPermissions aiPermissions;
 
   Conversation copyWith({
     String? title,
     DateTime? updatedAt,
     bool? autoTitle,
     String? preview,
+    AiPermissions? aiPermissions,
   }) {
     return Conversation(
       id: id,
@@ -149,6 +152,7 @@ class Conversation {
       updatedAt: updatedAt ?? this.updatedAt,
       autoTitle: autoTitle ?? this.autoTitle,
       preview: preview ?? this.preview,
+      aiPermissions: aiPermissions ?? this.aiPermissions,
     );
   }
 }

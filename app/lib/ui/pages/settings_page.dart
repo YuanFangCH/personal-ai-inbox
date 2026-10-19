@@ -31,6 +31,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool? _toolCallsOverride;
   bool? _jsonOutputOverride;
   bool _allowImageEgress = true;
+  AiPermissions _defaultAiPermissions = const AiPermissions();
   bool _initialized = false;
   bool _apiKeyChanged = false;
   bool _saving = false;
@@ -67,6 +68,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _jsonOutputOverride = settings.capabilityOverrides.jsonOutput;
     _themeMode = materialThemeMode(settings.themeMode);
     _allowImageEgress = settings.allowImageEgress;
+    _defaultAiPermissions = settings.defaultAiPermissions;
     final invalidSettings = settings.validate();
     if (invalidSettings.isNotEmpty) {
       _saveError = '当前配置需要修正：${invalidSettings.join('；')}';
@@ -138,6 +140,51 @@ class _SettingsPageState extends State<SettingsPage> {
                   selected: {_themeMode},
                   onSelectionChanged: (value) =>
                       setState(() => _themeMode = value.first),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SurfacePanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SectionHeading(title: 'AI 权限默认值'),
+                const SizedBox(height: 4),
+                Text(
+                  '只决定新对话的初始权限；已有对话保留自己的设置。',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                _permissionSwitch(
+                  title: '读取',
+                  subtitle: '按需读取本端成果与其他对话',
+                  value: _defaultAiPermissions.read,
+                  onChanged: (value) => setState(() {
+                    _defaultAiPermissions = _defaultAiPermissions.copyWith(
+                      read: value,
+                    );
+                  }),
+                ),
+                _permissionSwitch(
+                  title: '新增',
+                  subtitle: '允许 AI 新建成果',
+                  value: _defaultAiPermissions.create,
+                  onChanged: (value) => setState(() {
+                    _defaultAiPermissions = _defaultAiPermissions.copyWith(
+                      create: value,
+                    );
+                  }),
+                ),
+                _permissionSwitch(
+                  title: '修改与删除',
+                  subtitle: '允许 AI 按要求修改或删除成果',
+                  value: _defaultAiPermissions.modifyDelete,
+                  onChanged: (value) => setState(() {
+                    _defaultAiPermissions = _defaultAiPermissions.copyWith(
+                      modifyDelete: value,
+                    );
+                  }),
                 ),
               ],
             ),
@@ -341,6 +388,7 @@ class _SettingsPageState extends State<SettingsPage> {
         modelName: _model.text,
         apiKey: _apiKeyChanged ? _apiKey.text : null,
         allowImageEgress: _allowImageEgress,
+        defaultAiPermissions: _defaultAiPermissions,
         capabilityOverrides: ModelCapabilityOverrides(
           vision: _visionOverride,
           toolCalls: _toolCallsOverride,
@@ -393,6 +441,19 @@ class _SettingsPageState extends State<SettingsPage> {
     }),
   );
 
+  Widget _permissionSwitch({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) => SwitchListTile(
+    contentPadding: EdgeInsets.zero,
+    title: Text(title),
+    subtitle: Text(subtitle),
+    value: value,
+    onChanged: onChanged,
+  );
+
   Widget _numberField(TextEditingController controller, String label) =>
       Padding(
         padding: const EdgeInsets.only(top: 10),
@@ -417,6 +478,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _model.text = settings.modelName;
     _themeMode = materialThemeMode(settings.themeMode);
     _allowImageEgress = settings.allowImageEgress;
+    _defaultAiPermissions = settings.defaultAiPermissions;
     _visionOverride = settings.capabilityOverrides.vision;
     _toolCallsOverride = settings.capabilityOverrides.toolCalls;
     _jsonOutputOverride = settings.capabilityOverrides.jsonOutput;
@@ -571,6 +633,9 @@ class _SettingsPageState extends State<SettingsPage> {
       'show_completed_todos': current.showCompletedTodos,
       'calendar_month_detailed': current.calendarMonthDetailed,
       'allow_image_egress': current.allowImageEgress,
+      'default_ai_permissions': jsonEncode(
+        current.defaultAiPermissions.toJson(),
+      ),
       'response_header_timeout_seconds': current.responseHeaderTimeoutSeconds,
       'stream_idle_timeout_seconds': current.streamIdleTimeoutSeconds,
       'total_timeout_seconds': current.totalTimeoutSeconds,
@@ -585,6 +650,7 @@ class _SettingsPageState extends State<SettingsPage> {
       'show_completed_todos': '显示已完成待办',
       'calendar_month_detailed': '详细月历',
       'allow_image_egress': '图片出网',
+      'default_ai_permissions': 'AI 权限默认值',
       'response_header_timeout_seconds': '响应头等待',
       'stream_idle_timeout_seconds': '流空闲期限',
       'total_timeout_seconds': '请求总时限',
@@ -594,7 +660,16 @@ class _SettingsPageState extends State<SettingsPage> {
     };
     final changes = <String>[];
     for (final entry in labels.entries) {
-      final next = values[entry.key];
+      final rawNext = values[entry.key];
+      final next = entry.key == 'default_ai_permissions'
+          ? jsonEncode(
+              rawNext == null
+                  ? const AiPermissions().toJson()
+                  : (rawNext as Map).map(
+                      (key, value) => MapEntry(key.toString(), value),
+                    ),
+            )
+          : rawNext;
       final currentValue = currentValues[entry.key];
       if (next != currentValue) {
         changes.add('${entry.value}：$currentValue → $next');

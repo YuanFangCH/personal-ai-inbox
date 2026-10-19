@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart';
 
 import '../core/chat_models.dart';
+import '../core/models.dart';
 import 'conversation_store.dart';
 
 class SqliteConversationStore implements ConversationStore {
@@ -28,8 +29,8 @@ class SqliteConversationStore implements ConversationStore {
         ..execute('PRAGMA foreign_keys = ON');
       final version =
           _database.select('PRAGMA user_version').single['user_version'] as int;
-      if (version > 1) {
-        throw StateError('会话数据库版本 $version 高于此应用支持的版本 1');
+      if (version > 2) {
+        throw StateError('会话数据库版本 $version 高于此应用支持的版本 2');
       }
       _database.execute('BEGIN EXCLUSIVE');
       _database
@@ -82,8 +83,16 @@ class SqliteConversationStore implements ConversationStore {
             REFERENCES chat_messages(id) ON DELETE CASCADE
         )
       ''');
+      if (version < 2) {
+        _database.execute(
+          '''ALTER TABLE conversations ADD COLUMN ai_permissions_json
+          TEXT NOT NULL DEFAULT '{"read":true,"create":true,"modify_delete":true}' ''',
+        );
+      }
       if (version < 1) {
-        _database.execute('PRAGMA user_version = 1');
+        _database.execute('PRAGMA user_version = 2');
+      } else if (version < 2) {
+        _database.execute('PRAGMA user_version = 2');
       }
       _database.execute('COMMIT');
     } catch (_) {
@@ -124,13 +133,15 @@ class SqliteConversationStore implements ConversationStore {
     _database.execute(
       '''
       INSERT INTO conversations (
-        id, title, created_at, updated_at, auto_title, preview
-      ) VALUES (?, ?, ?, ?, ?, ?)
+        id, title, created_at, updated_at, auto_title, preview,
+        ai_permissions_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         title = excluded.title,
         updated_at = excluded.updated_at,
         auto_title = excluded.auto_title,
-        preview = excluded.preview
+        preview = excluded.preview,
+        ai_permissions_json = excluded.ai_permissions_json
       ''',
       [
         conversation.id,
@@ -139,6 +150,7 @@ class SqliteConversationStore implements ConversationStore {
         conversation.updatedAt.toIso8601String(),
         conversation.autoTitle ? 1 : 0,
         conversation.preview,
+        jsonEncode(conversation.aiPermissions.toJson()),
       ],
     );
   }
@@ -317,6 +329,9 @@ class SqliteConversationStore implements ConversationStore {
       updatedAt: DateTime.parse(row['updated_at'] as String),
       autoTitle: row['auto_title'] == 1,
       preview: row['preview'] as String,
+      aiPermissions: AiPermissions.fromJson(
+        _decodeMap(row['ai_permissions_json']),
+      ),
     );
   }
 
@@ -355,5 +370,12 @@ class SqliteConversationStore implements ConversationStore {
     }
     final decoded = jsonDecode(value);
     return decoded is List ? decoded : const [];
+  }
+
+  Map<String, dynamic>? _decodeMap(Object? value) {
+    if (value is! String || value.isEmpty) return null;
+    final decoded = jsonDecode(value);
+    if (decoded is! Map) throw const FormatException('会话 AI 权限快照格式错误');
+    return decoded.map((key, value) => MapEntry(key.toString(), value));
   }
 }

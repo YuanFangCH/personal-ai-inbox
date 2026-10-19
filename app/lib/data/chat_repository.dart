@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:uuid/uuid.dart';
 
 import '../core/chat_models.dart';
+import '../core/models.dart';
 import 'attachment_store.dart';
 import 'conversation_store.dart';
 
@@ -45,7 +46,10 @@ class ChatRepository {
     return _store.findConversation(id);
   }
 
-  Future<Conversation> createConversation({DateTime? createdAt}) async {
+  Future<Conversation> createConversation({
+    DateTime? createdAt,
+    AiPermissions aiPermissions = const AiPermissions(),
+  }) async {
     final timestamp = createdAt ?? DateTime.now();
     final conversation = Conversation(
       id: 'cnv_${const Uuid().v4()}',
@@ -53,6 +57,7 @@ class ChatRepository {
       createdAt: timestamp,
       updatedAt: timestamp,
       autoTitle: true,
+      aiPermissions: aiPermissions,
     );
     await _store.upsertConversation(conversation);
     return conversation;
