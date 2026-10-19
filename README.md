@@ -32,7 +32,7 @@
 
 检索以节省开销与响应时间为目标：当前会话足够则不检索，必要时定向查询、少量返回、足够即停，复用有效结果并在内容变化后失效。见[检索策略与预算](docs/ai-retrieval-policy.md)，尚未实现或测量提速。
 
-已确认将收件箱改为参考 DeepSeek 手机端的 AI 对话界面：每次进入显示新对话，待处理独立成页，三组会话权限默认开启，普通成果改删直接执行并可撤销。界面、权限和普通成果操作已实现；文件、语音转文字、回复朗读和深度思考仍在计划中。联网仅用当前模型接口内置能力，不支持则禁用。见 [改造计划](docs/ai-conversation-redesign-plan.md) 与 [ADR 0017](docs/adr/0017-conversation-permissions-and-reversible-result-actions.md)。
+已确认将收件箱改为参考 DeepSeek 手机端的 AI 对话界面：每次进入显示新对话，待处理独立成页，三组会话权限默认开启，普通成果改删直接执行并可撤销。界面、权限、普通成果操作和支持端点的深度思考已实现；文件和语音转写/朗读仍在计划中。当前 Chat Completions 未声明内置联网能力，联网按钮禁用。见 [改造计划](docs/ai-conversation-redesign-plan.md) 与 [ADR 0017](docs/adr/0017-conversation-permissions-and-reversible-result-actions.md)。
 
 ## 模型配置
 

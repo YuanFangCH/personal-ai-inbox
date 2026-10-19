@@ -303,6 +303,8 @@ class ChatMessage {
     this.attachments = const [],
     this.actions = const [],
     this.error,
+    this.reasoningContent = '',
+    this.toolTranscript = const [],
   });
 
   final String id;
@@ -315,6 +317,8 @@ class ChatMessage {
   final List<ChatAttachment> attachments;
   final List<AutoRecordAction> actions;
   final String? error;
+  final String reasoningContent;
+  final List<Map<String, dynamic>> toolTranscript;
 
   bool get isUser => role == ChatRole.user;
 
@@ -325,6 +329,8 @@ class ChatMessage {
     List<ChatAttachment>? attachments,
     List<AutoRecordAction>? actions,
     Object? error = _unset,
+    String? reasoningContent,
+    List<Map<String, dynamic>>? toolTranscript,
   }) {
     return ChatMessage(
       id: id,
@@ -337,6 +343,8 @@ class ChatMessage {
       attachments: attachments ?? this.attachments,
       actions: actions ?? this.actions,
       error: identical(error, _unset) ? this.error : error as String?,
+      reasoningContent: reasoningContent ?? this.reasoningContent,
+      toolTranscript: toolTranscript ?? this.toolTranscript,
     );
   }
 }

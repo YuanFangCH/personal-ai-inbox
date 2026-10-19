@@ -188,16 +188,19 @@ class ModelCapabilityOverrides {
     this.vision,
     this.toolCalls,
     this.jsonOutput,
+    this.thinking,
   });
 
   final bool? vision;
   final bool? toolCalls;
   final bool? jsonOutput;
+  final bool? thinking;
 
   ModelCapabilityOverrides copyWith({
     Object? vision = _unchangedCapability,
     Object? toolCalls = _unchangedCapability,
     Object? jsonOutput = _unchangedCapability,
+    Object? thinking = _unchangedCapability,
   }) => ModelCapabilityOverrides(
     vision: identical(vision, _unchangedCapability)
         ? this.vision
@@ -208,6 +211,9 @@ class ModelCapabilityOverrides {
     jsonOutput: identical(jsonOutput, _unchangedCapability)
         ? this.jsonOutput
         : jsonOutput as bool?,
+    thinking: identical(thinking, _unchangedCapability)
+        ? this.thinking
+        : thinking as bool?,
   );
 }
 

@@ -119,7 +119,10 @@ void main() {
       modifyDelete: false,
     );
     final withPermissions = await service.saveConfiguration(
-      initial.copyWith(defaultAiPermissions: permissions),
+      initial.copyWith(
+        defaultAiPermissions: permissions,
+        capabilityOverrides: const ModelCapabilityOverrides(thinking: false),
+      ),
     );
     final keyed = await service.saveConfiguration(
       withPermissions,
@@ -143,6 +146,7 @@ void main() {
 
     expect(imported.modelName, 'portable-model');
     expect(imported.defaultAiPermissions, permissions);
+    expect(imported.capabilityOverrides.thinking, isFalse);
     expect(imported.deviceId, 'device-local');
     expect(imported.modelKeySlotId, keyed.modelKeySlotId);
     expect(await service.readModelKey(), 'local-secret');

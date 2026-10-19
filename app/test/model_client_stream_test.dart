@@ -8,6 +8,81 @@ import 'package:personal_ai_inbox/services/model_client.dart';
 import 'package:personal_ai_inbox/services/model_capabilities.dart';
 
 void main() {
+  test(
+    'thinking mode is capability gated and carries reasoning for tool turns',
+    () async {
+      Map<String, dynamic>? requestBody;
+      final client = MockClient.streaming((request, body) async {
+        requestBody =
+            jsonDecode(await body.bytesToString()) as Map<String, dynamic>;
+        final event = {
+          'choices': [
+            {
+              'delta': {
+                'reasoning_content': 'hidden reasoning',
+                'content': 'Visible answer',
+              },
+            },
+          ],
+        };
+        return http.StreamedResponse(
+          Stream.fromIterable([
+            utf8.encode('data: ${jsonEncode(event)}\n\n'),
+            utf8.encode('data: [DONE]\n\n'),
+          ]),
+          200,
+        );
+      });
+      final model = ModelClient(client: client);
+      final deltas = await model
+          .streamChat(
+            messages: const [
+              ChatRequestMessage(
+                role: 'assistant',
+                text: '',
+                reasoningContent: 'previous hidden reasoning',
+                toolCalls: [
+                  {
+                    'id': 'call_previous',
+                    'type': 'function',
+                    'function': {'name': 'search_results', 'arguments': '{}'},
+                  },
+                ],
+              ),
+              ChatRequestMessage(
+                role: 'tool',
+                text: '{"hits":[]}',
+                toolCallId: 'call_previous',
+                name: 'search_results',
+              ),
+              ChatRequestMessage(role: 'user', text: 'What did you find?'),
+            ],
+            configuration: const ModelConfiguration(
+              baseUrl: 'https://api.deepseek.com',
+              model: 'deepseek-flash',
+              apiKey: 'test-key',
+              capabilities: ModelCapabilities.deepseekFlash,
+            ),
+            now: DateTime(2026, 10, 20),
+            thinkingEnabled: true,
+          )
+          .toList();
+
+      expect(requestBody!['thinking'], {'type': 'enabled'});
+      expect(requestBody!['reasoning_effort'], 'high');
+      final messages = requestBody!['messages'] as List;
+      expect(messages[1]['reasoning_content'], 'previous hidden reasoning');
+      expect(messages[2]['tool_call_id'], 'call_previous');
+      expect(deltas.map((delta) => delta.content).join(), 'Visible answer');
+      expect(
+        deltas.map((delta) => delta.reasoningContent).join(),
+        'hidden reasoning',
+      );
+      expect(deltas.last.termination, ChatStreamTermination.completed);
+      model.close();
+    },
+  );
+
   test('streamChat parses content and tool call fragments', () async {
     String? requestBody;
     final client = MockClient.streaming((request, bodyStream) async {
@@ -50,6 +125,7 @@ void main() {
     );
     final request = jsonDecode(requestBody!) as Map<String, dynamic>;
     expect(request['stream'], true);
+    expect(request['thinking'], {'type': 'disabled'});
     expect(request['tools'], isA<List<dynamic>>());
     expect(deltas.last.termination, ChatStreamTermination.completed);
     model.close();

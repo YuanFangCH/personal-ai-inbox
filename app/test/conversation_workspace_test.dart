@@ -57,6 +57,7 @@ void main() {
             'choices': [
               {
                 'delta': {
+                  'reasoning_content': '仅本地隐藏保存的推理片段。',
                   'tool_calls': [
                     {
                       'index': 0,
@@ -121,10 +122,16 @@ void main() {
       (await chatRepository.findConversation(conversation.id))!.aiPermissions,
       const AiPermissions(read: false, create: true, modifyDelete: false),
     );
-    await workspace.sendChatMessage(conversation.id, text: '记住周五提交材料');
+    await workspace.sendChatMessage(
+      conversation.id,
+      text: '记住周五提交材料',
+      thinkingEnabled: true,
+    );
 
     final message = workspace.messagesFor(conversation.id).last;
     expect(message.actions.single.status, AutoRecordStatus.created);
+    expect(message.reasoningContent, '仅本地隐藏保存的推理片段。');
+    expect(message.toolTranscript, hasLength(2));
     expect(await results.listDocuments(), hasLength(1));
 
     await workspace.undoAutoRecord(message.actions.single.id);

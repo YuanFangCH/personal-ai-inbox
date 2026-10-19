@@ -18,7 +18,10 @@ void main() {
     final runtime = await AppRuntime.bootstrap(
       vaultOverride: MemoryVaultStore(),
       indexOverride: MemoryIndexDatabase(),
-      settingsOverride: FakeSettingsService(deviceId: 'secretary-chat-ui'),
+      settingsOverride: FakeSettingsService(
+        deviceId: 'secretary-chat-ui',
+        modelKey: 'test-key',
+      ),
     );
     addTearDown(runtime.dispose);
     final existing = await runtime.conversations.createConversation();
@@ -27,6 +30,23 @@ void main() {
     await tester.tap(find.byKey(const Key('nav_inbox')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('chat_input')), findsOneWidget);
+    final thinkingChip = tester.widget<FilterChip>(
+      find.widgetWithText(FilterChip, '深度思考'),
+    );
+    final webSearchChip = tester.widget<FilterChip>(
+      find.widgetWithText(FilterChip, '智能搜索'),
+    );
+    expect(thinkingChip.onSelected, isNotNull);
+    expect(thinkingChip.selected, isFalse);
+    expect(webSearchChip.onSelected, isNull);
+    await tester.tap(find.widgetWithText(FilterChip, '深度思考'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<FilterChip>(find.widgetWithText(FilterChip, '深度思考'))
+          .selected,
+      isTrue,
+    );
     await tester.tap(find.byKey(const Key('conversation_manage')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('conversation_search')), findsOneWidget);

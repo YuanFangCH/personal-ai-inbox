@@ -76,6 +76,7 @@ void main() {
       await tester.tap(find.text('高级模型设置'));
       await tester.pumpAndSettle();
 
+      expect(find.text('深度思考能力'), findsOneWidget);
       expect(find.text('响应头等待（5–120 秒）'), findsOneWidget);
       expect(find.text('上下文消息数（2–20）'), findsOneWidget);
       expect(find.text('图片能力'), findsOneWidget);
