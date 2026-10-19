@@ -47,6 +47,30 @@ class MemoryConversationStore implements ConversationStore {
   }
 
   @override
+  Future<List<ChatMessage>> searchMessages({
+    required String query,
+    required String excludedConversationId,
+    required int limit,
+  }) async {
+    final terms = query.toLowerCase().split(RegExp(r'\s+'))
+      ..removeWhere((term) => term.isEmpty);
+    if (terms.isEmpty) return const [];
+    final messages =
+        _messages.values
+            .where(
+              (message) =>
+                  message.conversationId != excludedConversationId &&
+                  message.status == ChatMessageStatus.complete &&
+                  terms.every(
+                    (term) => message.content.toLowerCase().contains(term),
+                  ),
+            )
+            .toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return messages.take(limit.clamp(1, 5)).toList(growable: false);
+  }
+
+  @override
   Future<ChatMessage?> findMessage(String id) async => _messages[id];
 
   @override

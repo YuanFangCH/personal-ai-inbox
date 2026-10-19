@@ -88,6 +88,9 @@ class ResultLibrary extends ChangeNotifier {
     return null;
   }
 
+  Future<ResultDocument?> readDocument(String id) =>
+      _repository.readDocument(id);
+
   Future<ResultDocument?> findByIdempotencyKey({
     required ResultType type,
     required DateTime createdAt,
@@ -788,11 +791,26 @@ class ResultLibrary extends ChangeNotifier {
     String query = '',
     int offset = 0,
     int limit = 50,
+    bool globalOnly = false,
   }) => _repository.searchDocuments(
     query: query,
     type: ResultType.knowledge,
     offset: offset,
     limit: limit,
+    globalKnowledgeOnly: globalOnly,
+  );
+
+  Future<List<ResultDocument>> searchResults({
+    required String query,
+    ResultType? type,
+    bool globalKnowledgeOnly = false,
+    int limit = 5,
+  }) => _repository.searchDocuments(
+    query: query,
+    type: type,
+    offset: 0,
+    limit: limit.clamp(1, 5),
+    globalKnowledgeOnly: globalKnowledgeOnly,
   );
 
   Future<void> toggleTodo(ResultDocument document, bool done) async {

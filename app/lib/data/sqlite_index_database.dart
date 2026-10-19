@@ -24,8 +24,8 @@ class SqliteIndexDatabase implements IndexDatabase {
         ..execute('PRAGMA foreign_keys = ON');
       final version =
           _database.select('PRAGMA user_version').single['user_version'] as int;
-      if (version > 5) {
-        throw StateError('索引数据库版本 $version 高于此应用支持的版本 5');
+      if (version > 6) {
+        throw StateError('索引数据库版本 $version 高于此应用支持的版本 6');
       }
       _database.execute('BEGIN EXCLUSIVE');
       _database
@@ -44,7 +44,8 @@ class SqliteIndexDatabase implements IndexDatabase {
           remote_etag TEXT,
           matter_id TEXT,
           sync_state TEXT NOT NULL,
-          search_text TEXT NOT NULL DEFAULT ''
+          search_text TEXT NOT NULL DEFAULT '',
+          global_knowledge INTEGER NOT NULL DEFAULT 0
         )
       ''')
         ..execute('''
@@ -133,7 +134,12 @@ class SqliteIndexDatabase implements IndexDatabase {
           "ALTER TABLE objects ADD COLUMN search_text TEXT NOT NULL DEFAULT ''",
         );
       }
-      if (version < 5) _database.execute('PRAGMA user_version = 5');
+      if (!columns.any((row) => row['name'] == 'global_knowledge')) {
+        _database.execute(
+          'ALTER TABLE objects ADD COLUMN global_knowledge INTEGER NOT NULL DEFAULT 0',
+        );
+      }
+      if (version < 6) _database.execute('PRAGMA user_version = 6');
       _database.execute('COMMIT');
     } catch (_) {
       try {
@@ -156,8 +162,8 @@ class SqliteIndexDatabase implements IndexDatabase {
       INSERT INTO objects (
         id, type, title, status, revision, updated_at, deleted, md_path,
         local_hash, last_synced_hash, remote_etag, matter_id, sync_state,
-        search_text
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        search_text, global_knowledge
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         type = excluded.type,
         title = excluded.title,
@@ -171,7 +177,8 @@ class SqliteIndexDatabase implements IndexDatabase {
         remote_etag = excluded.remote_etag,
         matter_id = excluded.matter_id,
         sync_state = excluded.sync_state,
-        search_text = excluded.search_text
+        search_text = excluded.search_text,
+        global_knowledge = excluded.global_knowledge
       ''',
       [
         result.id,
@@ -188,6 +195,7 @@ class SqliteIndexDatabase implements IndexDatabase {
         result.matterId,
         result.syncState.name,
         result.searchText,
+        result.globalKnowledge ? 1 : 0,
       ],
     );
   }
@@ -211,6 +219,7 @@ class SqliteIndexDatabase implements IndexDatabase {
     required int limit,
     required int offset,
     ResultType? type,
+    bool globalKnowledgeOnly = false,
   }) async {
     final normalized = query.trim().toLowerCase();
     final rows = _database.select(
@@ -219,10 +228,19 @@ class SqliteIndexDatabase implements IndexDatabase {
       WHERE deleted = 0 AND status = 'canonical'
         AND (? = '' OR instr(search_text, ?) > 0)
         AND (? IS NULL OR type = ?)
+        AND (? = 0 OR global_knowledge = 1)
       ORDER BY updated_at DESC, id ASC
       LIMIT ? OFFSET ?
       ''',
-      [normalized, normalized, type?.wireName, type?.wireName, limit, offset],
+      [
+        normalized,
+        normalized,
+        type?.wireName,
+        type?.wireName,
+        globalKnowledgeOnly ? 1 : 0,
+        limit,
+        offset,
+      ],
     );
     return rows.map(_resultFromRow).toList(growable: false);
   }
@@ -603,6 +621,7 @@ class SqliteIndexDatabase implements IndexDatabase {
         orElse: () => SyncState.pendingUpload,
       ),
       searchText: row['search_text'] as String? ?? '',
+      globalKnowledge: row['global_knowledge'] == 1,
     );
   }
 

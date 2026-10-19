@@ -243,11 +243,13 @@ class _RecordingIndexDatabase implements IndexDatabase {
     required int limit,
     required int offset,
     ResultType? type,
+    bool globalKnowledgeOnly = false,
   }) => _delegate.searchResults(
     query: query,
     limit: limit,
     offset: offset,
     type: type,
+    globalKnowledgeOnly: globalKnowledgeOnly,
   );
 
   @override

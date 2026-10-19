@@ -77,6 +77,16 @@ class ChatRepository {
     return _store.listMessages(conversationId);
   }
 
+  Future<List<ChatMessage>> searchOtherConversations({
+    required String query,
+    required String currentConversationId,
+    int limit = 5,
+  }) => _store.searchMessages(
+    query: query,
+    excludedConversationId: currentConversationId,
+    limit: limit,
+  );
+
   Future<ChatMessage?> findMessage(String id) => _store.findMessage(id);
 
   Future<void> saveMessage(ChatMessage message) =>

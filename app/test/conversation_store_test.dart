@@ -33,6 +33,25 @@ void main() {
         ),
       );
       await store.upsertConversation(conversation);
+      final historyConversation = Conversation(
+        id: 'cnv_history',
+        title: '历史会话',
+        createdAt: now.subtract(const Duration(days: 1)),
+        updatedAt: now.subtract(const Duration(days: 1)),
+        autoTitle: false,
+      );
+      await store.upsertConversation(historyConversation);
+      await store.upsertMessage(
+        ChatMessage(
+          id: 'msg_history',
+          conversationId: historyConversation.id,
+          role: ChatRole.user,
+          content: '本学期从九月一日开始，总共十六周。',
+          status: ChatMessageStatus.complete,
+          createdAt: historyConversation.createdAt,
+          updatedAt: historyConversation.updatedAt,
+        ),
+      );
       await store.upsertMessage(
         ChatMessage(
           id: 'msg_test',
@@ -83,7 +102,9 @@ void main() {
       final reopened = SqliteConversationStore(path);
       await reopened.open();
 
-      final persistedConversation = (await reopened.listConversations()).single;
+      final persistedConversation = (await reopened.findConversation(
+        'cnv_test',
+      ))!;
       expect(persistedConversation.title, '测试会话');
       expect(
         persistedConversation.aiPermissions,
@@ -93,13 +114,23 @@ void main() {
       expect(message.content, '已记录');
       expect(message.attachments.single.fileName, 'test.jpg');
       expect(message.actions.single.resultId, 'td_test');
+      expect(
+        (await reopened.searchMessages(
+          query: '十六周',
+          excludedConversationId: 'cnv_test',
+          limit: 5,
+        )).map((item) => item.conversationId),
+        ['cnv_history'],
+      );
       expect((await reopened.findAutoRecordAction('act_test'))?.title, '测试待办');
       final generation = await reopened.findGeneration('msg_test');
       expect(generation?.status, GenerationStatus.responseReady);
       expect(generation?.toolCalls.single['name'], 'create_result');
 
       await reopened.deleteConversation('cnv_test');
-      expect(await reopened.listConversations(), isEmpty);
+      expect((await reopened.listConversations()).map((item) => item.id), [
+        'cnv_history',
+      ]);
       expect(await reopened.listMessages('cnv_test'), isEmpty);
       expect(await reopened.findGeneration('msg_test'), isNull);
       await reopened.close();

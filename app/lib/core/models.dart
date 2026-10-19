@@ -697,6 +697,7 @@ class IndexedResult {
     this.matterId,
     this.remoteEtag,
     this.searchText = '',
+    this.globalKnowledge = false,
   });
 
   final String id;
@@ -713,6 +714,7 @@ class IndexedResult {
   final String? matterId;
   final SyncState syncState;
   final String searchText;
+  final bool globalKnowledge;
 
   IndexedResult copyWith({
     String? localHash,
@@ -720,6 +722,7 @@ class IndexedResult {
     String? remoteEtag,
     SyncState? syncState,
     String? searchText,
+    bool? globalKnowledge,
   }) {
     return IndexedResult(
       id: id,
@@ -736,6 +739,7 @@ class IndexedResult {
       matterId: matterId,
       syncState: syncState ?? this.syncState,
       searchText: searchText ?? this.searchText,
+      globalKnowledge: globalKnowledge ?? this.globalKnowledge,
     );
   }
 }
