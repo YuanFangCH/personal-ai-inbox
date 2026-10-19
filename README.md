@@ -25,6 +25,10 @@
 - 系统接入：Android 注册 `ACTION_SEND` 与 `ACTION_PROCESS_TEXT`，支持从其他 App 分享文本和图片。
 - 多端形态：同一套 Flutter 代码适配手机、平板、Windows 和 Web 预览。
 
+## 当前规划
+
+收件箱改为直接 AI 对话界面，并增加成果/跨会话读取与操作权限，目前处于需求澄清阶段。见 [改造草案](docs/ai-conversation-redesign-plan.md)；尚未修改运行代码或替代既有 ADR。
+
 ## 模型配置
 
 设置页支持 OpenAI 兼容配置：
