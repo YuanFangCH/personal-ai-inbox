@@ -79,6 +79,7 @@ void main() {
               createdAt: now,
               resultId: 'td_test',
               undoUntil: now.add(const Duration(minutes: 10)),
+              operation: AutoRecordOperation.update,
             ),
           ],
         ),
@@ -114,6 +115,7 @@ void main() {
       expect(message.content, '已记录');
       expect(message.attachments.single.fileName, 'test.jpg');
       expect(message.actions.single.resultId, 'td_test');
+      expect(message.actions.single.operation, AutoRecordOperation.update);
       expect(
         (await reopened.searchMessages(
           query: '十六周',
