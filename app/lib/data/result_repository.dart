@@ -23,6 +23,7 @@ class ResultRepository {
   final IndexDatabase _index;
   final MarkdownCodec _codec;
   final String deviceId;
+  static const defaultUndoWindow = Duration(minutes: 10);
   Future<void> _writeTail = Future<void>.value();
 
   Future<void> initialize() async {
@@ -119,9 +120,16 @@ class ResultRepository {
     List<String> sourceHashes = const [],
     DateTime? createdAt,
     String? idempotencyKey,
+    String? reversibleActionId,
+    Duration undoWindow = defaultUndoWindow,
   }) async {
     return _withWriteLock(() async {
       await _recoverPendingTransactions();
+      if (reversibleActionId != null && idempotencyKey == null) {
+        throw ArgumentError(
+          'A reversible result creation requires a stable idempotency key',
+        );
+      }
       if (idempotencyKey != null && createdAt == null) {
         throw ArgumentError.value(
           null,
@@ -131,6 +139,16 @@ class ResultRepository {
       }
       final timestamp = createdAt ?? DateTime.now();
       final id = _newId(type, timestamp, idempotencyKey: idempotencyKey);
+      if (reversibleActionId != null &&
+          !RegExp(r'^[A-Za-z0-9_-]{1,128}$').hasMatch(reversibleActionId)) {
+        throw ArgumentError.value(reversibleActionId, 'reversibleActionId');
+      }
+      final priorAction = reversibleActionId == null
+          ? null
+          : await _index.findReversibleAction(reversibleActionId);
+      if (priorAction != null && priorAction.resultId != id) {
+        throw StateError('撤销动作 ID 已用于其他成果：$reversibleActionId');
+      }
       final document = ResultDocument(
         id: id,
         type: type,
@@ -198,8 +216,93 @@ class ResultRepository {
         }
         return existing;
       }
-      await _commitAndIndex(document, operation: operation);
+      if (reversibleActionId != null) {
+        final action = _newReversibleAction(
+          id: reversibleActionId,
+          resultId: id,
+          kind: ReversibleActionKind.create,
+          document: document,
+          markdown: _codec.encode(document),
+          previousMarkdown: null,
+          undoWindow: undoWindow,
+        );
+        await _index.upsertReversibleAction(action);
+      }
+      await _commitAndIndex(
+        document,
+        operation: operation,
+        reversibleActionId: reversibleActionId,
+      );
       return document;
+    });
+  }
+
+  Future<ReversibleResultAction> undoAction(String actionId, {DateTime? now}) {
+    return _withWriteLock(() async {
+      await _recoverPendingTransactions(now: now ?? DateTime.now());
+      final action = await _index.findReversibleAction(actionId);
+      if (action?.status == ReversibleActionStatus.expired) {
+        throw StateError('操作撤销期限已过：$actionId');
+      }
+      if (action == null || action.status != ReversibleActionStatus.applied) {
+        throw StateError('操作不可撤销或已撤销：$actionId');
+      }
+      final timestamp = now ?? DateTime.now();
+      if (!action.undoUntil.isAfter(timestamp)) {
+        throw StateError('操作撤销期限已过：$actionId');
+      }
+      final current = await _readExpectedDocument(
+        action.resultId,
+        expectedRevision: action.expectedRevision,
+        expectedHash: action.expectedHash,
+        allowDeleted: action.kind == ReversibleActionKind.delete,
+      );
+      final restored = action.previousMarkdown == null
+          ? current.copyWith(
+              deleted: true,
+              body: '',
+              revision: current.revision + 1,
+              updatedAt: timestamp,
+              due: null,
+              start: null,
+              end: null,
+            )
+          : _codec
+                .decode(action.previousMarkdown!)
+                .copyWith(
+                  originDevice: deviceId,
+                  revision: current.revision + 1,
+                  createdAt: current.createdAt,
+                  updatedAt: timestamp,
+                );
+      final restoreHash = hashMarkdown(_codec.encode(restored));
+      final undoing = action.copyWith(
+        status: ReversibleActionStatus.undoing,
+        undoRevision: restored.revision,
+        undoHash: restoreHash,
+        error: null,
+      );
+      await _index.upsertReversibleAction(undoing);
+      await _commitAndIndex(
+        restored,
+        reversibleActionId: actionId,
+        reversibleActionStatus: ReversibleActionStatus.undone,
+      );
+      return (await _index.findReversibleAction(actionId))!;
+    });
+  }
+
+  Future<ReversibleResultAction?> findReversibleAction(String id) {
+    return _withWriteLock(() async {
+      await _recoverPendingTransactions();
+      return _index.findReversibleAction(id);
+    });
+  }
+
+  Future<List<ReversibleResultAction>> listReversibleActions() {
+    return _withWriteLock(() async {
+      await _recoverPendingTransactions();
+      return _index.listReversibleActions();
     });
   }
 
@@ -218,6 +321,102 @@ class ResultRepository {
     );
     await _writeAndIndex(saved);
     return saved;
+  }
+
+  Future<ResultDocument> saveWithUndo({
+    required ResultDocument document,
+    required int expectedRevision,
+    required String expectedHash,
+    required String actionId,
+    Duration undoWindow = defaultUndoWindow,
+  }) {
+    return _withWriteLock(() async {
+      await _recoverPendingTransactions();
+      final retry = await _replayReversibleAction(
+        actionId,
+        kind: ReversibleActionKind.update,
+        expectedRevision: expectedRevision,
+      );
+      if (retry != null) return retry;
+      final current = await _readExpectedDocument(
+        document.id,
+        expectedRevision: expectedRevision,
+        expectedHash: expectedHash,
+      );
+      if (document.type != current.type || document.deleted) {
+        throw StateError('修改不能改变成果类型或墓碑状态：${document.id}');
+      }
+      final next = document.copyWith(
+        originDevice: deviceId,
+        revision: current.revision + 1,
+        createdAt: current.createdAt,
+        updatedAt: DateTime.now(),
+      );
+      final previousMarkdown = await _vault.read(current.markdownPath);
+      if (previousMarkdown == null) {
+        throw StateError('成果文件缺失，拒绝修改：${document.id}');
+      }
+      await _index.upsertReversibleAction(
+        _newReversibleAction(
+          id: actionId,
+          resultId: next.id,
+          kind: ReversibleActionKind.update,
+          document: next,
+          markdown: _codec.encode(next),
+          previousMarkdown: previousMarkdown,
+          undoWindow: undoWindow,
+        ),
+      );
+      await _commitAndIndex(next, reversibleActionId: actionId);
+      return next;
+    });
+  }
+
+  Future<ResultDocument> deleteWithUndo({
+    required String id,
+    required int expectedRevision,
+    required String expectedHash,
+    required String actionId,
+    Duration undoWindow = defaultUndoWindow,
+  }) {
+    return _withWriteLock(() async {
+      await _recoverPendingTransactions();
+      final retry = await _replayReversibleAction(
+        actionId,
+        kind: ReversibleActionKind.delete,
+        expectedRevision: expectedRevision,
+      );
+      if (retry != null) return retry;
+      final current = await _readExpectedDocument(
+        id,
+        expectedRevision: expectedRevision,
+        expectedHash: expectedHash,
+      );
+      final source = await _vault.read(current.markdownPath);
+      if (source == null) throw StateError('成果文件缺失，拒绝删除：$id');
+      final tombstone = current.copyWith(
+        deleted: true,
+        body: '',
+        revision: current.revision + 1,
+        updatedAt: DateTime.now(),
+        due: null,
+        start: null,
+        end: null,
+      );
+      await _index.upsertReversibleAction(
+        _newReversibleAction(
+          id: actionId,
+          resultId: id,
+          kind: ReversibleActionKind.delete,
+          document: tombstone,
+          markdown: _codec.encode(tombstone),
+          previousMarkdown: source,
+          undoWindow: undoWindow,
+        ),
+      );
+      await _commitAndIndex(tombstone, reversibleActionId: actionId);
+      return tombstone;
+    });
   }
 
   Future<ResultDocument?> markTodo(ResultDocument document, bool done) async {
@@ -595,11 +794,95 @@ class ResultRepository {
 
   Future<void> waitForWrites() => _writeTail;
 
+  ReversibleResultAction _newReversibleAction({
+    required String id,
+    required String resultId,
+    required ReversibleActionKind kind,
+    required ResultDocument document,
+    required String markdown,
+    required String? previousMarkdown,
+    required Duration undoWindow,
+  }) {
+    if (!RegExp(r'^[A-Za-z0-9_-]{1,128}$').hasMatch(id)) {
+      throw ArgumentError.value(id, 'id');
+    }
+    if (undoWindow <= Duration.zero) {
+      throw ArgumentError.value(undoWindow, 'undoWindow');
+    }
+    final now = DateTime.now();
+    return ReversibleResultAction(
+      id: id,
+      resultId: resultId,
+      kind: kind,
+      status: ReversibleActionStatus.prepared,
+      expectedRevision: document.revision,
+      expectedHash: hashMarkdown(markdown),
+      previousMarkdown: previousMarkdown,
+      previousHash: previousMarkdown == null
+          ? null
+          : hashMarkdown(previousMarkdown),
+      createdAt: now,
+      undoUntil: now.add(undoWindow),
+    );
+  }
+
+  Future<ResultDocument> _readExpectedDocument(
+    String id, {
+    required int expectedRevision,
+    required String expectedHash,
+    bool allowDeleted = false,
+  }) async {
+    final indexed = await _index.findResult(id);
+    if (indexed == null || (indexed.deleted && !allowDeleted)) {
+      throw StateError('成果不存在或已删除：$id');
+    }
+    if (indexed.revision != expectedRevision ||
+        indexed.localHash != expectedHash) {
+      throw StateError('成果版本已变化，请重新检索后再操作：$id');
+    }
+    final source = await _vault.read(indexed.mdPath);
+    if (source == null || hashMarkdown(source) != expectedHash) {
+      throw StateError('成果文件版本与索引不一致，请重新加载后再操作：$id');
+    }
+    final document = _codec.decode(source);
+    if (document.id != id ||
+        document.revision != expectedRevision ||
+        (document.deleted && !allowDeleted)) {
+      throw StateError('成果内容版本已变化，请重新检索后再操作：$id');
+    }
+    return document;
+  }
+
+  Future<ResultDocument?> _replayReversibleAction(
+    String actionId, {
+    required ReversibleActionKind kind,
+    required int expectedRevision,
+  }) async {
+    final action = await _index.findReversibleAction(actionId);
+    if (action == null) return null;
+    if (action.kind != kind ||
+        action.expectedRevision != expectedRevision + 1) {
+      throw StateError('动作 ID 已用于另一项成果操作：$actionId');
+    }
+    if (action.status != ReversibleActionStatus.applied) {
+      throw StateError('动作不可重放：$actionId (${action.status.name})');
+    }
+    return _readExpectedDocument(
+      action.resultId,
+      expectedRevision: action.expectedRevision,
+      expectedHash: action.expectedHash,
+      allowDeleted: kind == ReversibleActionKind.delete,
+    );
+  }
+
   Future<void> _commitAndIndex(
     ResultDocument document, {
     IdempotentOperation? operation,
     String? rawContents,
     _SyncBaseline? syncBaseline,
+    String? reversibleActionId,
+    ReversibleActionStatus reversibleActionStatus =
+        ReversibleActionStatus.applied,
     bool allowRevisionReplacement = false,
   }) async {
     if (!_isSafeResultId(document.id) ||
@@ -618,6 +901,27 @@ class ResultRepository {
     }
 
     final markdown = rawContents ?? _codec.encode(document);
+    final reversibleAction = reversibleActionId == null
+        ? null
+        : await _index.findReversibleAction(reversibleActionId);
+    if (reversibleActionId != null &&
+        (reversibleAction == null ||
+            reversibleAction.resultId != document.id)) {
+      throw StateError('成果撤销账本缺失或目标不一致：$reversibleActionId');
+    }
+    final nextHash = hashMarkdown(markdown);
+    if (reversibleActionStatus == ReversibleActionStatus.undone) {
+      if (reversibleAction!.status != ReversibleActionStatus.undoing ||
+          reversibleAction.undoRevision != document.revision ||
+          reversibleAction.undoHash != nextHash) {
+        throw StateError('撤销记录与恢复内容不一致：$reversibleActionId');
+      }
+    } else if (reversibleAction != null &&
+        (reversibleAction.status != ReversibleActionStatus.prepared ||
+            reversibleAction.expectedRevision != document.revision ||
+            reversibleAction.expectedHash != nextHash)) {
+      throw StateError('成果操作记录与提交内容不一致：$reversibleActionId');
+    }
     if (syncBaseline != null && syncBaseline.hash != hashMarkdown(markdown)) {
       throw StateError('同步基线 hash 与提交内容不一致：${document.id}');
     }
@@ -643,7 +947,6 @@ class ResultRepository {
     final stagedPath = '$transactionRoot/$operationId.new.md';
     final previousPath = '$transactionRoot/$operationId.old.md';
     final journalPath = '$transactionRoot/$operationId.journal.md';
-    final nextHash = hashMarkdown(markdown);
     final oldHash = old?.localHash;
     if (previousMarkdown != null) {
       await _vault.write(previousPath, previousMarkdown);
@@ -670,6 +973,10 @@ class ResultRepository {
         'payload_hash': operation?.payloadHash,
         'last_synced_hash': syncBaseline?.hash,
         'remote_etag': syncBaseline?.etag,
+        'reversible_action_id': reversibleActionId,
+        'reversible_action_status': reversibleActionId == null
+            ? null
+            : reversibleActionStatus.name,
       }),
     );
 
@@ -679,6 +986,31 @@ class ResultRepository {
       throw StateError('成果文件提交校验失败：${document.id}');
     }
     await _indexDocument(document, old, nextHash, syncBaseline: syncBaseline);
+    if (reversibleActionId != null) {
+      final action = await _index.findReversibleAction(reversibleActionId);
+      if (action == null || action.resultId != document.id) {
+        throw StateError('成果撤销账本与提交日志不匹配：$reversibleActionId');
+      }
+      await _index.upsertReversibleAction(
+        action.copyWith(
+          status: reversibleActionStatus,
+          previousMarkdown:
+              reversibleActionStatus == ReversibleActionStatus.undone
+              ? null
+              : action.previousMarkdown,
+          previousHash: reversibleActionStatus == ReversibleActionStatus.undone
+              ? null
+              : action.previousHash,
+          undoRevision: reversibleActionStatus == ReversibleActionStatus.undone
+              ? null
+              : action.undoRevision,
+          undoHash: reversibleActionStatus == ReversibleActionStatus.undone
+              ? null
+              : action.undoHash,
+          error: null,
+        ),
+      );
+    }
     if (operation != null) {
       await _index.upsertOperation(
         operation.copyWith(
@@ -699,7 +1031,7 @@ class ResultRepository {
     await _cleanupTransaction(stagedPath, previousPath, journalPath);
   }
 
-  Future<void> _recoverPendingTransactions() async {
+  Future<void> _recoverPendingTransactions({DateTime? now}) async {
     final files = await _vault.listMarkdownFiles();
     final journals = files
         .where(
@@ -728,6 +1060,8 @@ class ResultRepository {
       final payloadHash = decoded['payload_hash'];
       final syncedHash = decoded['last_synced_hash'];
       final remoteEtag = decoded['remote_etag'];
+      final reversibleActionId = decoded['reversible_action_id'];
+      final reversibleActionStatus = decoded['reversible_action_status'];
       if (operationId is! String ||
           !RegExp(r'^[a-f0-9]{32}$').hasMatch(operationId) ||
           resultId is! String ||
@@ -741,6 +1075,13 @@ class ResultRepository {
           (payloadHash != null && payloadHash is! String) ||
           (syncedHash != null && syncedHash is! String) ||
           (remoteEtag != null && remoteEtag is! String) ||
+          (reversibleActionId != null && reversibleActionId is! String) ||
+          (reversibleActionStatus != null &&
+              (reversibleActionStatus is! String ||
+                  !ReversibleActionStatus.values.any(
+                    (status) => status.name == reversibleActionStatus,
+                  ))) ||
+          ((reversibleActionId == null) != (reversibleActionStatus == null)) ||
           ((syncedHash == null) != (remoteEtag == null)) ||
           !_isManagedResultPath(targetPath, resultId) ||
           (previousTarget is String &&
@@ -833,6 +1174,45 @@ class ResultRepository {
             ? _SyncBaseline(syncedHash, remoteEtag)
             : null,
       );
+      if (reversibleActionId is String && reversibleActionStatus is String) {
+        final action = await _index.findReversibleAction(reversibleActionId);
+        if (action == null || action.resultId != document.id) {
+          throw StateError('恢复时缺少成果操作账本：$reversibleActionId');
+        }
+        final nextStatus = ReversibleActionStatus.values.byName(
+          reversibleActionStatus,
+        );
+        if (nextStatus == ReversibleActionStatus.undone &&
+            (action.status != ReversibleActionStatus.undoing ||
+                action.undoRevision != document.revision ||
+                action.undoHash != expectedHash)) {
+          throw StateError('撤销恢复材料与提交日志不匹配：$reversibleActionId');
+        }
+        if (nextStatus == ReversibleActionStatus.applied &&
+            (action.status != ReversibleActionStatus.prepared ||
+                action.expectedRevision != document.revision ||
+                action.expectedHash != expectedHash)) {
+          throw StateError('成果操作恢复材料与提交日志不匹配：$reversibleActionId');
+        }
+        await _index.upsertReversibleAction(
+          action.copyWith(
+            status: nextStatus,
+            previousMarkdown: nextStatus == ReversibleActionStatus.undone
+                ? null
+                : action.previousMarkdown,
+            previousHash: nextStatus == ReversibleActionStatus.undone
+                ? null
+                : action.previousHash,
+            undoRevision: nextStatus == ReversibleActionStatus.undone
+                ? null
+                : action.undoRevision,
+            undoHash: nextStatus == ReversibleActionStatus.undone
+                ? null
+                : action.undoHash,
+            error: null,
+          ),
+        );
+      }
       if (idempotencyKey is String && payloadHash is String) {
         final operation = await _index.findOperation(idempotencyKey);
         if (operation == null ||
@@ -871,6 +1251,95 @@ class ResultRepository {
           (path.endsWith('.new.md') || path.endsWith('.old.md')),
     )) {
       await _vault.delete(path);
+    }
+    await _reconcileReversibleActions(now ?? DateTime.now());
+  }
+
+  Future<void> _reconcileReversibleActions(DateTime now) async {
+    for (final action in await _index.listReversibleActions()) {
+      if (action.status == ReversibleActionStatus.applied) {
+        if (!action.undoUntil.isAfter(now)) {
+          await _index.upsertReversibleAction(
+            action.copyWith(
+              status: ReversibleActionStatus.expired,
+              previousMarkdown: null,
+              previousHash: null,
+            ),
+          );
+          continue;
+        }
+        final current = await _index.findResult(action.resultId);
+        if (current == null ||
+            current.revision != action.expectedRevision ||
+            current.localHash != action.expectedHash) {
+          await _index.upsertReversibleAction(
+            action.copyWith(
+              status: ReversibleActionStatus.failed,
+              previousMarkdown: null,
+              previousHash: null,
+              error: '成果版本已变化，撤销不可用。',
+            ),
+          );
+        }
+        continue;
+      }
+      if (action.status == ReversibleActionStatus.prepared) {
+        final current = await _index.findResult(action.resultId);
+        final applied =
+            current != null &&
+            current.revision == action.expectedRevision &&
+            current.localHash == action.expectedHash;
+        await _index.upsertReversibleAction(
+          action.copyWith(
+            status: applied
+                ? ReversibleActionStatus.applied
+                : ReversibleActionStatus.failed,
+            previousMarkdown: applied ? action.previousMarkdown : null,
+            previousHash: applied ? action.previousHash : null,
+            error: applied ? null : '操作未完成，成果版本未提交。',
+          ),
+        );
+        continue;
+      }
+      if (action.status == ReversibleActionStatus.undoing) {
+        final current = await _index.findResult(action.resultId);
+        if (current != null &&
+            current.revision == action.undoRevision &&
+            current.localHash == action.undoHash) {
+          await _index.upsertReversibleAction(
+            action.copyWith(
+              status: ReversibleActionStatus.undone,
+              previousMarkdown: null,
+              previousHash: null,
+              undoRevision: null,
+              undoHash: null,
+              error: null,
+            ),
+          );
+        } else if (current != null &&
+            current.revision == action.expectedRevision &&
+            current.localHash == action.expectedHash) {
+          await _index.upsertReversibleAction(
+            action.copyWith(
+              status: ReversibleActionStatus.applied,
+              undoRevision: null,
+              undoHash: null,
+              error: null,
+            ),
+          );
+        } else {
+          await _index.upsertReversibleAction(
+            action.copyWith(
+              status: ReversibleActionStatus.failed,
+              previousMarkdown: null,
+              previousHash: null,
+              undoRevision: null,
+              undoHash: null,
+              error: '撤销未完成，当前成果版本已变化。',
+            ),
+          );
+        }
+      }
     }
   }
 

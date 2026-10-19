@@ -257,6 +257,86 @@ enum ResultStatus {
 
 enum SyncState { synced, pendingUpload, pendingDownload, conflict, deleted }
 
+enum ReversibleActionKind { create, update, delete }
+
+enum ReversibleActionStatus {
+  prepared,
+  applied,
+  undoing,
+  undone,
+  expired,
+  failed,
+}
+
+/// Local-only journal entry for a result action and its compare-and-set undo.
+/// It deliberately has no conversation ownership or cascading lifetime.
+class ReversibleResultAction {
+  const ReversibleResultAction({
+    required this.id,
+    required this.resultId,
+    required this.kind,
+    required this.status,
+    required this.expectedRevision,
+    required this.expectedHash,
+    required this.createdAt,
+    required this.undoUntil,
+    this.undoRevision,
+    this.undoHash,
+    this.previousMarkdown,
+    this.previousHash,
+    this.error,
+  });
+
+  final String id;
+  final String resultId;
+  final ReversibleActionKind kind;
+  final ReversibleActionStatus status;
+  final int expectedRevision;
+  final String expectedHash;
+  final String? previousMarkdown;
+  final String? previousHash;
+  final DateTime createdAt;
+  final DateTime undoUntil;
+  final int? undoRevision;
+  final String? undoHash;
+  final String? error;
+
+  ReversibleResultAction copyWith({
+    ReversibleActionStatus? status,
+    Object? previousMarkdown = _unsetReversibleValue,
+    Object? previousHash = _unsetReversibleValue,
+    Object? undoRevision = _unsetReversibleValue,
+    Object? undoHash = _unsetReversibleValue,
+    Object? error = _unsetReversibleValue,
+  }) => ReversibleResultAction(
+    id: id,
+    resultId: resultId,
+    kind: kind,
+    status: status ?? this.status,
+    expectedRevision: expectedRevision,
+    expectedHash: expectedHash,
+    previousMarkdown: identical(previousMarkdown, _unsetReversibleValue)
+        ? this.previousMarkdown
+        : previousMarkdown as String?,
+    previousHash: identical(previousHash, _unsetReversibleValue)
+        ? this.previousHash
+        : previousHash as String?,
+    createdAt: createdAt,
+    undoUntil: undoUntil,
+    undoRevision: identical(undoRevision, _unsetReversibleValue)
+        ? this.undoRevision
+        : undoRevision as int?,
+    undoHash: identical(undoHash, _unsetReversibleValue)
+        ? this.undoHash
+        : undoHash as String?,
+    error: identical(error, _unsetReversibleValue)
+        ? this.error
+        : error as String?,
+  );
+}
+
+const _unsetReversibleValue = Object();
+
 class IndexRebuildDiagnostic {
   const IndexRebuildDiagnostic({required this.path, required this.message});
 

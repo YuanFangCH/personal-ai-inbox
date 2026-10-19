@@ -10,12 +10,14 @@
 | 最后更新时间 | 2026-10-20 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.1.2` 已预发布；懒狗秘书改造 S1 会话权限默认值与旧配置迁移已实现并定向验证；后续检索/成果操作/全局知识/界面与新矩阵尚未实现 |
+| 当前阶段 | `v1.1.2` 已预发布；懒狗秘书改造 S1 权限快照/迁移与 S2 普通成果版本保护/撤销账本已实现并局部验证；读取工具、全局知识审批、对话界面/扩展与 100 例矩阵仍在进行 |
 | 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。知识查询基于 SQLite v3 规范化索引按 50 项分页；Markdown 仍为成果权威副本。工具链固定 Flutter 3.47.6 / Dart 3.13.5。本轮为主机测试与三端模拟器/桌面验收，未连接真实云盘或真实模型 Key。`v1.1.2` GitHub 预发布版仍使用 Debug 证书，Windows 包未代码签名；OneDrive、百度网盘、通知和真实跨端同步尚未完成。 |
 
 ## 2. 一句话交接
 
 2026-10-20 执行状态：S1 已将三组默认权限加入设置 schema v3，将会话快照加入 `conversations.sqlite3` v2，并提高 SQLite 启动迁移协调器的支持版本。首次全开、设置导入/恢复默认、独立会话快照及 v1 会话迁移已由 27 项定向测试验证，定向 Dart analysis 零问题；记录见 [S1 测试结果](test-results/secretary-s1-permission-snapshots/verification.md)。模型工具尚未按权限执行，仍需后续 S5 接线；S1 通过不代表改造全部完成。
+
+2026-10-20 执行状态：S2 已在成果库加入 expected revision/hash 改删、稳定动作键、SQLite `reversible_actions` v4、10 分钟建议撤销与事务恢复；跨端迁移协调器支持索引 v4。28 项定向测试和静态分析通过，见 [S2 测试结果](test-results/secretary-s2-result-actions/verification.md)。这是普通成果接口，当前 AI 尚未调用；权限执行、全局知识确认例外与检索预算仍待 S3–S5。
 
 2026-10-20 实施/验收细化：[实施任务](docs/secretary-implementation-plan.md) 已定义 S0–S12 的依赖、接口/状态、迁移、文件范围及完成门禁；[SEC-001–100 清单](docs/testing/secretary-100-case-plan.md) 已逐例安排。用户明确三端合计 100 例（50/25/25），在业务修改完成及局部验证通过后执行，非每端 100，也不授权全项目全量测试。复用现有 runner/AVD 基础，新增专用数据与设备入口；本轮仅文档，未启动模拟器、未实施或执行新矩阵。
 
@@ -101,6 +103,10 @@
 
 - 2026-10-20：S1 会话权限快照与迁移已实现：新设置默认全开/可导入导出，旧设置和会话迁移为全开；现有会话权限独立保存，新会话复制当前默认。受影响定向测试 27/27 通过、指定文件 analysis 零问题。报告见 [验证记录](test-results/secretary-s1-permission-snapshots/verification.md)。
 
+- 2026-10-20：S2 普通成果 CAS 更新/删除与持久化撤销账本已实现，索引迁移升至 v4；28 项 repository/index/migration/capture 定向测试及指定文件 analysis 均通过。报告见 [验证记录](test-results/secretary-s2-result-actions/verification.md)。AI 工具尚未连接。
+
+- 2026-10-20：S2 普通成果 CAS 更新/删除与持久化撤销账本已实现，索引迁移升至 v4；28 项 repository/index/migration/capture 定向测试及指定文件 analysis 均通过。报告见 [验证记录](test-results/secretary-s2-result-actions/verification.md)。AI 工具尚未连接。
+
 - 2026-10-20：完成 S0–S12 实施任务与三端新功能 100 例计划，覆盖界面/角色/更名、权限、检索预算、成果/撤销、全局审批、日期/同步、模型、文件和语音；明确 50/25/25 分配、每例状态断言、真实设备/受控服务边界、结果目录与定向重跑。规划检查见[记录](test-results/secretary-detailed-plan/verification.md)，未执行业务测试。
 
 - 2026-10-20：补充[非必要不检索策略](docs/ai-retrieval-policy.md)，明确零检索场景、必要触发、来源/片段约束、初始限额、缓存失效、失败停止和定向验收，并同步原计划与模型接入。仅文档，检查见[记录](test-results/retrieval-constraints-plan/verification.md)。
@@ -127,7 +133,7 @@
 - CI、Release 和 PowerShell 验证入口统一固定 Flutter 3.47.6 / Dart 3.13.5；新增机器版本断言脚本；场景生成器 lint 已修复并保持日期字符串内容不变。
 - 架构整改阶段 C 已增加 `.local-transactions` 暂存、恢复副本、提交日志、hash/revision 校验及启动恢复；成果写入由 OS 文件锁跨实例串行化。SQLite 动作账本保存幂等键/载荷 hash/提交状态，会话库保存请求状态和完整响应/工具参数；重启可重放完整响应，未完成网络请求转人工重试；processing 捕获转待整理。
 - 架构整改阶段 D 已将同步写入改为 create-only/eTag 条件操作；远端 ID、类型、路径、canonical 状态和内容 hash 在写入前逐对象校验。冲突副本按远端 hash 去重并持久化本地 hash/eTag，首轮相同内容建立基线；两类裁决都校验用户所见版本，成果快照在同步后刷新。
-- 索引库现为 `user_version=3`，包含绑定参数的标题/正文/标签子串查询列；会话库为 `user_version=1`。启动时以 `VACUUM INTO` 备份两库和非秘密配置并校验 hash，完成验证前失败则恢复快照。Web 仍使用预览级内存 adapter。
+- 索引库现为 `user_version=4`，包含绑定参数的标题/正文/标签子串查询列及本地撤销动作账本；会话库为 `user_version=2`，包含每会话权限快照。启动时以 `VACUUM INTO` 备份两库和非秘密配置并校验 hash，完成验证前失败则恢复快照。Web 仍使用预览级内存 adapter。
 - 架构整改阶段 E 将生产组合根移入 `AppRuntime.bootstrap`，UI 通过 `AppScope` 获取五个模块并按当前页面监听；根应用只监听主题设置。领域实体和设置快照为纯 Dart，成果单项写入增量更新快照，知识页每页最多读取 50 个 Markdown 文件。测试版旧宿主移至 `app/test/support/`。
 - SQLite 重建会报告逐文件错误，重复成果 ID 的文件不会被选为索引版本；设置页显式重建/扫描显示成功、失败数量和错误路径。关闭流程停止模型生成、等待消息/成果/设置写入后关闭本地 adapters。
 - 已形成 `CONTEXT.md`、可执行方案、同步协议、模型接入和 14 条 ADR。
@@ -266,6 +272,10 @@
 
 - S1 只持久化权限并让设置页管理新会话默认，当前模型请求/工具仍未强制权限，不能在此阶段称为安全权限闭环。S2–S12 和三端 100 例仍待继续。
 
+- S2 建立了普通成果 CAS 更新/删除、可撤销前像和恢复账本；AI 尚未调用。全局知识用途标识与审批也尚未接入。模型工具对外前需在本地核心完成权限和审批检查。
+
+- S2 只建立普通成果操作/撤销底座；AI 尚未调用它，全局知识用途标识与审批也尚未接入。工具暴露之前仍需在本地核心完成权限校验和全局知识审批门禁。
+
 - 2026-10-20 用户要求的 100 例是修改后的新功能设备矩阵，不是旧 100 例通过记录或 376 项全量主机回归。新脚本/场景数据尚未创建；必须按 ID 核实实际执行、缺失/skip 与替身模式，不能只看进程退出码。真实云盘、真实语音及模型质量另有依赖，不以受控矩阵通过冒充真实服务交付。
 
 - 2026-10-20 检索成本策略尚待实现；本地可以强制权限、范围、总轮次/结果量和去重，模型对必要性的语义判断需样例与运行观测，不能保证绝对不多查。缓存必须随成果/会话/权限/有效期变化失效，不能以提速为由省略审批和并发校验；未承诺费用或时延改善比例。
@@ -309,7 +319,7 @@
 
 ### 下一步
 
-当前优先：继续执行 [S2–S12](docs/secretary-implementation-plan.md)，先实现普通成果 CAS 操作/撤销、全局知识确认账本及受预算/权限约束的检索；用户产品选择已齐备，无需重问。功能修改完成后执行 SEC-001–100 三端矩阵（50/25/25），保留逐例证据并对受影响例定向重跑。新增收费语音依赖需呈现具体选择，真实云盘接入限制不能用受控 Provider 结果掩盖。以下为既有后续工作。
+当前优先：继续 S3 全局知识审批/用途标识，再做 S4 按需检索与 S5 工具编排权限门禁；已完成 S1/S2 不再重跑同范围验证。无需重问已确认产品选择；业务修改完成后执行 SEC-001–100 三端矩阵（50/25/25），保存逐例证据并对受影响例定向重跑。新增收费语音服务需呈现具体选择；受控 Provider 不能冒充真实云盘接入。以下为既有后续工作。
 
 1. 发布前按发布门禁运行完整测试套件，并在三端执行 `scripts/verify-realistic-e2e.ps1`；矩阵已可重复运行，但每次约需 16 分钟纯用例时间。
 2. 若转入生产用户数据，先执行升级与备份恢复演练；真实云盘、通知、签名和物理断电专项需另行验收。
@@ -317,6 +327,26 @@
 4. 后续代码任务按 `AGENTS.md` 的增量测试范围执行；测试结论记录执行范围与未验证项，临时测试仅在用户要求时清理。
 
 ## 8. 变更记录
+
+### 2026-10-20 / 实现 S2 成果 CAS 操作与撤销账本
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 为普通成果更新/删除加入稳定动作 ID 与 revision/hash CAS；保存本地前像和撤销状态，支持创建/改/删撤销、过期/版本变化拒绝、提交中断恢复；索引及启动迁移协调器升为 v4 |
+| 变更文件 | `app/lib/core/models.dart`、`data/index_database.dart` 与 memory/SQLite adapters、`data/result_repository.dart`、`modules/results/result_library.dart`、`sqlite_migration_coordinator.dart`、repository/index/capture 测试、README、实施计划与 S2 测试记录 |
+| 验证 | `flutter test test/result_repository_test.dart test/sqlite_index_database_test.dart test/sqlite_migration_coordinator_test.dart test/capture_workflow_test.dart --reporter compact`：28/28；相应文件 `dart analyze` 零问题；详细日志见 `test-results/secretary-s2-result-actions/verification.md` |
+| 提交标题 | `feat(results): 增加成果CAS操作与可撤销账本` |
+| 遗留事项 | AI 工具尚未连接；会话权限执行/全局知识审批仍待 S3/S5；未执行三端矩阵或全项目全量测试 |
+
+### 2026-10-20 / 实现 S2 成果 CAS 操作与撤销账本
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 为普通成果更新/删除建立稳定动作键与 revision/hash CAS；记录本地撤销前像、期限与状态，支持创建/改/删撤销、版本变化拒绝与提交中断恢复；SQLite 索引/coordinator 升为 v4 |
+| 变更文件 | `app/lib/data/index_database.dart`、memory/SQLite adapters、`result_repository.dart`、`ResultLibrary` 操作接口、启动迁移 coordinator、repository/index/capture 测试、本文件和 `test-results/secretary-s2-result-actions/verification.md` |
+| 验证 | `flutter test test/result_repository_test.dart test/sqlite_index_database_test.dart test/sqlite_migration_coordinator_test.dart test/capture_workflow_test.dart --reporter compact`：28/28；受影响文件 `dart analyze` 无问题；具体日志及边界见任务验证记录 |
+| 提交标题 | `feat(results): 增加成果CAS操作与可撤销账本` |
+| 遗留事项 | 模型工具尚未接线；全局知识确认例外和会话权限的统一调度门禁仍在 S3/S5；未跑新功能矩阵或全量回归 |
 
 ### 2026-10-20 / 实现 S1 会话权限默认值与数据迁移
 

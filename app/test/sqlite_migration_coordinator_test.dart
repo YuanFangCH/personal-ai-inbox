@@ -29,7 +29,7 @@ void main() {
       );
 
       await migration.prepare();
-      _markMigrated(indexPath, version: 3);
+      _markMigrated(indexPath, version: 4);
       _markMigrated(conversationPath, version: 2);
       settings.values['device_id'] = 'device-after';
       await migration.rollback();
@@ -94,7 +94,7 @@ void main() {
       await migration.prepare();
       final indexPath = '${directory.path}/index.sqlite3';
       final conversationPath = '${directory.path}/conversations.sqlite3';
-      _markMigrated(indexPath, version: 3);
+      _markMigrated(indexPath, version: 4);
       await expectLater(migration.complete(), throwsA(isA<StateError>()));
       _markMigrated(conversationPath, version: 2);
       await migration.complete();

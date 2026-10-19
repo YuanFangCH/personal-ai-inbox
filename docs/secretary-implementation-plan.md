@@ -25,8 +25,8 @@ Windows 使用本机 Flutter 桌面集成测试，不把主机尺寸模拟称为
 | 任务 | 依赖 | 修改范围与产物 | 局部验证与出口 |
 |---|---|---|---|
 | S0 冻结接口与测试清单 | 无 | 记录基线 SHA、schema、需求/用例 ID；明确权限、工具、动作/候选状态、平台能力，建立新矩阵数据入口 | 100 个唯一 ID、50/25/25 分配、需求映射和 runner 操作清单可审阅；不以空断言占位 |
-| S1 设置与会话权限迁移 | S0 | `core/models.dart`、`chat_models.dart`、设置/会话 store 与迁移协调器；默认三开、会话独立快照、临时页权限 | 旧配置/会话迁移、导入导出/恢复默认、迁移失败恢复；优先扩展 settings/conversation/migration 现有测试；API Key 不入快照 |
-| S2 成果操作与撤销账本 | S1 | 成果库、已有事务/动作账本；定义稳定动作键、CAS 预期版本、修改/删除、结果及独立撤销材料 | 四类成果、重复工具执行、部分失败、重启/中断、后续修改拒绝旧撤销；不以修改会话存储代替成果提交 |
+| S1 设置与会话权限迁移 | S0 | **完成**：`core/models.dart`、`chat_models.dart`、设置/会话 store 与迁移协调器；默认三开、会话独立快照、临时页权限 | 旧配置/会话迁移、导入导出/恢复默认及新旧会话隔离；27 项定向测试通过、指定文件分析无问题；记录见 [`secretary-s1-permission-snapshots`](../test-results/secretary-s1-permission-snapshots/verification.md)。API Key 未进入权限快照 |
+| S2 成果操作与撤销账本 | S1 | **完成**：成果库新增带预期 revision/hash 的改/删接口、稳定动作 ID、独立 SQLite `reversible_actions` 撤销账本和 ResultLibrary 结果接口；动作 ID 不依赖会话外键级联 | 普通成果 CAS、创建/修改/删除撤销、过期/陈旧版本拒绝及文件提交后索引失败恢复通过；SQLite 索引升 v4；28 项定向测试/指定文件分析通过，见 [`secretary-s2-result-actions`](../test-results/secretary-s2-result-actions/verification.md)。模型工具尚未调用这些接口 |
 | S3 全局知识与审批 | S2 | `knowledge` 用途字段、事实/有效期、候选与审批状态、用途变更/墓碑；本地账本不级联归属会话 | 增改删均确认、旧候选失效、重复确认幂等、普通工具/撤销/去标识不能绕过；候选不进入有效索引或同步 |
 | S4 检索与预算执行 | S1/S3 | 复用 SQLite 查询，增加成果/全局事实/会话片段读取；本轮预算、去重、会话内缓存和失效代次 | 先写非必要 0 检索/读取关闭场景，再覆盖片段/详情预算、无命中停止、最新版本与缓存失效；不新增云端判别器/向量库 |
 | S5 多轮模型工具编排 | S2/S3/S4 | `ChatService`、`ModelClient`、`ConversationWorkspace` 与自动记录执行；完整工具调用/结果/必要协议字段、跨轮恢复 | 完整流后执行、每次执行/恢复重查权限、停止/超时后无新增副作用、组完整裁剪、工具失败真实反馈、同请求不重置预算 |

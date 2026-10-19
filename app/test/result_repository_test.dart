@@ -62,6 +62,197 @@ void main() {
     expect(await repository.listDocuments(), isEmpty);
   });
 
+  test(
+    'reversible result operations use CAS and undo with new revisions',
+    () async {
+      final createdAt = DateTime(2026, 10, 4, 9);
+      final created = await repository.create(
+        type: ResultType.knowledge,
+        title: '术语',
+        body: '旧正文',
+        createdAt: createdAt,
+      );
+      final actionCreatedAt = DateTime.now();
+      final createdWithUndo = await repository.create(
+        type: ResultType.todo,
+        title: '提交材料',
+        body: '初稿',
+        createdAt: createdAt.add(const Duration(minutes: 1)),
+        idempotencyKey: 'undoable-create',
+        reversibleActionId: 'action-create-1',
+      );
+      final createAction = await repository.findReversibleAction(
+        'action-create-1',
+      );
+      expect(createAction?.status, ReversibleActionStatus.applied);
+      expect(createAction?.kind, ReversibleActionKind.create);
+      expect(createAction?.undoUntil.isAfter(actionCreatedAt), isTrue);
+
+      final originalMarkdown = vault.files[created.markdownPath]!;
+      final originalHash = repository.hashMarkdown(originalMarkdown);
+      final updated = await repository.saveWithUndo(
+        document: created.copyWith(body: '修改正文'),
+        expectedRevision: created.revision,
+        expectedHash: originalHash,
+        actionId: 'action-update-1',
+      );
+      expect(updated.body, '修改正文');
+      expect(updated.revision, created.revision + 1);
+      await expectLater(
+        repository.saveWithUndo(
+          document: created.copyWith(body: '过期修改'),
+          expectedRevision: created.revision,
+          expectedHash: originalHash,
+          actionId: 'action-update-stale',
+        ),
+        throwsStateError,
+      );
+
+      final undoUpdate = await repository.undoAction('action-update-1');
+      expect(undoUpdate.status, ReversibleActionStatus.undone);
+      final restored = await repository.readDocument(created.id);
+      expect(restored?.body, '旧正文');
+      expect(restored?.revision, updated.revision + 1);
+
+      final deleteHash = repository.hashMarkdown(
+        vault.files[created.markdownPath]!,
+      );
+      final tombstone = await repository.deleteWithUndo(
+        id: created.id,
+        expectedRevision: restored!.revision,
+        expectedHash: deleteHash,
+        actionId: 'action-delete-1',
+      );
+      expect(tombstone.deleted, isTrue);
+      final undoDelete = await repository.undoAction('action-delete-1');
+      expect(undoDelete.status, ReversibleActionStatus.undone);
+      final restoredDelete = await repository.readDocument(created.id);
+      expect(restoredDelete?.deleted, isFalse);
+      expect(restoredDelete?.body, '旧正文');
+      expect(restoredDelete?.revision, tombstone.revision + 1);
+
+      final createUndo = await repository.undoAction('action-create-1');
+      expect(createUndo.status, ReversibleActionStatus.undone);
+      final createdTombstone = await repository.readDocument(
+        createdWithUndo.id,
+      );
+      expect(createdTombstone?.deleted, isTrue);
+      expect(
+        vault.files[createdWithUndo.markdownPath],
+        contains('deleted: true'),
+      );
+    },
+  );
+
+  test(
+    'reversible undo refuses stale versions and expires old snapshots',
+    () async {
+      final original = await repository.create(
+        type: ResultType.knowledge,
+        title: '课程',
+        body: '周数为十六',
+      );
+      final previousHash = repository.hashMarkdown(
+        vault.files[original.markdownPath]!,
+      );
+      final updated = await repository.saveWithUndo(
+        document: original.copyWith(body: '周数为十五'),
+        expectedRevision: original.revision,
+        expectedHash: previousHash,
+        actionId: 'action-undo-expired',
+      );
+      await repository.save(updated.copyWith(body: '稍后人工修改'));
+      await expectLater(
+        repository.undoAction('action-undo-expired'),
+        throwsStateError,
+      );
+      expect(
+        (await repository.findReversibleAction('action-undo-expired'))?.status,
+        ReversibleActionStatus.failed,
+      );
+
+      final current = await repository.findDocument(original.id);
+      final currentHash = repository.hashMarkdown(
+        vault.files[original.markdownPath]!,
+      );
+      final expiring = await repository.saveWithUndo(
+        document: current!.copyWith(body: '限时版本'),
+        expectedRevision: current.revision,
+        expectedHash: currentHash,
+        actionId: 'action-undo-expiring',
+      );
+      final action = await repository.findReversibleAction(
+        'action-undo-expiring',
+      );
+      await expectLater(
+        repository.undoAction(
+          'action-undo-expiring',
+          now: action!.undoUntil.add(const Duration(seconds: 1)),
+        ),
+        throwsStateError,
+      );
+      expect(
+        (await repository.findReversibleAction('action-undo-expiring'))?.status,
+        ReversibleActionStatus.expired,
+      );
+      expect((await repository.findDocument(original.id))?.body, '限时版本');
+      expect(expiring.revision, current.revision + 1);
+    },
+  );
+
+  test(
+    'recovers a committed reversible edit and keeps its undo snapshot',
+    () async {
+      final failureIndex = _FailOnceIndexDatabase();
+      final failureVault = MemoryVaultStore();
+      final initialRepository = ResultRepository(
+        vault: failureVault,
+        index: failureIndex,
+        deviceId: 'test-device',
+      );
+      await initialRepository.initialize();
+      final original = await initialRepository.create(
+        type: ResultType.matter,
+        title: '作业',
+        body: '原始要求',
+      );
+      final oldHash = initialRepository.hashMarkdown(
+        failureVault.files[original.markdownPath]!,
+      );
+      failureIndex.failNextUpsert = true;
+      await expectLater(
+        initialRepository.saveWithUndo(
+          document: original.copyWith(body: '更新后的要求'),
+          expectedRevision: original.revision,
+          expectedHash: oldHash,
+          actionId: 'action-recovery-edit',
+        ),
+        throwsStateError,
+      );
+
+      final recoveredRepository = ResultRepository(
+        vault: failureVault,
+        index: failureIndex,
+        deviceId: 'test-device',
+      );
+      await recoveredRepository.initialize();
+      expect(
+        (await recoveredRepository.findReversibleAction('action-recovery-edit'))
+            ?.status,
+        ReversibleActionStatus.applied,
+      );
+      expect(
+        (await recoveredRepository.readDocument(original.id))?.body,
+        '更新后的要求',
+      );
+      await recoveredRepository.undoAction('action-recovery-edit');
+      expect(
+        (await recoveredRepository.readDocument(original.id))?.body,
+        '原始要求',
+      );
+    },
+  );
+
   test('searches normalized title body and tags with stable paging', () async {
     final first = await repository.create(
       type: ResultType.knowledge,

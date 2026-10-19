@@ -38,6 +38,14 @@ abstract interface class IndexDatabase {
 
   Future<List<IdempotentOperation>> listIncompleteOperations();
 
+  Future<ReversibleResultAction?> findReversibleAction(String id);
+
+  Future<List<ReversibleResultAction>> listReversibleActions();
+
+  Future<void> upsertReversibleAction(ReversibleResultAction action);
+
+  Future<void> removeReversibleAction(String id);
+
   Future<SyncConflictRecord?> findConflict(String resultId);
 
   Future<void> upsertConflict(SyncConflictRecord conflict);

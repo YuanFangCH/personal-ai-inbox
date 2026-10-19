@@ -1,20 +1,22 @@
-# S1：权限默认值与会话快照
+# S1：会话权限默认值与快照
 
-日期：2026-10-20。改动：新增设置默认权限、每会话权限持久化，以及旧快照/旧会话数据库迁移；新增设置页控制。目标行为尚未接入模型工具。
+日期：2026-10-20。范围：设置 schema v3、会话 schema v2、启动迁移门槛、设置页默认值、新会话权限快照，以及必要的测试宿主同步。
 
-## 验证
+## 执行与结果
 
-| 项目 | 命令 | 结果 |
-|---|---|---|
-| 格式 | `dart format` 对 S1 修改的 19 个 Dart 文件执行 | 通过，19 files formatted 0 changed |
-| 定向测试 | `flutter test test/conversation_store_test.dart test/sqlite_migration_coordinator_test.dart test/settings_service_test.dart test/device_preferences_test.dart test/conversation_workspace_test.dart test/settings_page_test.dart --reporter compact`（在 `app/`） | 通过，27/27；包含 v1→v2 会话列迁移、跨索引/会话数据库启动协调、设置 v2→v3 兼容、便携设置兼容/往返/恢复默认、现有会话不随新默认改变、设置页保存行为 |
-| 定向静态分析 | `dart analyze` 对 S1 生产文件与对应测试文件清单执行（在 `app/`） | 通过，No issues found |
-| 差异空白 | `git diff --check` | 提交前执行，结果见最终检查 |
+- 格式：绝对路径 Dart SDK `dart.exe format` 对 19 个修改的 Dart 文件执行，通过，0 个文件需要格式化。
+- 局部行为与迁移：
 
-首轮编译发现 `AiPermissions` 类型未被两个 adapter 文件直接导入，已增加直接 import；设置页测试初版滚动到错误的嵌套滚动区域，已改用外层测试视口定位后加入最终通过运行。迁移协调测试也发现旧数据库夹具只把 `user_version` 改成 0 但没有删除新增列；夹具现先移除权限列，再验证真实旧结构升级。修正后上述最终 27 项通过。
+  ```powershell
+  & 'E:\DevTools\Flutter\bin\flutter.bat' test test/conversation_store_test.dart test/sqlite_migration_coordinator_test.dart test/settings_service_test.dart test/device_preferences_test.dart test/conversation_workspace_test.dart test/settings_page_test.dart --reporter compact
+  ```
+
+  在 `app/` 执行，27/27 通过。覆盖 v1 会话库迁移/权限重开持久化，启动协调器的跨库恢复与版本门槛，旧设置和 schema 迁移，便携设置往返/旧格式导入/恢复默认，新会话复制当前默认且已有会话不变，设置页保存默认值。
+- 定向静态分析：对 S1 改动的 19 个生产/测试 Dart 文件运行 `& 'E:\DevTools\Flutter\bin\cache\dart-sdk\bin\dart.exe' analyze <上述 S1 文件清单>`，通过，`No issues found!`。实际文件见对应提交和 `git status` 前的修改清单。
+- 空白检查：`git diff --check` 通过。
+
+首轮验证遇到并修复：模块文件缺少 `AiPermissions` 直接 import；旧会话迁移测试夹具把新表仅改低 `user_version`，现改为模拟真正没有权限列的旧表；设置页 widget 用例在新增长页面板后滚动到了内层列表，现以扩大专用设置测试视口验证保存路径。最终上述定向测试与分析在当前状态下通过。
 
 ## 未执行与边界
 
-- 未执行全量测试、Android/Windows 设备测试、新 SEC-001–100 矩阵、真实模型、云盘或真实音频。
-- 本次确立的是持久化与默认值行为，尚未让 `ChatService`/工具执行强制权限；不得把 S1 说成完整权限安全闭环。
-- 设置数据库版本为 3，会话数据库为 2，成果索引版本仍为 3；真实用户目录恢复/断电未测。
+未运行全量测试、三端设备矩阵、模型/云盘/语音端到端或构建。S1 只持久化权限状态和默认值；AI 工具执行仍未按权限强制门禁，留待 S5 完成，不能宣称权限闭环已上线。

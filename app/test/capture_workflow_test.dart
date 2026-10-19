@@ -290,6 +290,22 @@ class _RecordingIndexDatabase implements IndexDatabase {
       _delegate.listIncompleteOperations();
 
   @override
+  Future<ReversibleResultAction?> findReversibleAction(String id) =>
+      _delegate.findReversibleAction(id);
+
+  @override
+  Future<List<ReversibleResultAction>> listReversibleActions() =>
+      _delegate.listReversibleActions();
+
+  @override
+  Future<void> upsertReversibleAction(ReversibleResultAction action) =>
+      _delegate.upsertReversibleAction(action);
+
+  @override
+  Future<void> removeReversibleAction(String id) =>
+      _delegate.removeReversibleAction(id);
+
+  @override
   Future<SyncConflictRecord?> findConflict(String resultId) =>
       _delegate.findConflict(resultId);
 
