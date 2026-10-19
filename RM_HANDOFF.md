@@ -10,8 +10,8 @@
 | 最后更新时间 | 2026-10-20 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.1.2` 已预发布；懒狗秘书改造 S1–S8（权限、成果操作、知识审批、检索、模型工具、界面、更名、thinking mode）已实现并局部验证；文件、语音及三端 100 例矩阵仍在进行 |
-| 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。成果索引 SQLite v6、会话库 v5（跨会话 FTS5、隐藏 reasoning 与 tool transcript）；Markdown 仍为成果权威副本，未确认全局知识候选留在本地索引库。工具链固定 Flutter 3.47.6 / Dart 3.13.5。thinking 仅对已知 DeepSeek API host 启用/可手工覆盖；当前 Chat Completions 没有原生联网能力，联网按钮禁用。未连接真实云盘或模型 Key。OneDrive、百度网盘、通知和真实跨端同步尚未完成。`v1.1.2` GitHub 预发布版仍使用 Debug 证书，Windows 包未代码签名。 |
+| 当前阶段 | `v1.1.2` 已预发布；懒狗秘书改造 S1–S9（权限、成果操作、全局知识、检索/工具、UI、更名、thinking 与本地文件解析）已实现并局部验证；语音及三端 100 例矩阵仍在进行 |
+| 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。成果索引 SQLite v6、会话库 v5（跨会话 FTS5、隐藏 reasoning/tool transcript）；Markdown 仍为成果权威副本，未确认全局知识候选留在本地索引库。工具链固定 Flutter 3.47.6 / Dart 3.13.5。thinking 仅对已知 DeepSeek API host 启用/可手工覆盖；当前 Chat Completions 没有原生联网能力，联网按钮禁用。文件在本端提取文本后发送，不传原始文件，扫描 PDF 不 OCR。未连接真实云盘或模型 Key；OneDrive、百度网盘、通知和真实跨端同步尚未完成。`v1.1.2` GitHub 预发布版仍使用 Debug 证书，Windows 包未代码签名。 |
 
 ## 2. 一句话交接
 
@@ -116,6 +116,8 @@
 - 2026-10-20：S7 将用户可见名统一为“懒狗秘书”：Android 标签、Flutter MaterialApp 标题、Windows 窗口标题/版本资源/安装器开始菜单和快捷方式、Web 页面/manifest、根与客户端 README、包描述。Android 包 ID、pub package 名、Windows AppId/安装目录/EXE 内名与数据路径均保持。标题 widget 测试 1/1 通过；Android release APK、Windows release、Web release 构建通过，APK badging 确认 label 并确认 package ID `com.yuanfang.aitext.personal_ai_inbox` 未变。指定分析无问题。Inno Setup 编译器本机未安装，安装器脚本只完成源文案检查，未执行编译。见 [验证记录](test-results/secretary-s7-branding/verification.md)。
 
 - 2026-10-20：S8 接入 DeepSeek `deepseek-flash` 在已知 `api.deepseek.com` Chat Completions 上的 thinking 参数和 reasoning/tool transcript 回传；配置覆盖可关闭或声明其他端点能力，未知端点默认关闭。隐藏推理存于会话 SQLite v5，不显示、不进入成果同步。联网因当前 `/chat/completions` 无服务器内置 `web_search` 声明而禁用，不调用独立 Search API 或切 Responses 协议。九个定向测试文件 37/37 通过，指定 analysis 无问题；依据见[模型接入](docs/model-integration.md)，未使用真实模型 Key。
+
+- 2026-10-20：S9 实现本机文件选择/提取：TXT/MD/CSV/DOCX/XLSX 和 PDF 文字层，读取 bytes 后只把有界文本并入本轮用户消息；原始文件不持久化或上传。单文件 8 MiB、每条最多 3 个文件/24,000 字符；Office ZIP 展开、Excel 页数/行/单元格、PDF 页数均有限制，宏/公式不执行，扫描 PDF 明确不 OCR。解析器/取消/限制/ChatService/文件注入 UI 定向测试 9/9，指定 analysis 无问题。Android APK、Windows release 和 Web release 在新增 Picker/PDFium 依赖后构建成功；PDFium 使用真实文件读取未执行，三端设备矩阵未执行。报告见 [验证记录](test-results/secretary-s9-file-input/verification.md)。
 
 - 2026-10-20：S2 普通成果 CAS 更新/删除与持久化撤销账本已实现，索引迁移升至 v4；28 项 repository/index/migration/capture 定向测试及指定文件 analysis 均通过。报告见 [验证记录](test-results/secretary-s2-result-actions/verification.md)。AI 工具尚未连接。
 
@@ -331,7 +333,7 @@
 
 ### 下一步
 
-当前优先：实现 S9 文件处理与 S10 语音，再做 S11–S12 新矩阵接线与 50/25/25 验收；已完成 S1–S8 不重跑同范围验证。无需重问已确认产品选择；业务修改完成后执行 SEC-001–100 三端矩阵（50/25/25），保存逐例证据并对受影响例定向重跑。新增收费语音服务需呈现具体选择；受控 Provider 不能冒充真实云盘接入。以下为既有后续工作。
+当前优先：实现 S10 语音，再做 S11–S12 新矩阵接线与 50/25/25 验收；已完成 S1–S9 不重跑同范围验证。无需重问已确认产品选择；业务修改完成后执行 SEC-001–100 三端矩阵（50/25/25），保存逐例证据并对受影响例定向重跑。新增收费语音服务需呈现具体选择；受控 Provider 不能冒充真实云盘接入。以下为既有后续工作。
 
 1. 发布前按发布门禁运行完整测试套件，并在三端执行 `scripts/verify-realistic-e2e.ps1`；矩阵已可重复运行，但每次约需 16 分钟纯用例时间。
 2. 若转入生产用户数据，先执行升级与备份恢复演练；真实云盘、通知、签名和物理断电专项需另行验收。
@@ -339,6 +341,16 @@
 4. 后续代码任务按 `AGENTS.md` 的增量测试范围执行；测试结论记录执行范围与未验证项，临时测试仅在用户要求时清理。
 
 ## 8. 变更记录
+
+### 2026-10-20 / 实现 S9 本地文件解析与对话输入
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 使用跨 Android/Windows/Web 文件选择器；本地提取 TXT/MD/CSV/PDF text layer/DOCX/XLSX，给文件大小、Office 解压、页数/表格结构和总字符设置硬限制；对话只发送解析文字和文件名，不保留/上传原文件；文件中指令和公式不作为授权/不执行 |
+| 变更文件 | `app/pubspec.yaml`/lock、新 `services/file_input_service.dart`、AppRuntime/AppScope 注入、对话页面/composer、ChatService 系统边界、file parser/UI测试、README、模型接入/改造计划与验证记录 |
+| 验证 | file parser 与文件附件 UI 整合测试 9/9 通过；相关 Dart analysis 无问题；Android Release APK、Windows Release、Web Release 构建通过。测试中的 PDF parser 使用受控文本端口；真实 PDFium 文件解码探针和真实系统文件选择器未执行。未执行设备矩阵/全项目全量测试 |
+| 提交标题 | `feat(ai): 添加本地文件解析与对话输入` |
+| 遗留事项 | PDF 扫描件无 OCR；语音 S10；SEC-001–100 尚未执行，保留 OneDrive 实际接入限制 |
 
 ### 2026-10-20 / 实现 S8 DeepSeek thinking mode 与联网能力边界
 

@@ -25,6 +25,7 @@ import '../modules/sync/sync_workspace.dart';
 import '../services/capture_service.dart';
 import '../services/chat_service.dart';
 import '../services/image_input_service.dart';
+import '../services/file_input_service.dart';
 import '../services/model_client.dart';
 
 /// Composition root for the local core.
@@ -40,6 +41,7 @@ final class AppRuntime {
     SettingsService? settingsOverride,
     ModelClient? modelClient,
     SyncProvider? syncProvider,
+    FileInputService? fileInputService,
   }) async {
     final vault = vaultOverride ?? await createPlatformVaultStore();
     final supportPath = vaultOverride == null
@@ -132,6 +134,7 @@ final class AppRuntime {
         capture: capture,
         conversations: conversations,
         sync: sync,
+        fileInputService: fileInputService ?? const FileInputService(),
         closeAdapters: () async {
           await chatRepository!.close();
           await index!.close();
@@ -158,6 +161,7 @@ final class AppRuntime {
     required this.capture,
     required this.conversations,
     required this.sync,
+    this.fileInputService = const FileInputService(),
     this.closeAdapters,
   });
 
@@ -166,6 +170,7 @@ final class AppRuntime {
   final CaptureWorkflow capture;
   final ConversationWorkspace conversations;
   final SyncWorkspace sync;
+  final FileInputService fileInputService;
   final Future<void> Function()? closeAdapters;
   bool _disposed = false;
   Future<void>? _shutdownFuture;

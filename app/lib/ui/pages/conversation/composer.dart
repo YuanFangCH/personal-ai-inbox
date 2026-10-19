@@ -6,6 +6,7 @@ class _Composer extends StatelessWidget {
     required this.attachments,
     required this.enabled,
     required this.imageEnabled,
+    required this.files,
     required this.thinkingAvailable,
     required this.thinkingEnabled,
     required this.webSearchAvailable,
@@ -15,6 +16,8 @@ class _Composer extends StatelessWidget {
     required this.onPickCamera,
     required this.onPaste,
     required this.onRemoveImage,
+    required this.onPickFile,
+    required this.onRemoveFile,
     required this.onSend,
     required this.onStop,
   });
@@ -23,6 +26,7 @@ class _Composer extends StatelessWidget {
   final List<ChatAttachmentInput> attachments;
   final bool enabled;
   final bool imageEnabled;
+  final List<ExtractedFileText> files;
   final bool thinkingAvailable;
   final bool thinkingEnabled;
   final bool webSearchAvailable;
@@ -32,6 +36,8 @@ class _Composer extends StatelessWidget {
   final VoidCallback onPickCamera;
   final VoidCallback onPaste;
   final ValueChanged<int> onRemoveImage;
+  final VoidCallback onPickFile;
+  final ValueChanged<int> onRemoveFile;
   final VoidCallback onSend;
   final VoidCallback onStop;
 
@@ -106,6 +112,35 @@ class _Composer extends StatelessWidget {
                                   ),
                                 ),
                               ],
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
+                    if (files.isNotEmpty) ...[
+                      SizedBox(
+                        height: 48,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: files.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 8),
+                          itemBuilder: (context, index) {
+                            final file = files[index];
+                            return InputChip(
+                              key: Key('chat_file_${file.fileName}'),
+                              avatar: const Icon(Icons.description_outlined),
+                              label: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 190,
+                                ),
+                                child: Text(
+                                  '${file.fileName}${file.truncated ? ' · 已截取' : ''}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              onDeleted: () => onRemoveFile(index),
                             );
                           },
                         ),
@@ -223,10 +258,15 @@ class _Composer extends StatelessWidget {
                       }
                     : null,
               ),
-              const _AttachmentMenuButton(
+              _AttachmentMenuButton(
                 icon: Icons.attach_file,
                 label: '文件',
-                onPressed: null,
+                onPressed: enabled
+                    ? () {
+                        Navigator.pop(context);
+                        onPickFile();
+                      }
+                    : null,
               ),
               _AttachmentMenuButton(
                 icon: Icons.content_paste_outlined,
@@ -289,18 +329,25 @@ class _AttachmentMenuButton extends StatelessWidget {
   final VoidCallback? onPressed;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 104,
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton.filledTonal(
-          onPressed: onPressed,
-          tooltip: label,
-          icon: Icon(icon),
+  Widget build(BuildContext context) => Material(
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(16),
+      child: SizedBox(
+        width: 104,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 28),
+              const SizedBox(height: 6),
+              Text(label, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
         ),
-        Text(label, style: Theme.of(context).textTheme.bodySmall),
-      ],
+      ),
     ),
   );
 }

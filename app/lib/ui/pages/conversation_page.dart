@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/chat_models.dart';
 import '../../core/models.dart';
 import '../../modules/conversation/conversation_workspace.dart';
+import '../../services/file_input_service.dart';
 import '../../services/image_input_service.dart';
 import '../../services/model_capabilities.dart';
 import '../app_scope.dart';
@@ -154,6 +155,7 @@ class _ConversationPageState extends State<ConversationPage>
           attachments: _imageInputs,
           enabled: modelReady,
           imageEnabled: modelReady && imageEgressAllowed && imageCapability,
+          files: _fileTexts,
           thinkingAvailable: modelReady && modelCapabilities.thinking,
           thinkingEnabled: _thinkingEnabled,
           webSearchAvailable: modelReady && modelCapabilities.webSearch,
@@ -165,6 +167,8 @@ class _ConversationPageState extends State<ConversationPage>
           onPaste: _pasteText,
           onRemoveImage: (index) =>
               setState(() => _imageInputs.removeAt(index)),
+          onPickFile: _pickFile,
+          onRemoveFile: (index) => setState(() => _fileTexts.removeAt(index)),
           onSend: _send,
           onStop: app.cancelGeneration,
         ),
