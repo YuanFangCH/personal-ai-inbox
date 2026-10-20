@@ -74,6 +74,23 @@ jobs:
         working-directory: app
         run: flutter test --reporter expanded
 
+      - name: Restore Android release keystore
+        shell: pwsh
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if (-not $env:ANDROID_KEYSTORE_BASE64 -or -not $env:ANDROID_KEYSTORE_PASSWORD) {
+              throw 'Android release signing secrets are not configured.'
+          }
+
+          $keystorePath = Join-Path $env:RUNNER_TEMP 'lazy-secretary-release.jks'
+          [IO.File]::WriteAllBytes($keystorePath, [Convert]::FromBase64String($env:ANDROID_KEYSTORE_BASE64))
+          "ANDROID_KEYSTORE_PATH=$keystorePath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANDROID_KEYSTORE_PASSWORD=$env:ANDROID_KEYSTORE_PASSWORD" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          'ANDROID_KEY_ALIAS=lazy-secretary-release' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANDROID_KEY_PASSWORD=$env:ANDROID_KEYSTORE_PASSWORD" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Build Android release
         working-directory: app
         run: flutter build apk --release
@@ -114,8 +131,23 @@ jobs:
 
           $certificate = & (Join-Path $buildTools.FullName 'apksigner.bat') verify --print-certs $apk | Out-String
           if ($LASTEXITCODE -ne 0) { throw 'apksigner verification failed.' }
-          if ($certificate -notmatch 'CN=Android Debug') {
-              throw 'The first prerelease must use the expected Android Debug certificate.'
+          $expectedFingerprint = '51B5E2F3F44CE9374CB680A0173C6498A4E13C718C602A355A8B6A50523F4816'
+          $fingerprintMatch = [regex]::Match($certificate, 'certificate SHA-256 digest:\s*([0-9a-fA-F:]+)')
+          if (-not $fingerprintMatch.Success) {
+              throw 'Unable to read the APK signing certificate fingerprint.'
+          }
+          $actualFingerprint = $fingerprintMatch.Groups[1].Value.Replace(':', '').ToUpperInvariant()
+          if ($actualFingerprint -ne $expectedFingerprint) {
+              throw "APK signing certificate mismatch: $actualFingerprint"
+          }
+
+      - name: Remove Android release keystore
+        if: always()
+        shell: pwsh
+        run: |
+          $keystorePath = Join-Path $env:RUNNER_TEMP 'lazy-secretary-release.jks'
+          if (Test-Path -LiteralPath $keystorePath) {
+              Remove-Item -LiteralPath $keystorePath -Force
           }
 
       - name: Install Inno Setup

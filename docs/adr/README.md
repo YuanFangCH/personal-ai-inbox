@@ -22,6 +22,7 @@
 | [0016](0016-sync-validation-and-version-bound-conflict-decisions.md) | 同步对象经过校验，冲突裁决绑定观察到的远端版本 | accepted |
 | [0017](0017-conversation-permissions-and-reversible-result-actions.md) | AI 对话按会话授权读取及可撤销成果操作，待处理独立成页（待实现） | accepted |
 | [0018](0018-confirmed-global-knowledge-for-secretary.md) | 秘书型助理使用三端同步、按需检索且增改删均人工确认的全局知识（待实现） | accepted |
+| [0019](0019-stable-android-release-signing.md) | Android 预览发布从 v1.1.4 起固定使用长期签名密钥 | accepted |
 
 相关文档：
 

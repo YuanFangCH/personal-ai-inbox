@@ -10,10 +10,12 @@
 | 最后更新时间 | 2026-10-20 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.1.3` 预览版已发布；S1–S12 完成，三端设备矩阵 100/100 通过 |
-| 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。成果索引 SQLite v6、会话库 v5（跨会话 FTS5、隐藏 reasoning/tool transcript）；Markdown 仍为成果权威副本，未确认全局知识候选留在本地索引库。工具链固定 Flutter 3.47.6 / Dart 3.13.5。thinking 仅对已知 DeepSeek API host 启用/可手工覆盖；当前 Chat Completions 没有原生联网能力，联网按钮禁用。文件在本端提取文本后发送，不传原始文件，扫描 PDF 不 OCR。最终提交 `37d96f71` 上 phone 50/50、tablet 25/25、Windows 25/25，100/100 全部 passed；证据见 `test-results/secretary-100-final/20261020-110321-37d96f71/`。Android/Windows 离线语音输入和系统朗读已接入，但真实设备麦克风/扬声器探针未执行。真实云盘/模型 Key 未连接；OneDrive、百度网盘、通知和真实跨端同步尚未完成。预览包仍使用 Android Debug 证书，Windows 包未代码签名。 |
+| 当前阶段 | Android 长期发布签名已配置，准备 `v1.1.4` 预览版；v1.1.3 及更早 APK 不兼容覆盖升级 |
+| 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。成果索引 SQLite v6、会话库 v5（跨会话 FTS5、隐藏 reasoning/tool transcript）；Markdown 仍为成果权威副本，未确认全局知识候选留在本地索引库。工具链固定 Flutter 3.47.6 / Dart 3.13.5。thinking 仅对已知 DeepSeek API host 启用/可手工覆盖；当前 Chat Completions 没有原生联网能力，联网按钮禁用。文件在本端提取文本后发送，不传原始文件，扫描 PDF 不 OCR。最终提交 `37d96f71` 上 phone 50/50、tablet 25/25、Windows 25/25，100/100 全部 passed；证据见 `test-results/secretary-100-final/20261020-110321-37d96f71/`。Android/Windows 离线语音输入和系统朗读已接入，但真实设备麦克风/扬声器探针未执行。Android Release 自 v1.1.4 起固定使用仓库外长期密钥并在 CI 校验指纹；v1.1.3 及更早预览包不能保证与新密钥兼容。Windows 包未代码签名。真实云盘/模型 Key 未连接；OneDrive、百度网盘、通知和真实跨端同步尚未完成。 |
 
 ## 2. 一句话交接
+
+2026-10-20 执行中：已生成并在本机仓库外备份 Android 长期签名密钥，GitHub Actions Secrets 已配置；证书指纹 `51B5E2F3F44CE9374CB680A0173C6498A4E13C718C602A355A8B6A50523F4816`。正在将 Release 构建改为强制此证书，准备 `v1.1.4`。GitHub v1.1.1 使用的 APK 指纹不同且旧私钥未找到，用户手机保持原状，暂不支持从 v1.1.1 直接覆盖，数据迁移另行评估。
 
 2026-10-20 执行状态：S1 已将三组默认权限加入设置 schema v3，将会话快照加入 `conversations.sqlite3` v2，并提高 SQLite 启动迁移协调器的支持版本。首次全开、设置导入/恢复默认、独立会话快照及 v1 会话迁移已由 27 项定向测试验证，定向 Dart analysis 零问题；记录见 [S1 测试结果](test-results/secretary-s1-permission-snapshots/verification.md)。模型工具尚未按权限执行，仍需后续 S5 接线；S1 通过不代表改造全部完成。
 
@@ -288,6 +290,8 @@
 ### 风险与边界
 
 - 本轮只调整项目交接文档，文档检查通过；按测试约定未运行测试。
+- Android 长期发布密钥已保存在 `%LOCALAPPDATA%\LazySecretary\android-signing\`，另有本机备份；GitHub Secrets `ANDROID_KEYSTORE_BASE64` 与 `ANDROID_KEYSTORE_PASSWORD` 已配置。不要打印或提交密钥与密码。
+- 旧 v1.1.1 APK 签名与新密钥不一致。新包不能直接覆盖旧包；用户手机未连接，本轮不操作手机。应用本地数据库迁移/备份尚未评估。
 - S1–S12 和三端 100 例已完成；下方阶段记录中的旧待办为历史状态，当前结论以顶部状态和各阶段验收报告为准。首次 v1.1.3 发布门禁发现 3 个过时测试路径，修正后须重新运行整套门禁。
 
 - S2 建立了普通成果 CAS 更新/删除、可撤销前像和恢复账本；AI 尚未调用。全局知识用途标识与审批也尚未接入。模型工具对外前需在本地核心完成权限和审批检查。
@@ -337,7 +341,7 @@
 
 ### 下一步
 
-当前优先：将 `v1.1.3` 标签更新到测试修复提交后，重跑发布工作流并核验四项资产及 SHA-256 清单。S12 已在干净 SHA `37d96f71` 上完成 phone 50、tablet 25、Windows 25 设备验收，100 ID 全部通过。之后单独推进真实 OneDrive Provider、模型 Key 联调、通知、真实麦克风/扬声器及生产数据升级/恢复演练。受控 Provider 不代表真实云盘接入。
+当前优先：完成 `v1.1.4` 固定签名改造、本机签名构建与模拟器覆盖升级验证，提交并推送后触发 Release workflow，核验四项资产及 SHA-256 清单。GitHub v1.1.1 的旧签名私钥未找到，用户手机数据迁移需之后连接手机另行检查；不得把新签名包直接覆盖旧包。之后单独推进真实 OneDrive Provider、模型 Key 联调、通知、真实麦克风/扬声器及生产数据升级/恢复演练。
 
 1. 发布前按发布门禁运行完整测试套件，并在三端执行 `scripts/verify-realistic-e2e.ps1`；矩阵已可重复运行，但每次约需 16 分钟纯用例时间。
 2. 若转入生产用户数据，先执行升级与备份恢复演练；真实云盘、通知、签名和物理断电专项需另行验收。
@@ -346,6 +350,16 @@
 5. 每次新对话从根 README 与本文件恢复项目状态；正式修改同步更新本文件。
 
 ## 8. 变更记录
+
+### 2026-10-20 / 固定 Android 预览发布签名并准备 v1.1.4
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 修复不同 Release 构建使用不同 Android Debug 密钥导致安装更新失败；后续预览版固定使用长期签名证书 |
+| 变更文件 | `app/android/app/build.gradle.kts`、`.github/workflows/release.yml`、`app/pubspec.yaml`、`docs/adr/0019-stable-android-release-signing.md`、`docs/releases/v1.1.4.md`、`README.md`、`RM_HANDOFF.md` |
+| 验证 | 进行中；本机/CI APK 签名、模拟器覆盖升级、Windows/Android 发布构建与资产校验待执行并更新于 `test-results/release-v1.1.4/verification.md` |
+| 提交标题 | 待完成验证后提交 |
+| 遗留事项 | v1.1.3 及更早包不保证兼容新证书；手机数据迁移待连接手机评估。长期签名私钥保存在 `%LOCALAPPDATA%\LazySecretary\android-signing\` 并配置 GitHub Actions Secrets。 |
 
 ### 2026-10-20 / 明确新对话交接与 RM 更新要求
 
