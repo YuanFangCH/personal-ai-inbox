@@ -1,0 +1,8 @@
+// Temporary local bridge only. Always replace it with the official release APK.
+allprojects { candidate ->
+    candidate.plugins.withId('com.android.application') {
+        candidate.android.buildTypes.configureEach { buildType ->
+            if (buildType.name == 'release') buildType.debuggable = true
+        }
+    }
+}
