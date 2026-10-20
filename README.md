@@ -26,6 +26,10 @@
 - 系统接入：Android 注册 `ACTION_SEND` 与 `ACTION_PROCESS_TEXT`，支持从其他 App 分享文本和图片。
 - 多端形态：同一套 Flutter 代码适配手机、平板、Windows 和 Web 预览。
 
+## 项目交接
+
+每次在本项目开启新对话，先读本 README，再读 [RM_HANDOFF.md](RM_HANDOFF.md) 获取最新交接状态，并遵守 [AGENTS.md](AGENTS.md)。项目内每项正式修改都要同步更新 RM_HANDOFF；详细测试证据放在 `test-results/`。
+
 ## 当前进展
 
 已完成 [S0–S12 实施计划](docs/secretary-implementation-plan.md)及[三端 100 例新功能验收](docs/testing/secretary-100-case-plan.md)：手机 AVD 50/50、平板 AVD 25/25、Windows 桌面 25/25，合计 100/100 通过。最终代码 SHA、逐例状态、设备信息和日志见[验收报告](test-results/secretary-100-final/20261020-110321-37d96f71/verification.md)。真实 OneDrive 同步和麦克风/扬声器仍待单独接入/验证。
