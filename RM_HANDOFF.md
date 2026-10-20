@@ -10,8 +10,8 @@
 | 最后更新时间 | 2026-10-20 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.1.2` 已预发布；懒狗秘书改造 S1–S10（权限、成果操作、全局知识、检索/工具、UI、更名、thinking、文件、语音）已实现并局部验证；S11–S12 专用三端 100 例矩阵进行中 |
-| 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。成果索引 SQLite v6、会话库 v5（跨会话 FTS5、隐藏 reasoning/tool transcript）；Markdown 仍为成果权威副本，未确认全局知识候选留在本地索引库。工具链固定 Flutter 3.47.6 / Dart 3.13.5。thinking 仅对已知 DeepSeek API host 启用/可手工覆盖；当前 Chat Completions 没有原生联网能力，联网按钮禁用。文件在本端提取文本后发送，不传原始文件，扫描 PDF 不 OCR。Android/Windows 离线语音输入和系统朗读已接入，需真实设备探针验证麦克风/扬声器。未连接真实云盘或模型 Key；OneDrive、百度网盘、通知和真实跨端同步尚未完成。`v1.1.2` GitHub 预发布版仍使用 Debug 证书，Windows 包未代码签名。 |
+| 当前阶段 | `v1.1.2` 已预发布；懒狗秘书改造 S1–S11（权限、成果操作、全局知识、检索/工具、UI、更名、thinking、文件、语音和 SEC 100 Runner）已实现并局部验证；S12 三端 100 例矩阵进行中 |
+| 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。成果索引 SQLite v6、会话库 v5（跨会话 FTS5、隐藏 reasoning/tool transcript）；Markdown 仍为成果权威副本，未确认全局知识候选留在本地索引库。工具链固定 Flutter 3.47.6 / Dart 3.13.5。thinking 仅对已知 DeepSeek API host 启用/可手工覆盖；当前 Chat Completions 没有原生联网能力，联网按钮禁用。文件在本端提取文本后发送，不传原始文件，扫描 PDF 不 OCR。Android/Windows 离线语音输入和系统朗读已接入，需真实设备探针验证麦克风/扬声器。新 SEC Runner 完整宿主 100/100、跨手机/平板/Windows 设备试跑 10/10 通过；完整 50/25/25 尚未执行。未连接真实云盘或模型 Key；OneDrive、百度网盘、通知和真实跨端同步尚未完成。`v1.1.2` GitHub 预发布版仍使用 Debug 证书，Windows 包未代码签名。 |
 
 ## 2. 一句话交接
 
@@ -333,7 +333,7 @@
 
 ### 下一步
 
-当前优先：完成 S11 新功能矩阵数据、完整性校验、设备入口和按 ID 结果归档，再依序执行 SEC-001–100 手机/平板/Windows 50/25/25，修复失败并定向重跑。S10 定向测试与 Android/Windows/Web Release 构建已通过；真实麦克风/扬声器探针未执行。受控 Provider 不能冒充真实云盘接入。以下为既有后续工作。
+当前优先：提交已验证的 S11 Runner，冻结干净 SHA，然后依序执行 SEC-001–100 手机/平板/Windows 50/25/25，按失败 ID 修复和定向重跑，直到 100 ID 都有对应最终提交的设备结果。S10 定向测试与 Android/Windows/Web Release 构建已通过；真实麦克风/扬声器探针未执行。受控 Provider 不能冒充真实云盘接入。以下为既有后续工作。
 
 1. 发布前按发布门禁运行完整测试套件，并在三端执行 `scripts/verify-realistic-e2e.ps1`；矩阵已可重复运行，但每次约需 16 分钟纯用例时间。
 2. 若转入生产用户数据，先执行升级与备份恢复演练；真实云盘、通知、签名和物理断电专项需另行验收。
@@ -341,6 +341,16 @@
 4. 后续代码任务按 `AGENTS.md` 的增量测试范围执行；测试结论记录执行范围与未验证项，临时测试仅在用户要求时清理。
 
 ## 8. 变更记录
+
+### 2026-10-20 / 完成 S11 新功能 100 例矩阵 Runner
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 将验收表生成 SEC-001–100 机器数据，添加唯一 ID/50-25-25/类别/断言完整性测试；接入 Android phone/tablet 与 Windows 设备 Runner，支持平台和 ID 筛选，并写入 SHA manifest、逐例 JSON、日志。每个设备场景使用临时成果目录及 SQLite 索引/会话库 |
+| 变更文件 | `app/test/e2e/secretary_*`、扩展的 `realistic_runner.dart`、`app/integration_test/secretary_100_*`、`scripts/verify-secretary-e2e.ps1`、测试结果与 README/计划/交接 |
+| 验证 | `flutter test test/e2e/secretary_matrix_integrity_test.dart test/e2e/secretary_100_host_test.dart --reporter compact`：104/104 通过（4 项完整性 + 100 个 SEC host flow）。phone AVD 8/8、tablet AVD 1/1、Windows Desktop 1/1 试跑通过；指定 Dart analysis 无问题；PowerShell AST 解析和 `git diff --check` 通过。三端完整 50/25/25 尚未执行，宿主结果不计入设备 100 例 |
+| 提交标题 | `test(e2e): 添加秘书功能三端验收矩阵` |
+| 遗留事项 | S12 必须在本提交干净 SHA 上运行完整 phone 50、tablet 25、Windows 25；真实麦克风/TTS、模型 Key 和 OneDrive 不由确定性替身结果覆盖 |
 
 ### 2026-10-20 / 实现 S10 Android 与 Windows 离线语音
 

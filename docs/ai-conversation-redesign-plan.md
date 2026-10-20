@@ -1,8 +1,8 @@
 # AI 对话界面与操作权限改造计划
 
-日期：2026-10-20。状态：两轮产品选择均已确认；S1–S10 权限、成果操作、全局知识审批、检索/工具编排、对话 UI、跨端显示名、DeepSeek thinking mode、本地文件解析及 Android/Windows 系统语音已实现并定向验证；S11–S12 专用矩阵与三端 100 例尚待完成。已确认架构边界见 [ADR 0017](adr/0017-conversation-permissions-and-reversible-result-actions.md)。下文明确区分用户决定和实施建议。
+日期：2026-10-20。状态：两轮产品选择均已确认；S1–S11 权限、成果操作、全局知识审批、检索/工具编排、对话 UI、跨端显示名、DeepSeek thinking mode、本地文件解析、Android/Windows 系统语音及 SEC 机器矩阵已实现并定向验证；S12 三端 100 例尚待完成。已确认架构边界见 [ADR 0017](adr/0017-conversation-permissions-and-reversible-result-actions.md)。下文明确区分用户决定和实施建议。
 
-执行细化见 [S0–S12 实施任务与门禁](secretary-implementation-plan.md)。用户已确认业务修改完成后进行三端合计 100 例验收：手机 AVD 50、平板 AVD 25、Windows 桌面 25；[逐例清单](testing/secretary-100-case-plan.md) 覆盖本次新功能，不以旧矩阵结果代替。S10 定向测试与平台构建见[记录](../test-results/secretary-s10-voice/verification.md)；真实语音输入和扬声器出声仍需设备探针。
+执行细化见 [S0–S12 实施任务与门禁](secretary-implementation-plan.md)。用户已确认业务修改完成后进行三端合计 100 例验收：手机 AVD 50、平板 AVD 25、Windows 桌面 25；[逐例清单](testing/secretary-100-case-plan.md) 覆盖本次新功能，不以旧矩阵结果代替。S10 定向测试与平台构建见[记录](../test-results/secretary-s10-voice/verification.md)；S11 宿主 100/100、设备试跑 10/10 见[记录](../test-results/secretary-s11-matrix-runner/verification.md)。三端 100 例完整设备验收和真实语音输入/扬声器探针仍待执行。
 
 2026-10-20 追加第 3/4 项已确认：软件名称改为“懒狗秘书”，AI 默认担任秘书型助理；全局知识随成果三端同步，AI 按需检索且受读取权限控制，新增/修改/删除均须人工确认。见[补充计划](secretary-and-global-knowledge-plan.md)。普通成果的直接操作规则保持不变，全局知识作为审批例外。
 

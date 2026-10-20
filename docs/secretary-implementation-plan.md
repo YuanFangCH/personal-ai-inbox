@@ -1,6 +1,6 @@
 # 懒狗秘书改造：实施任务与验收门禁
 
-日期：2026-10-20。状态：S1–S10 已实现并定向验证；S11–S12 的新功能矩阵执行器与三端验收仍待完成。用户已确认运行合计 100 例：手机 AVD 50、平板 AVD 25、Windows 桌面 25；不是每端 100 例，也不代表授权整个项目全量测试。
+日期：2026-10-20。状态：S1–S11 已实现并定向验证；S12 三端新功能验收仍待完成。用户已确认运行合计 100 例：手机 AVD 50、平板 AVD 25、Windows 桌面 25；不是每端 100 例，也不代表授权整个项目全量测试。
 
 ## 1. 需求与完成口径
 
@@ -35,8 +35,8 @@ Windows 使用本机 Flutter 桌面集成测试，不把主机尺寸模拟称为
 | S8 思考与内置联网能力 | S5/S6 | **思考已实现，联网按边界禁用**：DeepSeek Chat Completions 已知端点支持会话级临时思考开关、配置能力覆盖、reasoning/tool transcript 完整回传并本地保存隐藏字段；未知端点默认关闭。当前 `/chat/completions` 没有声明内置搜索能力，联网 chip 禁用，不切 Responses API 或独立 Search API | thinking mode 开关/关闭参数正确、完整工具链携带 `reasoning_content`、隐藏推理不进用户文本；未知模型禁用；0 外部搜索调用。真实模型 Key 未联调 |
 | S9 文件输入与解析 | S5/S6 | **核心已实现**：Android/Windows/Web 文件选择端口；本地解析 TXT/MD/CSV/PDF 文字层/DOCX/XLSX；原始文件不持久化/上传，仅把提取文字加入本轮用户消息 | 8 MiB/文件、最多 3 份/24,000 字符；Office 解压 24 MiB、Excel 12 张表/200 行/5000 单元格、PDF 50 页；格式/加密/超限/取消分支有测；扫描 PDF OCR 明确不支持，公式和宏不执行 |
 | S10 语音转写与朗读 | S5/S6 | **已实现**：Android/Windows 系统语音服务，离线转写、编辑后发送、系统朗读/停止；无实时通话 | 定向语音/对话/运行时测试 9/9 通过；Android APK、Windows Release、Web Release 构建通过。真实麦克风采集/出声未执行；Windows 插件支持仍标为 beta，Web 语音不可用 |
-| S11 新矩阵与设备入口 | 随 S1–S10 维护，最终整合 | 新场景数据、步骤/断言扩展、真实文件/SQLite 夹具、三端执行入口和按 ID 报告 | 100 数量/分配、操作与断言完整性、每例状态隔离；启动/清理/非零退出和缺失用例可检测；不改旧测试历史结论 |
-| S12 集成与三端 100 例 | S1–S11 功能与局部验证完成 | 冻结候选 SHA，依次运行 50/25/25，收集截图、状态及预算记录，修复所发现问题 | 100 ID 均有结果且预期覆盖未被 skip/mock 冒充；失败修复后仅重跑受影响例及必要直接调用方，并明确最终代码对应证据 |
+| S11 新矩阵与设备入口 | 随 S1–S10 维护，最终整合 | **已实现**：SEC-001–100 机器数据、完整性校验、宿主冒烟与三端 Runner、平台/ID 过滤、运行 manifest/逐例 JSON/日志；设备案例使用隔离成果目录及真实 SQLite | 完整性 4/4、宿主 100/100；Android phone 8、tablet 1、Windows 1 个设备试跑均通过；定向分析和 PowerShell 语法检查通过。设备全矩阵尚未执行，见[记录](../test-results/secretary-s11-matrix-runner/verification.md) |
+| S12 集成与三端 100 例 | S1–S11 功能与局部验证完成 | 冻结候选 SHA，运行 `scripts/verify-secretary-e2e.ps1` 的 phone 50 → tablet 25 → Windows 25，归档 manifest、逐例状态、运行日志，修复失败后按 ID 定向重跑 | 100 ID 均有真实设备 Runner 结果；预期覆盖未被 skip/mock 冒充；证据关联最终提交 SHA。仅 10 个跨三端试跑已通过，不代表 100/100 |
 
 S9/S10 所需解析器和语音服务在实现前核实官方能力及许可证。若系统能力不能满足三端语音，且必须新增收费服务或凭据，先呈现具体选择；在此依赖解决前 S10 不能标为功能完成。其他已授权任务继续推进，不空等该依赖。
 
@@ -84,11 +84,11 @@ S9/S10 所需解析器和语音服务在实现前核实官方能力及许可证�
 
 建议新入口（均待实现）：
 
-- `app/test/e2e/secretary_scenarios.g.dart`：本次 100 个任务数据，来源为验收矩阵。
-- `app/test/e2e/secretary_matrix_integrity_test.dart`：唯一 ID、分配、覆盖/步骤/断言完整性，拒绝未知 op 和空矩阵。
-- `app/integration_test/secretary_100_android_test.dart`：按 phone/tablet 仅选择 50/25 例，不默认执行全部测试。
-- `app/integration_test/secretary_100_windows_test.dart`：25 例真实 Windows 桌面腿。
-- `scripts/verify-secretary-e2e.ps1`：复用现有脚本逻辑，增加按 ID/类别筛选和结果目录，不把现有整套主机回归作为前置。
+- `app/test/e2e/secretary_scenarios.g.dart`：本次 100 个验收任务的数据。
+- `app/test/e2e/secretary_matrix_integrity_test.dart`：唯一 ID、平台分配、分类总数和数据/效果断言检查。
+- `app/integration_test/secretary_100_android_test.dart`：按 phone/tablet 运行 50/25 例，并可指定 ID。
+- `app/integration_test/secretary_100_windows_test.dart`：运行 Windows 25 例，并可指定 ID。
+- `scripts/verify-secretary-e2e.ps1`：串行启动 AVD/Windows Runner、按平台或 ID 筛选、归档 SHA/设备 manifest、逐例 JSON 与日志。
 
 未来命令从项目根目录执行（文件尚未创建，本轮不运行）：
 

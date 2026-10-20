@@ -1,0 +1,8 @@
+﻿{
+    "id":  "SEC-001",
+    "platform":  "phone",
+    "status":  "passed",
+    "log":  "phone.log",
+    "sha":  "fe8673fd325c9e0773e7b093244364ebdd33732e",
+    "started_at":  "2026-10-20T03:51:30.2578296+08:00"
+}

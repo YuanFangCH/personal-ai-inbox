@@ -1,0 +1,76 @@
+﻿{
+    "runId":  "20261020-094316-fe8673fd",
+    "commit":  "fe8673fd325c9e0773e7b093244364ebdd33732e",
+    "workingTreeDirtyAtStart":  true,
+    "counts":  {
+                   "notExecuted":  0,
+                   "failed":  0,
+                   "passed":  7
+               },
+    "legs":  [
+                 {
+                     "platform":  "phone",
+                     "exitCode":  0,
+                     "log":  "phone.log",
+                     "cases":  7
+                 }
+             ],
+    "cases":  [
+                  {
+                      "id":  "SEC-011",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "fe8673fd325c9e0773e7b093244364ebdd33732e",
+                      "started_at":  "2026-10-20T09:43:53.7674350+08:00"
+                  },
+                  {
+                      "id":  "SEC-023",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "fe8673fd325c9e0773e7b093244364ebdd33732e",
+                      "started_at":  "2026-10-20T09:43:53.7674350+08:00"
+                  },
+                  {
+                      "id":  "SEC-041",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "fe8673fd325c9e0773e7b093244364ebdd33732e",
+                      "started_at":  "2026-10-20T09:43:53.7674350+08:00"
+                  },
+                  {
+                      "id":  "SEC-055",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "fe8673fd325c9e0773e7b093244364ebdd33732e",
+                      "started_at":  "2026-10-20T09:43:53.7674350+08:00"
+                  },
+                  {
+                      "id":  "SEC-073",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "fe8673fd325c9e0773e7b093244364ebdd33732e",
+                      "started_at":  "2026-10-20T09:43:53.7674350+08:00"
+                  },
+                  {
+                      "id":  "SEC-083",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "fe8673fd325c9e0773e7b093244364ebdd33732e",
+                      "started_at":  "2026-10-20T09:43:53.7674350+08:00"
+                  },
+                  {
+                      "id":  "SEC-091",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "fe8673fd325c9e0773e7b093244364ebdd33732e",
+                      "started_at":  "2026-10-20T09:43:53.7674350+08:00"
+                  }
+              ]
+}

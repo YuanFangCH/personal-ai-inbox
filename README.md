@@ -28,7 +28,7 @@
 
 ## 当前规划
 
-已细化 [S0–S12 实施任务与完成门禁](docs/secretary-implementation-plan.md)，安排业务修改完成后执行[三端 100 例新功能验收](docs/testing/secretary-100-case-plan.md)：手机模拟器 50、平板模拟器 25、Windows 桌面 25。S1–S10 已实现并局部验证，包含离线语音转文字和回复朗读；S11–S12 的专用矩阵执行器与 100 例验收仍在进行。
+已细化 [S0–S12 实施任务与完成门禁](docs/secretary-implementation-plan.md)，安排业务修改完成后执行[三端 100 例新功能验收](docs/testing/secretary-100-case-plan.md)：手机模拟器 50、平板模拟器 25、Windows 桌面 25。S1–S11 已实现并局部验证，包含离线语音转文字、回复朗读及按 SEC ID 执行的矩阵 Runner。本机 100 个 SEC 场景全部通过；三端完整矩阵尚待冻结提交后执行。
 
 追加规划已确认：软件显示名称为“懒狗秘书”，AI 默认担任秘书型助理；全局知识库以 `knowledge` 成果承载，候选本地留端，确认后的事实按成果同步，AI 按需检索且受读取权限控制，新增、修改、删除均须人工确认。界面与审批核心已实现；真实 OneDrive 接入和三端同步仍未完成。见[角色与全局知识库补充计划](docs/secretary-and-global-knowledge-plan.md)。
 

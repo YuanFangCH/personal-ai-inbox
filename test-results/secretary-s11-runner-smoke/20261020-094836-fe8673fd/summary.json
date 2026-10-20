@@ -1,0 +1,28 @@
+﻿{
+    "runId":  "20261020-094836-fe8673fd",
+    "commit":  "fe8673fd325c9e0773e7b093244364ebdd33732e",
+    "workingTreeDirtyAtStart":  true,
+    "counts":  {
+                   "notExecuted":  0,
+                   "failed":  0,
+                   "passed":  1
+               },
+    "legs":  [
+                 {
+                     "platform":  "windows",
+                     "exitCode":  0,
+                     "log":  "windows.log",
+                     "cases":  1
+                 }
+             ],
+    "cases":  [
+                  {
+                      "id":  "SEC-099",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "fe8673fd325c9e0773e7b093244364ebdd33732e",
+                      "started_at":  "2026-10-20T09:48:38.4596094+08:00"
+                  }
+              ]
+}

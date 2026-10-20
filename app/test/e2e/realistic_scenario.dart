@@ -144,6 +144,7 @@ const supportedOps = <String, int>{
   'restart': 0,
   'scroll': 0,
   'seed': 0,
+  'secretaryCase': 0,
   'assert': 0,
 };
 
@@ -164,4 +165,5 @@ const supportedAsserts = <String>{
   'conversationCount',
   'chatReplyContains',
   'assistantStatus',
+  'caseState',
 };

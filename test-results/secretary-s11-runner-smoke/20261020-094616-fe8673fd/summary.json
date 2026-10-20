@@ -1,0 +1,28 @@
+﻿{
+    "runId":  "20261020-094616-fe8673fd",
+    "commit":  "fe8673fd325c9e0773e7b093244364ebdd33732e",
+    "workingTreeDirtyAtStart":  true,
+    "counts":  {
+                   "notExecuted":  0,
+                   "failed":  0,
+                   "passed":  1
+               },
+    "legs":  [
+                 {
+                     "platform":  "tablet",
+                     "exitCode":  0,
+                     "log":  "tablet.log",
+                     "cases":  1
+                 }
+             ],
+    "cases":  [
+                  {
+                      "id":  "SEC-098",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "fe8673fd325c9e0773e7b093244364ebdd33732e",
+                      "started_at":  "2026-10-20T09:46:54.0813762+08:00"
+                  }
+              ]
+}
