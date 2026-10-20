@@ -22,9 +22,11 @@ void main() {
   }
   final scenarios = secretaryScenarioMaps
       .map(SecretaryScenario.fromMap)
-      .where((item) =>
-          item.platform == platform &&
-          (filter.isEmpty || filter.contains(item.id)))
+      .where(
+        (item) =>
+            item.platform == platform &&
+            (filter.isEmpty || filter.contains(item.id)),
+      )
       .toList(growable: false);
   final expectedCount = filter.isEmpty
       ? (platform == RealisticPlatform.phone ? 50 : 25)

@@ -209,6 +209,13 @@ class ConversationWorkspace extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<List<ChatAttachmentInput>> pickImagesFromGallery({
+    int limit = ImageInputService.maxImagesPerMessage,
+  }) => _imageInputService.pickFromGallery(limit: limit);
+
+  Future<List<ChatAttachmentInput>> pickImageFromCamera() =>
+      _imageInputService.pickFromCamera();
+
   String? consumePendingConversationId() {
     final value = _pendingOpenConversationId;
     _pendingOpenConversationId = null;

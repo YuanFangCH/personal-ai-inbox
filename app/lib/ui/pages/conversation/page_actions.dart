@@ -4,7 +4,6 @@ mixin _ConversationPageActions on State<ConversationPage> {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
   final _imageInputs = <ChatAttachmentInput>[];
-  final _imagePicker = ImageInputService();
   final _fileTexts = <ExtractedFileText>[];
   final _historySearchController = TextEditingController();
   bool _sending = false;
@@ -81,7 +80,8 @@ mixin _ConversationPageActions on State<ConversationPage> {
     if (remaining <= 0) {
       return;
     }
-    final values = await _imagePicker.pickFromGallery(limit: remaining);
+    final values = await AppScope.conversations(context)
+        .pickImagesFromGallery(limit: remaining);
     if (!mounted || values.isEmpty) {
       return;
     }
@@ -92,7 +92,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
     if (_imageInputs.length >= ImageInputService.maxImagesPerMessage) {
       return;
     }
-    final values = await _imagePicker.pickFromCamera();
+    final values = await AppScope.conversations(context).pickImageFromCamera();
     if (!mounted || values.isEmpty) {
       return;
     }
@@ -560,14 +560,15 @@ mixin _ConversationPageActions on State<ConversationPage> {
   );
 
   Future<void> _renameConversation(Conversation conversation) async {
-    final controller = TextEditingController(text: conversation.title);
+    var editedTitle = conversation.title;
     final title = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('重命名会话'),
-        content: TextField(
-          controller: controller,
+        content: TextFormField(
+          initialValue: conversation.title,
           autofocus: true,
+          onChanged: (value) => editedTitle = value,
           decoration: const InputDecoration(labelText: '名称'),
         ),
         actions: [
@@ -576,13 +577,12 @@ mixin _ConversationPageActions on State<ConversationPage> {
             child: const Text('取消'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            onPressed: () => Navigator.pop(context, editedTitle.trim()),
             child: const Text('保存'),
           ),
         ],
       ),
     );
-    controller.dispose();
     if (title != null && title.isNotEmpty && mounted) {
       await AppScope.conversations(context)
           .renameConversation(conversation.id, title);

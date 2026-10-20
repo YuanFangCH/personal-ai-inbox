@@ -9,6 +9,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
+import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -114,7 +115,45 @@ Future<void> runSecretaryScenario(
     title: item.title,
     theme: int.parse(item.id.substring(4)) % 2 == 0 ? 'dark' : 'light',
     fontScale: int.parse(item.id.substring(4)) % 5 == 0 ? 1.15 : 1,
-    reply: 'SEC matrix response',
+    reply: switch (item.id) {
+      'SEC-009' => List.filled(60, '长回复滚动段落 ${item.title}。').join(),
+      'SEC-083' || 'SEC-089' => '这是一段足够长的生成内容，用于验证用户停止本轮后仍能继续提问。',
+      _ => 'SEC matrix response',
+    },
+    chatScript: switch (item.id) {
+      'SEC-083' || 'SEC-089' => ChatScript.slow,
+      'SEC-084' => ChatScript.httpError,
+      'SEC-053' => ChatScript.toolNoDone,
+      'SEC-054' || 'SEC-085' => ChatScript.tool,
+      _ => ChatScript.text,
+    },
+    toolPayload: switch (item.id) {
+      'SEC-054' => {
+        'type': 'todo',
+        'title': 'SEC-054 重放待办',
+        'body': '完整响应后重启，不应重复创建。',
+        'confidence': 0.92,
+        'sensitive': false,
+        'due': '2026-10-23',
+      },
+      'SEC-053' => {
+        'type': 'todo',
+        'title': 'SEC-053 不完整流不可写入',
+        'body': '未收到完整终止符时不得创建。',
+        'confidence': 0.92,
+        'sensitive': false,
+        'due': '2026-10-23',
+      },
+      'SEC-085' => {
+        'type': 'todo',
+        'title': 'SEC-085 组合工具待办',
+        'body': '由秘书深度思考工具调用创建。',
+        'confidence': 0.92,
+        'sensitive': false,
+        'due': '2026-10-23',
+      },
+      _ => const {},
+    },
     steps: [
       for (final step in item.steps)
         switch (step) {
@@ -128,9 +167,8 @@ Future<void> runSecretaryScenario(
             'title': item.title,
             'assertions': item.assertions,
           }),
-          'visibleTitle' => const RealisticStep('assert', {
-            'kind': 'textVisible',
-            'value': '懒狗秘书',
+          'visibleTitle' => RealisticStep('assert', {
+            'kind': 'caseVisibleTitle',
           }),
           'stateResult' => const RealisticStep('assert', {'kind': 'caseState'}),
           'noException' => const RealisticStep('assert', {
@@ -298,7 +336,7 @@ class _Harness {
         captures: capture,
         deviceId: () => repository.deviceId,
       ),
-      imageInputService: ImageInputService(),
+      imageInputService: _matrixImageInputService(),
     );
     sync = SyncWorkspace(
       engine: SyncEngine(
@@ -315,12 +353,7 @@ class _Harness {
       capture: capture,
       conversations: conversations,
       sync: sync,
-      fileInputService: FileInputService(
-        pickFileBytes: () async => PickedFileBytes(
-          fileName: 'matrix.txt',
-          bytes: Uint8List.fromList(utf8.encode('SEC matrix fixture content')),
-        ),
-      ),
+      fileInputService: _matrixFileInputService(),
       voiceService: _voiceService,
       closeAdapters: () async {
         await chatRepository.close();
@@ -332,6 +365,61 @@ class _Harness {
 
   bool get _needsModelKey =>
       scenario.category.startsWith('chat') || scenario.id.startsWith('SEC-');
+
+  ImageInputService _matrixImageInputService() => scenario.id == 'SEC-010'
+      ? _MatrixImageInputService()
+      : ImageInputService();
+
+  FileInputService _matrixFileInputService() {
+    final id = scenario.id;
+    return FileInputService(
+      pdfTextExtractor: id == 'SEC-092'
+          ? (fileBytes, name) async =>
+                name.contains('scan') ? '' : 'SEC matrix PDF text layer'
+          : null,
+      pickFileBytes: () async => id == 'SEC-096' ? null : _matrixPickedFile(id),
+    );
+  }
+
+  PickedFileBytes _matrixPickedFile(String id) => switch (id) {
+    'SEC-091' => PickedFileBytes(
+      fileName: 'matrix.txt',
+      bytes: Uint8List.fromList(utf8.encode('SEC matrix fixture content')),
+    ),
+    'SEC-092' => PickedFileBytes(
+      fileName: 'course.pdf',
+      bytes: Uint8List.fromList([0x25, 0x50, 0x44, 0x46]),
+    ),
+    'SEC-093' => _docxFixture(),
+    'SEC-094' => PickedFileBytes(
+      fileName: 'course.csv',
+      bytes: Uint8List.fromList(
+        utf8.encode('课程,说明\n1,=HYPERLINK("https://invalid")'),
+      ),
+    ),
+    'SEC-095' => PickedFileBytes(
+      fileName: 'broken.txt',
+      bytes: Uint8List.fromList([0xff, 0xfe]),
+    ),
+    _ => PickedFileBytes(
+      fileName: 'matrix.txt',
+      bytes: Uint8List.fromList(utf8.encode('SEC matrix fixture content')),
+    ),
+  };
+
+  PickedFileBytes _docxFixture() {
+    final archive = Archive()
+      ..addFile(
+        ArchiveFile.string(
+          'word/document.xml',
+          '<w:document xmlns:w="urn:test"><w:body><w:p><w:r><w:t>SEC matrix DOCX semester fixture</w:t></w:r></w:p></w:body></w:document>',
+        ),
+      );
+    return PickedFileBytes(
+      fileName: 'course.docx',
+      bytes: Uint8List.fromList(ZipEncoder().encodeBytes(archive)),
+    );
+  }
 
   Future<void> _timed(String label, Future<void> Function() action) async {
     try {
@@ -404,6 +492,18 @@ class _Harness {
           Stream.value(utf8.encode(payload)),
           200,
           headers: {'content-type': 'application/json'},
+        );
+      }
+      if (scenario.id == 'SEC-084' && requestBodies.length > 1) {
+        return http.StreamedResponse(
+          Stream.fromIterable([
+            utf8.encode(
+              'data: {"choices":[{"delta":{"content":"重试成功。"}}]}\n\n',
+            ),
+            utf8.encode('data: [DONE]\n\n'),
+          ]),
+          200,
+          headers: {'content-type': 'text/event-stream'},
         );
       }
       return _sseResponse();
@@ -620,15 +720,129 @@ class _Harness {
     final marker = 'fixture_${id.toLowerCase()}';
     switch (category) {
       case 'navigation':
-        await _tapKey(tester, 'inbox_new_conversation');
-        expect(find.byKey(const Key('chat_input')), findsOneWidget);
-        expect((await chatRepository.listConversations()), isEmpty);
-        await _startChat(tester, title);
-        expect((await chatRepository.listConversations()), hasLength(1));
-        expect(
-          (await _allMessages()).where((message) => message.isUser),
-          hasLength(1),
-        );
+        switch (id) {
+          case 'SEC-001':
+            await _startChat(tester, title);
+            expect(await chatRepository.listConversations(), hasLength(1));
+            expect(
+              (await _allMessages()).where((message) => message.isUser),
+              hasLength(1),
+            );
+            await _tapKey(tester, 'inbox_new_conversation');
+            expect(await chatRepository.listConversations(), hasLength(1));
+            expect(find.byKey(const Key('chat_input')), findsOneWidget);
+          case 'SEC-002':
+            await _tapKey(tester, 'inbox_new_conversation');
+            await tester.enterText(find.byKey(const Key('chat_input')), title);
+            await _tapKey(tester, 'inbox_new_conversation');
+            expect(await chatRepository.listConversations(), isEmpty);
+            expect(
+              tester
+                  .widget<TextField>(find.byKey(const Key('chat_input')))
+                  .controller
+                  ?.text,
+              isEmpty,
+            );
+          case 'SEC-003':
+            await _newChat(tester, title);
+            final oldConversation = conversations.activeConversationId!;
+            await _tapKey(tester, 'conversation_manage');
+            final search = find.byKey(const Key('conversation_search'));
+            await tester.enterText(search, title);
+            await _settle(tester);
+            await _tapKey(tester, 'conversation_$oldConversation');
+            await tester.tap(find.byTooltip('更多'));
+            await _settle(tester);
+            await _tapText(tester, '重命名');
+            final fields = find.byType(TextField);
+            await tester.enterText(fields.last, '已重命名历史会话');
+            await _tapText(tester, '保存');
+            expect(
+              conversations.findConversation(oldConversation)?.title,
+              '已重命名历史会话',
+            );
+          case 'SEC-004':
+            await _tapKey(tester, 'inbox_new_conversation');
+            await _tapKey(tester, 'chat_attachment_menu');
+            await _tapText(tester, '文件');
+            expect(
+              find.byKey(const Key('chat_file_matrix.txt')),
+              findsOneWidget,
+            );
+            await tester.enterText(find.byKey(const Key('chat_input')), title);
+            await _tapKey(tester, 'chat_send');
+            await _waitFor(
+              tester,
+              () => !conversations.isChatGenerating,
+              reason: 'file picker return send',
+            );
+            expect(
+              (await _allMessages())
+                  .where((message) => message.isUser)
+                  .single
+                  .content,
+              contains('SEC matrix fixture content'),
+            );
+          case 'SEC-005':
+            expect(find.text('懒狗秘书'), findsWidgets);
+            await results.createManual(
+              type: ResultType.knowledge,
+              title: '旧目录升级合成成果',
+              body: marker,
+            );
+            await _restart(tester);
+            expect(
+              results.documents.any((item) => item.title == '旧目录升级合成成果'),
+              isTrue,
+            );
+          case 'SEC-006':
+            await _tapKey(tester, 'conversation_manage');
+            await _tapKey(tester, 'conversation_pending_page');
+            expect(find.text('待处理'), findsOneWidget);
+          case 'SEC-007':
+            await _tapKey(tester, 'conversation_permissions');
+            final toggles = tester.widgetList<SwitchListTile>(
+              find.byType(SwitchListTile),
+            );
+            expect(toggles, hasLength(3));
+            expect(toggles.every((item) => item.value), isTrue);
+            await _tapKey(tester, 'conversation_permissions_close');
+          case 'SEC-008':
+            expect(_logicalWidth(tester), greaterThanOrEqualTo(1200));
+            await _newChat(tester, title);
+            expect(find.byKey(const Key('chat_input')), findsOneWidget);
+            expect(await chatRepository.listConversations(), hasLength(1));
+          case 'SEC-009':
+            await _newChat(tester, title);
+            final assistant = (await _allMessages()).lastWhere(
+              (message) => !message.isUser,
+            );
+            expect(assistant.content.runes.length, greaterThan(500));
+            await _scroll(tester, 3);
+            expect(find.byKey(const Key('chat_input')), findsOneWidget);
+          case 'SEC-010':
+            await _tapKey(tester, 'inbox_new_conversation');
+            await _tapKey(tester, 'chat_attachment_menu');
+            await _tapText(tester, '相册');
+            await _settle(tester);
+            expect(find.byTooltip('移除附件'), findsNWidgets(2));
+            await tester.tap(find.byTooltip('移除附件').first);
+            await _settle(tester);
+            expect(find.byTooltip('移除附件'), findsOneWidget);
+            await tester.enterText(find.byKey(const Key('chat_input')), title);
+            await _tapKey(tester, 'chat_send');
+            await _waitFor(
+              tester,
+              () => !conversations.isChatGenerating,
+              reason: 'remaining image send',
+            );
+            final userMessage = (await _allMessages()).singleWhere(
+              (message) => message.isUser,
+            );
+            expect(userMessage.attachments, hasLength(1));
+          default:
+            throw StateError('Unimplemented navigation scenario $id');
+        }
       case 'permissions':
         final conversation = await conversations.createConversation();
         final mask = int.parse(id.substring(4)) % 8;
@@ -663,26 +877,121 @@ class _Harness {
       case 'retrieval':
         await _runRetrievalCase(tester, id, title, marker);
       case 'actions':
+        final actionType = switch (id) {
+          'SEC-041' ||
+          'SEC-046' ||
+          'SEC-047' ||
+          'SEC-051' ||
+          'SEC-054' => ResultType.matter,
+          'SEC-042' ||
+          'SEC-048' ||
+          'SEC-049' ||
+          'SEC-050' ||
+          'SEC-052' ||
+          'SEC-053' => ResultType.todo,
+          'SEC-043' => ResultType.event,
+          'SEC-044' => ResultType.knowledge,
+          _ => ResultType.matter,
+        };
         final created = await results.createManualWithUndo(
-          type: ResultType.matter,
+          type: actionType,
           title: title,
           body: 'SEC action initial $marker',
           actionId: '${id}_create',
           idempotencyKey: '${id}_idempotency',
           createdAt: DateTime(2026, 10, 20),
+          due: actionType == ResultType.todo ? DateTime(2026, 10, 23) : null,
+          start: actionType == ResultType.event
+              ? DateTime(2026, 10, 23, 9)
+              : null,
+          end: actionType == ResultType.event
+              ? DateTime(2026, 10, 23, 10)
+              : null,
         );
-        if (id == 'SEC-052') {
+        expect(created.document.type, actionType);
+        if (id == 'SEC-042') {
+          final replayed = await results.createManualWithUndo(
+            type: actionType,
+            title: title,
+            body: 'SEC action initial $marker',
+            actionId: '${id}_create',
+            idempotencyKey: '${id}_idempotency',
+            createdAt: DateTime(2026, 10, 20),
+            due: DateTime(2026, 10, 23),
+          );
+          expect(replayed.document.id, created.document.id);
+          expect(
+            results.documents.where((item) => item.id == created.document.id),
+            hasLength(1),
+          );
+        }
+        if (id == 'SEC-051') {
+          await results.saveDocument(
+            created.document.copyWith(body: '后续手工版本 $marker'),
+          );
+          await expectLater(
+            results.undoAction('${id}_create'),
+            throwsStateError,
+          );
+          expect(
+            results.findDocument(created.document.id)?.body,
+            '后续手工版本 $marker',
+          );
+        } else if (id == 'SEC-052') {
           await _restart(tester);
           expect(results.findDocument(created.document.id), isNotNull);
+          final action = (await results.reversibleActionForKey(
+            '${id}_create',
+          ))!;
+          final undoUntil = action.undoUntil;
+          expect(undoUntil, isNotNull);
+          await expectLater(
+            results.undoAction(
+              '${id}_create',
+              now: undoUntil.add(const Duration(seconds: 1)),
+            ),
+            throwsStateError,
+          );
+        } else {
+          await results.undoAction('${id}_create');
         }
-        await results.undoAction('${id}_create');
-        expect(results.findDocument(created.document.id), isNull);
+        if (id != 'SEC-051' && id != 'SEC-052') {
+          expect(results.findDocument(created.document.id), isNull);
+        }
         final original = await results.createManual(
-          type: ResultType.matter,
+          type: actionType,
           title: '$title 可撤销修改',
           body: 'SEC action initial $marker',
+          due: actionType == ResultType.todo ? DateTime(2026, 10, 23) : null,
+          start: actionType == ResultType.event
+              ? DateTime(2026, 10, 23, 9)
+              : null,
+          end: actionType == ResultType.event
+              ? DateTime(2026, 10, 23, 10)
+              : null,
         );
+        ResultDocument? relatedTodo;
+        if (id == 'SEC-046') {
+          relatedTodo = await results.createManual(
+            type: ResultType.todo,
+            title: '关联待办 $marker',
+            matterId: original.id,
+            body: '事项删除时仍保留。',
+          );
+        }
         final originalHash = (await results.hashManagedDocument(original.id))!;
+        if (id == 'SEC-047') {
+          await expectLater(
+            results.modifyWithUndo(
+              document: original.copyWith(body: '陈旧版本 $marker'),
+              expectedRevision: original.revision - 1,
+              expectedHash: originalHash,
+              actionId: '${id}_stale',
+            ),
+            throwsStateError,
+          );
+          expect(results.findDocument(original.id)?.body, original.body);
+        }
         await results.modifyWithUndo(
           document: original.copyWith(body: 'SEC action modified $marker'),
           expectedRevision: original.revision,
@@ -700,9 +1009,177 @@ class _Harness {
           actionId: '${id}_delete',
         );
         expect(deleted.document.deleted, isTrue);
+        if (relatedTodo != null) {
+          expect(results.findDocument(relatedTodo.id), isNotNull);
+        }
         await results.undoAction('${id}_delete');
         expect(results.findDocument(original.id)?.deleted, isFalse);
+        if (id == 'SEC-053') {
+          final before = results.documents.length;
+          await _startChat(tester, title);
+          await _waitFor(
+            tester,
+            () => !conversations.isChatGenerating,
+            reason: 'incomplete tool response',
+          );
+          expect(results.documents, hasLength(before));
+          final assistant = (await _allMessages()).last;
+          expect(assistant.status, ChatMessageStatus.failed);
+          expect(assistant.error, contains('响应不完整'));
+        }
+        if (id == 'SEC-054') {
+          await _newChat(tester, title);
+          expect(
+            results.todos.where((item) => item.title == 'SEC-054 重放待办'),
+            hasLength(1),
+          );
+          await _restart(tester);
+          expect(
+            results.todos.where((item) => item.title == 'SEC-054 重放待办'),
+            hasLength(1),
+          );
+        }
+        _caseMetrics = {'action_type': actionType.wireName, 'action_count': 3};
       case 'globalApproval':
+        if (id == 'SEC-062') {
+          final original = await _createConfirmedGlobal(
+            id: '${id}_original',
+            title: title,
+            marker: marker,
+          );
+          final pending = await results.proposeGlobalKnowledgeChange(
+            operation: GlobalKnowledgeOperation.delete,
+            proposal: const {},
+            targetId: original.id,
+            expectedRevision: original.revision,
+            expectedHash: await results.hashManagedDocument(original.id),
+            candidateId: 'gkc_${id}_pending_delete',
+          );
+          expect(pending.status, GlobalKnowledgeCandidateStatus.pending);
+          expect(results.findDocument(original.id)?.deleted, isFalse);
+          _caseMetrics = {'pending_delete_candidates': 1, 'deleted': 0};
+          break;
+        }
+        if (id == 'SEC-055' || id == 'SEC-056') {
+          final pending = await results.proposeGlobalKnowledgeChange(
+            operation: GlobalKnowledgeOperation.create,
+            proposal: {
+              'title': title,
+              'body': '候选 $marker，确认前不得生效。',
+              'facts': {'semester_start': '2026-09-01', 'marker': marker},
+            },
+            candidateId: 'gkc_${id}_pending',
+          );
+          expect(pending.status, GlobalKnowledgeCandidateStatus.pending);
+          expect(results.knowledge, isEmpty);
+          expect(
+            results.pendingGlobalKnowledgeCandidates
+                .singleWhere((item) => item.id == pending.id)
+                .digest,
+            pending.digest,
+          );
+          _caseMetrics = {'pending_candidates': 1, 'applied_candidates': 0};
+          break;
+        }
+        if (id == 'SEC-058') {
+          final pending = await results.proposeGlobalKnowledgeChange(
+            operation: GlobalKnowledgeOperation.create,
+            proposal: {
+              'title': title,
+              'body': '拒绝后不得生效。',
+              'facts': {'marker': marker},
+            },
+            candidateId: 'gkc_${id}_reject',
+          );
+          final rejected = await results.rejectGlobalKnowledgeChange(
+            pending.id,
+            displayedDigest: pending.digest,
+          );
+          expect(rejected.status, GlobalKnowledgeCandidateStatus.rejected);
+          expect(results.knowledge, isEmpty);
+          _caseMetrics = {'rejected_candidates': 1, 'applied_candidates': 0};
+          break;
+        }
+        if (id == 'SEC-060' || id == 'SEC-061' || id == 'SEC-069') {
+          final original = await _createConfirmedGlobal(
+            id: '${id}_original',
+            title: title,
+            marker: marker,
+          );
+          final originalHash = (await results.hashManagedDocument(
+            original.id,
+          ))!;
+          final restoreOriginal = id == 'SEC-069';
+          final update = await results.proposeGlobalKnowledgeChange(
+            operation: GlobalKnowledgeOperation.update,
+            proposal: {
+              'title': title,
+              'body': restoreOriginal
+                  ? '恢复确认前的全局知识 $marker'
+                  : '更新后的学期基准 $marker',
+              'facts': {
+                'semester_start': restoreOriginal ? '2026-09-01' : '2026-09-08',
+                'marker': marker,
+              },
+              'applies_to': '2026 秋季学期',
+            },
+            targetId: original.id,
+            expectedRevision: original.revision,
+            expectedHash: originalHash,
+            candidateId: 'gkc_${id}_update',
+          );
+          expect(results.findDocument(original.id)?.body, original.body);
+          if (id == 'SEC-061') {
+            final remoteContent = _codec.encode(
+              original.copyWith(
+                body: '其他设备先提交的新版本 $marker',
+                revision: original.revision + 1,
+              ),
+            );
+            await repository.importRemote(
+              remote: SyncRemoteObject(
+                id: original.id,
+                path: original.markdownPath,
+                content: remoteContent,
+                hash: 'sha256:${sha256.convert(utf8.encode(remoteContent))}',
+                etag: '${id}_remote',
+              ),
+              expectedLocalHash: await results.hashManagedDocument(original.id),
+            );
+            await results.refresh();
+            await expectLater(
+              results.confirmGlobalKnowledgeChange(
+                update.id,
+                displayedDigest: update.digest,
+              ),
+              throwsStateError,
+            );
+            expect(
+              results.globalKnowledgeCandidates
+                  .singleWhere((item) => item.id == update.id)
+                  .status,
+              GlobalKnowledgeCandidateStatus.stale,
+            );
+            expect(
+              results.findDocument(original.id)?.body,
+              '其他设备先提交的新版本 $marker',
+            );
+            _caseMetrics = {'stale_candidates': 1, 'overwrites': 0};
+            break;
+          }
+          final updated = await results.confirmGlobalKnowledgeChange(
+            update.id,
+            displayedDigest: update.digest,
+          );
+          expect(updated.document.id, original.id);
+          expect(updated.document.revision, greaterThan(original.revision));
+          expect(
+            updated.document.body,
+            contains(restoreOriginal ? '恢复确认前' : '更新后的学期基准'),
+          );
+          _caseMetrics = {'confirmed_updates': 1};
+          break;
+        }
         final proposal = <String, Object?>{
           'title': title,
           'body': 'SEC approved global fact $marker',
@@ -725,6 +1202,15 @@ class _Harness {
             GlobalKnowledgeCandidateStatus.pending,
           );
           expect(results.knowledge, isEmpty);
+        }
+        if (id == 'SEC-071') {
+          final duplicate = await results.proposeGlobalKnowledgeChange(
+            operation: GlobalKnowledgeOperation.create,
+            proposal: proposal,
+            candidateId: 'gkc_${id}_candidate',
+          );
+          expect(duplicate.id, candidate.id);
+          expect(results.pendingGlobalKnowledgeCandidates, hasLength(1));
         }
         final applied = await results.confirmGlobalKnowledgeChange(
           candidate.id,
@@ -749,6 +1235,34 @@ class _Harness {
           candidateId: 'gkc_${id}_delete_candidate',
         );
         expect(results.findDocument(applied.document.id)?.deleted, isFalse);
+        if (id == 'SEC-064') {
+          final rejected = await results.rejectGlobalKnowledgeChange(
+            delete.id,
+            displayedDigest: delete.digest,
+          );
+          expect(rejected.status, GlobalKnowledgeCandidateStatus.rejected);
+          expect(results.findDocument(applied.document.id)?.deleted, isFalse);
+          _caseMetrics = {'delete_candidates': 1, 'deleted': 0};
+          break;
+        }
+        if (id == 'SEC-067' || id == 'SEC-068') {
+          final global = results.findDocument(applied.document.id)!;
+          await expectLater(
+            results.saveDocument(
+              id == 'SEC-068'
+                  ? global.copyWith(
+                      extensionFields: {
+                        ...global.extensionFields,
+                        globalKnowledgeScopeKey: 'ordinary',
+                      },
+                      body: '移除用途标识后直接写入',
+                    )
+                  : global.copyWith(body: '普通操作越权写全局知识'),
+            ),
+            throwsStateError,
+          );
+          expect(results.findDocument(global.id)?.isGlobalKnowledge, isTrue);
+        }
         await results.confirmGlobalKnowledgeChange(
           delete.id,
           displayedDigest: delete.digest,
@@ -781,25 +1295,149 @@ class _Harness {
           isTrue,
         );
       case 'model':
-        await _newChat(tester, title);
-        expect(requestBodies, isNotEmpty);
-        final last = requestBodies.last;
-        expect(last['model'], 'deepseek-flash');
-        expect(last['stream'], isTrue);
-        _caseMetrics = {'model_requests': requestBodies.length};
-        expect(
-          (await _allMessages()).any(
-            (message) => !message.isUser && message.content == scenario.reply,
-          ),
-          isTrue,
-        );
+        if (id == 'SEC-083' || id == 'SEC-089') {
+          await _startChat(tester, title);
+          await _stopChat(tester);
+          final stopped = await _allMessages();
+          expect(stopped.last.status, ChatMessageStatus.interrupted);
+          final field = find.byKey(const Key('chat_input'));
+          await tester.enterText(field, '继续处理剩余内容');
+          await _tapKey(tester, 'chat_send');
+          await _waitFor(
+            tester,
+            () => !conversations.isChatGenerating,
+            reason: 'continued conversation response',
+          );
+          final continued = await _allMessages();
+          expect(continued.where((message) => message.isUser), hasLength(2));
+          expect(continued.last.status, ChatMessageStatus.complete);
+          _caseMetrics = {'model_requests': requestBodies.length};
+        } else if (id == 'SEC-084') {
+          await _startChat(tester, title);
+          await _waitFor(
+            tester,
+            () => !conversations.isChatGenerating,
+            reason: 'failed model request',
+          );
+          expect((await _allMessages()).last.status, ChatMessageStatus.failed);
+          await _retryChat(tester);
+          final messages = await _allMessages();
+          expect(requestBodies, hasLength(2));
+          expect(messages.where((message) => message.isUser), hasLength(1));
+          expect(messages.last.status, ChatMessageStatus.complete);
+          expect(messages.last.content, '重试成功。');
+          _caseMetrics = {'model_requests': requestBodies.length};
+        } else if (id == 'SEC-085') {
+          await _tapKey(tester, 'inbox_new_conversation');
+          await _tapText(tester, '深度思考');
+          await tester.enterText(find.byKey(const Key('chat_input')), title);
+          await _tapKey(tester, 'chat_send');
+          await _waitFor(
+            tester,
+            () => !conversations.isChatGenerating,
+            reason: 'thinking tool response',
+          );
+          await _waitFor(
+            tester,
+            () => results.todos.any((item) => item.title == 'SEC-085 组合工具待办'),
+            reason: 'tool-created todo',
+          );
+          final request = requestBodies.single;
+          expect(request['thinking'], {'type': 'enabled'});
+          expect(request['reasoning_effort'], 'high');
+          expect(request['tools'], isNotEmpty);
+          expect(results.todos.single.title, 'SEC-085 组合工具待办');
+          _caseMetrics = {
+            'model_requests': requestBodies.length,
+            'tool_count': (request['tools'] as List).length,
+          };
+        } else {
+          await _newChat(tester, title);
+          expect(requestBodies, isNotEmpty);
+          final last = requestBodies.last;
+          expect(last['model'], 'deepseek-flash');
+          expect(last['stream'], isTrue);
+          if (id == 'SEC-087' || id == 'SEC-088') {
+            expect(find.byTooltip('当前模型接口未声明内置联网搜索能力'), findsOneWidget);
+            expect(
+              (last['tools'] as List).any(
+                (entry) => (entry as Map)['function']['name'] == 'web_search',
+              ),
+              isFalse,
+            );
+          }
+          if (id == 'SEC-090') {
+            final system = (last['messages'] as List).cast<Map>().firstWhere(
+              (message) => message['role'] == 'system',
+            );
+            expect(system['content'], contains('秘书'));
+          }
+          _caseMetrics = {'model_requests': requestBodies.length};
+          expect(
+            (await _allMessages()).any(
+              (message) => !message.isUser && message.content == scenario.reply,
+            ),
+            isTrue,
+          );
+        }
       case 'files':
         await _tapKey(tester, 'inbox_new_conversation');
         await _tapKey(tester, 'chat_attachment_menu');
         await _tapText(tester, '文件');
         await _settle(tester);
-        expect(find.byKey(const Key('chat_file_matrix.txt')), findsOneWidget);
+        final fileName = switch (id) {
+          'SEC-092' => 'course.pdf',
+          'SEC-093' => 'course.docx',
+          'SEC-094' => 'course.csv',
+          'SEC-095' => 'broken.txt',
+          _ => 'matrix.txt',
+        };
+        if (id == 'SEC-095' || id == 'SEC-096') {
+          expect(find.byKey(Key('chat_file_$fileName')), findsNothing);
+        } else {
+          expect(find.byKey(Key('chat_file_$fileName')), findsOneWidget);
+        }
+        if (id == 'SEC-092') {
+          final scanParser = FileInputService(
+            pdfTextExtractor: (bytes, name) async => '',
+          );
+          await expectLater(
+            scanParser.extractBytes(
+              fileName: 'scan.pdf',
+              bytes: Uint8List.fromList([0x25, 0x50, 0x44, 0x46]),
+            ),
+            throwsA(isA<FileInputException>()),
+          );
+        }
+        if (id == 'SEC-095' || id == 'SEC-096') {
+          await _tapKey(tester, 'inbox_new_conversation');
+        }
+        if (id == 'SEC-095') await _hideSnackBars(tester);
         await tester.enterText(find.byKey(const Key('chat_input')), title);
+        if (id == 'SEC-095') {
+          await _hideSnackBars(tester);
+          await _settle(tester);
+        }
+        if (id == 'SEC-095') {
+          expect(
+            preferences.settings.hasModelKey,
+            isTrue,
+            reason: 'file errors must not clear the configured model',
+          );
+          final input = tester.widget<TextField>(
+            find.byKey(const Key('chat_input')),
+          );
+          expect(
+            input.enabled,
+            isTrue,
+            reason: 'plain-text input remains enabled after file failure',
+          );
+          expect(
+            input.controller?.text,
+            title,
+            reason: 'plain text remains editable after file failure',
+          );
+        }
         await _tapKey(tester, 'chat_send');
         await _waitFor(
           tester,
@@ -808,27 +1446,37 @@ class _Harness {
         );
         final messages = await _allMessages();
         expect(messages.where((message) => message.isUser), hasLength(1));
-        expect(
-          messages.where((message) => message.isUser).single.content,
-          contains('SEC matrix fixture content'),
-        );
+        final userText = messages
+            .where((message) => message.isUser)
+            .single
+            .content;
+        if (id == 'SEC-091') {
+          expect(userText, contains('SEC matrix fixture content'));
+        }
+        if (id == 'SEC-092') {
+          expect(userText, contains('SEC matrix PDF text layer'));
+        }
+        if (id == 'SEC-093') {
+          expect(userText, contains('SEC matrix DOCX semester fixture'));
+        }
+        if (id == 'SEC-094') {
+          expect(userText, contains('HYPERLINK'));
+        }
+        if (id == 'SEC-095' || id == 'SEC-096') {
+          expect(userText, isNot(contains('SEC matrix fixture content')));
+        }
         final userRequest = (requestBodies.last['messages'] as List)
             .cast<Map>()
             .singleWhere((message) => message['role'] == 'user');
-        expect(userRequest['content'], contains('SEC matrix fixture content'));
+        expect(userRequest['content'], userText);
         expect(
           userRequest['content'],
-          isNot(
-            contains(
-              base64Encode(
-                Uint8List.fromList(utf8.encode('SEC matrix fixture content')),
-              ),
-            ),
-          ),
+          isNot(contains(base64Encode(_matrixPickedFile(id).bytes))),
         );
         _caseMetrics = {
           'model_requests': requestBodies.length,
-          'file_text_chars': 'SEC matrix fixture content'.runes.length,
+          'file_text_chars': userText.runes.length - title.runes.length,
+          'file_name': id == 'SEC-095' || id == 'SEC-096' ? null : fileName,
         };
       case 'voice':
         _voiceService.allowRecognition = id != 'SEC-097' && id != 'SEC-100';
@@ -888,6 +1536,27 @@ class _Harness {
     _secretaryCaseCompleted = true;
     // ignore: avoid_print
     print('SEC_CASE_METRIC|$id|${jsonEncode(_caseMetrics)}');
+  }
+
+  Future<ResultDocument> _createConfirmedGlobal({
+    required String id,
+    required String title,
+    required String marker,
+  }) async {
+    final candidate = await results.proposeGlobalKnowledgeChange(
+      operation: GlobalKnowledgeOperation.create,
+      proposal: {
+        'title': title,
+        'body': '已确认全局学期事实 $marker',
+        'facts': {'semester_start': '2026-09-01', 'marker': marker},
+        'applies_to': '2026 秋季学期',
+      },
+      candidateId: 'gkc_$id',
+    );
+    return (await results.confirmGlobalKnowledgeChange(
+      candidate.id,
+      displayedDigest: candidate.digest,
+    )).document;
   }
 
   Future<void> _runRetrievalCase(
@@ -1831,6 +2500,19 @@ class _Harness {
         expect(tester.takeException(), isNull);
       case 'caseState':
         expect(_secretaryCaseCompleted, isTrue, reason: scenario.id);
+      case 'caseVisibleTitle':
+        if (scenario.id == 'SEC-003') {
+          expect(
+            conversations.conversations.any(
+              (conversation) => conversation.title == '已重命名历史会话',
+            ),
+            isTrue,
+          );
+        } else if (scenario.id == 'SEC-006') {
+          expect(find.text('待处理'), findsOneWidget);
+        } else {
+          expect(find.text('懒狗秘书'), findsWidgets);
+        }
       default:
         throw StateError('Unsupported assertion: $kind');
     }
@@ -1959,4 +2641,24 @@ class _MatrixVoiceService extends VoiceService {
     _listening = false;
     _speaking = false;
   }
+}
+
+class _MatrixImageInputService extends ImageInputService {
+  static final _pngBytes = Uint8List.fromList(
+    base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jOtQAAAAASUVORK5CYII=',
+    ),
+  );
+
+  @override
+  Future<List<ChatAttachmentInput>> pickFromGallery({
+    int limit = ImageInputService.maxImagesPerMessage,
+  }) async => [
+    for (var index = 0; index < 2 && index < limit; index++)
+      ChatAttachmentInput(
+        bytes: _pngBytes,
+        fileName: 'matrix_$index.png',
+        mimeType: 'image/png',
+      ),
+  ];
 }
