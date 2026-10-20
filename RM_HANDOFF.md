@@ -10,8 +10,7 @@
 | 最后更新时间 | 2026-10-20 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.1.2` 已预发布；懒狗秘书改造 S1–S10（权限、成果操作、全局知识、检索/工具、UI、更名、thinking、文件、语音）已实现并局部验证；S11–S12 专用三端 100 例矩阵进行中 |
-| 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。成果索引 SQLite v6、会话库 v5（跨会话 FTS5、隐藏 reasoning/tool transcript）；Markdown 仍为成果权威副本，未确认全局知识候选留在本地索引库。工具链固定 Flutter 3.47.6 / Dart 3.13.5。thinking 仅对已知 DeepSeek API host 启用/可手工覆盖；当前 Chat Completions 没有原生联网能力，联网按钮禁用。文件在本端提取文本后发送，不传原始文件，扫描 PDF 不 OCR。Android/Windows 离线语音输入和系统朗读已接入，需真实设备探针验证麦克风/扬声器。未连接真实云盘或模型 Key；OneDrive、百度网盘、通知和真实跨端同步尚未完成。`v1.1.2` GitHub 预发布版仍使用 Debug 证书，Windows 包未代码签名。 |
+| 当前阶段 | `v1.1.2` 已预发布；懒狗秘书改造 S1–S11（权限、成果操作、全局知识、检索/工具、UI、更名、thinking、文件、语音和 SEC 100 Runner）已实现并局部验证；S12 三端 100 例矩阵进行中 |
 
 ## 2. 一句话交接
 
