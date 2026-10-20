@@ -1,0 +1,13 @@
+﻿{
+    "id":  "SEC-034",
+    "platform":  "phone",
+    "status":  "passed",
+    "log":  "phone.log",
+    "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+    "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+    "metrics":  {
+                    "search_calls":  2,
+                    "cache_reused_chars":  163,
+                    "elapsed_ms":  199
+                }
+}

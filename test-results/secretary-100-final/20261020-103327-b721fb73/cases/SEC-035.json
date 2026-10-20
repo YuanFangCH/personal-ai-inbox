@@ -1,0 +1,14 @@
+﻿{
+    "id":  "SEC-035",
+    "platform":  "windows",
+    "status":  "passed",
+    "log":  "windows.log",
+    "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+    "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+    "metrics":  {
+                    "search_calls":  2,
+                    "old_revision_chars":  161,
+                    "new_revision_chars":  161,
+                    "elapsed_ms":  82
+                }
+}

@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:personal_ai_inbox/app.dart';
@@ -1295,22 +1296,53 @@ class _Harness {
           isTrue,
         );
       case 'model':
-        if (id == 'SEC-083' || id == 'SEC-089') {
+        if (id == 'SEC-083') {
           await _startChat(tester, title);
+          final stoppedConversationId = conversations.activeConversationId!;
           await _stopChat(tester);
-          final stopped = await _allMessages();
+          final stopped = conversations.messagesFor(stoppedConversationId);
           expect(stopped.last.status, ChatMessageStatus.interrupted);
-          final field = find.byKey(const Key('chat_input'));
-          await tester.enterText(field, '继续处理剩余内容');
-          await _tapKey(tester, 'chat_send');
+          await _startChat(tester, '继续处理剩余内容');
+          await _waitFor(
+            tester,
+            () => conversations.isChatGenerating,
+            reason: 'follow-up request to start',
+          );
           await _waitFor(
             tester,
             () => !conversations.isChatGenerating,
             reason: 'continued conversation response',
           );
-          final continued = await _allMessages();
-          expect(continued.where((message) => message.isUser), hasLength(2));
+          final continuedId = conversations.activeConversationId!;
+          final continued = conversations.messagesFor(continuedId);
+          expect(continued.where((message) => message.isUser), hasLength(1));
           expect(continued.last.status, ChatMessageStatus.complete);
+          expect(
+            (await _allMessages()).where((message) => message.isUser),
+            hasLength(2),
+          );
+          _caseMetrics = {'model_requests': requestBodies.length};
+        } else if (id == 'SEC-089') {
+          await _startChat(tester, title);
+          final activeId = conversations.activeConversationId!;
+          await _waitFor(
+            tester,
+            () => conversations.isChatGenerating,
+            reason: 'retrieval response starts before leaving page',
+          );
+          final before = results.documents.length;
+          await _tapKey(tester, 'nav_calendar');
+          await _waitFor(
+            tester,
+            () => !conversations.isChatGenerating,
+            reason: 'page disposal cancels the pending response',
+          );
+          expect(
+            conversations.messagesFor(activeId).last.status,
+            ChatMessageStatus.interrupted,
+          );
+          expect(requestBodies, hasLength(1));
+          expect(results.documents.length, before);
           _caseMetrics = {'model_requests': requestBodies.length};
         } else if (id == 'SEC-084') {
           await _startChat(tester, title);
@@ -2510,6 +2542,8 @@ class _Harness {
           );
         } else if (scenario.id == 'SEC-006') {
           expect(find.text('待处理'), findsOneWidget);
+        } else if (scenario.id == 'SEC-089') {
+          expect(find.byKey(const Key('page_calendar')), findsOneWidget);
         } else {
           expect(find.text('懒狗秘书'), findsWidgets);
         }
@@ -2645,9 +2679,7 @@ class _MatrixVoiceService extends VoiceService {
 
 class _MatrixImageInputService extends ImageInputService {
   static final _pngBytes = Uint8List.fromList(
-    base64Decode(
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jOtQAAAAASUVORK5CYII=',
-    ),
+    img.encodePng(img.Image(width: 1, height: 1)),
   );
 
   @override

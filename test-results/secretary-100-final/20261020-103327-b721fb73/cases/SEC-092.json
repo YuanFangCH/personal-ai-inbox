@@ -1,0 +1,14 @@
+﻿{
+    "id":  "SEC-092",
+    "platform":  "tablet",
+    "status":  "passed",
+    "log":  "tablet.log",
+    "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+    "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+    "metrics":  {
+                    "model_requests":  1,
+                    "file_text_chars":  43,
+                    "file_name":  "course.pdf",
+                    "elapsed_ms":  3623
+                }
+}

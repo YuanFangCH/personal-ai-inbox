@@ -1,0 +1,14 @@
+﻿{
+    "id":  "SEC-095",
+    "platform":  "phone",
+    "status":  "passed",
+    "log":  "phone.log",
+    "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+    "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+    "metrics":  {
+                    "model_requests":  1,
+                    "file_text_chars":  0,
+                    "file_name":  null,
+                    "elapsed_ms":  4649
+                }
+}

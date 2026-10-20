@@ -1,0 +1,11 @@
+﻿{
+    "id":  "SEC-065",
+    "platform":  "tablet",
+    "status":  "passed",
+    "log":  "tablet.log",
+    "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+    "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+    "metrics":  {
+                    "elapsed_ms":  431
+                }
+}

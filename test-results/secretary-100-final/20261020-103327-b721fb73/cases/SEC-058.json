@@ -1,0 +1,13 @@
+﻿{
+    "id":  "SEC-058",
+    "platform":  "phone",
+    "status":  "passed",
+    "log":  "phone.log",
+    "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+    "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+    "metrics":  {
+                    "rejected_candidates":  1,
+                    "applied_candidates":  0,
+                    "elapsed_ms":  58
+                }
+}

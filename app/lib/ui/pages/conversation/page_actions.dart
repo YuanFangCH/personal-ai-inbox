@@ -6,6 +6,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
   final _imageInputs = <ChatAttachmentInput>[];
   final _fileTexts = <ExtractedFileText>[];
   final _historySearchController = TextEditingController();
+  ConversationWorkspace? _conversationWorkspaceForCleanup;
   bool _sending = false;
   int _lastMessageCount = -1;
   String? _conversationId;
@@ -26,6 +27,10 @@ mixin _ConversationPageActions on State<ConversationPage> {
   }
 
   void _disposeConversationPage() {
+    final workspace = _conversationWorkspaceForCleanup;
+    if (workspace?.isChatGenerating == true) {
+      unawaited(workspace!.cancelGeneration());
+    }
     _textController.dispose();
     _scrollController.dispose();
     _historySearchController.dispose();

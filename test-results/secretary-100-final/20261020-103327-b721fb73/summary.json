@@ -1,0 +1,1242 @@
+﻿{
+    "runId":  "20261020-103327-b721fb73",
+    "commit":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+    "workingTreeDirtyAtStart":  false,
+    "counts":  {
+                   "notExecuted":  0,
+                   "failed":  3,
+                   "passed":  97
+               },
+    "legs":  [
+                 {
+                     "platform":  "phone",
+                     "exitCode":  1,
+                     "log":  "phone.log",
+                     "cases":  50
+                 },
+                 {
+                     "platform":  "tablet",
+                     "exitCode":  0,
+                     "log":  "tablet.log",
+                     "cases":  25
+                 },
+                 {
+                     "platform":  "windows",
+                     "exitCode":  0,
+                     "log":  "windows.log",
+                     "cases":  25
+                 }
+             ],
+    "cases":  [
+                  {
+                      "id":  "SEC-001",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  3666
+                                  }
+                  },
+                  {
+                      "id":  "SEC-002",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  1786
+                                  }
+                  },
+                  {
+                      "id":  "SEC-003",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  10660
+                                  }
+                  },
+                  {
+                      "id":  "SEC-004",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  3107
+                                  }
+                  },
+                  {
+                      "id":  "SEC-005",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  1322
+                                  }
+                  },
+                  {
+                      "id":  "SEC-006",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  1292
+                                  }
+                  },
+                  {
+                      "id":  "SEC-007",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  1162
+                                  }
+                  },
+                  {
+                      "id":  "SEC-008",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  2574
+                                  }
+                  },
+                  {
+                      "id":  "SEC-009",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  3201
+                                  }
+                  },
+                  {
+                      "id":  "SEC-010",
+                      "platform":  "phone",
+                      "status":  "failed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  4185
+                                  }
+                  },
+                  {
+                      "id":  "SEC-011",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  17
+                                  }
+                  },
+                  {
+                      "id":  "SEC-012",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  11
+                                  }
+                  },
+                  {
+                      "id":  "SEC-013",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  1151
+                                  }
+                  },
+                  {
+                      "id":  "SEC-014",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  28
+                                  }
+                  },
+                  {
+                      "id":  "SEC-015",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  18
+                                  }
+                  },
+                  {
+                      "id":  "SEC-016",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  9
+                                  }
+                  },
+                  {
+                      "id":  "SEC-017",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  2
+                                  }
+                  },
+                  {
+                      "id":  "SEC-018",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  10
+                                  }
+                  },
+                  {
+                      "id":  "SEC-019",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  14
+                                  }
+                  },
+                  {
+                      "id":  "SEC-020",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  1
+                                  }
+                  },
+                  {
+                      "id":  "SEC-021",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  14
+                                  }
+                  },
+                  {
+                      "id":  "SEC-022",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  13
+                                  }
+                  },
+                  {
+                      "id":  "SEC-023",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "model_requests":  1,
+                                      "tool_messages":  0,
+                                      "elapsed_ms":  2917
+                                  }
+                  },
+                  {
+                      "id":  "SEC-024",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "model_requests":  1,
+                                      "tool_messages":  0,
+                                      "elapsed_ms":  3115
+                                  }
+                  },
+                  {
+                      "id":  "SEC-025",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "model_requests":  1,
+                                      "tool_messages":  0,
+                                      "elapsed_ms":  3094
+                                  }
+                  },
+                  {
+                      "id":  "SEC-026",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "model_requests":  1,
+                                      "tool_messages":  0,
+                                      "elapsed_ms":  2260
+                                  }
+                  },
+                  {
+                      "id":  "SEC-027",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "model_requests":  1,
+                                      "tool_messages":  0,
+                                      "elapsed_ms":  3052
+                                  }
+                  },
+                  {
+                      "id":  "SEC-028",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "model_requests":  1,
+                                      "tool_messages":  0,
+                                      "elapsed_ms":  2276
+                                  }
+                  },
+                  {
+                      "id":  "SEC-029",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "search_calls":  1,
+                                      "result_chars":  216,
+                                      "elapsed_ms":  483
+                                  }
+                  },
+                  {
+                      "id":  "SEC-030",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "search_calls":  1,
+                                      "result_chars":  161,
+                                      "elapsed_ms":  287
+                                  }
+                  },
+                  {
+                      "id":  "SEC-031",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "search_calls":  1,
+                                      "result_chars":  242,
+                                      "elapsed_ms":  8
+                                  }
+                  },
+                  {
+                      "id":  "SEC-032",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "search_calls":  0,
+                                      "detail_calls":  1,
+                                      "result_chars":  161,
+                                      "elapsed_ms":  137
+                                  }
+                  },
+                  {
+                      "id":  "SEC-033",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "search_calls":  1,
+                                      "detail_calls":  0,
+                                      "result_chars":  440,
+                                      "elapsed_ms":  173
+                                  }
+                  },
+                  {
+                      "id":  "SEC-034",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "search_calls":  2,
+                                      "cache_reused_chars":  163,
+                                      "elapsed_ms":  199
+                                  }
+                  },
+                  {
+                      "id":  "SEC-035",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "search_calls":  2,
+                                      "old_revision_chars":  161,
+                                      "new_revision_chars":  161,
+                                      "elapsed_ms":  82
+                                  }
+                  },
+                  {
+                      "id":  "SEC-036",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "search_calls":  1,
+                                      "result_chars":  30,
+                                      "elapsed_ms":  8
+                                  }
+                  },
+                  {
+                      "id":  "SEC-037",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "search_calls":  1,
+                                      "ambiguous_hits":  2,
+                                      "elapsed_ms":  222
+                                  }
+                  },
+                  {
+                      "id":  "SEC-038",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "search_calls":  3,
+                                      "result_chars":  60,
+                                      "third_call_blocked":  true,
+                                      "elapsed_ms":  7
+                                  }
+                  },
+                  {
+                      "id":  "SEC-039",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "search_calls":  1,
+                                      "detail_calls":  3,
+                                      "result_chars":  6000,
+                                      "hit_count":  5,
+                                      "elapsed_ms":  314
+                                  }
+                  },
+                  {
+                      "id":  "SEC-040",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "search_calls":  1,
+                                      "cas_stale_rejected":  true,
+                                      "revision":  2,
+                                      "elapsed_ms":  353
+                                  }
+                  },
+                  {
+                      "id":  "SEC-041",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "action_type":  "matter",
+                                      "action_count":  3,
+                                      "elapsed_ms":  977
+                                  }
+                  },
+                  {
+                      "id":  "SEC-042",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "action_type":  "todo",
+                                      "action_count":  3,
+                                      "elapsed_ms":  1068
+                                  }
+                  },
+                  {
+                      "id":  "SEC-043",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "action_type":  "event",
+                                      "action_count":  3,
+                                      "elapsed_ms":  345
+                                  }
+                  },
+                  {
+                      "id":  "SEC-044",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "action_type":  "knowledge",
+                                      "action_count":  3,
+                                      "elapsed_ms":  1007
+                                  }
+                  },
+                  {
+                      "id":  "SEC-045",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "action_type":  "matter",
+                                      "action_count":  3,
+                                      "elapsed_ms":  952
+                                  }
+                  },
+                  {
+                      "id":  "SEC-046",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "action_type":  "matter",
+                                      "action_count":  3,
+                                      "elapsed_ms":  1064
+                                  }
+                  },
+                  {
+                      "id":  "SEC-047",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "action_type":  "matter",
+                                      "action_count":  3,
+                                      "elapsed_ms":  323
+                                  }
+                  },
+                  {
+                      "id":  "SEC-048",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "action_type":  "todo",
+                                      "action_count":  3,
+                                      "elapsed_ms":  1032
+                                  }
+                  },
+                  {
+                      "id":  "SEC-049",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "action_type":  "todo",
+                                      "action_count":  3,
+                                      "elapsed_ms":  968
+                                  }
+                  },
+                  {
+                      "id":  "SEC-050",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "action_type":  "todo",
+                                      "action_count":  3,
+                                      "elapsed_ms":  927
+                                  }
+                  },
+                  {
+                      "id":  "SEC-051",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "action_type":  "matter",
+                                      "action_count":  3,
+                                      "elapsed_ms":  327
+                                  }
+                  },
+                  {
+                      "id":  "SEC-052",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "action_type":  "todo",
+                                      "action_count":  3,
+                                      "elapsed_ms":  2200
+                                  }
+                  },
+                  {
+                      "id":  "SEC-053",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "action_type":  "todo",
+                                      "action_count":  3,
+                                      "elapsed_ms":  3428
+                                  }
+                  },
+                  {
+                      "id":  "SEC-054",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "action_type":  "matter",
+                                      "action_count":  3,
+                                      "elapsed_ms":  5963
+                                  }
+                  },
+                  {
+                      "id":  "SEC-055",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "pending_candidates":  1,
+                                      "applied_candidates":  0,
+                                      "elapsed_ms":  22
+                                  }
+                  },
+                  {
+                      "id":  "SEC-056",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "pending_candidates":  1,
+                                      "applied_candidates":  0,
+                                      "elapsed_ms":  32
+                                  }
+                  },
+                  {
+                      "id":  "SEC-057",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  115
+                                  }
+                  },
+                  {
+                      "id":  "SEC-058",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "rejected_candidates":  1,
+                                      "applied_candidates":  0,
+                                      "elapsed_ms":  58
+                                  }
+                  },
+                  {
+                      "id":  "SEC-059",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  144
+                                  }
+                  },
+                  {
+                      "id":  "SEC-060",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "confirmed_updates":  1,
+                                      "elapsed_ms":  550
+                                  }
+                  },
+                  {
+                      "id":  "SEC-061",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "stale_candidates":  1,
+                                      "overwrites":  0,
+                                      "elapsed_ms":  469
+                                  }
+                  },
+                  {
+                      "id":  "SEC-062",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "pending_delete_candidates":  1,
+                                      "deleted":  0,
+                                      "elapsed_ms":  214
+                                  }
+                  },
+                  {
+                      "id":  "SEC-063",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  128
+                                  }
+                  },
+                  {
+                      "id":  "SEC-064",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "delete_candidates":  1,
+                                      "deleted":  0,
+                                      "elapsed_ms":  232
+                                  }
+                  },
+                  {
+                      "id":  "SEC-065",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  431
+                                  }
+                  },
+                  {
+                      "id":  "SEC-066",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  135
+                                  }
+                  },
+                  {
+                      "id":  "SEC-067",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  440
+                                  }
+                  },
+                  {
+                      "id":  "SEC-068",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  466
+                                  }
+                  },
+                  {
+                      "id":  "SEC-069",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "confirmed_updates":  1,
+                                      "elapsed_ms":  111
+                                  }
+                  },
+                  {
+                      "id":  "SEC-070",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  1784
+                                  }
+                  },
+                  {
+                      "id":  "SEC-071",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  456
+                                  }
+                  },
+                  {
+                      "id":  "SEC-072",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  454
+                                  }
+                  },
+                  {
+                      "id":  "SEC-073",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  252
+                                  }
+                  },
+                  {
+                      "id":  "SEC-074",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  286
+                                  }
+                  },
+                  {
+                      "id":  "SEC-075",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  89
+                                  }
+                  },
+                  {
+                      "id":  "SEC-076",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  255
+                                  }
+                  },
+                  {
+                      "id":  "SEC-077",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  303
+                                  }
+                  },
+                  {
+                      "id":  "SEC-078",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  234
+                                  }
+                  },
+                  {
+                      "id":  "SEC-079",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  72
+                                  }
+                  },
+                  {
+                      "id":  "SEC-080",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  237
+                                  }
+                  },
+                  {
+                      "id":  "SEC-081",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  315
+                                  }
+                  },
+                  {
+                      "id":  "SEC-082",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  237
+                                  }
+                  },
+                  {
+                      "id":  "SEC-083",
+                      "platform":  "phone",
+                      "status":  "failed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+
+                                  }
+                  },
+                  {
+                      "id":  "SEC-084",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "model_requests":  2,
+                                      "elapsed_ms":  3169
+                                  }
+                  },
+                  {
+                      "id":  "SEC-085",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "model_requests":  1,
+                                      "tool_count":  8,
+                                      "elapsed_ms":  2354
+                                  }
+                  },
+                  {
+                      "id":  "SEC-086",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "model_requests":  1,
+                                      "elapsed_ms":  2857
+                                  }
+                  },
+                  {
+                      "id":  "SEC-087",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "model_requests":  1,
+                                      "elapsed_ms":  2540
+                                  }
+                  },
+                  {
+                      "id":  "SEC-088",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "model_requests":  1,
+                                      "elapsed_ms":  2210
+                                  }
+                  },
+                  {
+                      "id":  "SEC-089",
+                      "platform":  "phone",
+                      "status":  "failed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+
+                                  }
+                  },
+                  {
+                      "id":  "SEC-090",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "model_requests":  1,
+                                      "elapsed_ms":  2989
+                                  }
+                  },
+                  {
+                      "id":  "SEC-091",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "model_requests":  1,
+                                      "file_text_chars":  44,
+                                      "file_name":  "matrix.txt",
+                                      "elapsed_ms":  3237
+                                  }
+                  },
+                  {
+                      "id":  "SEC-092",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "model_requests":  1,
+                                      "file_text_chars":  43,
+                                      "file_name":  "course.pdf",
+                                      "elapsed_ms":  3623
+                                  }
+                  },
+                  {
+                      "id":  "SEC-093",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "model_requests":  1,
+                                      "file_text_chars":  51,
+                                      "file_name":  "course.docx",
+                                      "elapsed_ms":  2801
+                                  }
+                  },
+                  {
+                      "id":  "SEC-094",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "model_requests":  1,
+                                      "file_text_chars":  55,
+                                      "file_name":  "course.csv",
+                                      "elapsed_ms":  2672
+                                  }
+                  },
+                  {
+                      "id":  "SEC-095",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "model_requests":  1,
+                                      "file_text_chars":  0,
+                                      "file_name":  null,
+                                      "elapsed_ms":  4649
+                                  }
+                  },
+                  {
+                      "id":  "SEC-096",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "model_requests":  1,
+                                      "file_text_chars":  0,
+                                      "file_name":  null,
+                                      "elapsed_ms":  3867
+                                  }
+                  },
+                  {
+                      "id":  "SEC-097",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  1616
+                                  }
+                  },
+                  {
+                      "id":  "SEC-098",
+                      "platform":  "tablet",
+                      "status":  "passed",
+                      "log":  "tablet.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:37:28.0234857+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  3119
+                                  }
+                  },
+                  {
+                      "id":  "SEC-099",
+                      "platform":  "windows",
+                      "status":  "passed",
+                      "log":  "windows.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:40:09.8852321+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  3756
+                                  }
+                  },
+                  {
+                      "id":  "SEC-100",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "b721fb731c03cea25d6ff50ee6873be495c859fe",
+                      "started_at":  "2026-10-20T10:33:30.2063838+08:00",
+                      "metrics":  {
+                                      "elapsed_ms":  1614
+                                  }
+                  }
+              ]
+}
