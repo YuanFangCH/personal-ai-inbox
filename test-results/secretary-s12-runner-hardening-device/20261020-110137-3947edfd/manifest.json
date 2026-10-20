@@ -1,0 +1,12 @@
+﻿{
+    "runId":  "20261020-110137-3947edfd",
+    "commit":  "3947edfd273ad7a9367479d71b0942e784890b21",
+    "workingTreeDirty":  true,
+    "startedAt":  "2026-10-20T11:01:37.7601745+08:00",
+    "flutter":  "Flutter 3.47.6 • channel stable • https://github.com/flutter/flutter.git",
+    "platforms":  "phone",
+    "cases":  [
+                  "SEC-083"
+              ],
+    "runtime":  "deterministic model/sync/voice fixture; real Flutter UI and SQLite; actual microphone, TTS and live cloud excluded"
+}

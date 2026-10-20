@@ -1308,7 +1308,11 @@ class _Harness {
             () => tester.widget<TextField>(field).enabled == true,
             reason: 'composer becomes available after stop completes',
           );
+          await tester.ensureVisible(field);
+          await tester.tap(field);
+          await tester.pumpAndSettle();
           await tester.enterText(field, '继续处理剩余内容');
+          await tester.pump();
           expect(tester.widget<TextField>(field).controller?.text, '继续处理剩余内容');
           final sendButton = tester.widget<IconButton>(
             find.byKey(const Key('chat_send')),

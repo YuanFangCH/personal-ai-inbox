@@ -1,0 +1,32 @@
+﻿{
+    "runId":  "20261020-110137-3947edfd",
+    "commit":  "3947edfd273ad7a9367479d71b0942e784890b21",
+    "workingTreeDirtyAtStart":  true,
+    "counts":  {
+                   "notExecuted":  0,
+                   "failed":  0,
+                   "passed":  1
+               },
+    "legs":  [
+                 {
+                     "platform":  "phone",
+                     "exitCode":  0,
+                     "log":  "phone.log",
+                     "cases":  1
+                 }
+             ],
+    "cases":  [
+                  {
+                      "id":  "SEC-083",
+                      "platform":  "phone",
+                      "status":  "passed",
+                      "log":  "phone.log",
+                      "sha":  "3947edfd273ad7a9367479d71b0942e784890b21",
+                      "started_at":  "2026-10-20T11:01:39.5998379+08:00",
+                      "metrics":  {
+                                      "model_requests":  2,
+                                      "elapsed_ms":  6819
+                                  }
+                  }
+              ]
+}
