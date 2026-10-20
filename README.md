@@ -26,6 +26,9 @@
 - 系统接入：Android 注册 `ACTION_SEND` 与 `ACTION_PROCESS_TEXT`，支持从其他 App 分享文本和图片。
 - 多端形态：同一套 Flutter 代码适配手机、平板、Windows 和 Web 预览。
 
+## 项目交接
+
+
 ## 模型配置
 
 设置页支持 OpenAI 兼容配置：
