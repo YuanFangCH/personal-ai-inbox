@@ -1302,10 +1302,22 @@ class _Harness {
           await _stopChat(tester);
           final stopped = conversations.messagesFor(stoppedConversationId);
           expect(stopped.last.status, ChatMessageStatus.interrupted);
-          await _startChat(tester, '继续处理剩余内容');
+          final field = find.byKey(const Key('chat_input'));
           await _waitFor(
             tester,
-            () => conversations.isChatGenerating,
+            () => tester.widget<TextField>(field).enabled == true,
+            reason: 'composer becomes available after stop completes',
+          );
+          await tester.enterText(field, '继续处理剩余内容');
+          expect(tester.widget<TextField>(field).controller?.text, '继续处理剩余内容');
+          final sendButton = tester.widget<IconButton>(
+            find.byKey(const Key('chat_send')),
+          );
+          expect(sendButton.onPressed, isNotNull);
+          await _tapKey(tester, 'chat_send');
+          await _waitFor(
+            tester,
+            () => requestBodies.length >= 2,
             reason: 'follow-up request to start',
           );
           await _waitFor(
@@ -1315,7 +1327,7 @@ class _Harness {
           );
           final continuedId = conversations.activeConversationId!;
           final continued = conversations.messagesFor(continuedId);
-          expect(continued.where((message) => message.isUser), hasLength(1));
+          expect(continued.where((message) => message.isUser), hasLength(2));
           expect(continued.last.status, ChatMessageStatus.complete);
           expect(
             (await _allMessages()).where((message) => message.isUser),
