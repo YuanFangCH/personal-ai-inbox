@@ -1,0 +1,12 @@
+﻿{
+    "id":  "SEC-060",
+    "platform":  "phone",
+    "status":  "passed",
+    "log":  "phone.log",
+    "sha":  "37d96f71e560a1ed4a25b88dd9482084db6f651f",
+    "started_at":  "2026-10-20T11:03:23.4249799+08:00",
+    "metrics":  {
+                    "confirmed_updates":  1,
+                    "elapsed_ms":  482
+                }
+}

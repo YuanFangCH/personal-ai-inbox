@@ -1,8 +1,8 @@
 # AI 对话界面与操作权限改造计划
 
-日期：2026-10-20。状态：两轮产品选择均已确认；S1–S11 功能与 SEC 机器矩阵已实现，S12 首轮设备矩阵 100/100 在 `310b51e` 通过；首轮后按逐项场景补强 Runner 并修复会话重命名生命周期问题，需以最终代码重跑后确认完成。已确认架构边界见 [ADR 0017](adr/0017-conversation-permissions-and-reversible-result-actions.md)。下文明确区分用户决定和实施建议。
+日期：2026-10-20。状态：两轮产品选择均已确认；S1–S12 功能、SEC 机器矩阵及 phone/tablet/Windows 设备验收均已完成。最终 SEC 设备结果 100/100 通过，见[验收报告](../test-results/secretary-100-final/20261020-110321-37d96f71/verification.md)。真实云盘、模型 Key 和物理语音探针另行标明，不由矩阵替身结果覆盖。已确认架构边界见 [ADR 0017](adr/0017-conversation-permissions-and-reversible-result-actions.md)。下文明确区分用户决定和实施建议。
 
-执行细化见 [S0–S12 实施任务与门禁](secretary-implementation-plan.md)。用户已确认三端合计 100 例验收：手机 AVD 50、平板 AVD 25、Windows 桌面 25；[逐例清单](testing/secretary-100-case-plan.md) 已执行并 100/100 通过，证据见[最终报告](../test-results/secretary-100-final/20261020-100149-310b51e5/verification.md)。真实语音设备探针仍待执行。
+执行细化见 [S0–S12 实施任务与门禁](secretary-implementation-plan.md)。用户已确认三端合计 100 例验收：手机 AVD 50、平板 AVD 25、Windows 桌面 25；最终候选上逐例全部通过，证据见[最终报告](../test-results/secretary-100-final/20261020-110321-37d96f71/verification.md)。真实语音设备探针仍待执行。
 
 2026-10-20 追加第 3/4 项已确认：软件名称改为“懒狗秘书”，AI 默认担任秘书型助理；全局知识随成果三端同步，AI 按需检索且受读取权限控制，新增/修改/删除均须人工确认。见[补充计划](secretary-and-global-knowledge-plan.md)。普通成果的直接操作规则保持不变，全局知识作为审批例外。
 

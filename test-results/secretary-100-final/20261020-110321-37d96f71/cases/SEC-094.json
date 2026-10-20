@@ -1,0 +1,14 @@
+﻿{
+    "id":  "SEC-094",
+    "platform":  "windows",
+    "status":  "passed",
+    "log":  "windows.log",
+    "sha":  "37d96f71e560a1ed4a25b88dd9482084db6f651f",
+    "started_at":  "2026-10-20T11:09:49.0087304+08:00",
+    "metrics":  {
+                    "model_requests":  1,
+                    "file_text_chars":  55,
+                    "file_name":  "course.csv",
+                    "elapsed_ms":  2717
+                }
+}

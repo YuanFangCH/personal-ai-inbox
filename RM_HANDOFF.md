@@ -10,8 +10,8 @@
 | 最后更新时间 | 2026-10-20 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.1.2` 已预发布；懒狗秘书改造 S1–S11 已实现；S12 首轮三端 100/100 通过，但首轮后继续完善逐项用例和重命名 UI，需要在更新后的干净 SHA 上重跑 |
-| 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。成果索引 SQLite v6、会话库 v5（跨会话 FTS5、隐藏 reasoning/tool transcript）；Markdown 仍为成果权威副本，未确认全局知识候选留在本地索引库。工具链固定 Flutter 3.47.6 / Dart 3.13.5。thinking 仅对已知 DeepSeek API host 启用/可手工覆盖；当前 Chat Completions 没有原生联网能力，联网按钮禁用。文件在本端提取文本后发送，不传原始文件，扫描 PDF 不 OCR。Android/Windows 离线语音输入和系统朗读已接入，需真实设备探针验证麦克风/扬声器。首轮 SEC Runner 在 SHA `310b51e` 上 100/100 通过；后续修复已在 host 100/100 验证，但新的三端矩阵尚未运行。真实云盘/模型 Key 未连接；OneDrive、百度网盘、通知和真实跨端同步尚未完成。`v1.1.2` GitHub 预发布版仍使用 Debug 证书，Windows 包未代码签名。 |
+| 当前阶段 | `v1.1.2` 已预发布；懒狗秘书改造 S1–S12 已完成，最终三端设备矩阵 100/100 通过 |
+| 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。成果索引 SQLite v6、会话库 v5（跨会话 FTS5、隐藏 reasoning/tool transcript）；Markdown 仍为成果权威副本，未确认全局知识候选留在本地索引库。工具链固定 Flutter 3.47.6 / Dart 3.13.5。thinking 仅对已知 DeepSeek API host 启用/可手工覆盖；当前 Chat Completions 没有原生联网能力，联网按钮禁用。文件在本端提取文本后发送，不传原始文件，扫描 PDF 不 OCR。最终提交 `37d96f71` 上 phone 50/50、tablet 25/25、Windows 25/25，100/100 全部 passed；证据见 `test-results/secretary-100-final/20261020-110321-37d96f71/`。Android/Windows 离线语音输入和系统朗读已接入，但真实设备麦克风/扬声器探针未执行。真实云盘/模型 Key 未连接；OneDrive、百度网盘、通知和真实跨端同步尚未完成。`v1.1.2` GitHub 预发布版仍使用 Debug 证书，Windows 包未代码签名。 |
 
 ## 2. 一句话交接
 
@@ -333,7 +333,7 @@
 
 ### 下一步
 
-当前优先：提交本轮 Runner 补强和会话重命名修复，在干净 SHA 上再次依序执行 SEC-001–100 手机/平板/Windows 50/25/25。首轮 `310b51e` 的 100/100 结果仅作历史记录，不替代更新后的最终验收。真实麦克风/扬声器探针未执行；受控 Provider 不代表真实云盘接入。
+当前优先：S12 已在干净 SHA `37d96f71` 上完成 phone 50、tablet 25、Windows 25 设备验收，100 ID 全部通过。后续单独推进真实 OneDrive Provider、模型 Key 联调、通知、真实麦克风/扬声器及生产数据升级/恢复演练。受控 Provider 不代表真实云盘接入。
 
 1. 发布前按发布门禁运行完整测试套件，并在三端执行 `scripts/verify-realistic-e2e.ps1`；矩阵已可重复运行，但每次约需 16 分钟纯用例时间。
 2. 若转入生产用户数据，先执行升级与备份恢复演练；真实云盘、通知、签名和物理断电专项需另行验收。
@@ -341,6 +341,15 @@
 4. 后续代码任务按 `AGENTS.md` 的增量测试范围执行；测试结论记录执行范围与未验证项，临时测试仅在用户要求时清理。
 
 ## 8. 变更记录
+
+### 2026-10-20 / S12 最终三端矩阵验收完成
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 在干净候选 `37d96f71e560a1ed4a25b88dd9482084db6f651f` 上运行 phone AVD 50 → tablet AVD 25 → Windows 桌面 25，共 100 个 SEC ID；修正过程中发现的有效 PNG 测试夹具、停止后续问焦点与离开页面取消行为后重新冻结并执行 |
+| 验证 | 100/100 passed，failed 0、not executed 0；phone Android 15 411.4dp 50/50，tablet Android 15 1280dp 25/25，Windows 11 桌面 25/25；100 个 case JSON 的 status 与 SHA 均与 manifest 匹配。报告见 [`S12 最终验收`](test-results/secretary-100-final/20261020-110321-37d96f71/verification.md)。host 矩阵 + 完整性为 104/104，Dart analysis 无问题 |
+| 提交标题 | `test(e2e): 修复停止生成后的续问焦点` |
+| 遗留事项 | 真实模型 Key、OneDrive/OAuth、硬件麦克风/TTS、通知、代码签名及生产升级恢复尚未验收；不包含在本次替身矩阵结论内 |
 
 ### 2026-10-20 / 补上停止生成后续问输入框聚焦
 

@@ -1,0 +1,13 @@
+﻿{
+    "id":  "SEC-042",
+    "platform":  "tablet",
+    "status":  "passed",
+    "log":  "tablet.log",
+    "sha":  "37d96f71e560a1ed4a25b88dd9482084db6f651f",
+    "started_at":  "2026-10-20T11:07:09.0927086+08:00",
+    "metrics":  {
+                    "action_type":  "todo",
+                    "action_count":  3,
+                    "elapsed_ms":  1131
+                }
+}

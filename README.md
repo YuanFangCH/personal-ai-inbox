@@ -28,7 +28,7 @@
 
 ## 当前规划
 
-已细化 [S0–S12 实施任务与完成门禁](docs/secretary-implementation-plan.md)，安排[三端 100 例新功能验收](docs/testing/secretary-100-case-plan.md)：手机模拟器 50、平板模拟器 25、Windows 桌面 25。S1–S11 已实现；矩阵曾在 `310b51e` 上 100/100 通过，之后为匹配逐项场景增加了测试和修复一个会话重命名 UI 问题，需在更新后的干净提交上重跑。真实云盘同步和麦克风/扬声器探针仍未接入/执行。
+已完成 [S0–S12 实施计划](docs/secretary-implementation-plan.md)及[三端 100 例新功能验收](docs/testing/secretary-100-case-plan.md)：手机 AVD 50/50、平板 AVD 25/25、Windows 桌面 25/25，合计 100/100 通过。最终代码 SHA、逐例状态、设备信息和日志见[验收报告](test-results/secretary-100-final/20261020-110321-37d96f71/verification.md)。真实 OneDrive 同步和麦克风/扬声器仍待单独接入/验证。
 
 追加规划已确认：软件显示名称为“懒狗秘书”，AI 默认担任秘书型助理；全局知识库以 `knowledge` 成果承载，候选本地留端，确认后的事实按成果同步，AI 按需检索且受读取权限控制，新增、修改、删除均须人工确认。界面与审批核心已实现；真实 OneDrive 接入和三端同步仍未完成。见[角色与全局知识库补充计划](docs/secretary-and-global-knowledge-plan.md)。
 
