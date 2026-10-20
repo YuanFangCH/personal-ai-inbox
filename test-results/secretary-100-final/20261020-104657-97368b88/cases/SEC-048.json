@@ -1,0 +1,13 @@
+﻿{
+    "id":  "SEC-048",
+    "platform":  "phone",
+    "status":  "passed",
+    "log":  "phone.log",
+    "sha":  "97368b88e28644763c879491049cf701f9b4e1f1",
+    "started_at":  "2026-10-20T10:47:00.0906179+08:00",
+    "metrics":  {
+                    "action_type":  "todo",
+                    "action_count":  3,
+                    "elapsed_ms":  1146
+                }
+}

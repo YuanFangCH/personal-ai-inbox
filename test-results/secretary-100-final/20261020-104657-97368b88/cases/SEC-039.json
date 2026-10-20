@@ -1,0 +1,15 @@
+﻿{
+    "id":  "SEC-039",
+    "platform":  "windows",
+    "status":  "passed",
+    "log":  "windows.log",
+    "sha":  "97368b88e28644763c879491049cf701f9b4e1f1",
+    "started_at":  "2026-10-20T10:54:09.8214828+08:00",
+    "metrics":  {
+                    "search_calls":  1,
+                    "detail_calls":  3,
+                    "result_chars":  6000,
+                    "hit_count":  5,
+                    "elapsed_ms":  340
+                }
+}

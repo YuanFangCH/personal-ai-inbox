@@ -158,7 +158,7 @@ class _ConversationPageState extends State<ConversationPage>
         _Composer(
           controller: _textController,
           attachments: _imageInputs,
-          enabled: modelReady,
+          enabled: modelReady && (!_sending || app.isChatGenerating),
           imageEnabled: modelReady && imageEgressAllowed && imageCapability,
           files: _fileTexts,
           thinkingAvailable: modelReady && modelCapabilities.thinking,

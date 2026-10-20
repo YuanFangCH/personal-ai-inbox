@@ -1,0 +1,13 @@
+﻿{
+    "id":  "SEC-056",
+    "platform":  "tablet",
+    "status":  "passed",
+    "log":  "tablet.log",
+    "sha":  "97368b88e28644763c879491049cf701f9b4e1f1",
+    "started_at":  "2026-10-20T10:51:25.8565729+08:00",
+    "metrics":  {
+                    "pending_candidates":  1,
+                    "applied_candidates":  0,
+                    "elapsed_ms":  74
+                }
+}
