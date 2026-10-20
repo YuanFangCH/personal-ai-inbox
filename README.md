@@ -13,7 +13,7 @@
 - Windows 11 x64：选择安装包或便携 ZIP。
 - 发布页同时提供 `SHA256SUMS.txt`，下载后应校验文件哈希。
 
-`v1.1.2` 是当前预发布版本：新增 100 条真实端到端测试场景并在手机、平板和 Windows 三端全部通过，同时修复手机高字体下待确认状态标签的横向溢出。
+`v1.1.3` 是当前预览版候选：将收件箱改为 AI 秘书对话，支持会话权限、成果改删与撤销、全局知识审批，以及本地文件和语音输入。三端 100 例验收已通过；发布状态以 [GitHub Releases](https://github.com/YuanFangCH/personal-ai-inbox/releases) 为准。
 
 ## 核心能力
 
@@ -26,7 +26,7 @@
 - 系统接入：Android 注册 `ACTION_SEND` 与 `ACTION_PROCESS_TEXT`，支持从其他 App 分享文本和图片。
 - 多端形态：同一套 Flutter 代码适配手机、平板、Windows 和 Web 预览。
 
-## 当前规划
+## 当前进展
 
 已完成 [S0–S12 实施计划](docs/secretary-implementation-plan.md)及[三端 100 例新功能验收](docs/testing/secretary-100-case-plan.md)：手机 AVD 50/50、平板 AVD 25/25、Windows 桌面 25/25，合计 100/100 通过。最终代码 SHA、逐例状态、设备信息和日志见[验收报告](test-results/secretary-100-final/20261020-110321-37d96f71/verification.md)。真实 OneDrive 同步和麦克风/扬声器仍待单独接入/验证。
 
@@ -34,7 +34,7 @@
 
 检索以节省开销与响应时间为目标：当前会话足够则不检索，必要时定向查询、少量返回、足够即停，复用有效结果并在内容变化后失效。见[检索策略与预算](docs/ai-retrieval-policy.md)，尚未实现或测量提速。
 
-已确认将收件箱改为参考 DeepSeek 手机端的 AI 对话界面：每次进入显示新对话，待处理独立成页，三组会话权限默认开启，普通成果改删直接执行并可撤销。界面、权限、普通成果操作、支持端点的深度思考、本地文件文本提取、离线语音转写与系统回复朗读已实现；三端 100 例尚未执行。当前 Chat Completions 未声明内置联网能力，联网按钮禁用。见 [改造计划](docs/ai-conversation-redesign-plan.md) 与 [ADR 0017](docs/adr/0017-conversation-permissions-and-reversible-result-actions.md)。
+收件箱已改为参考 DeepSeek 手机端的 AI 秘书对话界面：每次进入显示新对话，历史会话可从侧栏管理，待处理独立成页；读取、新增、修改与删除权限按会话保存，默认全开。普通成果改删直接执行并可撤销，全局知识改动需人工确认；AI 支持按需检索、本地文件文本提取、语音转文字和回复朗读。手机、平板、Windows 的 100 例验收全部通过。当前 Chat Completions 未声明内置联网能力，联网按钮禁用。见 [改造计划](docs/ai-conversation-redesign-plan.md)、[权限与成果操作 ADR](docs/adr/0017-conversation-permissions-and-reversible-result-actions.md) 和[全局知识 ADR](docs/adr/0018-confirmed-global-knowledge-for-secretary.md)。
 
 ## 模型配置
 
