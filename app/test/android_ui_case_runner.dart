@@ -306,6 +306,13 @@ Future<void> _scrollToBottom(WidgetTester tester) async {
 }
 
 Future<void> _tapPrimaryButton(WidgetTester tester, AndroidUiPage page) async {
+  if (page == AndroidUiPage.inbox) {
+    await tester.tap(find.byKey(const Key('inbox_new_conversation')));
+    await tester.pumpAndSettle();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    return;
+  }
   if (page == AndroidUiPage.calendar || page == AndroidUiPage.todos) {
     await tester.tap(find.byKey(const Key('calendar_quick_create')));
     await tester.pumpAndSettle();

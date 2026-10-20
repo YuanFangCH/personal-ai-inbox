@@ -1919,10 +1919,19 @@ class _Harness {
       tester.view.physicalSize.width / tester.view.devicePixelRatio;
 
   Future<void> _goto(WidgetTester tester, String page) async {
+    if (page == 'pending') {
+      if (find.byKey(const Key('conversation_manage')).evaluate().isEmpty) {
+        await _goto(tester, 'inbox');
+      }
+      await _tapKey(tester, 'conversation_manage');
+      await _tapKey(tester, 'conversation_pending_page');
+      expect(find.text('待处理'), findsOneWidget, reason: 'navigation to pending');
+      return;
+    }
     // Pushed routes (conversation, editors) cover the shell navigation.
     for (var attempt = 0; attempt < 3; attempt++) {
       if (find.byKey(const Key('nav_home')).evaluate().isNotEmpty) break;
-      await tester.pageBack();
+      await tester.binding.handlePopRoute();
       await _settle(tester);
     }
     const compactOnly = {'matters', 'knowledge', 'sync', 'settings'};
@@ -2344,7 +2353,7 @@ class _Harness {
     WidgetTester tester, {
     required bool useRemote,
   }) async {
-    await _goto(tester, 'inbox');
+    await _goto(tester, 'pending');
     final menu = find.byTooltip('裁决冲突');
     await tester.scrollUntilVisible(
       menu.first,

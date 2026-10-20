@@ -96,7 +96,7 @@ void main() {
         _step('capture', {'text': text}),
         _assert('reviewCount', {'value': 1}),
         _assert('resultCount', {'value': 0}),
-        _step('nav', {'page': 'inbox'}),
+        _step('nav', {'page': 'pending'}),
         _step('scroll', {'times': 1}),
         _step('tapText', {'value': accept ? '按建议生成' : '忽略'}),
         _assert('reviewCount', {'value': 0}),
