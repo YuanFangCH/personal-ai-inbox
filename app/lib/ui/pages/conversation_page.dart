@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
@@ -52,6 +54,7 @@ class _ConversationPageState extends State<ConversationPage>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _conversationWorkspaceForCleanup = AppScope.conversations(context);
     if (!_temporaryPermissionsInitialized) {
       _temporaryPermissions = AppScope.preferences(context)
           .settings
