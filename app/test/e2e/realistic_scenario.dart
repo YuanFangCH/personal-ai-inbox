@@ -166,4 +166,5 @@ const supportedAsserts = <String>{
   'chatReplyContains',
   'assistantStatus',
   'caseState',
+  'caseVisibleTitle',
 };

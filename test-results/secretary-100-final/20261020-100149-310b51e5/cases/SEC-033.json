@@ -1,0 +1,14 @@
+﻿{
+    "id":  "SEC-033",
+    "platform":  "tablet",
+    "status":  "passed",
+    "log":  "tablet.log",
+    "sha":  "310b51e50bccfa04f146eea751ab730d6e163a82",
+    "started_at":  "2026-10-20T10:05:26.7286227+08:00",
+    "metrics":  {
+                    "search_calls":  1,
+                    "detail_calls":  0,
+                    "result_chars":  440,
+                    "elapsed_ms":  150
+                }
+}

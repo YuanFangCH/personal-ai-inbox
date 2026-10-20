@@ -1,0 +1,14 @@
+﻿{
+    "id":  "SEC-040",
+    "platform":  "phone",
+    "status":  "passed",
+    "log":  "phone.log",
+    "sha":  "310b51e50bccfa04f146eea751ab730d6e163a82",
+    "started_at":  "2026-10-20T10:01:52.0370821+08:00",
+    "metrics":  {
+                    "search_calls":  1,
+                    "cas_stale_rejected":  true,
+                    "revision":  2,
+                    "elapsed_ms":  361
+                }
+}

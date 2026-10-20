@@ -1,0 +1,12 @@
+﻿{
+    "id":  "SEC-090",
+    "platform":  "phone",
+    "status":  "passed",
+    "log":  "phone.log",
+    "sha":  "310b51e50bccfa04f146eea751ab730d6e163a82",
+    "started_at":  "2026-10-20T10:01:52.0370821+08:00",
+    "metrics":  {
+                    "model_requests":  1,
+                    "elapsed_ms":  3086
+                }
+}

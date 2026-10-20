@@ -785,7 +785,7 @@ const secretaryScenarioMaps = <Map<String, Object?>>[
     'platform': "tablet",
     'category': "actions",
     'title': "不完整流携带写工具",
-    'assertions': "无完整结束不提交，消息标中断而非假成功",
+    'assertions': "无完整结束不提交，消息显示失败并可重试，不得假成功",
     'steps': [
       "navigateInbox",
       "baselineState",

@@ -1,6 +1,6 @@
 # 懒狗秘书改造：实施任务与验收门禁
 
-日期：2026-10-20。状态：S1–S11 已实现并定向验证；S12 三端新功能验收仍待完成。用户已确认运行合计 100 例：手机 AVD 50、平板 AVD 25、Windows 桌面 25；不是每端 100 例，也不代表授权整个项目全量测试。
+日期：2026-10-20。状态：S1–S11 已完成；三端矩阵首轮在 `310b51e` 上 100/100 通过。之后继续按 SEC 逐项补强 Runner 并修复重命名弹窗生命周期问题，因此 S12 必须在更新后的干净提交上重新执行后才能完成。用户已确认合计 100 例：手机 AVD 50、平板 AVD 25、Windows 桌面 25。
 
 ## 1. 需求与完成口径
 
@@ -35,8 +35,8 @@ Windows 使用本机 Flutter 桌面集成测试，不把主机尺寸模拟称为
 | S8 思考与内置联网能力 | S5/S6 | **思考已实现，联网按边界禁用**：DeepSeek Chat Completions 已知端点支持会话级临时思考开关、配置能力覆盖、reasoning/tool transcript 完整回传并本地保存隐藏字段；未知端点默认关闭。当前 `/chat/completions` 没有声明内置搜索能力，联网 chip 禁用，不切 Responses API 或独立 Search API | thinking mode 开关/关闭参数正确、完整工具链携带 `reasoning_content`、隐藏推理不进用户文本；未知模型禁用；0 外部搜索调用。真实模型 Key 未联调 |
 | S9 文件输入与解析 | S5/S6 | **核心已实现**：Android/Windows/Web 文件选择端口；本地解析 TXT/MD/CSV/PDF 文字层/DOCX/XLSX；原始文件不持久化/上传，仅把提取文字加入本轮用户消息 | 8 MiB/文件、最多 3 份/24,000 字符；Office 解压 24 MiB、Excel 12 张表/200 行/5000 单元格、PDF 50 页；格式/加密/超限/取消分支有测；扫描 PDF OCR 明确不支持，公式和宏不执行 |
 | S10 语音转写与朗读 | S5/S6 | **已实现**：Android/Windows 系统语音服务，离线转写、编辑后发送、系统朗读/停止；无实时通话 | 定向语音/对话/运行时测试 9/9 通过；Android APK、Windows Release、Web Release 构建通过。真实麦克风采集/出声未执行；Windows 插件支持仍标为 beta，Web 语音不可用 |
-| S11 新矩阵与设备入口 | 随 S1–S10 维护，最终整合 | **已实现**：SEC-001–100 机器数据、完整性校验、宿主冒烟与三端 Runner、平台/ID 过滤、运行 manifest/逐例 JSON/日志；设备案例使用隔离成果目录及真实 SQLite | 完整性 4/4、宿主 100/100；Android phone 8、tablet 1、Windows 1 个设备试跑均通过；定向分析和 PowerShell 语法检查通过。设备全矩阵尚未执行，见[记录](../test-results/secretary-s11-matrix-runner/verification.md) |
-| S12 集成与三端 100 例 | S1–S11 功能与局部验证完成 | 冻结候选 SHA，运行 `scripts/verify-secretary-e2e.ps1` 的 phone 50 → tablet 25 → Windows 25，归档 manifest、逐例状态、运行日志，修复失败后按 ID 定向重跑 | 100 ID 均有真实设备 Runner 结果；预期覆盖未被 skip/mock 冒充；证据关联最终提交 SHA。仅 10 个跨三端试跑已通过，不代表 100/100 |
+| S11 新矩阵与设备入口 | 随 S1–S10 维护，最终整合 | **完成**：SEC-001–100 机器数据、完整性校验、宿主冒烟与三端 Runner、平台/ID 过滤、运行 manifest/逐例 JSON/日志；设备案例使用隔离成果目录及真实 SQLite | 完整性 4/4、宿主 100/100、设备矩阵 100/100；S11 验证见[记录](../test-results/secretary-s11-matrix-runner/verification.md) |
+| S12 集成与三端 100 例 | S1–S11 功能与局部验证完成 | 首轮已在干净候选 `310b51e50bccfa04f146eea751ab730d6e163a82` 串行执行 phone 50 → tablet 25 → Windows 25，结果 100/100。后续变更包含逐项场景补强、SEC-053 非完整响应状态校正和重命名控制器修复，必须在更新的干净候选上重跑 | 首轮详细结果保留于[历史运行目录](../test-results/secretary-100-final/20261020-100149-310b51e5/)；只有更新提交对应的 100 个结果全部通过，才可完成 S12 |
 
 S9/S10 所需解析器和语音服务在实现前核实官方能力及许可证。若系统能力不能满足三端语音，且必须新增收费服务或凭据，先呈现具体选择；在此依赖解决前 S10 不能标为功能完成。其他已授权任务继续推进，不空等该依赖。
 

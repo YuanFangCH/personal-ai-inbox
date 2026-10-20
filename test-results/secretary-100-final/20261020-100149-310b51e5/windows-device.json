@@ -1,0 +1,9 @@
+{
+  "platform": "windows",
+  "product": "Microsoft Windows 11 专业工作站版",
+  "version": "10.0.26200",
+  "build": "26200",
+  "architecture": "64 位",
+  "runner": "flutter test -d windows",
+  "testViewport": "1440x900 logical"
+}
