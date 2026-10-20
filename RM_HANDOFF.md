@@ -10,7 +10,7 @@
 | 最后更新时间 | 2026-10-20 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex |
-| 当前阶段 | S1–S12 已完成，三端设备矩阵 100/100 通过；`v1.1.3` 发布门禁首次因 3 个陈旧测试失败，已修正，待重新运行 |
+| 当前阶段 | `v1.1.3` 预览版已发布；S1–S12 完成，三端设备矩阵 100/100 通过 |
 | 总体状态 | `app/` 生产启动由 `AppRuntime` 装配端配置、成果库、捕获、会话和同步模块；页面直接订阅所属模块，`AppController` 已从生产源码删除。成果索引 SQLite v6、会话库 v5（跨会话 FTS5、隐藏 reasoning/tool transcript）；Markdown 仍为成果权威副本，未确认全局知识候选留在本地索引库。工具链固定 Flutter 3.47.6 / Dart 3.13.5。thinking 仅对已知 DeepSeek API host 启用/可手工覆盖；当前 Chat Completions 没有原生联网能力，联网按钮禁用。文件在本端提取文本后发送，不传原始文件，扫描 PDF 不 OCR。最终提交 `37d96f71` 上 phone 50/50、tablet 25/25、Windows 25/25，100/100 全部 passed；证据见 `test-results/secretary-100-final/20261020-110321-37d96f71/`。Android/Windows 离线语音输入和系统朗读已接入，但真实设备麦克风/扬声器探针未执行。真实云盘/模型 Key 未连接；OneDrive、百度网盘、通知和真实跨端同步尚未完成。预览包仍使用 Android Debug 证书，Windows 包未代码签名。 |
 
 ## 2. 一句话交接
@@ -27,7 +27,7 @@
 
 2026-10-20 当前规划：两轮产品选择已确认，见 [ADR 0017](docs/adr/0017-conversation-permissions-and-reversible-result-actions.md) 和[改造计划](docs/ai-conversation-redesign-plan.md)。收件箱直接改为 AI 对话，每次进入显示新对话，侧边管理会话，待处理独立成页；三组权限为读取、新增、修改与删除，初始默认全开，各会话独立保存。AI 按用户要求直接改删成果并支持撤销，其他会话只读；语音转写和朗读、文件、深度思考纳入计划；联网仅用当前模型接口内置能力，不支持时禁用。不再将先前草案的六项问题视为待答；业务代码未改。
 
-2026-10-20 发布状态：`v1.1.3` 版本提交 `736e603` 与标签已推送，标签触发 Release workflow `39410047857`。版本校验、依赖、格式和分析通过；主机测试 3 项因测试入口未跟随独立待处理页和新 AI 收件箱而失败，构建/上传未执行。已修正测试入口与 Material 路由返回，并由本机重跑三个失败用例全部通过。详见 [发布验证记录](test-results/release-v1.1.3/verification.md)。修复提交推送后需把未发布的 `v1.1.3` 标签移到修复提交并重跑工作流。
+2026-10-20 发布完成：`v1.1.3` 预览版已发布，标签指向 `e6ebb7a`，GitHub Release workflow `39411172444` 全部成功（格式、分析、主机测试 521 项、Android/Windows Release 构建、APK 校验、安装/卸载及便携包冒烟）。首轮发现的 3 项旧测试入口已改为使用新 AI 收件箱和独立待处理页；本机三个定向用例全部通过。Release 含 APK、Windows 安装包、便携 ZIP 和 `SHA256SUMS.txt`；已将校验文件下载后与 GitHub asset digest 核对，三项二进制哈希全部一致。详情见 [发布验证记录](test-results/release-v1.1.3/verification.md)。
 
 架构整改阶段 A–F 已完成并按阶段提交。阶段 E 的全量主机回归为 339/339；阶段 F 仅运行受影响测试（64 项通过），静态分析、格式检查、Web/Windows/Android release 构建及 Windows 冒烟通过。当前无连接 Android 设备，因此 AVD 冒烟未执行；未重跑全量测试。真实云盘、通知、代码签名、真实用户目录升级和物理断电仍为未验收能力。
 
@@ -350,9 +350,9 @@
 |---|---|
 | 任务 | 将 S1–S12 完成后的懒狗秘书功能改造作为 `v1.1.3` 预览版发布，更新版本元数据、发行说明、下载页和 Release 名称 |
 | 变更文件 | `app/pubspec.yaml`、`docs/releases/v1.1.3.md`、`README.md`、`.github/workflows/release.yml`、`RM_HANDOFF.md` |
-| 验证 | 公开发布扫描通过；三端 100 例验收既有报告为 100/100。标签工作流 `39410047857` 的版本校验、格式和分析通过，但完整主机测试有 3 项陈旧测试路径失败；修复与重跑详情见 [发布验证记录](test-results/release-v1.1.3/verification.md) |
+| 验证 | 公开发布扫描通过；三端 100 例验收 100/100。首次标签工作流 `39410047857` 暴露 3 项陈旧测试路径并未发布；更新测试路径后，工作流 `39411172444` 全部成功，完整主机测试 521 项通过，三项发布资产哈希与 `SHA256SUMS.txt` 一致。详情见 [发布验证记录](test-results/release-v1.1.3/verification.md) |
 | 提交标题 | `build(release): 准备 v1.1.3 预览版` |
-| 遗留事项 | 提交并推送测试修复，将未发布标签移到修复提交，重跑工作流；确认 Release 成功、资产齐全且校验和匹配后补记结果 |
+| 遗留事项 | 无发布阻塞；真实 OneDrive、云端模型 Key、真机音频及正式代码签名仍按后续专项计划推进 |
 
 ### 2026-10-20 / S12 最终三端矩阵验收完成
 

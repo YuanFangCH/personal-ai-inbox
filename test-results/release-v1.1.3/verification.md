@@ -16,4 +16,14 @@
   - `flutter test test/android_ui_100_cases_test.dart --plain-name 'android_ui_090' --reporter expanded`：1/1。
   - `flutter test --no-pub test/e2e/realistic_host_smoke_test.dart --plain-name 'e2e_013' --reporter expanded`：1/1。
   - `flutter test --no-pub test/e2e/realistic_host_smoke_test.dart --plain-name 'e2e_071' --reporter expanded`：1/1。
-- 完整发布门禁尚未重跑；更新后的 `v1.1.3` 发布标签与资产待确认。
+- 三个定向修复用例通过后，更新标签并重新触发完整发布门禁；正式结果见下节。
+
+## 正式发布结果
+
+- 通过：GitHub Actions [Release workflow 39411172444](https://github.com/YuanFangCH/personal-ai-inbox/actions/runs/39411172444)，总耗时 16m41s；标签指向 `e6ebb7ae5eb141adef07885cedb5e424b577bfb9`。
+- 格式、静态分析、完整主机测试 `flutter test --reporter expanded`（521 项）、Android Release、Windows Release、APK 元数据/证书、Inno Setup 安装与卸载冒烟、便携 ZIP 检查和发布步骤全部通过。
+- GitHub Release [懒狗秘书 v1.1.3](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/v1.1.3) 已发布，`draft=false`、`prerelease=true`，包含四项资产：
+  - APK：87,219,931 bytes，SHA-256 `9ddd9b4ee0aa2dc139fde21091a76702fcfbb9b4922747b9a881800f12b9dd6c`
+  - Windows 安装包：15,483,775 bytes，SHA-256 `6f03ac957716b87185d1279f96eb61c7c2830038cd8a2303dad6c32d99893772`
+  - Windows 便携包：19,056,278 bytes，SHA-256 `3479f274572d034f75a3d86add6c9fa2a54ba8dc1d4fd072789e815f882b02c9`
+  - `SHA256SUMS.txt`：已下载并逐项与 GitHub API 的三个资产 digest 对照，全部匹配。

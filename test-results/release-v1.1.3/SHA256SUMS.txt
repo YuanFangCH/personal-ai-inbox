@@ -1,0 +1,3 @@
+9ddd9b4ee0aa2dc139fde21091a76702fcfbb9b4922747b9a881800f12b9dd6c  personal-ai-inbox-v1.1.3-android.apk
+6f03ac957716b87185d1279f96eb61c7c2830038cd8a2303dad6c32d99893772  personal-ai-inbox-v1.1.3-windows-x64-setup.exe
+3479f274572d034f75a3d86add6c9fa2a54ba8dc1d4fd072789e815f882b02c9  personal-ai-inbox-v1.1.3-windows-x64-portable.zip

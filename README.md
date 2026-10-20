@@ -13,7 +13,7 @@
 - Windows 11 x64：选择安装包或便携 ZIP。
 - 发布页同时提供 `SHA256SUMS.txt`，下载后应校验文件哈希。
 
-`v1.1.3` 是当前预览版候选：将收件箱改为 AI 秘书对话，支持会话权限、成果改删与撤销、全局知识审批，以及本地文件和语音输入。三端 100 例验收已通过；发布状态以 [GitHub Releases](https://github.com/YuanFangCH/personal-ai-inbox/releases) 为准。
+`v1.1.3` 是当前预览版：将收件箱改为 AI 秘书对话，支持会话权限、成果改删与撤销、全局知识审批，以及本地文件和语音输入。三端 100 例验收已通过；可在 [GitHub Releases](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/v1.1.3) 下载。
 
 ## 核心能力
 
