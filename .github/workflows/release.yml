@@ -286,7 +286,7 @@ jobs:
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
               gh release edit $tag `
-                  --title "个人 AI 收件箱 $tag" `
+                  --title "懒狗秘书 $tag" `
                   --notes-file $env:RELEASE_NOTES `
                   --prerelease
               if ($LASTEXITCODE -ne 0) { throw 'Unable to update GitHub Release metadata.' }
@@ -296,7 +296,7 @@ jobs:
           } else {
               gh release create $tag @assets `
                   --verify-tag `
-                  --title "个人 AI 收件箱 $tag" `
+                  --title "懒狗秘书 $tag" `
                   --notes-file $env:RELEASE_NOTES `
                   --prerelease
               if ($LASTEXITCODE -ne 0) { throw 'Unable to create GitHub Release.' }
