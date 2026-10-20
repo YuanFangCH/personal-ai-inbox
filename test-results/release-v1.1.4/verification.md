@@ -15,6 +15,11 @@
 
 ## 发布验证
 
-- 待执行：工作区扫描、提交和推送。
-- 待执行：GitHub Actions Release workflow、四项资产下载/摘要核对及发布状态。
+- 通过：`scripts/scan-public-release.ps1 -CurrentTreeOnly`；GitHub Actions Release workflow [39444396527](https://github.com/YuanFangCH/personal-ai-inbox/actions/runs/39444396527) 全部成功，包括格式、静态分析、完整主机测试、Android/Windows Release 构建、APK 指纹校验、安装/卸载和便携包冒烟。
+- 通过：预览版 [GitHub Release v1.1.4](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/v1.1.4) 已发布，`draft=false`、`prerelease=true`，包含 APK、Windows 安装包、便携 ZIP 和 `SHA256SUMS.txt`。
+- 通过：从 GitHub 下载四项资产；三个二进制 SHA-256 与校验文件一致：
+  - APK：`a67276d9178ccfff6242f63261dca97d6cdb7e7697c2ee52ca44d071a72f3686`
+  - Windows 安装包：`5b9fc896b8d8399b56c8670bacbb0b71d40a97bbe3b8a89b5d3bb8d94be0878d`
+  - Windows 便携包：`ec8f98b6d05d617eff61068ef3fa2b842058b0bbf203876cc471b87d6c7f2646`
+- 通过：下载的 GitHub APK 证书指纹为 `51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816`；模拟器对下载的发布 APK 再次执行 `adb install -r` 成功，版本 `1.1.4+6`。
 - 兼容限制：GitHub v1.1.1 资产签名指纹与新证书不一致；未找到旧私钥，不能直接覆盖旧安装。手机数据迁移另行评估。
