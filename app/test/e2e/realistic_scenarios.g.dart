@@ -587,7 +587,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "nav",
-        "args": {"page": "inbox"},
+        "args": {"page": "pending"},
       },
       {
         "op": "scroll",
@@ -639,7 +639,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "nav",
-        "args": {"page": "inbox"},
+        "args": {"page": "pending"},
       },
       {
         "op": "scroll",
@@ -691,7 +691,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "nav",
-        "args": {"page": "inbox"},
+        "args": {"page": "pending"},
       },
       {
         "op": "scroll",
@@ -743,7 +743,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "nav",
-        "args": {"page": "inbox"},
+        "args": {"page": "pending"},
       },
       {
         "op": "scroll",
@@ -795,7 +795,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "nav",
-        "args": {"page": "inbox"},
+        "args": {"page": "pending"},
       },
       {
         "op": "scroll",
@@ -847,7 +847,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "nav",
-        "args": {"page": "inbox"},
+        "args": {"page": "pending"},
       },
       {
         "op": "scroll",
@@ -899,7 +899,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "nav",
-        "args": {"page": "inbox"},
+        "args": {"page": "pending"},
       },
       {
         "op": "scroll",
@@ -951,7 +951,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "nav",
-        "args": {"page": "inbox"},
+        "args": {"page": "pending"},
       },
       {
         "op": "scroll",
@@ -1003,7 +1003,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "nav",
-        "args": {"page": "inbox"},
+        "args": {"page": "pending"},
       },
       {
         "op": "scroll",
@@ -1055,7 +1055,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "nav",
-        "args": {"page": "inbox"},
+        "args": {"page": "pending"},
       },
       {
         "op": "scroll",
