@@ -73,6 +73,6 @@
 |---|---|
 | 任务 | 从 GitHub 可达的分支和版本标签历史移除已清理的生成资料及专用说明，并删除 GitHub Actions 旧运行记录 |
 | 变更文件 | README、RM_HANDOFF、AGENTS、`.gitignore`、产品文档和版本说明 |
-| 状态 | 公开分支与 tags 已重写；Release 页面与分发资产保留，Actions 旧运行记录已移除 |
+| 状态 | 公开分支与 tags 已重写；Release 页面与分发资产保留，Actions 旧运行记录已移除；工作流定义重新登记中 |
 | 后续 | 旧克隆和其他托管副本需要重新克隆；本机生成内容保持 ignored |
 

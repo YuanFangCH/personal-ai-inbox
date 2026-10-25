@@ -1,3 +1,4 @@
+# Keep this workflow definition registered after repository history cleanup.
 name: Flutter CI
 
 on:
