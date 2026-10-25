@@ -40,7 +40,9 @@ enum AutoRecordStatus {
   created('created'),
   review('review'),
   skipped('skipped'),
-  undone('undone');
+  undone('undone'),
+  undoFailed('undo_failed'),
+  expired('expired');
 
   const AutoRecordStatus(this.wireName);
 

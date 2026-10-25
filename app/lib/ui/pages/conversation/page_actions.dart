@@ -2,12 +2,17 @@ part of '../conversation_page.dart';
 
 mixin _ConversationPageActions on State<ConversationPage> {
   final _textController = TextEditingController();
+  final _composerFocusNode = FocusNode();
   final _scrollController = ScrollController();
   final _imageInputs = <ChatAttachmentInput>[];
   final _fileTexts = <ExtractedFileText>[];
   final _historySearchController = TextEditingController();
+  final _conversationScrollOffsets = <String, double>{};
   ConversationWorkspace? _conversationWorkspaceForCleanup;
   bool _sending = false;
+  bool _followConversationTail = true;
+  bool _sessionDrawerOpen = false;
+  bool _drawerWasOpen = false;
   int _lastMessageCount = -1;
   String? _conversationId;
   String _voiceBaseText = '';
@@ -16,6 +21,91 @@ mixin _ConversationPageActions on State<ConversationPage> {
   AiPermissions _temporaryPermissions = const AiPermissions();
   bool _temporaryPermissionsInitialized = false;
   bool _thinkingEnabled = false;
+  bool _attachmentTrayOpen = false;
+
+  void _toggleAttachmentTray() {
+    final shouldOpen = !_attachmentTrayOpen;
+    _composerFocusNode.unfocus();
+    setState(() => _attachmentTrayOpen = shouldOpen);
+  }
+
+  void _closeAttachmentTray() {
+    if (_attachmentTrayOpen) {
+      setState(() => _attachmentTrayOpen = false);
+    }
+  }
+
+  bool get _hasUnsentComposerContent =>
+      _textController.text.isNotEmpty ||
+      _imageInputs.isNotEmpty ||
+      _fileTexts.isNotEmpty;
+
+  Future<bool> _confirmDiscardComposerContent() async {
+    if (!_hasUnsentComposerContent) return true;
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('丢弃未发送内容？'),
+        content: const Text('当前对话中的文字或附件还没有发送，离开后将会清除。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('继续编辑'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('丢弃并离开'),
+          ),
+        ],
+      ),
+    );
+    return discard == true;
+  }
+
+  Future<void> _returnToHome({BuildContext? drawerContext}) async {
+    if (!await _confirmDiscardComposerContent() || !mounted) return;
+    if (drawerContext != null && drawerContext.mounted) {
+      Navigator.pop(drawerContext);
+    }
+    final voice = AppScope.voice(context);
+    if (voice.isListening) await voice.stopListening();
+    if (mounted) widget.onReturnHome?.call();
+  }
+
+  Future<void> _handleAssistantNavigation(String destination) async {
+    if (destination == 'home') {
+      await _returnToHome();
+      return;
+    }
+    if (destination == 'pending' || destination == 'global_knowledge') {
+      _composerFocusNode.unfocus();
+      _closeAttachmentTray();
+      widget.onNavigate?.call(destination);
+      return;
+    }
+    if (!await _confirmDiscardComposerContent() || !mounted) return;
+    _composerFocusNode.unfocus();
+    _closeAttachmentTray();
+    final voice = AppScope.voice(context);
+    if (voice.isListening) await voice.stopListening();
+    if (mounted) widget.onNavigate?.call(destination);
+  }
+
+  void _handleAssistantBack() {
+    if (_sessionDrawerOpen || _drawerWasOpen) {
+      _drawerWasOpen = false;
+      return;
+    }
+    if (_attachmentTrayOpen) {
+      _closeAttachmentTray();
+      return;
+    }
+    if (MediaQuery.viewInsetsOf(context).bottom > 0) {
+      _composerFocusNode.unfocus();
+      return;
+    }
+    unawaited(_returnToHome());
+  }
 
   void _initializeConversationPage() {
     _conversationId = widget.conversationId;
@@ -32,6 +122,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
       unawaited(workspace!.cancelGeneration());
     }
     _textController.dispose();
+    _composerFocusNode.dispose();
     _scrollController.dispose();
     _historySearchController.dispose();
   }
@@ -44,6 +135,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
         _sending) {
       return;
     }
+    _followConversationTail = true;
     final voice = AppScope.voice(context);
     if (voice.isListening) await voice.stopListening();
     setState(() => _sending = true);
@@ -59,19 +151,26 @@ mixin _ConversationPageActions on State<ConversationPage> {
           setState(() => _conversationId = conversationId);
         }
       }
-      if (mounted) {
-        _textController.clear();
-        setState(() {
-          _imageInputs.clear();
-          _fileTexts.clear();
-        });
-      }
       await app.sendChatMessage(
         conversationId,
         text: text,
         attachments: attachments,
         thinkingEnabled: _thinkingEnabled,
+        onUserMessageSaved: () {
+          if (!mounted) return;
+          _textController.clear();
+          setState(() {
+            _imageInputs.clear();
+            _fileTexts.clear();
+            _attachmentTrayOpen = false;
+          });
+        },
       );
+    } on Object catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('发送流程未完成：$error')));
+      }
     } finally {
       if (mounted) {
         setState(() => _sending = false);
@@ -110,6 +209,8 @@ mixin _ConversationPageActions on State<ConversationPage> {
       await voice.stopListening();
       return;
     }
+    _composerFocusNode.unfocus();
+    _closeAttachmentTray();
     final text = _textController.text;
     final selection = _textController.selection;
     _voiceBaseText = text;
@@ -208,6 +309,9 @@ mixin _ConversationPageActions on State<ConversationPage> {
       await AppScope.voice(context).stopListening();
     }
     if (!mounted) return;
+    if (!await _confirmDiscardComposerContent() || !mounted) return;
+    _composerFocusNode.unfocus();
+    _closeAttachmentTray();
     if (widget.isRoot) {
       setState(() {
         _conversationId = null;
@@ -219,6 +323,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
         _fileTexts.clear();
         _historySearchController.clear();
         _thinkingEnabled = false;
+        _followConversationTail = true;
         _lastMessageCount = 0;
       });
       return;
@@ -255,65 +360,80 @@ mixin _ConversationPageActions on State<ConversationPage> {
             .length +
         AppScope.results(context).draftDocuments.length;
     final groupedRows = _groupedConversationRows(conversations);
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 10, 8),
-          child: Row(
-            children: [
-              Icon(Icons.auto_awesome, color: theme.colorScheme.primary),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Text(
-                  '懒狗秘书',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+    final navigationControls = <Widget>[
+      Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 10, 8),
+        child: Row(
+          children: [
+            Icon(Icons.auto_awesome, color: theme.colorScheme.primary),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                '懒狗秘书',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
                 ),
               ),
+            ),
+            if (!inDrawer)
               IconButton(
                 key: const Key('conversation_new_from_drawer'),
                 tooltip: '新对话',
-                onPressed: () {
-                  if (inDrawer) {
-                    Navigator.pop(context);
-                  }
-                  _newConversation();
-                },
+                onPressed: _newConversation,
                 icon: const Icon(Icons.add_comment_outlined),
               ),
-            ],
-          ),
+          ],
         ),
+      ),
+      if (inDrawer && widget.isRoot && widget.onReturnHome != null)
+        ListTile(
+          key: const Key('conversation_return_home'),
+          leading: const Icon(Icons.home_outlined),
+          title: const Text('返回首页'),
+          onTap: () => _returnToHome(drawerContext: context),
+        ),
+      if (widget.isRoot && widget.isWide)
+        _SecretaryDesktopNavigation(onSelect: _handleAssistantNavigation),
+      if (inDrawer && widget.isRoot)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: TextField(
-            key: const Key('conversation_search'),
-            controller: _historySearchController,
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              hintText: '搜索对话',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _historySearchController.text.isEmpty
-                  ? null
-                  : IconButton(
-                      tooltip: '清除搜索',
-                      onPressed: () {
-                        _historySearchController.clear();
-                        setState(() {});
-                      },
-                      icon: const Icon(Icons.close),
-                    ),
-              filled: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24),
-                borderSide: BorderSide.none,
-              ),
-              isDense: true,
-            ),
+          child: FilledButton.tonalIcon(
+            key: const Key('conversation_new_from_drawer'),
+            onPressed: _newConversation,
+            icon: const Icon(Icons.message_outlined),
+            label: const Text('新对话'),
           ),
         ),
-        const SizedBox(height: 8),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: TextField(
+          key: const Key('conversation_search'),
+          controller: _historySearchController,
+          onChanged: (_) => setState(() {}),
+          decoration: InputDecoration(
+            hintText: '搜索对话',
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: _historySearchController.text.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: '清除搜索',
+                    onPressed: () {
+                      _historySearchController.clear();
+                      setState(() {});
+                    },
+                    icon: const Icon(Icons.close),
+                  ),
+            filled: true,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(24),
+              borderSide: BorderSide.none,
+            ),
+            isDense: true,
+          ),
+        ),
+      ),
+      const SizedBox(height: 8),
+      if (inDrawer || !widget.isWide) ...[
         ListTile(
           key: const Key('conversation_pending_page'),
           leading: const Icon(Icons.inbox_outlined),
@@ -341,74 +461,108 @@ mixin _ConversationPageActions on State<ConversationPage> {
             );
           },
         ),
-        const Divider(height: 1),
-        Expanded(
-          child: groupedRows.isEmpty
-              ? Center(
+      ],
+      const Divider(height: 1),
+    ];
+    final historyList = groupedRows.isEmpty
+        ? Center(
+            child: Text(
+              query.isEmpty ? '还没有历史对话' : '没有匹配的对话',
+              style: theme.textTheme.bodySmall,
+            ),
+          )
+        : ListView.builder(
+            primary: false,
+            key: const Key('conversation_history_list'),
+            itemCount: groupedRows.length,
+            itemBuilder: (context, index) {
+              final row = groupedRows[index];
+              if (row.conversation == null) {
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
                   child: Text(
-                    query.isEmpty ? '还没有历史对话' : '没有匹配的对话',
-                    style: theme.textTheme.bodySmall,
+                    row.groupLabel!,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
-                )
-              : ListView.builder(
-                  key: const Key('conversation_history_list'),
-                  itemCount: groupedRows.length,
-                  itemBuilder: (context, index) {
-                    final row = groupedRows[index];
-                    if (row.conversation == null) {
-                      return Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                        child: Text(
-                          row.groupLabel!,
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      );
-                    }
-                    final conversation = row.conversation!;
-                    return ListTile(
-                      key: Key('conversation_${conversation.id}'),
-                      selected: activeConversation?.id == conversation.id,
-                      title: Text(
-                        conversation.title,
+                );
+              }
+              final conversation = row.conversation!;
+              return ListTile(
+                key: Key('conversation_${conversation.id}'),
+                selected: activeConversation?.id == conversation.id,
+                title: Text(
+                  conversation.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: conversation.preview.isEmpty
+                    ? null
+                    : Text(
+                        conversation.preview,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      subtitle: conversation.preview.isEmpty
-                          ? null
-                          : Text(
-                              conversation.preview,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                      onTap: () {
-                        if (inDrawer) Navigator.pop(context);
-                        _openManagedConversation(conversation.id);
-                      },
-                      trailing: PopupMenuButton<String>(
-                        tooltip: '对话选项',
-                        onSelected: (value) {
-                          if (value == 'rename') {
-                            _renameConversation(conversation);
-                          } else if (value == 'delete') {
-                            _deleteConversation(conversation);
-                          }
-                        },
-                        itemBuilder: (_) => const [
-                          PopupMenuItem(value: 'rename', child: Text('重命名')),
-                          PopupMenuItem(value: 'delete', child: Text('删除')),
-                        ],
-                      ),
-                    );
+                onTap: () {
+                  if (inDrawer) Navigator.pop(context);
+                  _openManagedConversation(conversation.id);
+                },
+                trailing: PopupMenuButton<String>(
+                  tooltip: '对话选项',
+                  onSelected: (value) {
+                    if (value == 'rename') {
+                      _renameConversation(conversation);
+                    } else if (value == 'delete') {
+                      _deleteConversation(conversation);
+                    }
                   },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'rename', child: Text('重命名')),
+                    PopupMenuItem(value: 'delete', child: Text('删除')),
+                  ],
                 ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: Text('对话保存在本机；成果按同步规则共享。', style: theme.textTheme.bodySmall),
-        ),
-      ],
+              );
+            },
+          );
+    final footer = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Text('对话保存在本机；成果按同步规则共享。', style: theme.textTheme.bodySmall),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compactHeight = widget.isWide && constraints.maxHeight < 460;
+        if (!compactHeight) {
+          return Column(
+            children: [
+              ...navigationControls,
+              Expanded(child: historyList),
+              footer,
+            ],
+          );
+        }
+
+        final historyHeight = constraints.maxHeight < 300
+            ? 120.0
+            : constraints.maxHeight * 0.35;
+        return Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                key: const Key('secretary_sidebar_navigation_scroll'),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: navigationControls,
+                ),
+              ),
+            ),
+            const Divider(height: 1),
+            SizedBox(height: historyHeight, child: historyList),
+            footer,
+          ],
+        );
+      },
     );
   }
 
@@ -441,21 +595,44 @@ mixin _ConversationPageActions on State<ConversationPage> {
   }
 
   Future<void> _openManagedConversation(String id) async {
-    _historySearchController.clear();
     final voice = AppScope.voice(context);
     final app = AppScope.conversations(context);
     if (voice.isListening) {
       await voice.stopListening();
     }
+    if (!mounted || !await _confirmDiscardComposerContent()) return;
+    final previousId = _conversationId;
+    if (previousId != null && _scrollController.hasClients) {
+      _conversationScrollOffsets[previousId] =
+          _scrollController.position.pixels;
+    }
+    _historySearchController.clear();
+    _composerFocusNode.unfocus();
+    _closeAttachmentTray();
     await app.openConversation(id);
     if (!mounted) return;
     setState(() {
       _conversationId = id;
-      _lastMessageCount = -1;
+      _lastMessageCount = app.messagesFor(id).length;
+      _followConversationTail = true;
       _textController.clear();
       _imageInputs.clear();
       _fileTexts.clear();
       _thinkingEnabled = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      final position = _scrollController.position;
+      final savedOffset = _conversationScrollOffsets[id];
+      final target = (savedOffset ?? position.maxScrollExtent).clamp(
+        0.0,
+        position.maxScrollExtent,
+      );
+      _scrollController.jumpTo(target);
+      setState(
+        () =>
+            _followConversationTail = position.maxScrollExtent - target <= 120,
+      );
     });
   }
 
@@ -635,15 +812,27 @@ mixin _ConversationPageActions on State<ConversationPage> {
     }
   }
 
-  void _scrollToBottom() {
-    if (!_scrollController.hasClients) {
-      return;
+  bool _handleConversationScroll(ScrollNotification notification) {
+    if (notification.metrics.axis != Axis.vertical) return false;
+    final shouldFollow = notification.metrics.extentAfter <= 120;
+    if (shouldFollow != _followConversationTail) {
+      _followConversationTail = shouldFollow;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
     }
-    _scrollController.animateTo(
-      _scrollController.position.maxScrollExtent,
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOut,
-    );
+    return false;
+  }
+
+  void _scrollToBottom({bool force = false}) {
+    if (!force && !_followConversationTail) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      if (!force && !_followConversationTail) return;
+      final position = _scrollController.position;
+      if (!position.hasContentDimensions) return;
+      _scrollController.jumpTo(position.maxScrollExtent);
+    });
   }
 }
 

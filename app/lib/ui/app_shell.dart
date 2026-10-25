@@ -3,12 +3,15 @@ import 'package:flutter/material.dart';
 import 'app_scope.dart';
 import 'pages/calendar_page.dart';
 import 'pages/conversation_page.dart';
+import 'pages/global_knowledge_page.dart';
 import 'pages/home_page.dart';
 import 'pages/inbox_page.dart';
 import 'pages/knowledge_page.dart';
 import 'pages/matters_page.dart';
+import 'pages/pending_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/sync_page.dart';
+import 'theme/app_design_tokens.dart';
 import 'widgets/capture_sheet.dart';
 
 enum AppPage {
@@ -87,10 +90,33 @@ class _AppShellState extends State<AppShell> {
         final content = AnimatedBuilder(
           animation: Listenable.merge(pageModules),
           builder: (context, _) => AnimatedSwitcher(
-            duration: const Duration(milliseconds: 180),
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : AppDesignTokens.pageTransition,
+            transitionBuilder: (child, animation) {
+              final curved = CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+                reverseCurve: Curves.easeInCubic,
+              );
+              return FadeTransition(
+                opacity: curved,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.006),
+                    end: Offset.zero,
+                  ).animate(curved),
+                  child: child,
+                ),
+              );
+            },
             child: KeyedSubtree(
               key: ValueKey('page_${_page.name}'),
-              child: _pageFor(_page),
+              child: _pageFor(
+                _page,
+                wide: wide,
+                secretaryNavigation: constraints.maxWidth >= 600,
+              ),
             ),
           ),
         );
@@ -101,7 +127,7 @@ class _AppShellState extends State<AppShell> {
               Positioned.fill(
                 child: SafeArea(
                   bottom: false,
-                  child: wide
+                  child: wide && _page != AppPage.inbox
                       ? Row(
                           children: [
                             _WideNavigation(
@@ -145,7 +171,7 @@ class _AppShellState extends State<AppShell> {
                   label: const Text('收下'),
                   tooltip: '捕获',
                 ),
-          bottomNavigationBar: wide
+          bottomNavigationBar: wide || _page == AppPage.inbox
               ? null
               : NavigationBar(
                   selectedIndex: _compactIndex(_page),
@@ -199,16 +225,49 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  Widget _pageFor(AppPage page) {
+  Widget _pageFor(
+    AppPage page, {
+    required bool wide,
+    required bool secretaryNavigation,
+  }) {
     return switch (page) {
       AppPage.home => const HomePage(),
-      AppPage.inbox => const InboxPage(),
+      AppPage.inbox => InboxPage(
+        isWide: secretaryNavigation,
+        onReturnHome: () => setState(() => _page = AppPage.home),
+        onNavigate: _navigateFromSecretary,
+      ),
       AppPage.calendar => const CalendarPage(),
       AppPage.matters => const MattersPage(),
       AppPage.knowledge => const KnowledgePage(),
       AppPage.sync => const SyncPage(),
       AppPage.settings => const SettingsPage(),
     };
+  }
+
+  void _navigateFromSecretary(String destination) {
+    final page = switch (destination) {
+      'home' => AppPage.home,
+      'calendar' => AppPage.calendar,
+      'matters' => AppPage.matters,
+      'knowledge' => AppPage.knowledge,
+      'settings' => AppPage.settings,
+      'sync' => AppPage.sync,
+      _ => null,
+    };
+    if (page != null) {
+      setState(() => _page = page);
+      return;
+    }
+    final route = switch (destination) {
+      'global_knowledge' => const GlobalKnowledgePage(),
+      'pending' => const PendingPage(),
+      _ => null,
+    };
+    if (route != null) {
+      Navigator.of(context)
+          .push(MaterialPageRoute<void>(builder: (_) => route));
+    }
   }
 
   int _compactIndex(AppPage page) {

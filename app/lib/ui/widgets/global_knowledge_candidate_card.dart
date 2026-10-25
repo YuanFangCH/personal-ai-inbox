@@ -23,9 +23,22 @@ class GlobalKnowledgeCandidateCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isPending =
         candidate.status == GlobalKnowledgeCandidateStatus.pending;
+    final currentTarget = candidate.targetId == null
+        ? null
+        : results.findDocument(candidate.targetId!);
+    final showUpdateDiff =
+        candidate.operation == GlobalKnowledgeOperation.update &&
+        currentTarget != null &&
+        candidate.status != GlobalKnowledgeCandidateStatus.applied;
+    final showAppliedUpdate =
+        candidate.operation == GlobalKnowledgeOperation.update &&
+        currentTarget != null &&
+        candidate.status == GlobalKnowledgeCandidateStatus.applied;
     final title =
         candidate.proposal['title']?.toString() ??
-        (candidate.targetId ?? '全局知识');
+        currentTarget?.title ??
+        candidate.targetId ??
+        '全局知识';
     final operation = switch (candidate.operation) {
       GlobalKnowledgeOperation.create => '新增',
       GlobalKnowledgeOperation.update => '修改',
@@ -56,24 +69,73 @@ class GlobalKnowledgeCandidateCard extends StatelessWidget {
                   ),
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
               StatusPill(
                 label: status,
                 tone: isPending ? StatusTone.warning : StatusTone.neutral,
               ),
+              if (candidate.targetId != null)
+                Text(
+                  '目标版本 ${candidate.expectedRevision ?? '-'}',
+                  style: theme.textTheme.bodySmall,
+                ),
             ],
           ),
           if (candidate.targetId != null) ...[
             const SizedBox(height: 8),
             Text(
-              '目标版本 ${candidate.expectedRevision ?? '-'} · ${candidate.targetId}',
+              '目标 ID · ${candidate.targetId}',
               style: theme.textTheme.bodySmall,
             ),
           ],
-          if (candidate.proposal['body'] case final String body)
-            if (body.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(body, maxLines: 5, overflow: TextOverflow.ellipsis),
-            ],
+          if (showUpdateDiff) ...[
+            const SizedBox(height: 10),
+            Text(
+              candidate.status == GlobalKnowledgeCandidateStatus.stale
+                  ? '当前内容 · 原版本已变化'
+                  : '当前内容',
+              style: theme.textTheme.labelLarge,
+            ),
+            const SizedBox(height: 4),
+            SelectableText(
+              '${currentTarget.title}\n${currentTarget.body}',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const Divider(height: 20),
+            Text('修改后内容', style: theme.textTheme.labelLarge),
+            const SizedBox(height: 4),
+            SelectableText(
+              '${candidate.proposal['title'] ?? currentTarget.title}\n${candidate.proposal['body'] ?? ''}',
+              style: theme.textTheme.bodyMedium,
+            ),
+          ] else if (showAppliedUpdate) ...[
+            const SizedBox(height: 10),
+            Text('已写入当前版本', style: theme.textTheme.labelLarge),
+            const SizedBox(height: 4),
+            SelectableText(
+              '${currentTarget.title}\n${currentTarget.body}',
+              style: theme.textTheme.bodyMedium,
+            ),
+          ] else if (candidate.operation == GlobalKnowledgeOperation.delete &&
+              currentTarget != null) ...[
+            const SizedBox(height: 10),
+            Text('确认后将删除以下全局知识：', style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 4),
+            Text(currentTarget.title, style: theme.textTheme.labelLarge),
+          ],
+          if (!showUpdateDiff && !showAppliedUpdate)
+            if (candidate.proposal['body'] case final String body)
+              if (body.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                SelectableText(body),
+              ],
           if (candidate.proposal['facts'] != null) ...[
             const SizedBox(height: 8),
             SelectableText(

@@ -141,6 +141,28 @@ class AutoRecordProcessor {
 
     final savedAction = await _chatRepository.findAutoRecordAction(actionId);
     if (savedAction != null) {
+      if (savedAction.status == AutoRecordStatus.created) {
+        final reversibleAction = await _results.reversibleActionForKey(
+          actionId,
+        );
+        final recoveredStatus = switch (reversibleAction?.status) {
+          ReversibleActionStatus.applied => AutoRecordStatus.created,
+          ReversibleActionStatus.undone => AutoRecordStatus.undone,
+          ReversibleActionStatus.expired => AutoRecordStatus.expired,
+          ReversibleActionStatus.undoing ||
+          ReversibleActionStatus.failed ||
+          null => AutoRecordStatus.undoFailed,
+          ReversibleActionStatus.prepared => AutoRecordStatus.undoFailed,
+        };
+        if (recoveredStatus != savedAction.status) {
+          return savedAction.copyWith(
+            status: recoveredStatus,
+            reason: recoveredStatus == AutoRecordStatus.undoFailed
+                ? '无法核对当前操作状态，请检查成果库'
+                : null,
+          );
+        }
+      }
       return savedAction;
     }
     final previouslyCreated = await _results.findByIdempotencyKey(
@@ -305,9 +327,12 @@ class AutoRecordProcessor {
         id: actionId,
         type: current.type,
         title: current.title,
-        status: previousAction.status == ReversibleActionStatus.undone
-            ? AutoRecordStatus.undone
-            : AutoRecordStatus.created,
+        status: switch (previousAction.status) {
+          ReversibleActionStatus.undone => AutoRecordStatus.undone,
+          ReversibleActionStatus.expired => AutoRecordStatus.expired,
+          ReversibleActionStatus.failed => AutoRecordStatus.undoFailed,
+          _ => AutoRecordStatus.created,
+        },
         createdAt: previousAction.createdAt,
         resultId: id,
         undoUntil: previousAction.undoUntil,

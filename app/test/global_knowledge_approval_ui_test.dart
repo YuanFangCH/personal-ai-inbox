@@ -12,10 +12,12 @@ void main() {
   testWidgets(
     'AI knowledge candidates can be confirmed in chat and pending page',
     (tester) async {
-      tester.view.physicalSize = const Size(480, 1300);
+      tester.view.physicalSize = const Size(320, 1300);
       tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = 1.5;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       final runtime = await AppRuntime.bootstrap(
         vaultOverride: MemoryVaultStore(),
         indexOverride: MemoryIndexDatabase(),
@@ -64,6 +66,38 @@ void main() {
             .singleWhere((item) => item.id == inChat.id)
             .status,
         GlobalKnowledgeCandidateStatus.applied,
+      );
+
+      final appliedInChat = runtime.results.globalKnowledgeCandidates
+          .singleWhere((item) => item.id == inChat.id);
+      final currentGlobalKnowledge = runtime.results.knowledge.singleWhere(
+        (item) => item.id == appliedInChat.resultId,
+      );
+      await runtime.results.proposeGlobalKnowledgeChange(
+        operation: GlobalKnowledgeOperation.update,
+        candidateId: 'gkc_ui_update',
+        sourceConversationId: current.id,
+        sourceMessageId: 'msg_ui_update',
+        targetId: currentGlobalKnowledge.id,
+        expectedRevision: currentGlobalKnowledge.revision,
+        expectedHash: await runtime.results.hashManagedDocument(
+          currentGlobalKnowledge.id,
+        ),
+        proposal: const {
+          'title': '本学期',
+          'body': '新的教学期说明。',
+          'facts': {'semester_start': '2026-09-01', 'week_count': 16},
+        },
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('当前内容'), findsOneWidget);
+      expect(find.text('修改后内容'), findsOneWidget);
+      expect(find.text('本学期\n用于教学周计算。'), findsOneWidget);
+      expect(
+        tester
+            .widgetList<SelectableText>(find.byType(SelectableText))
+            .any((widget) => widget.data?.contains('新的教学期说明。') ?? false),
+        isTrue,
       );
 
       await tester.tap(find.byKey(const Key('conversation_manage')));

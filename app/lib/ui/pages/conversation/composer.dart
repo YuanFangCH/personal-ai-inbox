@@ -3,14 +3,19 @@ part of '../conversation_page.dart';
 class _Composer extends StatelessWidget {
   const _Composer({
     required this.controller,
+    required this.focusNode,
     required this.attachments,
     required this.enabled,
+    required this.desktopInput,
     required this.imageEnabled,
     required this.files,
     required this.thinkingAvailable,
     required this.thinkingEnabled,
     required this.webSearchAvailable,
     required this.onThinkingChanged,
+    required this.attachmentTrayOpen,
+    required this.onToggleAttachmentTray,
+    required this.onInputFocused,
     required this.voiceService,
     required this.onVoiceInput,
     required this.generating,
@@ -25,14 +30,19 @@ class _Composer extends StatelessWidget {
   });
 
   final TextEditingController controller;
+  final FocusNode focusNode;
   final List<ChatAttachmentInput> attachments;
   final bool enabled;
+  final bool desktopInput;
   final bool imageEnabled;
   final List<ExtractedFileText> files;
   final bool thinkingAvailable;
   final bool thinkingEnabled;
   final bool webSearchAvailable;
   final ValueChanged<bool> onThinkingChanged;
+  final bool attachmentTrayOpen;
+  final VoidCallback onToggleAttachmentTray;
+  final VoidCallback onInputFocused;
   final VoiceService voiceService;
   final VoidCallback onVoiceInput;
   final bool generating;
@@ -53,7 +63,9 @@ class _Composer extends StatelessWidget {
       child: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 980),
+          constraints: const BoxConstraints(
+            maxWidth: AppDesignTokens.conversationContentMaxWidth,
+          ),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
             child: DecoratedBox(
@@ -156,10 +168,22 @@ class _Composer extends StatelessWidget {
                     TextField(
                       key: const Key('chat_input'),
                       controller: controller,
+                      focusNode: focusNode,
                       enabled: enabled,
+                      onTap: onInputFocused,
                       minLines: 1,
                       maxLines: 6,
-                      textInputAction: TextInputAction.newline,
+                      textInputAction: desktopInput
+                          ? TextInputAction.send
+                          : TextInputAction.newline,
+                      onSubmitted: desktopInput
+                          ? (_) {
+                              final composing = controller.value.composing;
+                              if (!composing.isValid || composing.isCollapsed) {
+                                onSend();
+                              }
+                            }
+                          : null,
                       decoration: const InputDecoration(
                         hintText: '发消息给懒狗秘书',
                         filled: false,
@@ -197,11 +221,13 @@ class _Composer extends StatelessWidget {
                         ),
                         IconButton(
                           key: const Key('chat_attachment_menu'),
-                          tooltip: '添加附件',
-                          onPressed: enabled
-                              ? () => _showAttachmentMenu(context)
-                              : null,
-                          icon: const Icon(Icons.add_circle_outline),
+                          tooltip: attachmentTrayOpen ? '关闭附件菜单' : '添加附件',
+                          onPressed: enabled ? onToggleAttachmentTray : null,
+                          icon: Icon(
+                            attachmentTrayOpen
+                                ? Icons.close
+                                : Icons.add_circle_outline,
+                          ),
                         ),
                         IconButton(
                           key: const Key('chat_voice_input'),
@@ -232,68 +258,71 @@ class _Composer extends StatelessWidget {
                         ),
                       ],
                     ),
+                    AnimatedSize(
+                      duration: MediaQuery.disableAnimationsOf(context)
+                          ? Duration.zero
+                          : AppDesignTokens.contentTransition,
+                      curve: Curves.easeInOut,
+                      alignment: Alignment.topCenter,
+                      child: attachmentTrayOpen
+                          ? Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _AttachmentMenuButton(
+                                          icon: Icons.photo_camera_outlined,
+                                          label: '拍照',
+                                          onPressed: imageEnabled
+                                              ? onPickCamera
+                                              : null,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: _AttachmentMenuButton(
+                                          icon: Icons.photo_library_outlined,
+                                          label: '相册',
+                                          onPressed: imageEnabled
+                                              ? onPickGallery
+                                              : null,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: _AttachmentMenuButton(
+                                          icon: Icons.attach_file,
+                                          label: '文件',
+                                          onPressed: enabled
+                                              ? onPickFile
+                                              : null,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: TextButton.icon(
+                                      onPressed: enabled ? onPaste : null,
+                                      icon: const Icon(
+                                        Icons.content_paste_outlined,
+                                        size: 18,
+                                      ),
+                                      label: const Text('粘贴文字'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
                   ],
                 ),
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _showAttachmentMenu(BuildContext context) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _AttachmentMenuButton(
-                icon: Icons.photo_camera_outlined,
-                label: '拍照',
-                onPressed: imageEnabled
-                    ? () {
-                        Navigator.pop(context);
-                        onPickCamera();
-                      }
-                    : null,
-              ),
-              _AttachmentMenuButton(
-                icon: Icons.photo_library_outlined,
-                label: '相册',
-                onPressed: imageEnabled
-                    ? () {
-                        Navigator.pop(context);
-                        onPickGallery();
-                      }
-                    : null,
-              ),
-              _AttachmentMenuButton(
-                icon: Icons.attach_file,
-                label: '文件',
-                onPressed: enabled
-                    ? () {
-                        Navigator.pop(context);
-                        onPickFile();
-                      }
-                    : null,
-              ),
-              _AttachmentMenuButton(
-                icon: Icons.content_paste_outlined,
-                label: '粘贴文字',
-                onPressed: enabled
-                    ? () {
-                        Navigator.pop(context);
-                        onPaste();
-                      }
-                    : null,
-              ),
-            ],
           ),
         ),
       ),
@@ -345,19 +374,20 @@ class _AttachmentMenuButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-    color: Colors.transparent,
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+    borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
     child: InkWell(
       onTap: onPressed,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
       child: SizedBox(
-        width: 104,
+        height: 84,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 28),
-              const SizedBox(height: 6),
+              Icon(icon, size: 24),
+              const SizedBox(height: 4),
               Text(label, style: Theme.of(context).textTheme.bodySmall),
             ],
           ),

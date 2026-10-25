@@ -103,7 +103,7 @@ void main() {
     await tester.tap(find.byKey(const Key('nav_inbox')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('chat_input')), findsOneWidget);
-    expect(find.text('你好，我是懒狗秘书'), findsOneWidget);
+    expect(find.text('今天有什么想交给我？'), findsOneWidget);
     await tester.tap(find.byKey(const Key('inbox_new_conversation')));
     await tester.pumpAndSettle();
 

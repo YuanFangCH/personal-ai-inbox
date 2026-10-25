@@ -41,10 +41,20 @@ Future<void> openNewConversationPage(BuildContext context) {
 }
 
 class ConversationPage extends StatefulWidget {
-  const ConversationPage({super.key, this.conversationId, this.isRoot = false});
+  const ConversationPage({
+    super.key,
+    this.conversationId,
+    this.isRoot = false,
+    this.isWide = false,
+    this.onReturnHome,
+    this.onNavigate,
+  });
 
   final String? conversationId;
   final bool isRoot;
+  final bool isWide;
+  final VoidCallback? onReturnHome;
+  final ValueChanged<String>? onNavigate;
 
   @override
   State<ConversationPage> createState() => _ConversationPageState();
@@ -110,10 +120,10 @@ class _ConversationPageState extends State<ConversationPage>
         : app.messagesFor(conversationId);
     if (messages.length != _lastMessageCount) {
       _lastMessageCount = messages.length;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      _scrollToBottom();
     }
     if (app.isChatGenerating) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      _scrollToBottom();
     }
     final modelReady = settings.hasModelKey;
     final imageEgressAllowed = settings.allowImageEgress;
@@ -126,140 +136,224 @@ class _ConversationPageState extends State<ConversationPage>
               candidate.status != GlobalKnowledgeCandidateStatus.rejected,
         )
         .toList(growable: false);
+    final desktopEmpty =
+        widget.isRoot &&
+        MediaQuery.sizeOf(context).width >= 1024 &&
+        messages.isEmpty &&
+        activeCandidates.isEmpty;
+    final desktopInput = MediaQuery.sizeOf(context).width >= 1024;
+    final conversationContent = Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: AppDesignTokens.conversationContentMaxWidth,
+        ),
+        child: messages.isEmpty && activeCandidates.isEmpty
+            ? const _SecretaryWelcome()
+            : NotificationListener<ScrollNotification>(
+                onNotification: _handleConversationScroll,
+                child: ListView(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+                  children: [
+                    for (final message in messages)
+                      KeyedSubtree(
+                        key: ValueKey('message_${message.id}'),
+                        child: _MessageBubble(message: message, app: app),
+                      ),
+                    for (final candidate in activeCandidates) ...[
+                      const SizedBox(height: 10),
+                      GlobalKnowledgeCandidateCard(
+                        candidate: candidate,
+                        results: results,
+                        showActions:
+                            candidate.status ==
+                            GlobalKnowledgeCandidateStatus.pending,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+      ),
+    );
+    final composer = _Composer(
+      controller: _textController,
+      focusNode: _composerFocusNode,
+      attachments: _imageInputs,
+      files: _fileTexts,
+      enabled: modelReady && (!_sending || app.isChatGenerating),
+      desktopInput: desktopInput,
+      imageEnabled: modelReady && imageEgressAllowed && imageCapability,
+      thinkingAvailable: modelReady && modelCapabilities.thinking,
+      thinkingEnabled: _thinkingEnabled,
+      webSearchAvailable: modelReady && modelCapabilities.webSearch,
+      voiceService: AppScope.voice(context),
+      onVoiceInput: _toggleVoiceInput,
+      onThinkingChanged: (value) => setState(() => _thinkingEnabled = value),
+      generating: app.isChatGenerating,
+      attachmentTrayOpen: _attachmentTrayOpen,
+      onToggleAttachmentTray: _toggleAttachmentTray,
+      onInputFocused: _closeAttachmentTray,
+      onPickGallery: () {
+        _closeAttachmentTray();
+        _pickGallery();
+      },
+      onPickCamera: () {
+        _closeAttachmentTray();
+        _pickCamera();
+      },
+      onPaste: () {
+        _closeAttachmentTray();
+        _pasteText();
+      },
+      onRemoveImage: (index) => setState(() => _imageInputs.removeAt(index)),
+      onPickFile: () {
+        _closeAttachmentTray();
+        _pickFile();
+      },
+      onRemoveFile: (index) => setState(() => _fileTexts.removeAt(index)),
+      onSend: _send,
+      onStop: app.cancelGeneration,
+    );
     final body = Column(
       children: [
-        Expanded(
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 980),
-              child: messages.isEmpty && activeCandidates.isEmpty
-                  ? const _SecretaryWelcome()
-                  : ListView(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
-                      children: [
-                        for (final message in messages)
-                          _MessageBubble(message: message, app: app),
-                        for (final candidate in activeCandidates) ...[
-                          const SizedBox(height: 10),
-                          GlobalKnowledgeCandidateCard(
-                            candidate: candidate,
-                            results: results,
-                            showActions:
-                                candidate.status ==
-                                GlobalKnowledgeCandidateStatus.pending,
-                          ),
-                        ],
-                      ],
-                    ),
+        if (desktopEmpty)
+          Expanded(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: AppDesignTokens.conversationContentMaxWidth,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const _SecretaryWelcome(),
+                      const SizedBox(height: 24),
+                      composer,
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
-        _Composer(
-          controller: _textController,
-          attachments: _imageInputs,
-          enabled: modelReady && (!_sending || app.isChatGenerating),
-          imageEnabled: modelReady && imageEgressAllowed && imageCapability,
-          files: _fileTexts,
-          thinkingAvailable: modelReady && modelCapabilities.thinking,
-          thinkingEnabled: _thinkingEnabled,
-          webSearchAvailable: modelReady && modelCapabilities.webSearch,
-          voiceService: AppScope.voice(context),
-          onVoiceInput: _toggleVoiceInput,
-          onThinkingChanged: (value) =>
-              setState(() => _thinkingEnabled = value),
-          generating: app.isChatGenerating,
-          onPickGallery: _pickGallery,
-          onPickCamera: _pickCamera,
-          onPaste: _pasteText,
-          onRemoveImage: (index) =>
-              setState(() => _imageInputs.removeAt(index)),
-          onPickFile: _pickFile,
-          onRemoveFile: (index) => setState(() => _fileTexts.removeAt(index)),
-          onSend: _send,
-          onStop: app.cancelGeneration,
-        ),
-      ],
-    );
-    return Scaffold(
-      drawer: Drawer(
-        child: SafeArea(
-          child: Builder(
-            builder: (drawerContext) => _buildSessionManager(
-              drawerContext,
-              app,
-              conversation,
-              inDrawer: true,
-            ),
-          ),
-        ),
-      ),
-      appBar: AppBar(
-        leading: Builder(
-          builder: (context) => IconButton(
-            key: const Key('conversation_manage'),
-            tooltip: '对话管理',
-            onPressed: () => Scaffold.of(context).openDrawer(),
-            icon: const Icon(Icons.menu),
-          ),
-        ),
-        title: Text(
-          widget.isRoot ? '懒狗秘书' : conversation?.title ?? '懒狗秘书',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        actions: [
-          IconButton(
-            key: const Key('conversation_permissions'),
-            tooltip: '当前对话权限',
-            onPressed: () => _showPermissions(conversation),
-            icon: const Icon(Icons.tune_outlined),
-          ),
-          IconButton(
-            key: Key(
-              widget.isRoot ? 'inbox_new_conversation' : 'conversation_new',
-            ),
-            tooltip: '新对话',
-            onPressed: _newConversation,
-            icon: const Icon(Icons.add_comment_outlined),
-          ),
-          if (conversation != null)
-            PopupMenuButton<String>(
-              tooltip: '更多',
-              onSelected: (value) {
-                if (value == 'rename') {
-                  _renameConversation(conversation);
-                } else if (value == 'delete') {
-                  _deleteConversation(conversation);
-                }
-              },
-              itemBuilder: (context) => const [
-                PopupMenuItem(value: 'rename', child: Text('重命名')),
-                PopupMenuItem(value: 'delete', child: Text('删除会话')),
-              ],
-            ),
-        ],
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) =>
-            constraints.maxWidth >= 1200 && widget.isRoot
-            ? Row(
-                children: [
-                  SizedBox(
-                    width: 300,
-                    child: _buildSessionManager(
-                      context,
-                      app,
-                      conversation,
-                      inDrawer: false,
+          )
+        else ...[
+          Expanded(
+            child: Stack(
+              children: [
+                Positioned.fill(child: conversationContent),
+                if (!_followConversationTail && messages.isNotEmpty)
+                  Positioned(
+                    right: 20,
+                    bottom: 12,
+                    child: IconButton.filledTonal(
+                      key: const Key('conversation_jump_to_latest'),
+                      tooltip: '回到底部',
+                      onPressed: () => _scrollToBottom(force: true),
+                      icon: const Icon(Icons.keyboard_arrow_down),
                     ),
                   ),
-                  const VerticalDivider(width: 1),
-                  Expanded(child: body),
+              ],
+            ),
+          ),
+          composer,
+        ],
+      ],
+    );
+    return PopScope<Object?>(
+      canPop: !widget.isRoot || _sessionDrawerOpen,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && widget.isRoot) _handleAssistantBack();
+      },
+      child: Scaffold(
+        onDrawerChanged: (open) {
+          if (open) _drawerWasOpen = true;
+          setState(() => _sessionDrawerOpen = open);
+          if (!open && _drawerWasOpen) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _drawerWasOpen = false;
+            });
+          }
+        },
+        drawer: Drawer(
+          child: SafeArea(
+            child: Builder(
+              builder: (drawerContext) => _buildSessionManager(
+                drawerContext,
+                app,
+                conversation,
+                inDrawer: true,
+              ),
+            ),
+          ),
+        ),
+        appBar: AppBar(
+          leading: Builder(
+            builder: (context) => IconButton(
+              key: const Key('conversation_manage'),
+              tooltip: '对话管理',
+              onPressed: () => Scaffold.of(context).openDrawer(),
+              icon: const Icon(Icons.menu),
+            ),
+          ),
+          title: Text(
+            widget.isRoot ? '懒狗秘书' : conversation?.title ?? '懒狗秘书',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          actions: [
+            IconButton(
+              key: const Key('conversation_permissions'),
+              tooltip: '当前对话权限',
+              onPressed: () => _showPermissions(conversation),
+              icon: const Icon(Icons.tune_outlined),
+            ),
+            IconButton(
+              key: Key(
+                widget.isRoot ? 'inbox_new_conversation' : 'conversation_new',
+              ),
+              tooltip: '新对话',
+              onPressed: _newConversation,
+              icon: const Icon(Icons.add_comment_outlined),
+            ),
+            if (conversation != null)
+              PopupMenuButton<String>(
+                tooltip: '更多',
+                onSelected: (value) {
+                  if (value == 'rename') {
+                    _renameConversation(conversation);
+                  } else if (value == 'delete') {
+                    _deleteConversation(conversation);
+                  }
+                },
+                itemBuilder: (context) => const [
+                  PopupMenuItem(value: 'rename', child: Text('重命名')),
+                  PopupMenuItem(value: 'delete', child: Text('删除会话')),
                 ],
-              )
-            : body,
+              ),
+          ],
+        ),
+        body: LayoutBuilder(
+          builder: (context, constraints) =>
+              constraints.maxWidth >= 1024 && widget.isRoot && widget.isWide
+              ? Row(
+                  children: [
+                    SizedBox(
+                      width: 252,
+                      child: _buildSessionManager(
+                        context,
+                        app,
+                        conversation,
+                        inDrawer: false,
+                      ),
+                    ),
+                    const VerticalDivider(width: 1),
+                    Expanded(child: body),
+                  ],
+                )
+              : body,
+        ),
       ),
     );
   }
@@ -279,27 +373,100 @@ class _SecretaryWelcome extends StatelessWidget {
           children: [
             Icon(
               Icons.auto_awesome,
-              size: 42,
+              size: 32,
               color: theme.colorScheme.primary,
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
             Text(
-              '你好，我是懒狗秘书',
+              '今天有什么想交给我？',
               textAlign: TextAlign.center,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '可以帮你整理信息、安排日程、跟进待办和管理知识。',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+              style: theme.textTheme.headlineSmall?.copyWith(fontSize: 22),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SecretaryDesktopNavigation extends StatelessWidget {
+  const _SecretaryDesktopNavigation({required this.onSelect});
+
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    const destinations = [
+      ('home', '首页', Icons.space_dashboard_outlined),
+      ('calendar', '日历', Icons.calendar_month_outlined),
+      ('matters', '事项', Icons.account_tree_outlined),
+      ('knowledge', '知识', Icons.menu_book_outlined),
+    ];
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final itemWidth = (constraints.maxWidth - 8) / 2;
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  for (final (destination, label, icon) in destinations)
+                    SizedBox(
+                      width: itemWidth,
+                      height: 44,
+                      child: TextButton.icon(
+                        key: Key('secretary_nav_$destination'),
+                        onPressed: () => onSelect(destination),
+                        icon: Icon(icon, size: 18),
+                        label: Text(label, maxLines: 1),
+                        style: TextButton.styleFrom(
+                          alignment: Alignment.centerLeft,
+                          foregroundColor: theme.colorScheme.onSurface,
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: PopupMenuButton<String>(
+                  key: const Key('secretary_nav_more'),
+                  tooltip: '更多页面',
+                  onSelected: onSelect,
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(
+                      value: 'global_knowledge',
+                      child: Text('全局知识库'),
+                    ),
+                    PopupMenuItem(value: 'pending', child: Text('待处理')),
+                    PopupMenuItem(value: 'settings', child: Text('设置')),
+                    PopupMenuItem(value: 'sync', child: Text('同步')),
+                  ],
+                  child: const SizedBox(
+                    height: 44,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.more_horiz),
+                          SizedBox(width: 8),
+                          Text('更多'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

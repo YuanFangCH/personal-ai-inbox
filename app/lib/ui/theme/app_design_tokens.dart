@@ -23,6 +23,7 @@ abstract final class AppDesignTokens {
   static const panelRadius = 14.0;
   static const userMessageRadius = 20.0;
   static const composerRadius = 26.0;
+  static const conversationContentMaxWidth = 800.0;
 
   static const pageTransition = Duration(milliseconds: 200);
   static const contentTransition = Duration(milliseconds: 180);

@@ -272,6 +272,7 @@ class ConversationWorkspace extends ChangeNotifier {
     String text = '',
     List<ChatAttachmentInput> attachments = const [],
     bool thinkingEnabled = false,
+    VoidCallback? onUserMessageSaved,
   }) async {
     final normalized = text.trim();
     if (normalized.isEmpty && attachments.isEmpty) {
@@ -306,6 +307,7 @@ class ConversationWorkspace extends ChangeNotifier {
     );
     await _saveMessage(userMessage);
     _replaceMessage(userMessage);
+    onUserMessageSaved?.call();
 
     final isFirstUserMessage = !history.any(
       (message) => message.role == ChatRole.user,
@@ -643,23 +645,62 @@ class ConversationWorkspace extends ChangeNotifier {
 
   Future<void> undoAutoRecord(String actionId) async {
     final action = await _repository.findAutoRecordAction(actionId);
-    if (action == null || !action.canUndo || action.resultId == null) {
+    if (action == null ||
+        action.status != AutoRecordStatus.created ||
+        action.resultId == null) {
       return;
     }
-    final result = _results.findDocument(action.resultId!);
-    if (result == null || result.revision != 1) {
+    var reversibleAction = await _results.reversibleActionForKey(actionId);
+    if (reversibleAction == null) {
       await _updateAutoRecordAction(
         actionId,
-        action.copyWith(reason: '成果已被修改，不能撤销'),
+        action.copyWith(status: AutoRecordStatus.undoFailed, reason: '撤销记录不存在'),
       );
       return;
     }
-    await _results.deleteDocument(result.id);
-    await _updateAutoRecordAction(
-      actionId,
-      action.copyWith(status: AutoRecordStatus.undone),
-    );
-    notifyListeners();
+    if (reversibleAction.status == ReversibleActionStatus.undone) {
+      await _updateAutoRecordAction(
+        actionId,
+        action.copyWith(status: AutoRecordStatus.undone, reason: null),
+      );
+      return;
+    }
+    if (reversibleAction.status == ReversibleActionStatus.expired ||
+        !reversibleAction.undoUntil.isAfter(DateTime.now())) {
+      await _updateAutoRecordAction(
+        actionId,
+        action.copyWith(status: AutoRecordStatus.expired, reason: '撤销时限已过'),
+      );
+      return;
+    }
+    if (reversibleAction.status != ReversibleActionStatus.applied) {
+      await _updateAutoRecordAction(
+        actionId,
+        action.copyWith(
+          status: AutoRecordStatus.undoFailed,
+          reason: reversibleAction.error ?? '当前成果状态不允许撤销',
+        ),
+      );
+      return;
+    }
+    try {
+      await _results.undoAction(actionId);
+      await _updateAutoRecordAction(
+        actionId,
+        action.copyWith(status: AutoRecordStatus.undone, reason: null),
+      );
+    } on StateError catch (error) {
+      reversibleAction = await _results.reversibleActionForKey(actionId);
+      final status = switch (reversibleAction?.status) {
+        ReversibleActionStatus.undone => AutoRecordStatus.undone,
+        ReversibleActionStatus.expired => AutoRecordStatus.expired,
+        _ => AutoRecordStatus.undoFailed,
+      };
+      await _updateAutoRecordAction(
+        actionId,
+        action.copyWith(status: status, reason: error.message.toString()),
+      );
+    }
   }
 
   @override

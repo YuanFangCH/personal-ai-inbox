@@ -18,10 +18,12 @@ void main() {
   testWidgets('selected local file is extracted and sent as bounded text', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(480, 1100);
+    tester.view.physicalSize = const Size(320, 844);
     tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 1.5;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     Map<String, dynamic>? requestBody;
     final runtime = await AppRuntime.bootstrap(
       vaultOverride: MemoryVaultStore(),
@@ -67,6 +69,14 @@ void main() {
       tester.widget<IconButton>(find.byKey(const Key('chat_send'))).onPressed,
       isNotNull,
     );
+    await tester.tap(find.byKey(const Key('chat_attachment_menu')));
+    await tester.pumpAndSettle();
+    expect(find.text('拍照'), findsOneWidget);
+    expect(find.text('相册'), findsOneWidget);
+    expect(find.byType(BottomSheet), findsNothing);
+    await tester.tap(find.byKey(const Key('chat_attachment_menu')));
+    await tester.pumpAndSettle();
+    expect(find.text('拍照'), findsNothing);
     await tester.tap(find.byKey(const Key('chat_attachment_menu')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('文件'));
