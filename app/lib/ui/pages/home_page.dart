@@ -407,11 +407,22 @@ class _TodoRowState extends State<_TodoRow> {
     return Row(
       key: ValueKey(widget.document.id),
       children: [
-        Checkbox(
-          key: Key('home_todo_checkbox_${widget.document.id}'),
-          value: widget.completedFeedback || widget.document.done,
-          onChanged: _saving ? null : _toggle,
-        ),
+        if (_saving)
+          const SizedBox.square(
+            dimension: 48,
+            child: Center(
+              child: SizedBox.square(
+                dimension: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          )
+        else
+          Checkbox(
+            key: Key('home_todo_checkbox_${widget.document.id}'),
+            value: widget.completedFeedback || widget.document.done,
+            onChanged: _toggle,
+          ),
         Expanded(
           child: InkWell(
             onTap: _saving
