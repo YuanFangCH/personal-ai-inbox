@@ -8,9 +8,7 @@ import '../theme/app_design_tokens.dart';
 const kContentMaxWidth = 1320.0;
 
 AnimationStyle? reducedMotionAnimationStyle(BuildContext context) =>
-    MediaQuery.disableAnimationsOf(context)
-    ? AnimationStyle.noAnimation
-    : null;
+    MediaQuery.disableAnimationsOf(context) ? AnimationStyle.noAnimation : null;
 
 class PageFrame extends StatelessWidget {
   const PageFrame({
