@@ -10,9 +10,10 @@
 | 最后更新时间 | 2026-10-25 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex |
-| 当前阶段 | 用户请求的问题已修复并完成可运行环境复核：33项定向回归、Windows原生导航 smoke、Web/Windows Release和Android Debug APK签名/metadata/SHA256均通过。ADB正常但设备数0，真机 IME/媒体、截图视觉/profile仍未验收；Android隔离构建入口已记录 |
+| 当前阶段 | v1.1.5 预览版发布准备：当前 `main` 含 17 个尚未推送的 UI 改版/修复提交；发行说明和版本号 `1.1.5+7` 已准备，待提交、推送及标签 CI。上一轮 33 项定向回归、Windows smoke、Web/Windows Release 和 Android Debug APK 检查通过；Android 真机、IME、截图视觉/profile 尚未验收 |
 
 ## 2. 一句话交接
+
 
 
 
