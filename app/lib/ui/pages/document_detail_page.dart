@@ -6,6 +6,7 @@ import '../../core/models.dart';
 import '../../modules/results/result_library.dart';
 import '../app_scope.dart';
 import '../presentation/domain_presentation.dart';
+import '../presentation/markdown_presentation.dart';
 import '../widgets/common.dart';
 import 'document_editor_page.dart';
 import 'global_knowledge_page.dart';
@@ -134,6 +135,7 @@ class DocumentDetailPage extends StatelessWidget {
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
+      animationStyle: reducedMotionAnimationStyle(context),
       builder: (context) => AlertDialog(
         title: const Text('删除成果'),
         content: Text('“${document.title}”会保留为 30 天墓碑。'),
@@ -189,33 +191,8 @@ class _ContentPanel extends StatelessWidget {
             MarkdownBody(
               data: document.body,
               selectable: true,
-              styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
-                p: theme.textTheme.bodyLarge,
-                pPadding: const EdgeInsets.only(bottom: 12),
-                h1: theme.textTheme.headlineSmall,
-                h1Padding: const EdgeInsets.only(top: 20, bottom: 10),
-                h2: theme.textTheme.titleLarge,
-                h2Padding: const EdgeInsets.only(top: 20, bottom: 10),
-                h3: theme.textTheme.titleMedium,
-                h3Padding: const EdgeInsets.only(top: 16, bottom: 8),
-                blockSpacing: 12,
-                listIndent: 24,
-                blockquotePadding: const EdgeInsets.fromLTRB(12, 4, 8, 4),
-                blockquoteDecoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerLow,
-                  border: Border(
-                    left: BorderSide(
-                      color: theme.colorScheme.primary,
-                      width: 2,
-                    ),
-                  ),
-                ),
-                codeblockPadding: const EdgeInsets.all(14),
-                codeblockDecoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
+              styleSheet: MarkdownPresentation.styleSheet(theme),
+              builders: MarkdownPresentation.builders,
             ),
         ],
       ),

@@ -15,6 +15,7 @@ class CalendarModeBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -30,7 +31,9 @@ class CalendarModeBar extends StatelessWidget {
                 onTap: () => onSelected(mode),
                 borderRadius: BorderRadius.circular(8),
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
+                  duration: reduceMotion
+                      ? Duration.zero
+                      : const Duration(milliseconds: 160),
                   padding: const EdgeInsets.symmetric(vertical: 9),
                   decoration: BoxDecoration(
                     color: selected == mode
@@ -43,8 +46,8 @@ class CalendarModeBar extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontWeight: selected == mode
-                          ? FontWeight.w800
-                          : FontWeight.w600,
+                          ? FontWeight.w600
+                          : FontWeight.w400,
                       color: selected == mode
                           ? scheme.onPrimaryContainer
                           : scheme.onSurfaceVariant,
@@ -59,115 +62,68 @@ class CalendarModeBar extends StatelessWidget {
   }
 }
 
-class CalendarSectionBar extends StatelessWidget {
-  const CalendarSectionBar({
+class CalendarSectionSwitcher extends StatelessWidget {
+  const CalendarSectionSwitcher({
     super.key,
     required this.selected,
     required this.onSelected,
-    required this.onQuickCreate,
   });
 
   final CalendarSection selected;
   final ValueChanged<CalendarSection> onSelected;
-  final VoidCallback onQuickCreate;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return SafeArea(
-      top: false,
-      minimum: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-      child: Align(
-        heightFactor: 1,
-        alignment: Alignment.bottomCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
-          child: Material(
-            elevation: 8,
-            color: scheme.surfaceContainerHigh,
-            shadowColor: Colors.black26,
-            borderRadius: BorderRadius.circular(30),
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: Row(
-                children: [
-                  for (final section in CalendarSection.values)
-                    Expanded(
-                      child: InkWell(
-                        key: Key('calendar_section_${section.name}'),
-                        onTap: () => onSelected(section),
-                        borderRadius: BorderRadius.circular(24),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 160),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: selected == section
-                                ? scheme.primaryContainer
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                _sectionIcon(section),
-                                size: 19,
-                                color: selected == section
-                                    ? scheme.onPrimaryContainer
-                                    : scheme.onSurfaceVariant,
-                              ),
-                              const SizedBox(width: 5),
-                              Flexible(
-                                child: Text(
-                                  section.label,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontWeight: selected == section
-                                        ? FontWeight.w800
-                                        : FontWeight.w600,
-                                    color: selected == section
-                                        ? scheme.onPrimaryContainer
-                                        : scheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(3),
+        child: Row(
+          children: [
+            for (final section in CalendarSection.values)
+              Expanded(
+                child: InkWell(
+                  key: Key('calendar_section_${section.name}'),
+                  onTap: () => onSelected(section),
+                  borderRadius: BorderRadius.circular(11),
+                  child: AnimatedContainer(
+                    duration: reduceMotion
+                        ? Duration.zero
+                        : const Duration(milliseconds: 160),
+                    constraints: const BoxConstraints(minHeight: 44),
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: selected == section
+                          ? scheme.primaryContainer
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(11),
                     ),
-                  InkWell(
-                    key: const Key('calendar_quick_create'),
-                    onTap: onQuickCreate,
-                    borderRadius: BorderRadius.circular(24),
-                    child: Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: scheme.primary,
-                        shape: BoxShape.circle,
+                    child: Text(
+                      section.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontWeight: selected == section
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                        color: selected == section
+                            ? scheme.onPrimaryContainer
+                            : scheme.onSurfaceVariant,
                       ),
-                      child: Icon(Icons.add, color: scheme.onPrimary),
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+          ],
         ),
       ),
     );
-  }
-
-  IconData _sectionIcon(CalendarSection section) {
-    return switch (section) {
-      CalendarSection.calendar => Icons.calendar_month_outlined,
-      CalendarSection.myDay => Icons.wb_sunny_outlined,
-      CalendarSection.todos => Icons.check_circle_outline,
-    };
   }
 }

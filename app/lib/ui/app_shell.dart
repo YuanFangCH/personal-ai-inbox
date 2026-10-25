@@ -72,7 +72,7 @@ class _AppShellState extends State<AppShell> {
     final runtime = AppScope.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 980;
+        final wide = constraints.maxWidth >= 1024;
         final List<Listenable> pageModules = switch (_page) {
           AppPage.home => [runtime.results, runtime.capture, runtime.sync],
           AppPage.inbox => [

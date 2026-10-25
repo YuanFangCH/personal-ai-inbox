@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
@@ -14,6 +15,7 @@ import '../../services/model_capabilities.dart';
 import '../../services/voice_service.dart';
 import '../app_scope.dart';
 import '../presentation/domain_presentation.dart';
+import '../presentation/markdown_presentation.dart';
 import '../theme/app_design_tokens.dart';
 import '../widgets/common.dart';
 import 'document_detail_page.dart';
@@ -118,6 +120,7 @@ class _ConversationPageState extends State<ConversationPage>
     final messages = conversationId == null
         ? const <ChatMessage>[]
         : app.messagesFor(conversationId);
+    _prepareMessageEntries(conversationId, messages);
     if (messages.length != _lastMessageCount) {
       _lastMessageCount = messages.length;
       _scrollToBottom();
@@ -129,6 +132,8 @@ class _ConversationPageState extends State<ConversationPage>
     final imageEgressAllowed = settings.allowImageEgress;
     final modelCapabilities = ModelCapabilities.resolve(settings);
     final imageCapability = modelCapabilities.vision;
+    final desktopWideRoot =
+        widget.isRoot && MediaQuery.sizeOf(context).width >= 1024;
     final activeCandidates = results.globalKnowledgeCandidates
         .where(
           (candidate) =>
@@ -137,11 +142,11 @@ class _ConversationPageState extends State<ConversationPage>
         )
         .toList(growable: false);
     final desktopEmpty =
-        widget.isRoot &&
-        MediaQuery.sizeOf(context).width >= 1024 &&
-        messages.isEmpty &&
-        activeCandidates.isEmpty;
-    final desktopInput = MediaQuery.sizeOf(context).width >= 1024;
+        desktopWideRoot && messages.isEmpty && activeCandidates.isEmpty;
+    final desktopInput =
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.linux;
     final conversationContent = Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
@@ -149,17 +154,24 @@ class _ConversationPageState extends State<ConversationPage>
           maxWidth: AppDesignTokens.conversationContentMaxWidth,
         ),
         child: messages.isEmpty && activeCandidates.isEmpty
-            ? const _SecretaryWelcome()
+            ? desktopWideRoot
+                  ? const SizedBox.shrink()
+                  : const _SecretaryWelcome()
             : NotificationListener<ScrollNotification>(
                 onNotification: _handleConversationScroll,
                 child: ListView(
                   controller: _scrollController,
-                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    18,
+                    16,
+                    desktopWideRoot ? 152 : 24,
+                  ),
                   children: [
                     for (final message in messages)
                       KeyedSubtree(
                         key: ValueKey('message_${message.id}'),
-                        child: _MessageBubble(message: message, app: app),
+                        child: _buildMessageRow(message, app),
                       ),
                     for (final candidate in activeCandidates) ...[
                       const SizedBox(height: 10),
@@ -215,52 +227,87 @@ class _ConversationPageState extends State<ConversationPage>
       onSend: _send,
       onStop: app.cancelGeneration,
     );
-    final body = Column(
-      children: [
-        if (desktopEmpty)
-          Expanded(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: AppDesignTokens.conversationContentMaxWidth,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const _SecretaryWelcome(),
-                      const SizedBox(height: 24),
-                      composer,
-                    ],
+    final body = desktopWideRoot
+        ? Stack(
+            children: [
+              Positioned.fill(child: conversationContent),
+              AnimatedAlign(
+                alignment: desktopEmpty
+                    ? Alignment.center
+                    : Alignment.bottomCenter,
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 240),
+                curve: Curves.easeInOutCubic,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: AppDesignTokens.conversationContentMaxWidth,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AnimatedSize(
+                          duration: MediaQuery.disableAnimationsOf(context)
+                              ? Duration.zero
+                              : const Duration(milliseconds: 180),
+                          curve: Curves.easeInOut,
+                          alignment: Alignment.bottomCenter,
+                          child: desktopEmpty
+                              ? const Padding(
+                                  key: ValueKey('desktop_welcome_visible'),
+                                  padding: EdgeInsets.only(bottom: 24),
+                                  child: _SecretaryWelcome(),
+                                )
+                              : const SizedBox(
+                                  key: ValueKey('desktop_welcome_hidden'),
+                                ),
+                        ),
+                        composer,
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          )
-        else ...[
-          Expanded(
-            child: Stack(
-              children: [
-                Positioned.fill(child: conversationContent),
-                if (!_followConversationTail && messages.isNotEmpty)
-                  Positioned(
-                    right: 20,
-                    bottom: 12,
-                    child: IconButton.filledTonal(
-                      key: const Key('conversation_jump_to_latest'),
-                      tooltip: '回到底部',
-                      onPressed: () => _scrollToBottom(force: true),
-                      icon: const Icon(Icons.keyboard_arrow_down),
-                    ),
+              if (!_followConversationTail &&
+                  messages.isNotEmpty &&
+                  !_attachmentTrayOpen)
+                Positioned(
+                  right: 20,
+                  bottom: 112,
+                  child: IconButton.filledTonal(
+                    key: const Key('conversation_jump_to_latest'),
+                    tooltip: '回到底部',
+                    onPressed: () => _scrollToBottom(force: true),
+                    icon: const Icon(Icons.keyboard_arrow_down),
                   ),
-              ],
-            ),
-          ),
-          composer,
-        ],
-      ],
-    );
+                ),
+            ],
+          )
+        : Column(
+            children: [
+              Expanded(
+                child: Stack(
+                  children: [
+                    Positioned.fill(child: conversationContent),
+                    if (!_followConversationTail && messages.isNotEmpty)
+                      Positioned(
+                        right: 20,
+                        bottom: 12,
+                        child: IconButton.filledTonal(
+                          key: const Key('conversation_jump_to_latest'),
+                          tooltip: '回到底部',
+                          onPressed: () => _scrollToBottom(force: true),
+                          icon: const Icon(Icons.keyboard_arrow_down),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              composer,
+            ],
+          );
     return PopScope<Object?>(
       canPop: !widget.isRoot || _sessionDrawerOpen,
       onPopInvokedWithResult: (didPop, _) {
@@ -277,6 +324,9 @@ class _ConversationPageState extends State<ConversationPage>
           }
         },
         drawer: Drawer(
+          width: (MediaQuery.sizeOf(context).width * 0.86)
+              .clamp(260.0, 340.0)
+              .toDouble(),
           child: SafeArea(
             child: Builder(
               builder: (drawerContext) => _buildSessionManager(
@@ -335,28 +385,131 @@ class _ConversationPageState extends State<ConversationPage>
           ],
         ),
         body: LayoutBuilder(
-          builder: (context, constraints) =>
-              constraints.maxWidth >= 1024 && widget.isRoot && widget.isWide
-              ? Row(
-                  children: [
-                    SizedBox(
-                      width: 252,
-                      child: _buildSessionManager(
-                        context,
-                        app,
-                        conversation,
-                        inDrawer: false,
+          builder: (context, constraints) {
+            final reduceMotion = MediaQuery.disableAnimationsOf(context);
+            final shiftForDrawer =
+                widget.isRoot &&
+                constraints.maxWidth < 600 &&
+                _sessionDrawerOpen;
+            final pageBody =
+                constraints.maxWidth >= 1024 && widget.isRoot && widget.isWide
+                ? Row(
+                    children: [
+                      SizedBox(
+                        width: 252,
+                        child: _buildSessionManager(
+                          context,
+                          app,
+                          conversation,
+                          inDrawer: false,
+                        ),
                       ),
-                    ),
-                    const VerticalDivider(width: 1),
-                    Expanded(child: body),
-                  ],
-                )
-              : body,
+                      const VerticalDivider(width: 1),
+                      Expanded(child: body),
+                    ],
+                  )
+                : body;
+            final borderRadius = shiftForDrawer
+                ? const BorderRadius.all(Radius.circular(20))
+                : BorderRadius.zero;
+            return AnimatedSlide(
+              key: const Key('conversation_drawer_shift'),
+              offset: shiftForDrawer ? const Offset(0.86, 0) : Offset.zero,
+              duration: reduceMotion
+                  ? Duration.zero
+                  : AppDesignTokens.overlayTransition,
+              curve: Curves.easeOutCubic,
+              child: AnimatedScale(
+                scale: shiftForDrawer && !reduceMotion ? 0.98 : 1,
+                alignment: Alignment.centerLeft,
+                duration: reduceMotion
+                    ? Duration.zero
+                    : AppDesignTokens.overlayTransition,
+                curve: Curves.easeOutCubic,
+                child: ClipRRect(borderRadius: borderRadius, child: pageBody),
+              ),
+            );
+          },
         ),
       ),
     );
   }
+
+  Widget _buildMessageRow(ChatMessage message, ConversationWorkspace app) {
+    final bubble = _MessageBubble(message: message, app: app);
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    if (reduceMotion) _enteringMessageIds.remove(message.id);
+    if (!_enteringMessageIds.contains(message.id)) {
+      return bubble;
+    }
+    return _ConversationMessageEntrance(
+      key: ValueKey('message_entrance_${message.id}'),
+      onCompleted: () {
+        if (mounted && _enteringMessageIds.remove(message.id)) {
+          setState(() {});
+        }
+      },
+      child: bubble,
+    );
+  }
+}
+
+class _ConversationMessageEntrance extends StatefulWidget {
+  const _ConversationMessageEntrance({
+    super.key,
+    required this.onCompleted,
+    required this.child,
+  });
+
+  final VoidCallback onCompleted;
+  final Widget child;
+
+  @override
+  State<_ConversationMessageEntrance> createState() =>
+      _ConversationMessageEntranceState();
+}
+
+class _ConversationMessageEntranceState
+    extends State<_ConversationMessageEntrance>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 170),
+  )..addStatusListener(_handleStatus);
+
+  late final Animation<double> _opacity = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOut,
+  );
+
+  late final Animation<Offset> _offset = Tween<Offset>(
+    begin: const Offset(0, 0.012),
+    end: Offset.zero,
+  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.forward();
+  }
+
+  void _handleStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed) widget.onCompleted();
+  }
+
+  @override
+  void dispose() {
+    _controller
+      ..removeStatusListener(_handleStatus)
+      ..dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(
+    opacity: _opacity,
+    child: SlideTransition(position: _offset, child: widget.child),
+  );
 }
 
 class _SecretaryWelcome extends StatelessWidget {

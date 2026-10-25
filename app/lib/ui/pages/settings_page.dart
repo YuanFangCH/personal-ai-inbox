@@ -520,6 +520,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _testConnection() async {
     final confirmed = await showDialog<bool>(
       context: context,
+      animationStyle: reducedMotionAnimationStyle(context),
       builder: (context) => AlertDialog(
         title: const Text('测试模型连接'),
         content: const Text('将发送 1 次网络请求，只包含固定测试文本，不会发送历史消息或图片。继续吗？'),
@@ -586,6 +587,7 @@ class _SettingsPageState extends State<SettingsPage> {
     try {
       final text = await showDialog<String>(
         context: context,
+        animationStyle: reducedMotionAnimationStyle(context),
         builder: (context) => AlertDialog(
           title: const Text('导入可移植设置'),
           content: TextField(
@@ -619,6 +621,7 @@ class _SettingsPageState extends State<SettingsPage> {
       }
       final confirmed = await showDialog<bool>(
         context: context,
+        animationStyle: reducedMotionAnimationStyle(context),
         builder: (context) => AlertDialog(
           title: const Text('确认导入'),
           content: Text(
@@ -722,6 +725,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _restoreDefaults() async {
     final confirmed = await showDialog<bool>(
       context: context,
+      animationStyle: reducedMotionAnimationStyle(context),
       builder: (context) => AlertDialog(
         title: const Text('恢复默认设置？'),
         content: const Text('保留本机设备 ID 与 API Key，只重置其他配置。'),

@@ -59,7 +59,8 @@ class _MessageBubble extends StatelessWidget {
                       : MarkdownBody(
                           data: message.content,
                           selectable: true,
-                          styleSheet: _markdownStyle(theme),
+                          styleSheet: MarkdownPresentation.styleSheet(theme),
+                          builders: MarkdownPresentation.builders,
                         ),
                 if (message.status == ChatMessageStatus.streaming)
                   const Padding(
@@ -152,44 +153,6 @@ class _MessageBubble extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  MarkdownStyleSheet _markdownStyle(ThemeData theme) {
-    final body = theme.textTheme.bodyLarge;
-    final heading2 = theme.textTheme.titleLarge;
-    final heading3 = theme.textTheme.titleMedium?.copyWith(fontSize: 18);
-    final surface = theme.colorScheme.surfaceContainerLow;
-    return MarkdownStyleSheet.fromTheme(theme).copyWith(
-      p: body,
-      pPadding: const EdgeInsets.only(bottom: 12),
-      h1: theme.textTheme.headlineSmall,
-      h1Padding: const EdgeInsets.only(top: 20, bottom: 10),
-      h2: heading2,
-      h2Padding: const EdgeInsets.only(top: 20, bottom: 10),
-      h3: heading3,
-      h3Padding: const EdgeInsets.only(top: 16, bottom: 8),
-      h4: body?.copyWith(fontWeight: FontWeight.w600),
-      h5: body?.copyWith(fontWeight: FontWeight.w600),
-      h6: body?.copyWith(fontWeight: FontWeight.w600),
-      blockSpacing: 12,
-      listIndent: 24,
-      tableCellsPadding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 8,
-      ),
-      blockquotePadding: const EdgeInsets.fromLTRB(12, 4, 8, 4),
-      blockquoteDecoration: BoxDecoration(
-        color: surface,
-        border: Border(
-          left: BorderSide(color: theme.colorScheme.primary, width: 2),
-        ),
-      ),
-      codeblockPadding: const EdgeInsets.all(14),
-      codeblockDecoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
       ),
     );
   }

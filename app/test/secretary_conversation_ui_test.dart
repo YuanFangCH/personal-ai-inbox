@@ -41,6 +41,15 @@ void main() {
     await tester.tap(find.byKey(const Key('conversation_manage')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('conversation_return_home')), findsOneWidget);
+    expect(
+      tester
+          .widget<AnimatedSlide>(
+            find.byKey(const Key('conversation_drawer_shift')),
+          )
+          .offset
+          .dx,
+      greaterThan(0),
+    );
     await tester.tap(find.byKey(const Key('conversation_return_home')));
     await tester.pumpAndSettle();
     expect(find.text('丢弃未发送内容？'), findsOneWidget);
@@ -171,7 +180,13 @@ void main() {
       find.byKey(const Key('conversation_global_knowledge')),
       findsNothing,
     );
+    expect(find.byKey(const Key('conversation_history_list')), findsNothing);
+    await tester.tap(find.byKey(const Key('secretary_history_open')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('conversation_history_list')), findsOneWidget);
     expect(find.byKey(Key('conversation_${history.id}')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('secretary_history_close')));
+    await tester.pumpAndSettle();
 
     final emptyComposerY = tester
         .getCenter(find.byKey(const Key('chat_input')))
@@ -179,11 +194,17 @@ void main() {
     expect(emptyComposerY, lessThan(350));
     await tester.enterText(find.byKey(const Key('chat_input')), '梳理今天的安排');
     await tester.tap(find.byKey(const Key('chat_send')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 120));
+    final transitioningComposerY = tester
+        .getCenter(find.byKey(const Key('chat_input')))
+        .dy;
+    expect(transitioningComposerY, greaterThan(emptyComposerY));
     await tester.pumpAndSettle();
     expect(find.text('今天的安排已经整理好了。'), findsWidgets);
     expect(
       tester.getCenter(find.byKey(const Key('chat_input'))).dy,
-      greaterThan(emptyComposerY),
+      greaterThan(transitioningComposerY),
     );
 
     await tester.ensureVisible(find.byKey(const Key('secretary_nav_more')));

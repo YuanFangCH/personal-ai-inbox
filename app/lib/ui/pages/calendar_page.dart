@@ -58,6 +58,12 @@ class _CalendarPageState extends State<CalendarPage> {
       title: _pageTitle(),
       subtitle: _pageSubtitle(app),
       actions: [
+        FilledButton.icon(
+          key: const Key('calendar_quick_create'),
+          onPressed: _quickCreate,
+          icon: const Icon(Icons.add),
+          label: Text(_section == CalendarSection.todos ? '新建待办' : '新建事件'),
+        ),
         if (_section == CalendarSection.calendar &&
             _mode == CalendarRangeMode.month)
           PopupMenuButton<CalendarMonthDensity>(
@@ -105,26 +111,36 @@ class _CalendarPageState extends State<CalendarPage> {
             ),
           ),
       ],
-      child: AnimatedSwitcher(
-        duration: MediaQuery.disableAnimationsOf(context)
-            ? Duration.zero
-            : const Duration(milliseconds: 180),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) => FadeTransition(
-          opacity: animation,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.015),
-              end: Offset.zero,
-            ).animate(animation),
-            child: child,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          CalendarSectionSwitcher(
+            selected: _section,
+            onSelected: (value) => setState(() => _section = value),
           ),
-        ),
-        child: KeyedSubtree(
-          key: ValueKey('${_section.name}_${_mode.name}'),
-          child: _buildSection(app, occurrences, density),
-        ),
+          const SizedBox(height: 16),
+          AnimatedSwitcher(
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 180),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.015),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
+            ),
+            child: KeyedSubtree(
+              key: ValueKey('${_section.name}_${_mode.name}'),
+              child: _buildSection(app, occurrences, density),
+            ),
+          ),
+        ],
       ),
     );
     return Scaffold(
@@ -140,11 +156,6 @@ class _CalendarPageState extends State<CalendarPage> {
           return false;
         },
         child: page,
-      ),
-      bottomNavigationBar: CalendarSectionBar(
-        selected: _section,
-        onSelected: (value) => setState(() => _section = value),
-        onQuickCreate: _quickCreate,
       ),
     );
   }

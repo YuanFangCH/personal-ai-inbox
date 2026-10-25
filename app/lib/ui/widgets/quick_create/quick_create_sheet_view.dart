@@ -45,8 +45,11 @@ class _QuickCreateSheetViewState extends State<QuickCreateSheetView> {
   Widget build(BuildContext context) {
     final app = AppScope.results(context);
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return AnimatedPadding(
-      duration: const Duration(milliseconds: 160),
+      duration: reduceMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 160),
       padding: EdgeInsets.only(bottom: bottomInset),
       child: LayoutBuilder(
         builder: (context, constraints) {

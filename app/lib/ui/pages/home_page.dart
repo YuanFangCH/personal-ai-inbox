@@ -231,77 +231,222 @@ class _TodoSection extends StatelessWidget {
   }
 }
 
-class _TodoList extends StatelessWidget {
+class _TodoList extends StatefulWidget {
   const _TodoList({required this.todos});
 
   final List<ResultDocument> todos;
 
   @override
+  State<_TodoList> createState() => _TodoListState();
+}
+
+class _TodoListState extends State<_TodoList> {
+  static const _duration = Duration(milliseconds: 180);
+  final _listKey = GlobalKey<AnimatedListState>();
+  late final List<ResultDocument> _items = List.of(widget.todos);
+  bool _removingLastItem = false;
+
+  @override
+  void didUpdateWidget(covariant _TodoList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final target = widget.todos;
+      final library = AppScope.results(context);
+      final reduceMotion = MediaQuery.disableAnimationsOf(context);
+      final duration = reduceMotion ? Duration.zero : _duration;
+      final targetIds = target.map((todo) => todo.id).toSet();
+      var changed = false;
+
+      for (var index = _items.length - 1; index >= 0; index--) {
+        if (targetIds.contains(_items[index].id)) continue;
+        final removed = _items.removeAt(index);
+        changed = true;
+        final current = library.findDocument(removed.id);
+        final completed = current?.done == true;
+        _listKey.currentState?.removeItem(
+          index,
+          (context, animation) => _buildItem(
+            context,
+            removed,
+            animation,
+            library,
+            completed: completed,
+          ),
+          duration: duration,
+        );
+      }
+
+      for (var index = 0; index < target.length; index++) {
+        final todo = target[index];
+        final existingIndex = _items.indexWhere((item) => item.id == todo.id);
+        if (existingIndex < 0) {
+          _items.insert(index, todo);
+          _listKey.currentState?.insertItem(index, duration: duration);
+          changed = true;
+        } else if (existingIndex != index) {
+          final moved = _items.removeAt(existingIndex);
+          final completed = library.findDocument(moved.id)?.done == true;
+          _listKey.currentState?.removeItem(
+            existingIndex,
+            (context, animation) => _buildItem(
+              context,
+              moved,
+              animation,
+              library,
+              completed: completed,
+            ),
+            duration: duration,
+          );
+          _items.insert(index, todo);
+          _listKey.currentState?.insertItem(index, duration: duration);
+          changed = true;
+        } else if (!identical(_items[index], todo)) {
+          _items[index] = todo;
+          changed = true;
+        }
+      }
+
+      if (!changed) return;
+      if (_items.isEmpty && target.isEmpty) {
+        _removingLastItem = true;
+        Future<void>.delayed(duration, () {
+          if (!mounted || _items.isNotEmpty) return;
+          setState(() => _removingLastItem = false);
+        });
+      } else {
+        _removingLastItem = false;
+      }
+      setState(() {});
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final library = AppScope.results(context);
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    return AnimatedSize(
-      duration: reduceMotion
-          ? Duration.zero
-          : const Duration(milliseconds: 180),
-      curve: Curves.easeInOut,
+    final empty = _items.isEmpty && widget.todos.isEmpty && !_removingLastItem;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (empty) const _EmptySection(label: '没有未完成待办'),
+        AnimatedList(
+          key: _listKey,
+          initialItemCount: _items.length,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemBuilder: (context, index, animation) =>
+              _buildItem(context, _items[index], animation, library),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildItem(
+    BuildContext context,
+    ResultDocument todo,
+    Animation<double> animation,
+    ResultLibrary library, {
+    bool completed = false,
+  }) {
+    final curved = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    return SizeTransition(
+      sizeFactor: curved,
       alignment: Alignment.topCenter,
-      child: todos.isEmpty
-          ? const _EmptySection(label: '没有未完成待办')
-          : Column(
-              key: ValueKey(todos.map((todo) => todo.id).join('|')),
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var index = 0; index < todos.length; index++) ...[
-                  _TodoRow(document: todos[index], app: library),
-                  if (index != todos.length - 1) const Divider(height: 1),
-                ],
-              ],
-            ),
+      child: FadeTransition(
+        opacity: curved,
+        child: _TodoRow(
+          key: ValueKey('home_todo_${todo.id}'),
+          document: todo,
+          app: library,
+          completedFeedback: completed,
+        ),
+      ),
     );
   }
 }
 
-class _TodoRow extends StatelessWidget {
-  const _TodoRow({required this.document, required this.app});
+class _TodoRow extends StatefulWidget {
+  const _TodoRow({
+    super.key,
+    required this.document,
+    required this.app,
+    this.completedFeedback = false,
+  });
 
   final ResultDocument document;
   final ResultLibrary app;
+  final bool completedFeedback;
+
+  @override
+  State<_TodoRow> createState() => _TodoRowState();
+}
+
+class _TodoRowState extends State<_TodoRow> {
+  bool _saving = false;
+
+  Future<void> _toggle(bool? value) async {
+    if (value == null || _saving) return;
+    setState(() => _saving = true);
+    try {
+      await widget.app.toggleTodo(widget.document, value);
+    } on Object {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('待办未能更新，请稍后重试')));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Row(
-      key: ValueKey(document.id),
+      key: ValueKey(widget.document.id),
       children: [
         Checkbox(
-          key: Key('home_todo_checkbox_${document.id}'),
-          value: document.done,
-          onChanged: (value) => app.toggleTodo(document, value ?? false),
+          key: Key('home_todo_checkbox_${widget.document.id}'),
+          value: widget.completedFeedback || widget.document.done,
+          onChanged: _saving ? null : _toggle,
         ),
         Expanded(
           child: InkWell(
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => DocumentDetailPage(documentId: document.id),
-              ),
-            ),
+            onTap: _saving
+                ? null
+                : () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) =>
+                          DocumentDetailPage(documentId: widget.document.id),
+                    ),
+                  ),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    document.title,
+                    widget.document.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      decoration: widget.completedFeedback
+                          ? TextDecoration.lineThrough
+                          : null,
+                    ),
                   ),
-                  if (document.due != null)
+                  if (widget.document.due != null)
                     Text(
-                      _dueText(document.due!),
+                      widget.completedFeedback
+                          ? '已完成'
+                          : _dueText(widget.document.due!),
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: document.due!.isBefore(DateTime.now())
+                        color:
+                            !widget.completedFeedback &&
+                                widget.document.due!.isBefore(DateTime.now())
                             ? theme.colorScheme.error
                             : theme.colorScheme.onSurfaceVariant,
                       ),

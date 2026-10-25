@@ -67,12 +67,16 @@ void main() {
     );
     await tester.ensureVisible(firstTodoCheckbox);
     await tester.tap(firstTodoCheckbox);
-    await tester.pumpAndSettle();
-    await tester.pump(const Duration(milliseconds: 220));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(find.text('已完成'), findsOneWidget);
+    expect(find.text('待办 0'), findsOneWidget);
+    expect(find.text('待办 4'), findsOneWidget);
     await tester.pumpAndSettle();
     expect(runtime.results.findDocument(firstTodoDocument.id)!.done, isTrue);
     expect(firstTodoCheckbox, findsNothing);
     expect(find.text('待办 0'), findsNothing);
+    expect(find.text('待办 4'), findsOneWidget);
 
     final todoSectionAction = find.text('查看全部').at(1);
     await tester.ensureVisible(todoSectionAction);

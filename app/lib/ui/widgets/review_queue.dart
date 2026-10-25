@@ -143,6 +143,7 @@ class _ReviewCaptureTile extends StatelessWidget {
   Future<void> _changeAndAccept(BuildContext context) async {
     final decision = await showDialog<_ReviewDecision>(
       context: context,
+      animationStyle: reducedMotionAnimationStyle(context),
       builder: (context) => _ReviewDialog(capture: capture),
     );
     if (decision != null) {

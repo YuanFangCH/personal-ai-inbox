@@ -15,6 +15,60 @@ import 'test_support.dart';
 
 void main() {
   testWidgets(
+    'system back stops speech input before leaving the conversation',
+    (tester) async {
+      tester.view.physicalSize = const Size(480, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final voice = _FakeVoiceService();
+      final runtime = await AppRuntime.bootstrap(
+        vaultOverride: MemoryVaultStore(),
+        indexOverride: MemoryIndexDatabase(),
+        settingsOverride: FakeSettingsService(
+          deviceId: 'voice-back-ui-test',
+          modelKey: 'test-key',
+        ),
+        voiceService: voice,
+      );
+      addTearDown(runtime.dispose);
+
+      await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('nav_inbox')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('chat_voice_input')));
+      await tester.pumpAndSettle();
+      expect(voice.isListening, isTrue);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(voice.isListening, isFalse);
+      expect(find.byKey(const Key('nav_home')), findsNothing);
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const Key('chat_input')))
+            .controller!
+            .text,
+        '口述的草稿',
+      );
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('丢弃未发送内容？'), findsOneWidget);
+      await tester.tap(find.text('继续编辑'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const Key('chat_input')))
+            .controller!
+            .text,
+        '口述的草稿',
+      );
+    },
+  );
+
+  testWidgets(
     'voice text remains editable before send and reply can be read aloud',
     (tester) async {
       tester.view.physicalSize = const Size(480, 1100);

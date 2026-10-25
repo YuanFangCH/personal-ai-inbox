@@ -8,11 +8,14 @@ mixin _ConversationPageActions on State<ConversationPage> {
   final _fileTexts = <ExtractedFileText>[];
   final _historySearchController = TextEditingController();
   final _conversationScrollOffsets = <String, double>{};
+  final _knownMessageIds = <String>{};
+  final _enteringMessageIds = <String>{};
   ConversationWorkspace? _conversationWorkspaceForCleanup;
   bool _sending = false;
   bool _followConversationTail = true;
   bool _sessionDrawerOpen = false;
   bool _drawerWasOpen = false;
+  bool _compactHistoryOpen = false;
   int _lastMessageCount = -1;
   String? _conversationId;
   String _voiceBaseText = '';
@@ -22,6 +25,49 @@ mixin _ConversationPageActions on State<ConversationPage> {
   bool _temporaryPermissionsInitialized = false;
   bool _thinkingEnabled = false;
   bool _attachmentTrayOpen = false;
+  String? _messageEntryConversationId;
+  String? _animateAssistantConversationId;
+  bool _animateNextAssistantMessage = false;
+
+  void _resetMessageEntryTracking(
+    String? conversationId,
+    Iterable<ChatMessage> messages,
+  ) {
+    _messageEntryConversationId = conversationId;
+    _animateAssistantConversationId = null;
+    _animateNextAssistantMessage = false;
+    _knownMessageIds
+      ..clear()
+      ..addAll(messages.map((message) => message.id));
+    _enteringMessageIds.clear();
+  }
+
+  void _prepareMessageEntries(
+    String? conversationId,
+    List<ChatMessage> messages,
+  ) {
+    if (_messageEntryConversationId != conversationId) {
+      _resetMessageEntryTracking(conversationId, messages);
+      return;
+    }
+    for (final message in messages) {
+      if (_knownMessageIds.add(message.id)) {
+        if (conversationId == _animateAssistantConversationId &&
+            message.isUser) {
+          _enteringMessageIds.add(message.id);
+        }
+      }
+      if (message.role == ChatRole.assistant &&
+          conversationId == _animateAssistantConversationId &&
+          _animateNextAssistantMessage &&
+          (message.content.isNotEmpty ||
+              (message.status == ChatMessageStatus.failed &&
+                  message.error != null))) {
+        _enteringMessageIds.add(message.id);
+        _animateNextAssistantMessage = false;
+      }
+    }
+  }
 
   void _toggleAttachmentTray() {
     final shouldOpen = !_attachmentTrayOpen;
@@ -44,6 +90,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
     if (!_hasUnsentComposerContent) return true;
     final discard = await showDialog<bool>(
       context: context,
+      animationStyle: reducedMotionAnimationStyle(context),
       builder: (context) => AlertDialog(
         title: const Text('丢弃未发送内容？'),
         content: const Text('当前对话中的文字或附件还没有发送，离开后将会清除。'),
@@ -94,6 +141,11 @@ mixin _ConversationPageActions on State<ConversationPage> {
   void _handleAssistantBack() {
     if (_sessionDrawerOpen || _drawerWasOpen) {
       _drawerWasOpen = false;
+      return;
+    }
+    final voice = AppScope.voice(context);
+    if (voice.isListening) {
+      unawaited(voice.stopListening());
       return;
     }
     if (_attachmentTrayOpen) {
@@ -151,6 +203,12 @@ mixin _ConversationPageActions on State<ConversationPage> {
           setState(() => _conversationId = conversationId);
         }
       }
+      _resetMessageEntryTracking(
+        conversationId,
+        app.messagesFor(conversationId),
+      );
+      _animateAssistantConversationId = conversationId;
+      _animateNextAssistantMessage = true;
       await app.sendChatMessage(
         conversationId,
         text: text,
@@ -325,6 +383,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
         _thinkingEnabled = false;
         _followConversationTail = true;
         _lastMessageCount = 0;
+        _resetMessageEntryTracking(null, const []);
       });
       return;
     }
@@ -360,6 +419,34 @@ mixin _ConversationPageActions on State<ConversationPage> {
             .length +
         AppScope.results(context).draftDocuments.length;
     final groupedRows = _groupedConversationRows(conversations);
+    final historySearch = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: TextField(
+        key: const Key('conversation_search'),
+        controller: _historySearchController,
+        onChanged: (_) => setState(() {}),
+        decoration: InputDecoration(
+          hintText: '搜索对话',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: _historySearchController.text.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: '清除搜索',
+                  onPressed: () {
+                    _historySearchController.clear();
+                    setState(() {});
+                  },
+                  icon: const Icon(Icons.close),
+                ),
+          filled: true,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(24),
+            borderSide: BorderSide.none,
+          ),
+          isDense: true,
+        ),
+      ),
+    );
     final navigationControls = <Widget>[
       Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 10, 8),
@@ -404,34 +491,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
             label: const Text('新对话'),
           ),
         ),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: TextField(
-          key: const Key('conversation_search'),
-          controller: _historySearchController,
-          onChanged: (_) => setState(() {}),
-          decoration: InputDecoration(
-            hintText: '搜索对话',
-            prefixIcon: const Icon(Icons.search),
-            suffixIcon: _historySearchController.text.isEmpty
-                ? null
-                : IconButton(
-                    tooltip: '清除搜索',
-                    onPressed: () {
-                      _historySearchController.clear();
-                      setState(() {});
-                    },
-                    icon: const Icon(Icons.close),
-                  ),
-            filled: true,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(24),
-              borderSide: BorderSide.none,
-            ),
-            isDense: true,
-          ),
-        ),
-      ),
+      historySearch,
       const SizedBox(height: 8),
       if (inDrawer || !widget.isWide) ...[
         ListTile(
@@ -532,7 +592,8 @@ mixin _ConversationPageActions on State<ConversationPage> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compactHeight = widget.isWide && constraints.maxHeight < 460;
+        final compactHeight =
+            !inDrawer && widget.isWide && constraints.maxHeight < 460;
         if (!compactHeight) {
           return Column(
             children: [
@@ -543,9 +604,38 @@ mixin _ConversationPageActions on State<ConversationPage> {
           );
         }
 
-        final historyHeight = constraints.maxHeight < 300
-            ? 120.0
-            : constraints.maxHeight * 0.35;
+        if (_compactHistoryOpen) {
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+                child: Row(
+                  children: [
+                    IconButton(
+                      key: const Key('secretary_history_close'),
+                      tooltip: '返回导航',
+                      onPressed: () =>
+                          setState(() => _compactHistoryOpen = false),
+                      icon: const Icon(Icons.arrow_back),
+                    ),
+                    Expanded(
+                      child: Text('历史对话', style: theme.textTheme.titleSmall),
+                    ),
+                    IconButton(
+                      tooltip: '新对话',
+                      onPressed: _newConversation,
+                      icon: const Icon(Icons.add_comment_outlined),
+                    ),
+                  ],
+                ),
+              ),
+              historySearch,
+              const SizedBox(height: 8),
+              Expanded(child: historyList),
+              footer,
+            ],
+          );
+        }
         return Column(
           children: [
             Expanded(
@@ -558,7 +648,13 @@ mixin _ConversationPageActions on State<ConversationPage> {
               ),
             ),
             const Divider(height: 1),
-            SizedBox(height: historyHeight, child: historyList),
+            ListTile(
+              key: const Key('secretary_history_open'),
+              leading: const Icon(Icons.history),
+              title: const Text('历史对话'),
+              trailing: Text('${conversations.length}'),
+              onTap: () => setState(() => _compactHistoryOpen = true),
+            ),
             footer,
           ],
         );
@@ -613,6 +709,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
     if (!mounted) return;
     setState(() {
       _conversationId = id;
+      _resetMessageEntryTracking(id, app.messagesFor(id));
       _lastMessageCount = app.messagesFor(id).length;
       _followConversationTail = true;
       _textController.clear();
@@ -644,6 +741,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      sheetAnimationStyle: reducedMotionAnimationStyle(context),
       builder: (_) => StatefulBuilder(
         builder: (context, setSheetState) => SafeArea(
           child: SingleChildScrollView(

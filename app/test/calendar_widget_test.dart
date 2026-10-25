@@ -25,6 +25,7 @@ void main() {
     await tester.tap(find.byKey(const Key('nav_calendar')));
     await tester.pumpAndSettle();
 
+    expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.byKey(const Key('calendar_mode_month')), findsOneWidget);
     expect(find.byKey(const Key('calendar_mode_year')), findsOneWidget);
     expect(find.byKey(const Key('calendar_mode_week')), findsOneWidget);

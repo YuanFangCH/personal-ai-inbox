@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/models.dart';
+import 'common.dart';
 import 'quick_create/quick_create_sheet_view.dart';
 
 Future<ResultDocument?> showQuickCreateSheet(
@@ -14,6 +15,7 @@ Future<ResultDocument?> showQuickCreateSheet(
     isScrollControlled: true,
     useSafeArea: true,
     showDragHandle: true,
+    sheetAnimationStyle: reducedMotionAnimationStyle(context),
     builder: (context) => QuickCreateSheetView(
       initialDate: initialDate,
       initialType: type,

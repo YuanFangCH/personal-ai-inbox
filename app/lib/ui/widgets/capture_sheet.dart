@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../modules/capture/capture_workflow.dart';
 import '../app_scope.dart';
 import '../presentation/domain_presentation.dart';
+import 'common.dart';
 
 Future<void> showCaptureSheet(BuildContext context) {
   return showModalBottomSheet<void>(
@@ -10,6 +11,7 @@ Future<void> showCaptureSheet(BuildContext context) {
     isScrollControlled: true,
     useSafeArea: true,
     showDragHandle: true,
+    sheetAnimationStyle: reducedMotionAnimationStyle(context),
     builder: (context) => const _CaptureSheet(),
   );
 }
@@ -37,7 +39,9 @@ class _CaptureSheetState extends State<_CaptureSheet> {
     final theme = Theme.of(context);
     final modelAvailable = AppScope.preferences(context).settings.hasModelKey;
     return AnimatedPadding(
-      duration: const Duration(milliseconds: 160),
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 160),
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: SingleChildScrollView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,

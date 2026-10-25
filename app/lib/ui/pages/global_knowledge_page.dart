@@ -18,6 +18,8 @@ class _GlobalKnowledgePageState extends State<GlobalKnowledgePage> {
   ResultLibrary? _results;
   List<ResultDocument> _documents = const [];
   var _loading = true;
+  var _loadFailed = false;
+  var _loadGeneration = 0;
 
   @override
   void didChangeDependencies() {
@@ -40,12 +42,25 @@ class _GlobalKnowledgePageState extends State<GlobalKnowledgePage> {
   Future<void> _load() async {
     final results = _results;
     if (results == null) return;
-    final documents = await results.searchKnowledge(globalOnly: true);
-    if (!mounted) return;
+    final generation = ++_loadGeneration;
     setState(() {
-      _documents = documents;
-      _loading = false;
+      _loading = true;
+      _loadFailed = false;
     });
+    try {
+      final documents = await results.searchKnowledge(globalOnly: true);
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() {
+        _documents = documents;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() {
+        _loading = false;
+        _loadFailed = true;
+      });
+    }
   }
 
   @override
@@ -64,6 +79,22 @@ class _GlobalKnowledgePageState extends State<GlobalKnowledgePage> {
       ],
       child: _loading
           ? const Center(child: CircularProgressIndicator())
+          : _loadFailed
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const EmptyState(
+                  icon: Icons.error_outline,
+                  title: '全局知识暂时无法加载',
+                  message: '请检查本地知识库状态后重试。',
+                ),
+                OutlinedButton.icon(
+                  onPressed: _load,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('重试'),
+                ),
+              ],
+            )
           : _documents.isEmpty
           ? const EmptyState(
               icon: Icons.lightbulb_outline,
@@ -89,6 +120,7 @@ class _GlobalKnowledgePageState extends State<GlobalKnowledgePage> {
   Future<void> _editKnowledge([ResultDocument? existing]) async {
     final fields = await showDialog<_KnowledgeFormValue>(
       context: context,
+      animationStyle: reducedMotionAnimationStyle(context),
       builder: (_) => _KnowledgeFormDialog(document: existing),
     );
     if (fields == null || !mounted) return;
@@ -125,6 +157,7 @@ class _GlobalKnowledgePageState extends State<GlobalKnowledgePage> {
   Future<void> _deleteKnowledge(ResultDocument document) async {
     final confirmed = await showDialog<bool>(
       context: context,
+      animationStyle: reducedMotionAnimationStyle(context),
       builder: (context) => AlertDialog(
         title: const Text('确认删除全局知识？'),
         content: Text('“${document.title}”将被标记删除并随成果同步。此操作需要你明确确认。'),

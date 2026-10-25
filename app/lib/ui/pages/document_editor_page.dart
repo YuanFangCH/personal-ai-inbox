@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/models.dart';
 import '../app_scope.dart';
 import '../presentation/domain_presentation.dart';
+import '../presentation/markdown_presentation.dart';
 
 class DocumentEditorPage extends StatefulWidget {
   const DocumentEditorPage({super.key, required this.document})
@@ -526,11 +527,12 @@ class _Preview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+        color: theme.colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Theme.of(context).dividerColor),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -539,13 +541,16 @@ class _Preview extends StatelessWidget {
           children: [
             Text(
               title.trim().isEmpty ? '未命名' : title,
-              style: Theme.of(context).textTheme.headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.w800),
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
             ),
             const SizedBox(height: 16),
             MarkdownBody(
               data: body.trim().isEmpty ? '开始写正文……' : body,
               selectable: true,
+              styleSheet: MarkdownPresentation.styleSheet(theme),
+              builders: MarkdownPresentation.builders,
             ),
           ],
         ),

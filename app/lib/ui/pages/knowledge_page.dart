@@ -25,6 +25,7 @@ class _KnowledgePageState extends State<KnowledgePage> {
   int _requestGeneration = 0;
   bool _hasMore = true;
   bool _loading = false;
+  bool _loadFailed = false;
 
   @override
   void didChangeDependencies() {
@@ -52,6 +53,7 @@ class _KnowledgePageState extends State<KnowledgePage> {
     final offset = reset ? 0 : _offset;
     setState(() {
       _loading = true;
+      _loadFailed = false;
       if (reset) {
         _documents = const [];
         _offset = 0;
@@ -73,15 +75,34 @@ class _KnowledgePageState extends State<KnowledgePage> {
       });
     } catch (_) {
       if (!mounted || generation != _requestGeneration) return;
-      setState(() => _loading = false);
+      setState(() {
+        _loading = false;
+        _loadFailed = true;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final query = _query.trim();
-    final results = _documents.isEmpty && _loading
+    final results = _loading && _documents.isEmpty
         ? const Center(child: CircularProgressIndicator())
+        : _loadFailed && _documents.isEmpty
+        ? Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              EmptyState(
+                icon: Icons.error_outline,
+                title: '知识暂时无法加载',
+                message: '请检查本地知识库状态后重试。',
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _load(reset: true),
+                icon: const Icon(Icons.refresh),
+                label: const Text('重试'),
+              ),
+            ],
+          )
         : _documents.isEmpty
         ? EmptyState(
             icon: Icons.menu_book_outlined,
@@ -106,6 +127,15 @@ class _KnowledgePageState extends State<KnowledgePage> {
                 const Padding(
                   padding: EdgeInsets.all(16),
                   child: CircularProgressIndicator(),
+                ),
+              if (_loadFailed)
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: TextButton.icon(
+                    onPressed: () => _load(reset: false),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('加载失败，重试'),
+                  ),
                 ),
             ],
           );
