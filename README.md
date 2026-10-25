@@ -13,7 +13,7 @@
 - Windows 11 x64：选择安装包或便携 ZIP。
 - 发布页同时提供 `SHA256SUMS.txt`，下载后应校验文件哈希。
 
-`v1.1.5` 是当前预览版，延续 Android 长期发布证书，并包含 DeepSeek 风格界面改版和输入/布局回归修复。v1.1.3 及之前的包无法保证与本版直接覆盖安装；本版真实 Android 设备、IME 与截图视觉验收尚未完成，详见 [GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/v1.1.5) 和[发行说明](docs/releases/v1.1.5.md)。
+`v1.1.5` 预览版发布构建进行中，延续 Android 长期发布证书，并包含 DeepSeek 风格界面改版和输入/布局回归修复。发布成功后将在 [GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/v1.1.5) 提供下载；v1.1.3 及之前的包无法保证与本版直接覆盖安装。本版真实 Android 设备、IME 与截图视觉验收尚未完成，发行范围见[发行说明](docs/releases/v1.1.5.md)。
 
 ## 核心能力
 

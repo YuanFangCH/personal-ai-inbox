@@ -10,7 +10,6 @@
 | 最后更新时间 | 2026-10-25 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex |
-| 当前阶段 | v1.1.5 发布修复：`main` 与 `v1.1.5` 已推送，首次标签 workflow 在全仓 Dart 格式检查发现 `common.dart` 一行未格式化，尚未进入分析/测试/构建且 Release 未创建。已本地格式化并复核 195 个 Dart 文件 0 变化，待修复提交并重指向未发布标签后重跑 CI。上一轮 33 项定向回归、Windows smoke、Web/Windows Release 和 Android Debug APK 检查通过；Android 真机、IME、截图视觉/profile 尚未验收 |
 
 ## 2. 一句话交接
 

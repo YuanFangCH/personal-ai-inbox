@@ -254,12 +254,16 @@ Future<void> _openDetail(WidgetTester tester) async {
 }
 
 Future<void> _capture(WidgetTester tester) async {
-  final captureButton = find.byKey(const Key('capture_button'));
-  if (captureButton.evaluate().isNotEmpty) {
-    await tester.tap(captureButton);
+  final width = tester.view.physicalSize.width / tester.view.devicePixelRatio;
+  if (width < 980) {
+    await tester.tap(find.byKey(const Key('nav_more')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('sheet_nav_knowledge')));
   } else {
-    await tester.tap(find.text('收下内容').first);
+    await tester.tap(find.byKey(const Key('nav_knowledge')));
   }
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key('capture_button')));
   await tester.pumpAndSettle();
   await tester.enterText(
     find.byKey(const Key('capture_text_field')),
@@ -321,8 +325,8 @@ Future<void> _tapPrimaryButton(WidgetTester tester, AndroidUiPage page) async {
     return;
   }
   final labels = switch (page) {
-    AndroidUiPage.home => '收下内容',
-    AndroidUiPage.inbox => '收下内容',
+    AndroidUiPage.home => '查看全部',
+    AndroidUiPage.inbox => null,
     AndroidUiPage.matters => '新建事项',
     AndroidUiPage.knowledge => '新建知识',
     _ => null,
@@ -330,13 +334,15 @@ Future<void> _tapPrimaryButton(WidgetTester tester, AndroidUiPage page) async {
   if (labels == null) {
     return;
   }
-  await tester.tap(find.text(labels).first);
+  final action = find.text(labels).first;
+  await tester.ensureVisible(action);
+  await tester.tap(action);
   await tester.pumpAndSettle();
   if (find.byKey(const Key('capture_text_field')).evaluate().isNotEmpty) {
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
   } else {
-    await tester.pageBack();
+    await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
   }
 }

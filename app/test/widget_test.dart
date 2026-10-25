@@ -21,6 +21,10 @@ void main() {
     await tester.pumpWidget(PersonalAiInboxApp(runtime: controller.runtime));
     await tester.pumpAndSettle();
 
+    await tester.tap(find.byKey(const Key('nav_more')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('sheet_nav_knowledge')));
+    await tester.pumpAndSettle();
     expect(find.byKey(const Key('capture_button')), findsOneWidget);
     await tester.tap(find.byKey(const Key('capture_button')));
     await tester.pumpAndSettle();

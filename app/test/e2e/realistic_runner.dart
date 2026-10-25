@@ -135,7 +135,7 @@ Future<void> runSecretaryScenario(
         'body': '完整响应后重启，不应重复创建。',
         'confidence': 0.92,
         'sensitive': false,
-        'due': '2026-10-23',
+        'due': '2026-10-27',
       },
       'SEC-053' => {
         'type': 'todo',
@@ -143,7 +143,7 @@ Future<void> runSecretaryScenario(
         'body': '未收到完整终止符时不得创建。',
         'confidence': 0.92,
         'sensitive': false,
-        'due': '2026-10-23',
+        'due': '2026-10-27',
       },
       'SEC-085' => {
         'type': 'todo',
@@ -151,7 +151,7 @@ Future<void> runSecretaryScenario(
         'body': '由秘书深度思考工具调用创建。',
         'confidence': 0.92,
         'sensitive': false,
-        'due': '2026-10-23',
+        'due': '2026-10-27',
       },
       _ => const {},
     },
@@ -736,6 +736,7 @@ class _Harness {
             await _tapKey(tester, 'inbox_new_conversation');
             await tester.enterText(find.byKey(const Key('chat_input')), title);
             await _tapKey(tester, 'inbox_new_conversation');
+            await _tapText(tester, '丢弃并离开');
             expect(await chatRepository.listConversations(), isEmpty);
             expect(
               tester
@@ -748,11 +749,16 @@ class _Harness {
             await _newChat(tester, title);
             final oldConversation = conversations.activeConversationId!;
             await _tapKey(tester, 'conversation_manage');
-            final search = find.byKey(const Key('conversation_search'));
+            final search = find.byKey(const Key('conversation_search')).last;
             await tester.enterText(search, title);
             await _settle(tester);
-            await _tapKey(tester, 'conversation_$oldConversation');
-            await tester.tap(find.byTooltip('更多'));
+            final conversationRow = find
+                .byKey(Key('conversation_$oldConversation'))
+                .last;
+            await tester.tap(conversationRow);
+            await _settle(tester);
+            expect(conversations.activeConversationId, oldConversation);
+            await tester.tap(find.byTooltip('更多').first);
             await _settle(tester);
             await _tapText(tester, '重命名');
             final fields = find.byType(TextField);
@@ -1347,7 +1353,10 @@ class _Harness {
             reason: 'retrieval response starts before leaving page',
           );
           final before = results.documents.length;
-          await _tapKey(tester, 'nav_calendar');
+          await tester.binding.handlePopRoute();
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 1));
+          expect(find.byKey(const Key('page_home')), findsOneWidget);
           await _waitFor(
             tester,
             () => !conversations.isChatGenerating,
@@ -1359,6 +1368,7 @@ class _Harness {
           );
           expect(requestBodies, hasLength(1));
           expect(results.documents.length, before);
+          await _goto(tester, 'calendar');
           _caseMetrics = {'model_requests': requestBodies.length};
         } else if (id == 'SEC-084') {
           await _startChat(tester, title);
@@ -1928,6 +1938,20 @@ class _Harness {
       expect(find.text('待处理'), findsOneWidget, reason: 'navigation to pending');
       return;
     }
+    // The secretary conversation replaces the shell's compact navigation.
+    // Use its embedded desktop navigation where available; on compact
+    // layouts return to the shell through the conversation drawer first.
+    if (page != 'inbox' &&
+        find.byKey(const Key('conversation_manage')).evaluate().isNotEmpty &&
+        find.byKey(const Key('nav_home')).evaluate().isEmpty) {
+      final secretaryDestination = find.byKey(Key('secretary_nav_$page'));
+      if (secretaryDestination.evaluate().isNotEmpty) {
+        await _tapKey(tester, 'secretary_nav_$page');
+      } else {
+        await _tapKey(tester, 'conversation_manage');
+        await _tapKey(tester, 'conversation_return_home');
+      }
+    }
     // Pushed routes (conversation, editors) cover the shell navigation.
     for (var attempt = 0; attempt < 3; attempt++) {
       if (find.byKey(const Key('nav_home')).evaluate().isNotEmpty) break;
@@ -1999,14 +2023,8 @@ class _Harness {
   Future<void> _capture(WidgetTester tester, String text) async {
     final before = results.documents.length;
     final reviewsBefore = capture.reviewCaptures.length;
-    final fab = find.byKey(const Key('capture_button'));
-    if (fab.evaluate().isNotEmpty) {
-      await tester.tap(fab);
-      await _settle(tester);
-    } else {
-      await _goto(tester, 'home');
-      await _tapText(tester, '收下内容');
-    }
+    await _goto(tester, 'knowledge');
+    await _tapKey(tester, 'capture_button');
     await tester.enterText(find.byKey(const Key('capture_text_field')), text);
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pump();

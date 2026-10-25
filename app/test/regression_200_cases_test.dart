@@ -138,6 +138,7 @@ void main() {
 
       if (profile.compact) {
         await _tapAndScroll(tester, const Key('nav_inbox'));
+        await _returnHomeFromSecretary(tester);
         await _tapAndScroll(tester, const Key('nav_calendar'));
         await _tapAndScroll(tester, const Key('calendar_section_todos'));
         await tester.tap(find.byKey(const Key('nav_more')));
@@ -159,6 +160,9 @@ void main() {
           'nav_settings',
         ]) {
           await _tapAndScroll(tester, Key(key));
+          if (key == 'nav_inbox') {
+            await _returnHomeFromSecretary(tester);
+          }
           if (key == 'nav_calendar') {
             await _tapAndScroll(tester, const Key('calendar_section_todos'));
           }
@@ -171,6 +175,14 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+}
+
+Future<void> _returnHomeFromSecretary(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('conversation_manage')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key('conversation_return_home')));
+  await tester.pumpAndSettle();
+  expect(find.byKey(const Key('page_home')), findsOneWidget);
 }
 
 Future<void> _tapAndScroll(WidgetTester tester, Key key) async {

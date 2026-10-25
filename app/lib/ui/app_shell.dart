@@ -161,10 +161,7 @@ class _AppShellState extends State<AppShell> {
               ),
             ],
           ),
-          floatingActionButton:
-              constraints.maxWidth < 600 ||
-                  _page == AppPage.home ||
-                  _page == AppPage.inbox
+          floatingActionButton: _page == AppPage.home || _page == AppPage.inbox
               ? null
               : FloatingActionButton.extended(
                   key: const Key('capture_button'),
