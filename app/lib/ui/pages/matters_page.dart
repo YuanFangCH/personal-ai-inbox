@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/models.dart';
 import '../app_scope.dart';
+import '../theme/app_design_tokens.dart';
 import '../widgets/common.dart';
 import 'document_detail_page.dart';
 import 'document_editor_page.dart';
@@ -80,7 +81,7 @@ class _MatterTile extends StatelessWidget {
           builder: (_) => DocumentDetailPage(documentId: matter.id),
         ),
       ),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppDesignTokens.panelRadius),
       child: SurfacePanel(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -98,7 +99,7 @@ class _MatterTile extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),

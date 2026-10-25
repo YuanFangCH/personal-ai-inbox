@@ -167,6 +167,7 @@ class _ContentPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return SurfacePanel(
       padding: const EdgeInsets.all(22),
       child: Column(
@@ -185,7 +186,37 @@ class _ContentPanel extends StatelessWidget {
               child: Center(child: Text('正文为空')),
             )
           else
-            MarkdownBody(data: document.body, selectable: true),
+            MarkdownBody(
+              data: document.body,
+              selectable: true,
+              styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+                p: theme.textTheme.bodyLarge,
+                pPadding: const EdgeInsets.only(bottom: 12),
+                h1: theme.textTheme.headlineSmall,
+                h1Padding: const EdgeInsets.only(top: 20, bottom: 10),
+                h2: theme.textTheme.titleLarge,
+                h2Padding: const EdgeInsets.only(top: 20, bottom: 10),
+                h3: theme.textTheme.titleMedium,
+                h3Padding: const EdgeInsets.only(top: 16, bottom: 8),
+                blockSpacing: 12,
+                listIndent: 24,
+                blockquotePadding: const EdgeInsets.fromLTRB(12, 4, 8, 4),
+                blockquoteDecoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerLow,
+                  border: Border(
+                    left: BorderSide(
+                      color: theme.colorScheme.primary,
+                      width: 2,
+                    ),
+                  ),
+                ),
+                codeblockPadding: const EdgeInsets.all(14),
+                codeblockDecoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
         ],
       ),
     );

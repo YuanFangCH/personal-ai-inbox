@@ -18,8 +18,19 @@ class SyncPage extends StatelessWidget {
       actions: [
         FilledButton.icon(
           onPressed: app.isBusy ? null : app.syncNow,
-          icon: const Icon(Icons.sync),
-          label: const Text('立即同步'),
+          icon: AnimatedSwitcher(
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 160),
+            child: app.isBusy
+                ? const SizedBox.square(
+                    key: ValueKey('sync_busy'),
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.sync, key: ValueKey('sync_idle')),
+          ),
+          label: Text(app.isBusy ? '正在同步' : '立即同步'),
         ),
       ],
       child: Column(

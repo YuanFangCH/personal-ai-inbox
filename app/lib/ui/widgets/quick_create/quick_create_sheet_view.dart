@@ -77,15 +77,23 @@ class _QuickCreateSheetViewState extends State<QuickCreateSheetView> {
                           form: _form,
                           onChanged: _onChanged,
                         ),
-                        if (_form.expanded)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 14),
-                            child: QuickCreateMoreSettings(
-                              form: _form,
-                              matters: app.matters,
-                              onChanged: _onChanged,
-                            ),
-                          ),
+                        AnimatedSize(
+                          duration: MediaQuery.disableAnimationsOf(context)
+                              ? Duration.zero
+                              : const Duration(milliseconds: 190),
+                          curve: Curves.easeInOut,
+                          alignment: Alignment.topCenter,
+                          child: _form.expanded
+                              ? Padding(
+                                  padding: const EdgeInsets.only(top: 14),
+                                  child: QuickCreateMoreSettings(
+                                    form: _form,
+                                    matters: app.matters,
+                                    onChanged: _onChanged,
+                                  ),
+                                )
+                              : const SizedBox(width: double.infinity),
+                        ),
                       ],
                     ),
                   ),

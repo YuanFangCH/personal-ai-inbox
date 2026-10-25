@@ -80,6 +80,35 @@ class _KnowledgePageState extends State<KnowledgePage> {
   @override
   Widget build(BuildContext context) {
     final query = _query.trim();
+    final results = _documents.isEmpty && _loading
+        ? const Center(child: CircularProgressIndicator())
+        : _documents.isEmpty
+        ? EmptyState(
+            icon: Icons.menu_book_outlined,
+            title: query.isEmpty ? '还没有知识' : '没有匹配结果',
+            message: query.isEmpty ? '收下文章、链接或随手记后会出现在这里。' : '换个关键词试试。',
+          )
+        : Column(
+            children: [
+              for (var index = 0; index < _documents.length; index++) ...[
+                DocumentListTile(
+                  document: _documents[index],
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) =>
+                          DocumentDetailPage(documentId: _documents[index].id),
+                    ),
+                  ),
+                ),
+                if (index != _documents.length - 1) const Divider(height: 1),
+              ],
+              if (_loading)
+                const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(),
+                ),
+            ],
+          );
     return PageFrame(
       title: '知识',
       subtitle: '已加载 ${_documents.length} 条',
@@ -118,40 +147,21 @@ class _KnowledgePageState extends State<KnowledgePage> {
               ),
             ),
             const SizedBox(height: 14),
-            if (_documents.isEmpty && _loading)
-              const Center(child: CircularProgressIndicator())
-            else if (_documents.isEmpty)
-              EmptyState(
-                icon: Icons.menu_book_outlined,
-                title: query.isEmpty ? '还没有知识' : '没有匹配结果',
-                message: query.isEmpty ? '收下文章、链接或随手记后会出现在这里。' : '换个关键词试试。',
-              )
-            else
-              SurfacePanel(
-                child: Column(
-                  children: [
-                    for (var index = 0; index < _documents.length; index++) ...[
-                      DocumentListTile(
-                        document: _documents[index],
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => DocumentDetailPage(
-                              documentId: _documents[index].id,
-                            ),
-                          ),
-                        ),
-                      ),
-                      if (index != _documents.length - 1)
-                        const Divider(height: 1),
-                    ],
-                    if (_loading)
-                      const Padding(
-                        padding: EdgeInsets.all(16),
-                        child: CircularProgressIndicator(),
-                      ),
-                  ],
+            AnimatedSwitcher(
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 160),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              child: KeyedSubtree(
+                key: ValueKey(
+                  _documents.isEmpty
+                      ? (_loading ? 'loading' : 'empty')
+                      : 'list',
                 ),
+                child: results,
               ),
+            ),
           ],
         ),
       ),

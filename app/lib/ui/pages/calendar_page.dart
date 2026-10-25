@@ -105,7 +105,27 @@ class _CalendarPageState extends State<CalendarPage> {
             ),
           ),
       ],
-      child: _buildSection(app, occurrences, density),
+      child: AnimatedSwitcher(
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 180),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.015),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          ),
+        ),
+        child: KeyedSubtree(
+          key: ValueKey('${_section.name}_${_mode.name}'),
+          child: _buildSection(app, occurrences, density),
+        ),
+      ),
     );
     return Scaffold(
       backgroundColor: Colors.transparent,
