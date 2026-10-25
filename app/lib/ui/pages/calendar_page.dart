@@ -12,14 +12,19 @@ import '../widgets/todos_pane.dart';
 import 'document_detail_page.dart';
 
 class CalendarPage extends StatefulWidget {
-  const CalendarPage({super.key});
+  const CalendarPage({
+    super.key,
+    this.initialSection = CalendarSection.calendar,
+  });
+
+  final CalendarSection initialSection;
 
   @override
   State<CalendarPage> createState() => _CalendarPageState();
 }
 
 class _CalendarPageState extends State<CalendarPage> {
-  CalendarSection _section = CalendarSection.calendar;
+  late CalendarSection _section;
   CalendarRangeMode _mode = CalendarRangeMode.month;
   late DateTime _selectedDay;
   int _agendaDays = 90;
@@ -27,6 +32,7 @@ class _CalendarPageState extends State<CalendarPage> {
   @override
   void initState() {
     super.initState();
+    _section = widget.initialSection;
     final now = DateTime.now();
     _selectedDay = DateTime(now.year, now.month, now.day);
   }

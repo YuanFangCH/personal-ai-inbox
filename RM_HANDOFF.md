@@ -10,8 +10,10 @@
 | 最后更新时间 | 2026-10-25 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex |
+| 当前阶段 | 前端改版 D0–D3 已按阶段提交；首页去统计/捕获、三块内容平铺与待办完成动效已通过 320dp/1.5x 测试和 Web release 构建，当前进入 D4 其余页面。Flutter 3.47.6 / Dart 3.13.5 恢复在 `D:\Flutter-recovery-3.47.6\sdk\flutter`，Android SDK 仍按 `app/android/local.properties` 指向原路径 |
 
 ## 2. 一句话交接
+
 
 
 2026-10-25 辅助评审：按用户“把网页版 GPT 当辅助子 agent、以 Codex 为主”的要求，已在侧边网页聊天模式完成三轮讨论。Codex 保留顶部权限、既有离开取消生成及新会话语义，拒绝复杂首页条数算法，补入 AI 页始终隐藏底栏/抽屉返回首页、低高度侧栏、互斥输入层、Markdown 密度、普通回执/候选审批状态及动效优先级。见[主方案](docs/frontend-visual-redesign-plan.md)和[讨论取舍](docs/frontend-visual-gpt-review.md)。这是规划完善，不是实施授权；旧预览底栏/首页外框尚未同步。已核对发送清空和账本/聊天回执状态差异，留 D2 处理，未修运行代码。
