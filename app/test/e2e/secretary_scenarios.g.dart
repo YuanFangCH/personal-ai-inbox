@@ -1,4 +1,4 @@
-/// Generated from docs/testing/secretary-100-case-plan.md. Do not edit by hand.
+/// Generated scenario definitions for the secretary workflow.
 const secretaryScenarioMaps = <Map<String, Object?>>[
   {
     'id': "SEC-001",

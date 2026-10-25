@@ -1,6 +1,5 @@
 # 懒狗秘书
 
-[![Flutter CI](https://github.com/YuanFangCH/personal-ai-inbox/actions/workflows/flutter.yml/badge.svg)](https://github.com/YuanFangCH/personal-ai-inbox/actions/workflows/flutter.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 一个本地优先的个人信息捕获、整理与提醒系统。Android 手机、Android 平板和 Windows 端各自运行独立 Flutter App，以 Markdown 为权威成果库，通过端内规则、云端模型和可替换同步接口完成闭环。
@@ -13,7 +12,7 @@
 - Windows 11 x64：选择安装包或便携 ZIP。
 - 发布页同时提供 `SHA256SUMS.txt`，下载后应校验文件哈希。
 
-`v1.1.5` 是当前预览版，延续 Android 长期发布证书，并包含 DeepSeek 风格界面改版和输入/布局回归修复。可从 [GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/v1.1.5) 下载；v1.1.3 及之前的包无法保证与本版直接覆盖安装。本版真实 Android 设备、IME 与截图视觉验收尚未完成，发行范围见[发行说明](docs/releases/v1.1.5.md)。
+`v1.1.5` 是当前预览版，延续 Android 长期发布证书，并包含 DeepSeek 风格界面改版和交互优化。可从 [GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/v1.1.5) 下载；v1.1.3 及之前的包无法保证与本版直接覆盖安装，详见[发行说明](docs/releases/v1.1.5.md)。
 
 ## 核心能力
 
@@ -28,6 +27,15 @@
 
 ## 项目交接
 
+每次在本项目开启新对话，先读本 README，再读 [RM_HANDOFF.md](RM_HANDOFF.md) 获取最新交接状态，并遵守 [AGENTS.md](AGENTS.md)。项目内正式修改同步更新 RM_HANDOFF。
+
+## 当前进展
+
+`v1.1.5` 是当前预览版，包含 DeepSeek 风格的 AI 对话与首页改版、跨宽度输入状态保持、窄屏工作区捕获入口和其他布局反馈。发布资产见 [GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/v1.1.5)。
+
+后续产品工作包括补齐前端高保真状态稿和剩余页面视觉细节，以及接入 OneDrive 双向同步、百度网盘归档和跨端同步。真实云盘与通知能力目前尚未接入。
+
+改版规格见[前端方案](docs/frontend-visual-redesign-plan.md)。产品决策与项目术语见[ADR 索引](docs/adr/README.md)和 [CONTEXT.md](CONTEXT.md)。
 
 ## 模型配置
 
@@ -41,7 +49,7 @@
 
 默认端点为 `https://api.deepseek.com`，默认模型为 `deepseek-flash`。
 
-API Key 单独保存在本机安全存储中。设置导入/导出不包含 Key 或设备 ID。连接测试会单独发送一条固定文本请求，不会发送历史消息或图片，也不会自动更改能力声明。
+API Key 单独保存在本机安全存储中。设置导入/导出不包含 Key 或设备 ID。连接诊断会单独发送一条固定文本请求，不会发送历史消息或图片，也不会自动更改能力声明。
 
 Web 版本仅用于界面预览。浏览器中的 Markdown 结果可能写入本地浏览器存储，但索引、会话与图片使用内存 adapter；不要把 Web 当作可靠备份或数据迁移来源。
 

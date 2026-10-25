@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Runs the approved SEC-001–100 new-feature matrix on Android phone/tablet AVDs
+Runs selected cross-platform application scenarios on Android phone/tablet AVDs
 and the native Windows desktop runner.
 #>
 param(
@@ -23,7 +23,7 @@ if (Test-Path variable:PSNativeCommandUseErrorActionPreference) {
 }
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $appRoot = Join-Path $repoRoot 'app'
-$planPath = Join-Path $repoRoot 'docs\testing\secretary-100-case-plan.md'
+$scenarioSourcePath = Join-Path $appRoot 'test\e2e\secretary_scenarios.g.dart'
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $sha = (& git -C $repoRoot rev-parse HEAD).Trim()
 $dirty = [bool](& git -C $repoRoot status --porcelain)
@@ -144,12 +144,20 @@ if (-not $SkipVersionCheck) {
 }
 
 $caseRows = @{}
-foreach ($line in Get-Content -LiteralPath $planPath) {
-    if ($line -match '^\| (SEC-\d{3}) \| (phone|tablet|windows) \|') {
-        $caseRows[$Matches[1]] = $Matches[2]
+$currentCaseId = $null
+$idPattern = "^\s*'id':\s*`"(?<id>SEC-\d{3})`","
+$platformPattern = "^\s*'platform':\s*`"(?<platform>phone|tablet|windows)`","
+foreach ($line in Get-Content -LiteralPath $scenarioSourcePath) {
+    if ($line -match $idPattern) {
+        $currentCaseId = $Matches.id
+        continue
+    }
+    if ($currentCaseId -and $line -match $platformPattern) {
+        $caseRows[$currentCaseId] = $Matches.platform
+        $currentCaseId = $null
     }
 }
-if ($caseRows.Count -ne 100) { throw "The plan has $($caseRows.Count) parsed cases, expected 100." }
+if ($caseRows.Count -ne 100) { throw "The scenario source has $($caseRows.Count) parsed cases, expected 100." }
 if ($CaseIds.Count -gt 0) {
     $unknown = @($CaseIds | Where-Object { -not $caseRows.ContainsKey($_) })
     if ($unknown.Count -gt 0) { throw "Unknown case IDs: $($unknown -join ', ')" }

@@ -35,6 +35,8 @@ coverage/
 vault/
 app/build/
 app/.dart_tool/
+/test-results/
+/tests/agent-temp/
 
 # Platform output
 *.apk
