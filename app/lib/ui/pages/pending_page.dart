@@ -45,30 +45,27 @@ class PendingPage extends StatelessWidget {
                   trailing: Text('${results.draftDocuments.length} 项'),
                 ),
                 const SizedBox(height: 8),
-                SurfacePanel(
-                  padding: EdgeInsets.zero,
-                  child: Column(
-                    children: [
-                      for (
-                        var index = 0;
-                        index < results.draftDocuments.length;
-                        index++
-                      ) ...[
-                        DocumentListTile(
-                          document: results.draftDocuments[index],
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => DocumentDetailPage(
-                                documentId: results.draftDocuments[index].id,
-                              ),
+                Column(
+                  children: [
+                    for (
+                      var index = 0;
+                      index < results.draftDocuments.length;
+                      index++
+                    ) ...[
+                      DocumentListTile(
+                        document: results.draftDocuments[index],
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => DocumentDetailPage(
+                              documentId: results.draftDocuments[index].id,
                             ),
                           ),
                         ),
-                        if (index != results.draftDocuments.length - 1)
-                          const Divider(height: 1),
-                      ],
+                      ),
+                      if (index != results.draftDocuments.length - 1)
+                        const Divider(height: 1),
                     ],
-                  ),
+                  ],
                 ),
                 const SizedBox(height: 14),
               ],

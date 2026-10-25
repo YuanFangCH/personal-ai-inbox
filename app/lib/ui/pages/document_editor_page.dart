@@ -542,7 +542,7 @@ class _Preview extends StatelessWidget {
             Text(
               title.trim().isEmpty ? '未命名' : title,
               style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 16),

@@ -20,49 +20,58 @@ class ReviewQueue extends StatelessWidget {
     if (reviews.isEmpty && conflicts.isEmpty) {
       return const SizedBox.shrink();
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (reviews.isNotEmpty) ...[
-          SectionHeading(title: '待确认', trailing: Text('${reviews.length} 项')),
-          const SizedBox(height: 8),
-          SurfacePanel(
-            child: Column(
+    return AnimatedSize(
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 180),
+      curve: Curves.easeInOut,
+      alignment: Alignment.topCenter,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (reviews.isNotEmpty) ...[
+            SectionHeading(title: '待确认', trailing: Text('${reviews.length} 项')),
+            const SizedBox(height: 8),
+            Column(
               children: [
                 for (var index = 0; index < reviews.length; index++) ...[
-                  _ReviewCaptureTile(
-                    capture: reviews[index],
-                    captureWorkflow: captureWorkflow,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: _ReviewCaptureTile(
+                      capture: reviews[index],
+                      captureWorkflow: captureWorkflow,
+                    ),
                   ),
                   if (index != reviews.length - 1) const Divider(height: 1),
                 ],
               ],
             ),
-          ),
-          const SizedBox(height: 18),
-        ],
-        if (conflicts.isNotEmpty) ...[
-          SectionHeading(
-            title: '同步冲突',
-            trailing: Text('${conflicts.length} 项'),
-          ),
-          const SizedBox(height: 8),
-          SurfacePanel(
-            child: Column(
+            const SizedBox(height: 18),
+          ],
+          if (conflicts.isNotEmpty) ...[
+            SectionHeading(
+              title: '同步冲突',
+              trailing: Text('${conflicts.length} 项'),
+            ),
+            const SizedBox(height: 8),
+            Column(
               children: [
                 for (var index = 0; index < conflicts.length; index++) ...[
-                  _ConflictTile(
-                    path: conflicts[index],
-                    syncWorkspace: syncWorkspace,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: _ConflictTile(
+                      path: conflicts[index],
+                      syncWorkspace: syncWorkspace,
+                    ),
                   ),
                   if (index != conflicts.length - 1) const Divider(height: 1),
                 ],
               ],
             ),
-          ),
-          const SizedBox(height: 18),
+            const SizedBox(height: 18),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
@@ -98,7 +107,8 @@ class _ReviewCaptureTile extends StatelessWidget {
                   children: [
                     Text(
                       capture.candidateTitle ?? '待整理',
-                      style: const TextStyle(fontWeight: FontWeight.w800),
+                      style: Theme.of(context).textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 5),
                     Text(capture.text, maxLines: 3),
@@ -261,7 +271,7 @@ class _ConflictTile extends StatelessWidget {
                   p.basename(path),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 Text(
                   '远端版本已保留为冲突副本',
