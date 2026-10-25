@@ -59,7 +59,9 @@ class _Composer extends StatelessWidget {
             child: DecoratedBox(
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(26),
+                borderRadius: BorderRadius.circular(
+                  AppDesignTokens.composerRadius,
+                ),
                 border: Border.all(color: theme.dividerColor),
                 boxShadow: [
                   BoxShadow(
@@ -160,6 +162,7 @@ class _Composer extends StatelessWidget {
                       textInputAction: TextInputAction.newline,
                       decoration: const InputDecoration(
                         hintText: '发消息给懒狗秘书',
+                        filled: false,
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.symmetric(vertical: 8),
                       ),

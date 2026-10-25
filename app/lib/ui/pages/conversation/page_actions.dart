@@ -469,65 +469,67 @@ mixin _ConversationPageActions on State<ConversationPage> {
       showDragHandle: true,
       builder: (_) => StatefulBuilder(
         builder: (context, setSheetState) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '当前对话权限',
-                        style: Theme.of(context).textTheme.titleLarge,
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '当前对话权限',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
                       ),
+                      IconButton(
+                        key: const Key('conversation_permissions_close'),
+                        tooltip: '完成',
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  const Text('只影响当前对话；全局设置决定新对话默认值。'),
+                  const SizedBox(height: 8),
+                  _permissionTile(
+                    title: '读取',
+                    subtitle: '按需读取成果、全局知识和其他对话',
+                    value: permissions.read,
+                    onChanged: (value) => _setPermission(
+                      conversation,
+                      permissions.copyWith(read: value),
+                      setSheetState,
+                      (next) => permissions = next,
                     ),
-                    IconButton(
-                      key: const Key('conversation_permissions_close'),
-                      tooltip: '完成',
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close),
+                  ),
+                  _permissionTile(
+                    title: '新增',
+                    subtitle: '允许创建普通成果、提议新增全局知识',
+                    value: permissions.create,
+                    onChanged: (value) => _setPermission(
+                      conversation,
+                      permissions.copyWith(create: value),
+                      setSheetState,
+                      (next) => permissions = next,
                     ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                const Text('只影响当前对话；全局设置决定新对话默认值。'),
-                const SizedBox(height: 8),
-                _permissionTile(
-                  title: '读取',
-                  subtitle: '按需读取成果、全局知识和其他对话',
-                  value: permissions.read,
-                  onChanged: (value) => _setPermission(
-                    conversation,
-                    permissions.copyWith(read: value),
-                    setSheetState,
-                    (next) => permissions = next,
                   ),
-                ),
-                _permissionTile(
-                  title: '新增',
-                  subtitle: '允许创建普通成果、提议新增全局知识',
-                  value: permissions.create,
-                  onChanged: (value) => _setPermission(
-                    conversation,
-                    permissions.copyWith(create: value),
-                    setSheetState,
-                    (next) => permissions = next,
+                  _permissionTile(
+                    title: '修改与删除',
+                    subtitle: '修改/删除普通成果；全局知识仍需确认',
+                    value: permissions.modifyDelete,
+                    onChanged: (value) => _setPermission(
+                      conversation,
+                      permissions.copyWith(modifyDelete: value),
+                      setSheetState,
+                      (next) => permissions = next,
+                    ),
                   ),
-                ),
-                _permissionTile(
-                  title: '修改与删除',
-                  subtitle: '修改/删除普通成果；全局知识仍需确认',
-                  value: permissions.modifyDelete,
-                  onChanged: (value) => _setPermission(
-                    conversation,
-                    permissions.copyWith(modifyDelete: value),
-                    setSheetState,
-                    (next) => permissions = next,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

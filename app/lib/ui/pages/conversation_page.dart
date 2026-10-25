@@ -14,6 +14,7 @@ import '../../services/model_capabilities.dart';
 import '../../services/voice_service.dart';
 import '../app_scope.dart';
 import '../presentation/domain_presentation.dart';
+import '../theme/app_design_tokens.dart';
 import '../widgets/common.dart';
 import 'document_detail_page.dart';
 import 'global_knowledge_page.dart';

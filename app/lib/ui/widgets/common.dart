@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/models.dart';
 import '../presentation/domain_presentation.dart';
+import '../theme/app_design_tokens.dart';
 
 const kContentMaxWidth = 1320.0;
 
@@ -29,7 +30,7 @@ class PageFrame extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: kContentMaxWidth),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 104),
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -70,10 +71,7 @@ class _PageHeader extends StatelessWidget {
           children: [
             Text(
               title,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0,
-              ),
+              style: theme.textTheme.titleLarge?.copyWith(letterSpacing: 0),
             ),
             const SizedBox(height: 4),
             Text(
@@ -128,10 +126,12 @@ class SurfacePanel extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: color ?? (isDark ? const Color(0xFF182125) : Colors.white),
-        borderRadius: BorderRadius.circular(8),
+        color: color ?? (isDark ? AppDesignTokens.darkSidebar : Colors.white),
+        borderRadius: BorderRadius.circular(AppDesignTokens.panelRadius),
         border: Border.all(
-          color: isDark ? const Color(0xFF2B383D) : const Color(0xFFD7DDD9),
+          color: isDark
+              ? AppDesignTokens.darkBorder
+              : AppDesignTokens.lightBorder,
         ),
       ),
       child: Material(
@@ -153,11 +153,7 @@ class SectionHeading extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Text(
-            title,
-            style: Theme.of(context).textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w800),
-          ),
+          child: Text(title, style: Theme.of(context).textTheme.titleMedium),
         ),
         ?trailing,
       ],

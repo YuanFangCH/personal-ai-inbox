@@ -11,10 +11,12 @@ void main() {
   testWidgets('conversation drawer and permissions are session scoped', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(480, 1000);
+    tester.view.physicalSize = const Size(320, 844);
     tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 1.5;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     final runtime = await AppRuntime.bootstrap(
       vaultOverride: MemoryVaultStore(),
       indexOverride: MemoryIndexDatabase(),

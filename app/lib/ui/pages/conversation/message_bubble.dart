@@ -19,15 +19,12 @@ class _MessageBubble extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: isUser
-              ? theme.colorScheme.primaryContainer
-              : theme.brightness == Brightness.dark
-              ? const Color(0xFF182125)
-              : Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isUser
-                ? theme.colorScheme.primary.withValues(alpha: 0.25)
-                : theme.dividerColor,
+              ? (theme.brightness == Brightness.dark
+                    ? AppDesignTokens.darkInput
+                    : AppDesignTokens.lightInput)
+              : null,
+          borderRadius: BorderRadius.circular(
+            isUser ? AppDesignTokens.userMessageRadius : 0,
           ),
         ),
         child: Column(
