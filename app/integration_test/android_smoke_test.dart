@@ -8,6 +8,7 @@ import 'package:personal_ai_inbox/data/memory_index_database.dart';
 import 'package:personal_ai_inbox/data/memory_vault_store.dart';
 
 import '../test/test_support.dart';
+import 'smoke_navigation.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -15,14 +16,17 @@ void main() {
   testWidgets('Android phone shell renders and captures', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
     final runtime = await _runtime();
+    addTearDown(runtime.dispose);
     await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
     await tester.pumpAndSettle();
 
     expect(find.text('首页'), findsWidgets);
-    await _tap(tester, const Key('nav_inbox'));
-    await _tap(tester, const Key('nav_calendar'));
+    await navigateSmokePage(tester, 'inbox');
+    await navigateSmokePage(tester, 'calendar');
     await _tap(tester, const Key('calendar_section_todos'));
     await tester.tap(find.byKey(const Key('nav_more')));
     await tester.pumpAndSettle();
@@ -38,25 +42,29 @@ void main() {
   testWidgets('Android tablet shell renders wide navigation', (tester) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
     final runtime = await _runtime();
+    addTearDown(runtime.dispose);
     await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
     await tester.pumpAndSettle();
 
-    for (final key in const [
-      'nav_inbox',
-      'nav_calendar',
-      'nav_matters',
-      'nav_knowledge',
-      'nav_sync',
-      'nav_settings',
+    for (final page in const [
+      'inbox',
+      'calendar',
+      'matters',
+      'knowledge',
+      'sync',
+      'settings',
     ]) {
-      await _tap(tester, Key(key));
-      if (key == 'nav_calendar') {
+      await navigateSmokePage(tester, page);
+      if (page == 'calendar') {
         await _tap(tester, const Key('calendar_section_todos'));
       }
     }
 
+    await navigateSmokePage(tester, 'knowledge');
     await tester.tap(find.byKey(const Key('capture_button')));
     await tester.pumpAndSettle();
     await tester.enterText(

@@ -55,10 +55,69 @@ class _Composer extends StatelessWidget {
   final VoidCallback onSend;
   final VoidCallback onStop;
 
+  bool get _isComposing {
+    final range = controller.value.composing;
+    return range.isValid && !range.isCollapsed;
+  }
+
+  void _submitFromKeyboard() {
+    if (!enabled || generating || _isComposing) return;
+    onSend();
+  }
+
+  void _insertNewline() {
+    if (!enabled || _isComposing) return;
+    final value = controller.value;
+    final selection = value.selection;
+    final start = selection.isValid ? selection.start : value.text.length;
+    final end = selection.isValid ? selection.end : value.text.length;
+    controller.value = TextEditingValue(
+      text: value.text.replaceRange(start, end, '\n'),
+      selection: TextSelection.collapsed(offset: start + 1),
+    );
+  }
+
+  Widget _textInput() {
+    final input = TextField(
+      key: const Key('chat_input'),
+      controller: controller,
+      focusNode: focusNode,
+      enabled: enabled,
+      onTap: onInputFocused,
+      minLines: 1,
+      maxLines: 6,
+      textInputAction: desktopInput
+          ? TextInputAction.send
+          : TextInputAction.newline,
+      // Keep the composition range and focus until the submit guard has run.
+      onEditingComplete: desktopInput ? () {} : null,
+      onSubmitted: desktopInput ? (_) => _submitFromKeyboard() : null,
+      decoration: const InputDecoration(
+        hintText: '发消息给懒狗秘书',
+        filled: false,
+        border: InputBorder.none,
+        contentPadding: EdgeInsets.symmetric(vertical: 8),
+      ),
+    );
+    if (!desktopInput) return input;
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.enter): _submitFromKeyboard,
+        const SingleActivator(LogicalKeyboardKey.numpadEnter):
+            _submitFromKeyboard,
+        const SingleActivator(LogicalKeyboardKey.enter, shift: true):
+            _insertNewline,
+        const SingleActivator(LogicalKeyboardKey.numpadEnter, shift: true):
+            _insertNewline,
+      },
+      child: input,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return SafeArea(
+    final content = SafeArea(
       top: false,
       child: Align(
         alignment: Alignment.topCenter,
@@ -165,32 +224,7 @@ class _Composer extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                     ],
-                    TextField(
-                      key: const Key('chat_input'),
-                      controller: controller,
-                      focusNode: focusNode,
-                      enabled: enabled,
-                      onTap: onInputFocused,
-                      minLines: 1,
-                      maxLines: 6,
-                      textInputAction: desktopInput
-                          ? TextInputAction.send
-                          : TextInputAction.newline,
-                      onSubmitted: desktopInput
-                          ? (_) {
-                              final composing = controller.value.composing;
-                              if (!composing.isValid || composing.isCollapsed) {
-                                onSend();
-                              }
-                            }
-                          : null,
-                      decoration: const InputDecoration(
-                        hintText: '发消息给懒狗秘书',
-                        filled: false,
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 8),
-                      ),
-                    ),
+                    _textInput(),
                     Row(
                       children: [
                         Expanded(
@@ -325,6 +359,22 @@ class _Composer extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+    final media = MediaQuery.of(context);
+    final availableHeight =
+        (media.size.height -
+                media.viewInsets.bottom -
+                media.padding.vertical -
+                kToolbarHeight)
+            .clamp(0.0, double.infinity)
+            .toDouble();
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: availableHeight),
+      child: SingleChildScrollView(
+        key: const Key('conversation_composer_scroll'),
+        reverse: true,
+        child: content,
       ),
     );
   }

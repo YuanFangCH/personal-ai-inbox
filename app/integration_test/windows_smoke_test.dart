@@ -8,6 +8,7 @@ import 'package:personal_ai_inbox/data/memory_index_database.dart';
 import 'package:personal_ai_inbox/data/memory_vault_store.dart';
 
 import '../test/test_support.dart';
+import 'smoke_navigation.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -16,24 +17,24 @@ void main() {
     tester,
   ) async {
     final runtime = await _runtime();
+    addTearDown(runtime.dispose);
     await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
     await tester.pumpAndSettle();
 
-    expect(find.text('首页'), findsOneWidget);
+    expect(find.text('首页'), findsWidgets);
     expect(tester.takeException(), isNull);
 
-    for (final key in const [
-      'nav_inbox',
-      'nav_calendar',
-      'nav_matters',
-      'nav_knowledge',
-      'nav_sync',
-      'nav_settings',
-      'nav_home',
+    for (final page in const [
+      'inbox',
+      'calendar',
+      'matters',
+      'knowledge',
+      'sync',
+      'settings',
+      'home',
     ]) {
-      await tester.tap(find.byKey(Key(key)));
-      await tester.pumpAndSettle();
-      if (key == 'nav_calendar') {
+      await navigateSmokePage(tester, page);
+      if (page == 'calendar') {
         await tester.tap(find.byKey(const Key('calendar_section_todos')));
         await tester.pumpAndSettle();
       }
@@ -42,9 +43,11 @@ void main() {
         await tester.drag(scrollables.first, const Offset(0, -500));
         await tester.pumpAndSettle();
       }
-      expect(tester.takeException(), isNull, reason: 'page $key');
+      expect(tester.takeException(), isNull, reason: 'page $page');
     }
 
+    expect(find.byKey(const Key('capture_button')), findsNothing);
+    await navigateSmokePage(tester, 'knowledge');
     await tester.tap(find.byKey(const Key('capture_button')));
     await tester.pumpAndSettle();
     await tester.enterText(

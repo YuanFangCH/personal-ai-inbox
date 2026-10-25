@@ -1,0 +1,17 @@
+// Optional, process-scoped recovery for stale native caches in Pub packages.
+def androidRoot = System.getProperty('aitext.androidProjectRoot')
+def nativeCache = System.getProperty('aitext.nativeBuildCache')
+if (androidRoot != null && nativeCache != null) {
+    gradle.beforeProject { project ->
+        if (project.rootProject.projectDir.canonicalFile != new File(androidRoot).canonicalFile) {
+            return
+        }
+        ['com.android.application', 'com.android.library'].each { pluginId ->
+            project.pluginManager.withPlugin(pluginId) {
+                def android = project.extensions.getByName('android')
+                android.externalNativeBuild.cmake.buildStagingDirectory =
+                    new File(nativeCache, project.path.replace(':', '_'))
+            }
+        }
+    }
+}

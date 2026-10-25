@@ -3,6 +3,7 @@ part of '../conversation_page.dart';
 mixin _ConversationPageActions on State<ConversationPage> {
   final _textController = TextEditingController();
   final _composerFocusNode = FocusNode();
+  final _composerLayoutKey = GlobalKey();
   final _scrollController = ScrollController();
   final _imageInputs = <ChatAttachmentInput>[];
   final _fileTexts = <ExtractedFileText>[];
@@ -25,9 +26,27 @@ mixin _ConversationPageActions on State<ConversationPage> {
   bool _temporaryPermissionsInitialized = false;
   bool _thinkingEnabled = false;
   bool _attachmentTrayOpen = false;
+  double _composerHeight = 128;
+  bool _composerLayoutScheduled = false;
   String? _messageEntryConversationId;
   String? _animateAssistantConversationId;
   bool _animateNextAssistantMessage = false;
+
+  void _scheduleComposerLayout() {
+    if (_composerLayoutScheduled) return;
+    _composerLayoutScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _composerLayoutScheduled = false;
+      if (!mounted) return;
+      final renderObject = _composerLayoutKey.currentContext
+          ?.findRenderObject();
+      if (renderObject is! RenderBox || !renderObject.hasSize) return;
+      final height = renderObject.size.height;
+      if ((height - _composerHeight).abs() < 0.5) return;
+      setState(() => _composerHeight = height);
+      _scrollToBottom();
+    });
+  }
 
   void _resetMessageEntryTracking(
     String? conversationId,
@@ -181,17 +200,19 @@ mixin _ConversationPageActions on State<ConversationPage> {
 
   Future<void> _send() async {
     final app = AppScope.conversations(context);
-    final text = _composeMessageText(_textController.text);
-    if ((text.trim().isEmpty && _imageInputs.isEmpty) ||
+    final initialText = _composeMessageText(_textController.text);
+    if ((initialText.trim().isEmpty && _imageInputs.isEmpty) ||
         app.isChatGenerating ||
         _sending) {
       return;
     }
     _followConversationTail = true;
-    final voice = AppScope.voice(context);
-    if (voice.isListening) await voice.stopListening();
     setState(() => _sending = true);
     try {
+      final voice = AppScope.voice(context);
+      if (voice.isListening) await voice.stopListening();
+      if (!mounted) return;
+      final text = _composeMessageText(_textController.text);
       final attachments = List<ChatAttachmentInput>.from(_imageInputs);
       var conversationId = _conversationId;
       if (conversationId == null) {
@@ -592,8 +613,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compactHeight =
-            !inDrawer && widget.isWide && constraints.maxHeight < 460;
+        final compactHeight = constraints.maxHeight < 460;
         if (!compactHeight) {
           return Column(
             children: [

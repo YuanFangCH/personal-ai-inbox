@@ -9,6 +9,27 @@ import 'package:personal_ai_inbox/data/memory_vault_store.dart';
 import 'test_support.dart';
 
 void main() {
+  testWidgets('wide home hides capture while other workspaces keep it', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final runtime = await AppRuntime.bootstrap(
+      vaultOverride: MemoryVaultStore(),
+      indexOverride: MemoryIndexDatabase(),
+      settingsOverride: FakeSettingsService(deviceId: 'wide-home-capture-ui'),
+    );
+    addTearDown(runtime.dispose);
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('capture_button')), findsNothing);
+    await tester.tap(find.byKey(const Key('nav_knowledge')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('capture_button')), findsOneWidget);
+  });
+
   testWidgets('home lays out content without capture or count cards', (
     tester,
   ) async {

@@ -10,8 +10,10 @@
 | 最后更新时间 | 2026-10-25 |
 | 时区 | Asia/Hong_Kong |
 | 最后修改 Agent | Codex |
+| 当前阶段 | 用户请求的问题已修复并完成可运行环境复核：33项定向回归、Windows原生导航 smoke、Web/Windows Release和Android Debug APK签名/metadata/SHA256均通过。ADB正常但设备数0，真机 IME/媒体、截图视觉/profile仍未验收；Android隔离构建入口已记录 |
 
 ## 2. 一句话交接
+
 
 
 
@@ -275,9 +277,10 @@
 
 - 2026-10-25 方案复核已纠正完成口径冲突：旧主方案顶部称进入 D3，而阶段表称 D0–D4 全部完成，现状诊断仍为改版前主题。v2 已拆开基线/实现缺口/待验收；U1–U4 已有首批实现，剩余项目继续按方案逐条验收，原提交与测试历史不改写。
 
-- 2026-10-25 工具链边界：原 E 盘 SDK 不可读，临时 Flutter 3.47.6 / Dart 3.13.5 位于 `D:\Flutter-recovery-3.47.6\sdk\flutter`；构建期间 Android SDK 仍使用 `app/android/local.properties` 中原路径。该临时工具链不改变仓库配置。
+- 2026-10-25 工具链边界：Flutter 3.47.6 / Dart 3.13.5 位于 `D:\Flutter-recovery-3.47.6\sdk\flutter`；Android 隔离 SDK 位于 `D:\Flutter-recovery-3.47.6\ui-fix-review-20261025\android-sdk`，Flutter设置和忽略跟踪的 `local.properties` 已切换到该路径，旧配置分别备份在 `flutter-settings.before.json` 和 `local.properties.before`。
 
-- 2026-10-25 Android Debug 编译阻塞：原 C/E 盘 Gradle 9.3.1 wrapper ZIP/JAR 目录损坏；官方固定版本归档核实 SHA-256 后，Java 下载分支受 TLS truststore 影响，离线分支又遇缓存 registry/native DLL/module metadata 损坏。Windows Release/Web Release/Flutter analyze/widget 均通过不等于 Android 编译或设备验收。恢复 Gradle/JDK/SDK 缓存后再做一次 APK Debug build 和设备探测；未更改 Android SDK 或 Gradle wrapper 配置。
+- 2026-10-25 Android Debug 编译阻塞（已由下一条复核记录取代）：原 C/E 盘 Gradle 9.3.1 wrapper ZIP/JAR 目录损坏；官方固定版本归档核实 SHA-256 后，Java 下载分支受 TLS truststore 影响，离线分支又遇缓存 registry/native DLL/module metadata 损坏。Windows Release/Web Release/Flutter analyze/widget 均通过不等于 Android 编译或设备验收。后续使用隔离 SDK/Gradle 构建入口完成 APK，见本节后续记录。
+
 
 
 - 2026-10-24 文档冲突：`CONTEXT.md` 顶部“运行版尚未更名”、可执行方案/同步协议/ADR 0017/0018 的部分“待实现”注记，与本文件最新完成状态及当前源码不一致；本轮按当前源码与顶部交接规划视觉，不重新实施已完成功能，不改写历史 ADR。后续维护权威文档当前状态时应单独收敛这些过时注记。
