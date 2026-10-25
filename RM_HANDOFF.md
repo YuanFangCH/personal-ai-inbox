@@ -19,6 +19,7 @@
 
 
 
+
 2026-10-25 辅助评审：按用户“把网页版 GPT 当辅助子 agent、以 Codex 为主”的要求，已在侧边网页聊天模式完成三轮讨论。Codex 保留顶部权限、既有离开取消生成及新会话语义，拒绝复杂首页条数算法，补入 AI 页始终隐藏底栏/抽屉返回首页、低高度侧栏、互斥输入层、Markdown 密度、普通回执/候选审批状态及动效优先级。见[主方案](docs/frontend-visual-redesign-plan.md)和[讨论取舍](docs/frontend-visual-gpt-review.md)。这是规划完善，不是实施授权；旧预览底栏/首页外框尚未同步。已核对发送清空和账本/聊天回执状态差异，留 D2 处理，未修运行代码。
 
 
@@ -275,6 +276,8 @@
 - 2026-10-25 方案复核已纠正完成口径冲突：旧主方案顶部称进入 D3，而阶段表称 D0–D4 全部完成，现状诊断仍为改版前主题。v2 已拆开基线/实现缺口/待验收；U1–U4 已有首批实现，剩余项目继续按方案逐条验收，原提交与测试历史不改写。
 
 - 2026-10-25 工具链边界：原 E 盘 SDK 不可读，临时 Flutter 3.47.6 / Dart 3.13.5 位于 `D:\Flutter-recovery-3.47.6\sdk\flutter`；构建期间 Android SDK 仍使用 `app/android/local.properties` 中原路径。该临时工具链不改变仓库配置。
+
+- 2026-10-25 Android Debug 编译阻塞：原 C/E 盘 Gradle 9.3.1 wrapper ZIP/JAR 目录损坏；官方固定版本归档核实 SHA-256 后，Java 下载分支受 TLS truststore 影响，离线分支又遇缓存 registry/native DLL/module metadata 损坏。Windows Release/Web Release/Flutter analyze/widget 均通过不等于 Android 编译或设备验收。恢复 Gradle/JDK/SDK 缓存后再做一次 APK Debug build 和设备探测；未更改 Android SDK 或 Gradle wrapper 配置。
 
 
 - 2026-10-24 文档冲突：`CONTEXT.md` 顶部“运行版尚未更名”、可执行方案/同步协议/ADR 0017/0018 的部分“待实现”注记，与本文件最新完成状态及当前源码不一致；本轮按当前源码与顶部交接规划视觉，不重新实施已完成功能，不改写历史 ADR。后续维护权威文档当前状态时应单独收敛这些过时注记。
