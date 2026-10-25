@@ -85,4 +85,48 @@ void main() {
     expect(find.text('待办'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('home keeps a todo row when saving completion fails', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final vault = _FailingWriteVaultStore();
+    final runtime = await AppRuntime.bootstrap(
+      vaultOverride: vault,
+      indexOverride: MemoryIndexDatabase(),
+      settingsOverride: FakeSettingsService(deviceId: 'home-todo-failure-ui'),
+    );
+    addTearDown(runtime.dispose);
+    final todo = await runtime.results.createManual(
+      type: ResultType.todo,
+      title: '待办保存失败',
+    );
+    vault.failWrites = true;
+
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+    await tester.pumpAndSettle();
+    final checkbox = find.byKey(Key('home_todo_checkbox_${todo.id}'));
+    await tester.ensureVisible(checkbox);
+    await tester.tap(checkbox);
+    await tester.pumpAndSettle();
+
+    expect(find.text('待办保存失败'), findsOneWidget);
+    expect(tester.widget<Checkbox>(checkbox).value, isFalse);
+    expect(runtime.results.findDocument(todo.id)!.done, isFalse);
+    expect(find.text('待办未能更新，请稍后重试'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+}
+
+class _FailingWriteVaultStore extends MemoryVaultStore {
+  bool failWrites = false;
+
+  @override
+  Future<void> write(String relativePath, String contents) async {
+    if (failWrites) throw StateError('simulated vault write failure');
+    await super.write(relativePath, contents);
+  }
 }
