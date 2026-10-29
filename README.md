@@ -31,7 +31,7 @@
 
 ## 当前进展
 
-表与笔记改版已细化为 [10 个工作包、80 个执行步骤](docs/table-notebook-implementation-plan.md)，包括契约、核心存储、回收站、迁移、界面、AI 和候选升级验收；全部尚未执行。执行建议与已确认产品规则分别标注。
+表与笔记改版已细化为 [10 个工作包、80 个执行步骤](docs/table-notebook-implementation-plan.md)。P0 的表/内容数据契约与存储 ADR 已起草，业务实现仍待推进。安卓验证依赖的 Flutter SDK/`adb` 当前不可启动；本机模拟器测试尚未完成。
 
 2026-10-29 正在规划以笔记式表替代事项：三个默认表仅兜底且不可删除，表混合收纳正文、笔记、待办、日程和事件；日历只显示表内内容，首页支持可排序、展开的表展示。AI 内容操作默认免逐次确认，表结构在对话内确认，全局知识仍独立且人工确认。首版支持六种按表定义的自定义字段；调整通知保留为事件并更新原日程，自定义表连内容删除后可在 30 天内整表恢复、到期自动清理。旧事项将保留正文及关联内容迁移为表。完整分类与兜底规则见[改版规划](docs/table-notebook-redesign-plan.md)和 [ADR 0020](docs/adr/0020-notebook-tables-and-content-permissions.md)。目前仅更新规划，未修改业务代码、格式或真实数据；文档核对见 `test-results/table-notebook-lifecycle-20261029/VALIDATION.md`。
 

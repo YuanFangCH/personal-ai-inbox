@@ -1,6 +1,6 @@
 # 表与笔记改版：逐步执行计划
 
-日期：2026-10-29。状态：待执行。本文件细化[产品规划](table-notebook-redesign-plan.md)，不表示业务代码、迁移或验证已经完成。用户已确认的规则以产品规划及 [ADR 0020](adr/0020-notebook-tables-and-content-permissions.md) 为准；下文具体格式、接口名、新文件名和未确认交互均为实施建议。
+日期：2026-10-29。状态：执行中。P0 的表/内容数据契约和 ADR 0021 已起草，其余工作包待执行。本文件细化[产品规划](table-notebook-redesign-plan.md)，不表示业务功能、迁移或安卓验证已完成。用户已确认的规则以产品规划及 [ADR 0020](adr/0020-notebook-tables-and-content-permissions.md) 为准；新增 schema 及实现细节以契约/ADR 草案为准。
 
 ## 1. 执行约定
 
