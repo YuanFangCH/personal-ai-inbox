@@ -40,6 +40,7 @@
 | [表与笔记改版规划](docs/table-notebook-redesign-plan.md) | 2026-10-29 已确认的新目标、实施建议与待定边界；未实现 |
 | [表与笔记执行计划](docs/table-notebook-implementation-plan.md) | P0–P9 共 80 步，含文件落点、依赖、局部验证与完成标准；全部待执行 |
 | [表与内容数据契约](docs/table-data-contract.md) | P0 schema/归属/迁移/日历/恢复建议，待持续验证 |
+| [表交互契约](docs/table-interaction-contract.md) | P0 页面文字稿、AI 工具输入/回执和样例走查 |
 
 ## 5. 已锁定决定
 
@@ -57,7 +58,7 @@
 
 ## 6. 当前进度与验证
 
-- 已将改版细化为 10 个工作包、80 个执行步骤，并映射 13 类需求；P0 已起草表/内容数据契约及 ADR 0021。安卓模拟器测试尚未执行：当前 Flutter SDK 路径不存在，SDK 下 `adb.exe` 无法在主机启动。P0 验证报告见 `test-results/table-notebook-p0-20261029/VALIDATION.md`。
+- 已将改版细化为 10 个工作包、80 个执行步骤，并映射 13 类需求。P0 数据契约/页面/工具草案及 P1 模型编解码已落地；9 项定向 Flutter 测试通过，局部 analyzer 无诊断。Android 15 `aitext_honor_phone` AVD 已启动，应用级模拟器流程待存储/迁移/界面接入。结果见 `test-results/table-notebook-p1-20261029/VALIDATION.md`。
 - AI 秘书对话和首页已按 DeepSeek 手机端/网页端的层级重整。
 - 日历整合日程、我的一天与待办；成果详情、知识和待处理由独立页面承载。
 - 已记录本轮用户确认的产品规则；尚未实现表、独立事件类型、自定义字段、恢复和旧数据迁移。
@@ -82,6 +83,16 @@
 3. 真实同步、通知、剩余视觉细化和 Windows 代码签名继续保留为后续工作。
 
 ## 8. 变更记录
+
+### 2026-10-29 / 完成 P0 契约及 P1 表模型和 Markdown codec 首轮
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 完成笔记式表页面/AI工具契约；实现独立表与内容类型模型和 Markdown 编解码 |
+| 变更文件 | 表/交互契约、ADR 索引、模型接入/同步提示、README/RM_HANDOFF、table model/codec 和定向测试 |
+| 状态 | P0 文档契约完毕；P1 codec 首轮实现。尚未切换运行 codec，未修改 repository/SQLite、UI 或真实资料 |
+| 验证 | 指定 Dart 文件格式化无变化；analyzer 无诊断；codec 测试 9/9通过。Android 15 AVD启动但尚未运行改版 UI 流程 |
+| 后续 | 继续 P2 repository/SQLite 和索引；随后迁移演练、手工页面、首页/日历、AI工具及对话确认 |
 
 ### 2026-10-29 / 细化表与笔记改版的逐步执行计划
 

@@ -7,7 +7,7 @@
 - 一个表一个 `tables/<table-id>.md` 文件；一条内容一个 `items/<item-id>.md` 文件。内容 ID 不含标题和表名，移动表不改变路径或 ID。
 - Markdown 是表和内容的权威正文；SQLite 表/内容行、日历投影、全文片段均可重建。同步对象 ID、文件名 ID、frontmatter ID 必须相同。
 - 表字段：`id`、`type: table`、`schema_version`、`role: inbox_todo | inbox_schedule | inbox_event | custom`、`title`、`revision`、`created_at`、`updated_at`、`deleted`、`field_definitions`。正文是表的自由文本。
-- 内容字段：`id`、`type: note | todo | schedule | event | knowledge`、`schema_version`、`table_id`、`title`、`revision`、`created_at`、`updated_at`、`deleted`、`tags`、`links`、`custom_values`。`knowledge` 仅兼容现有全局知识记录，含全局范围的条目不作为普通笔记迁移。
+- 内容字段：`id`、`type: note | todo | schedule | event`、`schema_version`、`table_id`、`title`、`revision`、`created_at`、`updated_at`、`deleted`、`tags`、`links`、`custom_values`。全局知识不进入该契约，继续使用现有独立存储与审批。
 - `note` 正文是普通笔记；时间文字及创建/修改时间不是业务时间。`todo` 可有 `due`、`done`；`schedule` 有 `start`、可选 `end`、`all_day`、基础 `recurrence`；`event` 有可选 `occurred_at`；日期全部用 ISO 8601，时间类值必须带时区。
 - 调整通知事件使用 `affects: [<schedule-id>]` 关联被修改日程，并可保存变化来源/说明。通知事件保留原有事实，更新同一日程对象的版本；不创建第二个考试内容。
 

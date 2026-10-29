@@ -33,3 +33,4 @@
 - [术语表](../../CONTEXT.md)
 - [表与笔记改版规划](../table-notebook-redesign-plan.md)：2026-10-29 新目标；旧事项/四类成果契约尚未迁移。
 - [表与内容数据契约](../table-data-contract.md)：P0 建议 schema、归属、投影、回收站和迁移映射。
+- [表交互契约](../table-interaction-contract.md)：页面文字稿、AI 工具输入/回执与 P0 样例走查。
