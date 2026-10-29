@@ -31,6 +31,8 @@
 
 ## 当前进展
 
+2026-10-29 正在规划以笔记式表替代事项：表混合收纳内容，三个默认表仅兜底且不可删除；日历只显示表内内容，首页新增可排序、展开的表展示；AI 内容操作默认免逐次确认，表结构操作在对话内确认。首版支持自定义字段，普通知识进表，全局知识仍独立且人工确认。旧事项将保留正文及关联内容迁移为表。详见[改版规划](docs/table-notebook-redesign-plan.md)与 [ADR 0020](docs/adr/0020-notebook-tables-and-content-permissions.md)。目前仅更新规划，未修改业务代码、格式或真实数据；文档核对见 `test-results/table-notebook-plan-20261029/VALIDATION.md`。
+
 `v1.1.5` 是当前预览版，包含 DeepSeek 风格的 AI 对话与首页改版、跨宽度输入状态保持、窄屏工作区捕获入口和其他布局反馈。发布资产见 [GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/v1.1.5)。
 
 后续产品工作包括补齐前端高保真状态稿和剩余页面视觉细节，以及接入 OneDrive 双向同步、百度网盘归档和跨端同步。真实云盘与通知能力目前尚未接入。

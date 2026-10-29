@@ -1,5 +1,7 @@
 # 个人 AI 收件箱与提醒系统：可执行方案
 
+> 2026-10-29 新目标：以笔记式表替代事项，新增事件/日程区分、自定义字段、表内 AI 操作与对话内结构确认，见[改版规划](table-notebook-redesign-plan.md)和 [ADR 0020](adr/0020-notebook-tables-and-content-permissions.md)。下文的事项、固定四类成果与独立待处理页仍描述旧契约；新格式/同步/恢复/迁移尚未设计完成，不得直接据此实施改版。
+
 > 版本：v2.7（AI 对话改造目标待实现）
 > 日期：2026-10-20
 > 追加规划：产品显示名“懒狗秘书”、秘书型助理、权限化全局知识与非必要不检索；见 [ADR 0018](adr/0018-confirmed-global-knowledge-for-secretary.md)、[补充计划](secretary-and-global-knowledge-plan.md) 和[检索策略](ai-retrieval-policy.md)。S1 权限快照、S2 CAS 与本地撤销账本已实现；其他功能尚未完成。

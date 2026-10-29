@@ -9,7 +9,7 @@
 | [0003](0003-conflict-copies-and-tombstones.md) | 冲突保留副本，删除用墓碑 | accepted |
 | [0004](0004-onedrive-bidirectional-baidu-one-way.md) | OneDrive 双向同步，百度网盘只做单向发布 | accepted |
 | [0005](0005-three-hash-change-detection.md) | 用三项 hash 判断变更，时钟只用于破平局 | accepted |
-| [0006](0006-matter-as-first-class-entity.md) | 事项是一等实体 | accepted |
+| [0006](0006-matter-as-first-class-entity.md) | 事项是一等实体 | 新目标由 0020 取代，尚未迁移 |
 | [0007](0007-links-one-sided-matter-declared-by-children.md) | 关联单边存储，归属由子项声明 | accepted |
 | [0008](0008-flutter-for-three-clients.md) | 三端统一用 Flutter | accepted |
 | [0009](0009-open-model-access.md) | 默认用 deepseek-flash，模型接入层保持开放 | accepted |
@@ -20,12 +20,14 @@
 | [0014](0014-modular-local-core-and-compatibility-migration.md) | 采用模块化本地核心，并以兼容 facade 分阶段迁移 | accepted |
 | [0015](0015-recoverable-local-commits-and-idempotent-actions.md) | 本地持久化使用可恢复提交与幂等动作 | accepted |
 | [0016](0016-sync-validation-and-version-bound-conflict-decisions.md) | 同步对象经过校验，冲突裁决绑定观察到的远端版本 | accepted |
-| [0017](0017-conversation-permissions-and-reversible-result-actions.md) | AI 对话按会话授权读取及可撤销成果操作，待处理独立成页（待实现） | accepted |
+| [0017](0017-conversation-permissions-and-reversible-result-actions.md) | AI 对话按会话授权读取及可撤销成果操作，独立待处理页方向由 0020 取代 | accepted（部分目标已更新） |
 | [0018](0018-confirmed-global-knowledge-for-secretary.md) | 秘书型助理使用三端同步、按需检索且增改删均人工确认的全局知识（待实现） | accepted |
 | [0019](0019-stable-android-release-signing.md) | Android 预览发布从 v1.1.4 起固定使用长期签名密钥 | accepted |
+| [0020](0020-notebook-tables-and-content-permissions.md) | 以笔记式表组织内容，AI 表内内容操作免逐次确认、表结构在对话确认；取代事项与独立待处理页方向 | accepted（目标，未实现） |
 
 相关文档：
 
 - [可执行方案](../personal-ai-inbox-executable-plan.md)
 - [成果同步协议](../sync-protocol.md)
 - [术语表](../../CONTEXT.md)
+- [表与笔记改版规划](../table-notebook-redesign-plan.md)：2026-10-29 新目标；旧事项/四类成果契约尚未迁移。
