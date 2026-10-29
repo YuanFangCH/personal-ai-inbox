@@ -31,7 +31,7 @@
 
 ## 当前进展
 
-2026-10-29 正在规划以笔记式表替代事项：表混合收纳内容，三个默认表仅兜底且不可删除；日历只显示表内内容，首页新增可排序、展开的表展示；AI 内容操作默认免逐次确认，表结构操作在对话内确认。带截止时间的待办仍是待办；普通笔记无其他归属时进入事件表但保持笔记类型。首版字段按表定义、逐条填写，支持文本、数字、日期时间、单选、多选、勾选；全局知识仍独立且人工确认。旧事项将保留正文及关联内容迁移为表。详见[改版规划](docs/table-notebook-redesign-plan.md)与 [ADR 0020](docs/adr/0020-notebook-tables-and-content-permissions.md)。目前仅更新规划，未修改业务代码、格式或真实数据；文档核对见 `test-results/table-notebook-rules-20261029/VALIDATION.md`。
+2026-10-29 正在规划以笔记式表替代事项：三个默认表仅兜底且不可删除，表混合收纳正文、笔记、待办、日程和事件；日历只显示表内内容，首页支持可排序、展开的表展示。AI 内容操作默认免逐次确认，表结构在对话内确认，全局知识仍独立且人工确认。首版支持六种按表定义的自定义字段；调整通知保留为事件并更新原日程，自定义表连内容删除后可在 30 天内整表恢复、到期自动清理。旧事项将保留正文及关联内容迁移为表。完整分类与兜底规则见[改版规划](docs/table-notebook-redesign-plan.md)和 [ADR 0020](docs/adr/0020-notebook-tables-and-content-permissions.md)。目前仅更新规划，未修改业务代码、格式或真实数据；文档核对见 `test-results/table-notebook-lifecycle-20261029/VALIDATION.md`。
 
 `v1.1.5` 是当前预览版，包含 DeepSeek 风格的 AI 对话与首页改版、跨宽度输入状态保持、窄屏工作区捕获入口和其他布局反馈。发布资产见 [GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/v1.1.5)。
 
