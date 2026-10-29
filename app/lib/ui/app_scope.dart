@@ -5,12 +5,14 @@ import '../modules/conversation/conversation_workspace.dart';
 import '../modules/results/result_library.dart';
 import '../modules/settings/device_preferences.dart';
 import '../modules/sync/sync_workspace.dart';
+import '../modules/tables/table_library.dart';
 import '../services/file_input_service.dart';
 import '../services/voice_service.dart';
 
 class AppModules {
   const AppModules({
     required this.results,
+    required this.tables,
     required this.capture,
     required this.conversations,
     required this.preferences,
@@ -20,6 +22,7 @@ class AppModules {
   });
 
   final ResultLibrary results;
+  final TableLibrary tables;
   final CaptureWorkflow capture;
   final ConversationWorkspace conversations;
   final DevicePreferences preferences;
@@ -40,6 +43,8 @@ class AppScope extends InheritedWidget {
   }
 
   static ResultLibrary results(BuildContext context) => of(context).results;
+
+  static TableLibrary tables(BuildContext context) => of(context).tables;
 
   static CaptureWorkflow capture(BuildContext context) => of(context).capture;
 

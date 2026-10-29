@@ -31,7 +31,7 @@
 
 ## 当前进展
 
-表与笔记改版已细化为 [10 个工作包、80 个执行步骤](docs/table-notebook-implementation-plan.md)。P0 契约、页面文字稿和 AI 工具草案已完成；P1 表/内容模型及 Markdown codec 首轮实现通过 9 项定向测试和局部分析。Android 15 `aitext_honor_phone` AVD 已启动，应用级新流程尚未实现或测试。
+表与笔记改版已细化为 [10 个工作包、80 个执行步骤](docs/table-notebook-implementation-plan.md)。P1模型/codec与P2首轮存储、SQLite v7、按表查询和 runtime 默认表初始化已有28项定向测试、局部分析及APK构建通过。Android15 AVD安装最新 Debug APK后启动、重启成功；Flutter integration driver的VM Service连接仍待修复。详情见 `test-results/table-notebook-p2-20261030/VALIDATION.md`。
 
 2026-10-29 已启动表与笔记改版：三个默认表仅兜底且不可删除，表混合收纳内容；日历只显示表内正式内容，首页可排序展示表模块。AI 内容操作默认免逐次确认，表结构操作在对话确认；普通知识进表，全局知识独立审批。首版支持六种自定义字段；调整通知保留为事件并更新原日程，自定义表及内容可在 30 天内整表恢复。旧事项迁移保留正文和关联内容。完整需求见[改版规划](docs/table-notebook-redesign-plan.md)，执行顺序和代码状态见[执行计划](docs/table-notebook-implementation-plan.md)。
 

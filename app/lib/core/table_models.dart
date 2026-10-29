@@ -102,6 +102,29 @@ class TableDocument {
   final bool deleted;
   final List<TableFieldDefinition> fields;
   final Map<String, Object?> extensionFields;
+
+  TableDocument copyWith({
+    TableRole? role,
+    String? title,
+    int? revision,
+    DateTime? updatedAt,
+    String? body,
+    bool? deleted,
+    List<TableFieldDefinition>? fields,
+    Map<String, Object?>? extensionFields,
+  }) => TableDocument(
+    id: id,
+    role: role ?? this.role,
+    title: title ?? this.title,
+    revision: revision ?? this.revision,
+    createdAt: createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    body: body ?? this.body,
+    schemaVersion: schemaVersion,
+    deleted: deleted ?? this.deleted,
+    fields: fields ?? this.fields,
+    extensionFields: extensionFields ?? this.extensionFields,
+  );
 }
 
 class ScheduleChange {
@@ -163,4 +186,55 @@ class TableEntryDocument {
   final List<ScheduleChange> affects;
   final Map<String, Object?> customValues;
   final Map<String, Object?> extensionFields;
+
+  TableEntryDocument copyWith({
+    TableContentType? type,
+    String? tableId,
+    String? title,
+    int? revision,
+    DateTime? updatedAt,
+    String? body,
+    bool? deleted,
+    List<String>? tags,
+    List<String>? links,
+    Object? due = _tableUnset,
+    bool? done,
+    Object? start = _tableUnset,
+    Object? end = _tableUnset,
+    bool? allDay,
+    Object? recurrence = _tableUnset,
+    Object? occurredAt = _tableUnset,
+    List<ScheduleChange>? affects,
+    Map<String, Object?>? customValues,
+    Map<String, Object?>? extensionFields,
+  }) => TableEntryDocument(
+    id: id,
+    type: type ?? this.type,
+    tableId: tableId ?? this.tableId,
+    title: title ?? this.title,
+    revision: revision ?? this.revision,
+    createdAt: createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    body: body ?? this.body,
+    schemaVersion: schemaVersion,
+    deleted: deleted ?? this.deleted,
+    tags: tags ?? this.tags,
+    links: links ?? this.links,
+    due: identical(due, _tableUnset) ? this.due : due as DateTime?,
+    done: done ?? this.done,
+    start: identical(start, _tableUnset) ? this.start : start as DateTime?,
+    end: identical(end, _tableUnset) ? this.end : end as DateTime?,
+    allDay: allDay ?? this.allDay,
+    recurrence: identical(recurrence, _tableUnset)
+        ? this.recurrence
+        : recurrence as String?,
+    occurredAt: identical(occurredAt, _tableUnset)
+        ? this.occurredAt
+        : occurredAt as DateTime?,
+    affects: affects ?? this.affects,
+    customValues: customValues ?? this.customValues,
+    extensionFields: extensionFields ?? this.extensionFields,
+  );
 }
+
+const _tableUnset = Object();

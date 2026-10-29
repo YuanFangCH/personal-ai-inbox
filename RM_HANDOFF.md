@@ -58,7 +58,7 @@
 
 ## 6. 当前进度与验证
 
-- 已将改版细化为 10 个工作包、80 个执行步骤，并映射 13 类需求。P0 数据契约/页面/工具草案及 P1 模型编解码已落地；9 项定向 Flutter 测试通过，局部 analyzer 无诊断。Android 15 `aitext_honor_phone` AVD 已启动，应用级模拟器流程待存储/迁移/界面接入。结果见 `test-results/table-notebook-p1-20261029/VALIDATION.md`。
+- 已将改版细化为 10 个工作包、80 个执行步骤，并映射 13 类需求。P0/P1和P2首轮本地存储/repository/runtime接线通过 28 项定向测试和 analyzer。Android15 AVD安装最新 APK后启动、重启成功，三默认表 Markdown与SQLite索引一致；Flutter集成VM Service测试驱动仍失败。详情见 `test-results/table-notebook-p2-20261030/VALIDATION.md`。
 - AI 秘书对话和首页已按 DeepSeek 手机端/网页端的层级重整。
 - 日历整合日程、我的一天与待办；成果详情、知识和待处理由独立页面承载。
 - 已记录本轮用户确认的产品规则；尚未实现表、独立事件类型、自定义字段、恢复和旧数据迁移。
@@ -78,11 +78,21 @@
 
 ### 下一步
 
-1. 执行 P2 表/内容 SQLite 索引与 repository，补 memory adapter、默认表幂等初始化、重建与有界查询。
-2. 完成 P3 回收站和事件→日程联动；完成 P4 隔离迁移/回滚预演后再切换运行入口。
+1. P2 本地存储接线首轮完成；在 P3 实现单内容可撤销删除、整表30天回收站和事件→日程联动。
+2. 修复 Android integration_test 的 VM Service连接，再执行 P4隔离迁移/回滚预演后才切换运行入口。
 3. 后续按计划完成 P5–P9、安卓集成/E2E和隔离升级演练；真实云盘同步与发布仍单独规划。
 
 ## 8. 变更记录
+
+### 2026-10-30 / 接入表与内容 SQLite索引及默认表 runtime初始化
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 增加索引 schema v7、表/内容索引API、memory/SQLite适配器、TableRepository/TableLibrary和AppRuntime接线 |
+| 变更文件 | index/repository/runtime/modules, SQLite与memory tests, Android默认表bootstrap集成用例 |
+| 状态 | 默认表、内容存储/重建、有界搜索/字段筛选、版本控制已实现；内容删除/回收站、迁移、页面与AI入口未完成 |
+| 验证 | Flutter analyze 19项无诊断；定向SQLite/repository/runtime/result测试28/28；Debug APK成功。AVD手工启动与重启检查默认表Markdown与SQLite索引一致。Flutter integration runner因VM Service连接问题失败，详见P2结果 |
+| 后续 | 补 P2 内容删除/事务恢复与自动化AVD用例后进入P3/P4；不迁移现有真实资料 |
 
 ### 2026-10-29 / 完成 P0 契约及 P1 表模型和 Markdown codec 首轮
 

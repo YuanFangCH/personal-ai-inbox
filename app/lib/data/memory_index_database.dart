@@ -1,8 +1,13 @@
+import 'dart:convert';
+
 import '../core/models.dart';
+import '../core/table_models.dart';
 import 'index_database.dart';
 
 class MemoryIndexDatabase implements IndexDatabase {
   final Map<String, IndexedResult> _results = {};
+  final Map<String, IndexedTable> _tables = {};
+  final Map<String, IndexedTableEntry> _tableEntries = {};
   final Map<String, CaptureRecord> _captures = {};
   final Map<String, IdempotentOperation> _operations = {};
   final Map<String, SyncConflictRecord> _conflicts = {};
@@ -70,6 +75,144 @@ class MemoryIndexDatabase implements IndexDatabase {
   }
 
   @override
+  Future<void> upsertTable(IndexedTable table) async {
+    _tables[table.id] = table;
+  }
+
+  @override
+  Future<void> removeTable(String id) async {
+    _tables.remove(id);
+  }
+
+  @override
+  Future<IndexedTable?> findTable(String id) async => _tables[id];
+
+  @override
+  Future<List<IndexedTable>> listTables({bool includeDeleted = false}) async =>
+      _tables.values
+          .where((table) => includeDeleted || !table.deleted)
+          .toList(growable: false)
+        ..sort((left, right) {
+          final byUpdate = right.updatedAt.compareTo(left.updatedAt);
+          return byUpdate != 0 ? byUpdate : left.id.compareTo(right.id);
+        });
+
+  @override
+  Future<List<IndexedTable>> searchTables({
+    required String query,
+    required int limit,
+    required int offset,
+    bool includeDeleted = false,
+  }) async {
+    final normalized = query.trim().toLowerCase();
+    final tables =
+        _tables.values
+            .where(
+              (table) =>
+                  (includeDeleted || !table.deleted) &&
+                  (normalized.isEmpty || table.searchText.contains(normalized)),
+            )
+            .toList()
+          ..sort((left, right) {
+            final byUpdate = right.updatedAt.compareTo(left.updatedAt);
+            return byUpdate != 0 ? byUpdate : left.id.compareTo(right.id);
+          });
+    final safeOffset = offset < 0 ? 0 : offset;
+    if (safeOffset >= tables.length) return const [];
+    return tables.skip(safeOffset).take(limit.clamp(1, 100)).toList();
+  }
+
+  @override
+  Future<void> upsertTableEntry(IndexedTableEntry entry) async {
+    _tableEntries[entry.id] = entry;
+  }
+
+  @override
+  Future<void> removeTableEntry(String id) async {
+    _tableEntries.remove(id);
+  }
+
+  @override
+  Future<IndexedTableEntry?> findTableEntry(String id) async =>
+      _tableEntries[id];
+
+  @override
+  Future<List<IndexedTableEntry>> listTableEntries({
+    String? tableId,
+    TableContentType? type,
+    bool includeDeleted = false,
+  }) async =>
+      _tableEntries.values
+          .where(
+            (entry) =>
+                (tableId == null || entry.tableId == tableId) &&
+                (type == null || entry.type == type) &&
+                (includeDeleted || !entry.deleted),
+          )
+          .toList(growable: false)
+        ..sort((left, right) {
+          final byUpdate = right.updatedAt.compareTo(left.updatedAt);
+          return byUpdate != 0 ? byUpdate : left.id.compareTo(right.id);
+        });
+
+  @override
+  Future<List<IndexedTableEntry>> searchTableEntries({
+    required String query,
+    required int limit,
+    required int offset,
+    String? tableId,
+    TableContentType? type,
+    DateTime? from,
+    DateTime? through,
+    Map<String, Object?> fieldFilters = const {},
+    bool includeDeleted = false,
+  }) async {
+    final normalized = query.trim().toLowerCase();
+    final entries =
+        _tableEntries.values.where((entry) {
+          if (!includeDeleted && entry.deleted) return false;
+          if (tableId != null && entry.tableId != tableId) return false;
+          if (type != null && entry.type != type) return false;
+          if (normalized.isNotEmpty && !entry.searchText.contains(normalized)) {
+            return false;
+          }
+          if (from != null &&
+              (entry.businessAt == null || entry.businessAt!.isBefore(from))) {
+            return false;
+          }
+          if (through != null &&
+              (entry.businessAt == null ||
+                  entry.businessAt!.isAfter(through))) {
+            return false;
+          }
+          if (fieldFilters.entries.any(
+            (filter) => !_matchesFieldFilter(entry.customValuesJson, filter),
+          )) {
+            return false;
+          }
+          return true;
+        }).toList()..sort((left, right) {
+          final byDate = (right.businessAt ?? right.updatedAt).compareTo(
+            left.businessAt ?? left.updatedAt,
+          );
+          return byDate != 0 ? byDate : left.id.compareTo(right.id);
+        });
+    final safeOffset = offset < 0 ? 0 : offset;
+    if (safeOffset >= entries.length) return const [];
+    return entries.skip(safeOffset).take(limit.clamp(1, 100)).toList();
+  }
+
+  bool _matchesFieldFilter(
+    String encodedValues,
+    MapEntry<String, Object?> filter,
+  ) {
+    final values = jsonDecode(encodedValues);
+    return values is Map &&
+        values.containsKey(filter.key) &&
+        jsonEncode(values[filter.key]) == jsonEncode(filter.value);
+  }
+
+  @override
   Future<void> insertCapture(CaptureRecord capture) async {
     _captures[capture.id] = capture;
   }
@@ -95,6 +238,8 @@ class MemoryIndexDatabase implements IndexDatabase {
   @override
   Future<void> clear() async {
     _results.clear();
+    _tables.clear();
+    _tableEntries.clear();
     _captures.clear();
   }
 

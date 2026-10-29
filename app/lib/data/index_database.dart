@@ -1,4 +1,5 @@
 import '../core/models.dart';
+import '../core/table_models.dart';
 
 abstract interface class IndexDatabase {
   Future<void> open();
@@ -22,6 +23,45 @@ abstract interface class IndexDatabase {
   Future<IndexedResult?> findResult(String id);
 
   Future<void> replaceResults(List<IndexedResult> results);
+
+  Future<void> upsertTable(IndexedTable table);
+
+  Future<void> removeTable(String id);
+
+  Future<IndexedTable?> findTable(String id);
+
+  Future<List<IndexedTable>> listTables({bool includeDeleted = false});
+
+  Future<List<IndexedTable>> searchTables({
+    required String query,
+    required int limit,
+    required int offset,
+    bool includeDeleted = false,
+  });
+
+  Future<void> upsertTableEntry(IndexedTableEntry entry);
+
+  Future<void> removeTableEntry(String id);
+
+  Future<IndexedTableEntry?> findTableEntry(String id);
+
+  Future<List<IndexedTableEntry>> listTableEntries({
+    String? tableId,
+    TableContentType? type,
+    bool includeDeleted = false,
+  });
+
+  Future<List<IndexedTableEntry>> searchTableEntries({
+    required String query,
+    required int limit,
+    required int offset,
+    String? tableId,
+    TableContentType? type,
+    DateTime? from,
+    DateTime? through,
+    Map<String, Object?> fieldFilters = const {},
+    bool includeDeleted = false,
+  });
 
   Future<void> insertCapture(CaptureRecord capture);
 
@@ -62,6 +102,62 @@ abstract interface class IndexDatabase {
   Future<void> removeConflict(String resultId);
 
   Future<List<SyncConflictRecord>> listConflicts();
+}
+
+class IndexedTable {
+  const IndexedTable({
+    required this.id,
+    required this.role,
+    required this.title,
+    required this.revision,
+    required this.updatedAt,
+    required this.deleted,
+    required this.mdPath,
+    required this.localHash,
+    required this.searchText,
+  });
+
+  final String id;
+  final TableRole role;
+  final String title;
+  final int revision;
+  final DateTime updatedAt;
+  final bool deleted;
+  final String mdPath;
+  final String localHash;
+  final String searchText;
+}
+
+class IndexedTableEntry {
+  const IndexedTableEntry({
+    required this.id,
+    required this.type,
+    required this.tableId,
+    required this.title,
+    required this.revision,
+    required this.updatedAt,
+    required this.deleted,
+    required this.mdPath,
+    required this.localHash,
+    required this.searchText,
+    required this.customValuesJson,
+    this.businessAt,
+    this.done = false,
+  });
+
+  final String id;
+  final TableContentType type;
+  final String tableId;
+  final String title;
+  final int revision;
+  final DateTime updatedAt;
+  final DateTime? businessAt;
+  final bool done;
+  final bool deleted;
+  final String mdPath;
+  final String localHash;
+  final String searchText;
+  final String customValuesJson;
 }
 
 enum OperationState {

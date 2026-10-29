@@ -30,6 +30,7 @@ import 'package:personal_ai_inbox/modules/conversation/conversation_workspace.da
 import 'package:personal_ai_inbox/modules/results/result_library.dart';
 import 'package:personal_ai_inbox/modules/settings/device_preferences.dart';
 import 'package:personal_ai_inbox/modules/sync/sync_workspace.dart';
+import 'package:personal_ai_inbox/modules/tables/table_library.dart';
 import 'package:personal_ai_inbox/services/capture_service.dart';
 import 'package:personal_ai_inbox/services/chat_service.dart';
 import 'package:personal_ai_inbox/services/image_input_service.dart';
@@ -70,6 +71,7 @@ class TestAppHost extends ChangeNotifier {
       adapter: SettingsServiceDevicePreferencesAdapter(settingsService),
     );
     final results = ResultLibrary(repository: repository);
+    final tables = TableLibrary(repository: repository.createTableRepository());
     final capture = CaptureWorkflow(
       repository: repository,
       results: results,
@@ -98,6 +100,7 @@ class TestAppHost extends ChangeNotifier {
       AppRuntime(
         preferences: preferences,
         results: results,
+        tables: tables,
         capture: capture,
         conversations: conversations,
         sync: sync,

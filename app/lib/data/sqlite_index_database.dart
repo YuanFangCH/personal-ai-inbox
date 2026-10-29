@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart';
 
 import '../core/models.dart';
+import '../core/table_models.dart';
 import 'index_database.dart';
 
 class SqliteIndexDatabase implements IndexDatabase {
@@ -24,8 +25,8 @@ class SqliteIndexDatabase implements IndexDatabase {
         ..execute('PRAGMA foreign_keys = ON');
       final version =
           _database.select('PRAGMA user_version').single['user_version'] as int;
-      if (version > 6) {
-        throw StateError('索引数据库版本 $version 高于此应用支持的版本 6');
+      if (version > 7) {
+        throw StateError('索引数据库版本 $version 高于此应用支持的版本 7');
       }
       _database.execute('BEGIN EXCLUSIVE');
       _database
@@ -76,6 +77,43 @@ class SqliteIndexDatabase implements IndexDatabase {
           updated_at TEXT NOT NULL
         )
       ''');
+      _database.execute('''
+        CREATE TABLE IF NOT EXISTS notebook_tables (
+          id TEXT PRIMARY KEY,
+          role TEXT NOT NULL,
+          title TEXT NOT NULL,
+          revision INTEGER NOT NULL,
+          updated_at TEXT NOT NULL,
+          deleted INTEGER NOT NULL,
+          md_path TEXT NOT NULL,
+          local_hash TEXT NOT NULL,
+          search_text TEXT NOT NULL
+        )
+      ''');
+      _database.execute('''
+        CREATE TABLE IF NOT EXISTS table_entries (
+          id TEXT PRIMARY KEY,
+          type TEXT NOT NULL,
+          table_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          revision INTEGER NOT NULL,
+          updated_at TEXT NOT NULL,
+          business_at TEXT,
+          done INTEGER NOT NULL,
+          deleted INTEGER NOT NULL,
+          md_path TEXT NOT NULL,
+          local_hash TEXT NOT NULL,
+          search_text TEXT NOT NULL,
+          custom_values_json TEXT NOT NULL
+        )
+      ''');
+      _database
+        ..execute(
+          'CREATE INDEX IF NOT EXISTS table_entries_table ON table_entries(table_id, deleted, updated_at DESC)',
+        )
+        ..execute(
+          'CREATE INDEX IF NOT EXISTS table_entries_type_time ON table_entries(type, business_at)',
+        );
       _database.execute('''
         CREATE TABLE IF NOT EXISTS sync_conflicts (
           result_id TEXT PRIMARY KEY,
@@ -139,7 +177,7 @@ class SqliteIndexDatabase implements IndexDatabase {
           'ALTER TABLE objects ADD COLUMN global_knowledge INTEGER NOT NULL DEFAULT 0',
         );
       }
-      if (version < 6) _database.execute('PRAGMA user_version = 6');
+      if (version < 7) _database.execute('PRAGMA user_version = 7');
       _database.execute('COMMIT');
     } catch (_) {
       try {
@@ -270,6 +308,227 @@ class SqliteIndexDatabase implements IndexDatabase {
   }
 
   @override
+  Future<void> upsertTable(IndexedTable table) async {
+    _database.execute(
+      '''
+      INSERT INTO notebook_tables (
+        id, role, title, revision, updated_at, deleted, md_path, local_hash,
+        search_text
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        role = excluded.role,
+        title = excluded.title,
+        revision = excluded.revision,
+        updated_at = excluded.updated_at,
+        deleted = excluded.deleted,
+        md_path = excluded.md_path,
+        local_hash = excluded.local_hash,
+        search_text = excluded.search_text
+      ''',
+      [
+        table.id,
+        table.role.wireName,
+        table.title,
+        table.revision,
+        table.updatedAt.toIso8601String(),
+        table.deleted ? 1 : 0,
+        table.mdPath,
+        table.localHash,
+        table.searchText.toLowerCase(),
+      ],
+    );
+  }
+
+  @override
+  Future<void> removeTable(String id) async {
+    _database.execute('DELETE FROM notebook_tables WHERE id = ?', [id]);
+  }
+
+  @override
+  Future<IndexedTable?> findTable(String id) async {
+    final rows = _database.select(
+      'SELECT * FROM notebook_tables WHERE id = ?',
+      [id],
+    );
+    return rows.isEmpty ? null : _tableFromRow(rows.first);
+  }
+
+  @override
+  Future<List<IndexedTable>> listTables({bool includeDeleted = false}) async {
+    final rows = _database.select(
+      'SELECT * FROM notebook_tables WHERE (? = 1 OR deleted = 0) ORDER BY updated_at DESC, id ASC',
+      [includeDeleted ? 1 : 0],
+    );
+    return rows.map(_tableFromRow).toList(growable: false);
+  }
+
+  @override
+  Future<List<IndexedTable>> searchTables({
+    required String query,
+    required int limit,
+    required int offset,
+    bool includeDeleted = false,
+  }) async {
+    final normalized = query.trim().toLowerCase();
+    final rows = _database.select(
+      '''
+      SELECT * FROM notebook_tables
+      WHERE (? = '' OR instr(search_text, ?) > 0)
+        AND (? = 1 OR deleted = 0)
+      ORDER BY updated_at DESC, id ASC
+      LIMIT ? OFFSET ?
+      ''',
+      [
+        normalized,
+        normalized,
+        includeDeleted ? 1 : 0,
+        limit.clamp(1, 100),
+        offset < 0 ? 0 : offset,
+      ],
+    );
+    return rows.map(_tableFromRow).toList(growable: false);
+  }
+
+  @override
+  Future<void> upsertTableEntry(IndexedTableEntry entry) async {
+    _database.execute(
+      '''
+      INSERT INTO table_entries (
+        id, type, table_id, title, revision, updated_at, business_at, done,
+        deleted, md_path, local_hash, search_text, custom_values_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        type = excluded.type,
+        table_id = excluded.table_id,
+        title = excluded.title,
+        revision = excluded.revision,
+        updated_at = excluded.updated_at,
+        business_at = excluded.business_at,
+        done = excluded.done,
+        deleted = excluded.deleted,
+        md_path = excluded.md_path,
+        local_hash = excluded.local_hash,
+        search_text = excluded.search_text,
+        custom_values_json = excluded.custom_values_json
+      ''',
+      [
+        entry.id,
+        entry.type.wireName,
+        entry.tableId,
+        entry.title,
+        entry.revision,
+        entry.updatedAt.toIso8601String(),
+        entry.businessAt?.toIso8601String(),
+        entry.done ? 1 : 0,
+        entry.deleted ? 1 : 0,
+        entry.mdPath,
+        entry.localHash,
+        entry.searchText.toLowerCase(),
+        entry.customValuesJson,
+      ],
+    );
+  }
+
+  @override
+  Future<void> removeTableEntry(String id) async {
+    _database.execute('DELETE FROM table_entries WHERE id = ?', [id]);
+  }
+
+  @override
+  Future<IndexedTableEntry?> findTableEntry(String id) async {
+    final rows = _database.select('SELECT * FROM table_entries WHERE id = ?', [
+      id,
+    ]);
+    return rows.isEmpty ? null : _tableEntryFromRow(rows.first);
+  }
+
+  @override
+  Future<List<IndexedTableEntry>> listTableEntries({
+    String? tableId,
+    TableContentType? type,
+    bool includeDeleted = false,
+  }) async {
+    final rows = _database.select(
+      '''
+      SELECT * FROM table_entries
+      WHERE (? IS NULL OR table_id = ?) AND (? IS NULL OR type = ?)
+        AND (? = 1 OR deleted = 0)
+      ORDER BY updated_at DESC, id ASC
+      ''',
+      [
+        tableId,
+        tableId,
+        type?.wireName,
+        type?.wireName,
+        includeDeleted ? 1 : 0,
+      ],
+    );
+    return rows.map(_tableEntryFromRow).toList(growable: false);
+  }
+
+  @override
+  Future<List<IndexedTableEntry>> searchTableEntries({
+    required String query,
+    required int limit,
+    required int offset,
+    String? tableId,
+    TableContentType? type,
+    DateTime? from,
+    DateTime? through,
+    Map<String, Object?> fieldFilters = const {},
+    bool includeDeleted = false,
+  }) async {
+    final normalized = query.trim().toLowerCase();
+    final filterSql = fieldFilters.keys
+        .map((_) => 'AND json_extract(custom_values_json, ?) IS ?')
+        .join('\n');
+    final filterParameters = <Object?>[];
+    for (final filter in fieldFilters.entries) {
+      filterParameters
+        ..add('\$.${jsonEncode(filter.key)}')
+        ..add(_sqliteJsonFilterValue(filter.value));
+    }
+    final rows = _database.select(
+      '''
+      SELECT * FROM table_entries
+      WHERE (? = '' OR instr(search_text, ?) > 0)
+        AND (? IS NULL OR table_id = ?)
+        AND (? IS NULL OR type = ?)
+        AND (? IS NULL OR business_at >= ?)
+        AND (? IS NULL OR business_at <= ?)
+        AND (? = 1 OR deleted = 0)
+        $filterSql
+      ORDER BY COALESCE(business_at, updated_at) DESC, id ASC
+      LIMIT ? OFFSET ?
+      ''',
+      [
+        normalized,
+        normalized,
+        tableId,
+        tableId,
+        type?.wireName,
+        type?.wireName,
+        from?.toUtc().toIso8601String(),
+        from?.toUtc().toIso8601String(),
+        through?.toUtc().toIso8601String(),
+        through?.toUtc().toIso8601String(),
+        includeDeleted ? 1 : 0,
+        ...filterParameters,
+        limit.clamp(1, 100),
+        offset < 0 ? 0 : offset,
+      ],
+    );
+    return rows.map(_tableEntryFromRow).toList(growable: false);
+  }
+
+  Object? _sqliteJsonFilterValue(Object? value) {
+    if (value is DateTime) return value.toIso8601String();
+    if (value is bool) return value ? 1 : 0;
+    if (value is List || value is Map) return jsonEncode(value);
+    return value;
+  }
+
+  @override
   Future<void> insertCapture(CaptureRecord capture) async {
     await updateCapture(capture);
   }
@@ -328,6 +587,8 @@ class SqliteIndexDatabase implements IndexDatabase {
   Future<void> clear() async {
     _database
       ..execute('DELETE FROM objects')
+      ..execute('DELETE FROM notebook_tables')
+      ..execute('DELETE FROM table_entries')
       ..execute('DELETE FROM captures');
   }
 
@@ -624,6 +885,36 @@ class SqliteIndexDatabase implements IndexDatabase {
       globalKnowledge: row['global_knowledge'] == 1,
     );
   }
+
+  IndexedTable _tableFromRow(Row row) => IndexedTable(
+    id: row['id'] as String,
+    role: TableRole.parse(row['role'] as String),
+    title: row['title'] as String,
+    revision: row['revision'] as int,
+    updatedAt: DateTime.parse(row['updated_at'] as String).toLocal(),
+    deleted: row['deleted'] == 1,
+    mdPath: row['md_path'] as String,
+    localHash: row['local_hash'] as String,
+    searchText: row['search_text'] as String,
+  );
+
+  IndexedTableEntry _tableEntryFromRow(Row row) => IndexedTableEntry(
+    id: row['id'] as String,
+    type: TableContentType.parse(row['type'] as String),
+    tableId: row['table_id'] as String,
+    title: row['title'] as String,
+    revision: row['revision'] as int,
+    updatedAt: DateTime.parse(row['updated_at'] as String).toLocal(),
+    businessAt: row['business_at'] == null
+        ? null
+        : DateTime.parse(row['business_at'] as String).toLocal(),
+    done: row['done'] == 1,
+    deleted: row['deleted'] == 1,
+    mdPath: row['md_path'] as String,
+    localHash: row['local_hash'] as String,
+    searchText: row['search_text'] as String,
+    customValuesJson: row['custom_values_json'] as String,
+  );
 
   CaptureRecord _captureFromRow(Row row) {
     final candidateType = row['candidate_type'] as String?;

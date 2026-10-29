@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../core/markdown_codec.dart';
 import '../core/models.dart';
 import 'index_database.dart';
+import 'table_repository.dart';
 import 'vault_store.dart';
 
 class ResultRepository {
@@ -23,6 +24,8 @@ class ResultRepository {
   final IndexDatabase _index;
   final MarkdownCodec _codec;
   final String deviceId;
+  TableRepository createTableRepository() =>
+      TableRepository(vault: _vault, index: _index, deviceId: deviceId);
   static const defaultUndoWindow = Duration(minutes: 10);
   Future<void> _writeTail = Future<void>.value();
 

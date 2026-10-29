@@ -21,6 +21,9 @@ void main() {
     );
 
     expect(runtime.results.findDocument(created.id), isNotNull);
+    expect(runtime.tables.tables, hasLength(3));
+    final table = await runtime.tables.createTable(title: '运行时表');
+    expect(runtime.tables.findTable(table.id)?.title, '运行时表');
     await runtime.shutdown();
     await runtime.shutdown();
   });

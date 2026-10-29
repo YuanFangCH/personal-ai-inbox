@@ -28,6 +28,7 @@ class _PersonalAiInboxAppState extends State<PersonalAiInboxApp>
     final runtime = widget.runtime;
     _modules = AppModules(
       results: runtime.results,
+      tables: runtime.tables,
       capture: runtime.capture,
       conversations: runtime.conversations,
       preferences: runtime.preferences,

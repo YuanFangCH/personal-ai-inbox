@@ -20,6 +20,7 @@ import '../modules/capture/capture_workflow.dart';
 import '../modules/conversation/conversation_workspace.dart';
 import '../modules/conversation/auto_record_processor.dart';
 import '../modules/results/result_library.dart';
+import '../modules/tables/table_library.dart';
 import '../modules/settings/device_preferences.dart';
 import '../modules/sync/sync_workspace.dart';
 import '../services/capture_service.dart';
@@ -96,6 +97,9 @@ final class AppRuntime {
         adapter: SettingsServiceDevicePreferencesAdapter(settingsService),
       );
       final results = ResultLibrary(repository: repository);
+      final tables = TableLibrary(
+        repository: repository.createTableRepository(),
+      );
       final chatService = ChatService(
         settings: settingsService,
         repository: chatRepository,
@@ -133,6 +137,7 @@ final class AppRuntime {
       runtime = AppRuntime(
         preferences: preferences,
         results: results,
+        tables: tables,
         capture: capture,
         conversations: conversations,
         sync: sync,
@@ -161,6 +166,7 @@ final class AppRuntime {
   AppRuntime({
     required this.preferences,
     required this.results,
+    required this.tables,
     required this.capture,
     required this.conversations,
     required this.sync,
@@ -171,6 +177,7 @@ final class AppRuntime {
 
   final DevicePreferences preferences;
   final ResultLibrary results;
+  final TableLibrary tables;
   final CaptureWorkflow capture;
   final ConversationWorkspace conversations;
   final SyncWorkspace sync;
@@ -183,6 +190,7 @@ final class AppRuntime {
   Future<void> initialize() async {
     await preferences.initialize();
     await results.initialize();
+    await tables.initialize();
     await capture.initialize();
     await conversations.initialize();
     await sync.initialize();
@@ -191,6 +199,7 @@ final class AppRuntime {
   Future<void> refresh() async {
     await preferences.initialize();
     await results.refresh();
+    await tables.refresh();
     await capture.refresh();
     await conversations.refresh();
     await sync.refresh();
@@ -204,6 +213,7 @@ final class AppRuntime {
     sync.dispose();
     capture.dispose();
     results.dispose();
+    tables.dispose();
     preferences.dispose();
   }
 
