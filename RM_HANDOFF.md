@@ -91,8 +91,8 @@
 | 任务 | 增加索引 schema v7、表/内容索引API、memory/SQLite适配器、TableRepository/TableLibrary和AppRuntime接线 |
 | 变更文件 | index/repository/runtime/modules, SQLite与memory tests, Android默认表bootstrap集成用例 |
 | 状态 | 默认表、内容存储/重建、有界搜索/字段筛选、版本控制已实现；内容删除/回收站、迁移、页面与AI入口未完成 |
-| 验证 | Flutter analyze 19项无诊断；定向SQLite/repository/runtime/result测试28/28；Debug APK成功。AVD手工启动与重启检查默认表Markdown与SQLite索引一致。Flutter integration runner因VM Service连接问题失败，详见P2结果 |
-| 后续 | 补 P2 内容删除/事务恢复与自动化AVD用例后进入P3/P4；不迁移现有真实资料 |
+| 验证 | Flutter analyze 20项无诊断；定向SQLite/repository/runtime/result测试28/28；Debug APK成功。AVD安装后手工启动/重启，默认表Markdown和SQLite行一致。Flutter integration runner因VM Service连接问题失败，详见P2结果 |
+| 后续 | P3实现单内容撤销/30天整表回收及事件联动；不迁移现有真实资料 |
 
 ### 2026-10-29 / 完成 P0 契约及 P1 表模型和 Markdown codec 首轮
 

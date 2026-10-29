@@ -93,6 +93,7 @@ class TableRepository {
             }
             await _index.upsertTable(_indexTable(table, source));
             validTableIds.add(table.id);
+            indexed++;
           } else {
             final entry = _codec.decodeEntry(source);
             if (path != entryPath(entry.id)) {
@@ -100,7 +101,6 @@ class TableRepository {
             }
             pendingEntries.add((entry, source, path));
           }
-          indexed++;
         });
       } on Object catch (error) {
         final filename = path.split('/').last;
@@ -128,6 +128,7 @@ class TableRepository {
       }
       await _index.upsertTableEntry(_indexEntry(entry, source));
       validEntryIds.add(entry.id);
+      indexed++;
     }
     for (final row in await _index.listTables(includeDeleted: true)) {
       if (!validTableIds.contains(row.id) &&
