@@ -33,6 +33,7 @@
 
 表与笔记改版已细化为 [10 个工作包、80 个执行步骤](docs/table-notebook-implementation-plan.md)。P1模型/codec与P2首轮存储、SQLite v7、按表查询和 runtime 默认表初始化已有28项定向测试、局部分析及APK构建通过。Android15 AVD安装最新 Debug APK后启动、重启成功；Flutter integration driver的VM Service连接仍待修复。详情见 `test-results/table-notebook-p2-20261030/VALIDATION.md`。
 P3本地数据层首轮已实现：SQLite v9恢复账本、单条内容撤销、整表30天恢复/到期清理，以及“通知事件与原日程同批更新/撤销”。21项 repository/index 定向用例与 analyzer通过；Android 15 AVD安装启动及三张默认表重启哈希核验通过。旧数据迁移、UI 和 AI 工具接线仍待执行。状态和范围以 `RM_HANDOFF.md` 与执行计划为准。
+P4a 已增加旧 Markdown 的只读预检、确定性映射、vault Markdown 备份清单、暂存写入/校验、幂等重放和 hash 条件回滚；4 个合成迁移用例与 4 个数据库启动备份协调器用例通过。仅测试内存 fixture，没有触碰真实用户资料。跨数据库与 vault 的一致备份总清单、空间检查、启动迁移门、只读旧格式兼容和真实候选包演练仍待完成。
 
 2026-10-29 已启动表与笔记改版：三个默认表仅兜底且不可删除，表混合收纳内容；日历只显示表内正式内容，首页可排序展示表模块。AI 内容操作默认免逐次确认，表结构操作在对话确认；普通知识进表，全局知识独立审批。首版支持六种自定义字段；调整通知保留为事件并更新原日程，自定义表及内容可在 30 天内整表恢复。旧事项迁移保留正文和关联内容。完整需求见[改版规划](docs/table-notebook-redesign-plan.md)，执行顺序和代码状态见[执行计划](docs/table-notebook-implementation-plan.md)。
 
