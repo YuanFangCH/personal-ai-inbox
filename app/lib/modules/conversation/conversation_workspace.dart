@@ -112,7 +112,7 @@ class ConversationWorkspace extends ChangeNotifier {
       }
 
       final calls = _toolCallsFrom(generation.toolCalls);
-      final actions = await _autoRecordProcessor.processToolCalls(
+      final actions = await _processLegacyResultTools(
         generation.assistantMessageId,
         calls,
         completedAt: generation.updatedAt,
@@ -181,6 +181,19 @@ class ConversationWorkspace extends ChangeNotifier {
           ..name = value['name']
           ..arguments.write(value['arguments'] ?? ''),
     ];
+  }
+
+  Future<List<AutoRecordAction>> _processLegacyResultTools(
+    String assistantMessageId,
+    List<ToolCallAccumulator> calls, {
+    required DateTime completedAt,
+  }) {
+    if (_tableActionProcessor != null) return Future.value(const []);
+    return _autoRecordProcessor.processToolCalls(
+      assistantMessageId,
+      calls,
+      completedAt: completedAt,
+    );
   }
 
   Future<void> refresh() async {
@@ -497,7 +510,7 @@ class ConversationWorkspace extends ChangeNotifier {
           error: null,
         );
         await _repository.saveGeneration(generation);
-        final actions = await _autoRecordProcessor.processToolCalls(
+        final actions = await _processLegacyResultTools(
           assistantMessageId,
           toolCalls.values.toList(growable: false),
           completedAt: generation.updatedAt,

@@ -80,7 +80,7 @@ void main() {
     await tester.tap(find.byKey(const Key('conversation_tables_page')));
     await tester.pumpAndSettle();
 
-    expect(find.text('表与笔记'), findsOneWidget);
+    expect(find.text('全部笔记'), findsOneWidget);
     expect(find.text('待整理捕获'), findsOneWidget);
     expect(find.text('按建议保存'), findsOneWidget);
     expect(find.text('调整'), findsOneWidget);

@@ -591,7 +591,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "textVisible", "value": "表与笔记"},
+        "args": {"kind": "textVisible", "value": "全部笔记"},
       },
       {
         "op": "quickCreate",
@@ -635,7 +635,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "textVisible", "value": "表与笔记"},
+        "args": {"kind": "textVisible", "value": "全部笔记"},
       },
       {
         "op": "quickCreate",
@@ -679,7 +679,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "textVisible", "value": "表与笔记"},
+        "args": {"kind": "textVisible", "value": "全部笔记"},
       },
       {
         "op": "quickCreate",
@@ -723,7 +723,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "textVisible", "value": "表与笔记"},
+        "args": {"kind": "textVisible", "value": "全部笔记"},
       },
       {
         "op": "quickCreate",
@@ -767,7 +767,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "textVisible", "value": "表与笔记"},
+        "args": {"kind": "textVisible", "value": "全部笔记"},
       },
       {
         "op": "quickCreate",
@@ -811,7 +811,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "textVisible", "value": "表与笔记"},
+        "args": {"kind": "textVisible", "value": "全部笔记"},
       },
       {
         "op": "quickCreate",
@@ -855,7 +855,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "textVisible", "value": "表与笔记"},
+        "args": {"kind": "textVisible", "value": "全部笔记"},
       },
       {
         "op": "quickCreate",
@@ -899,7 +899,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "textVisible", "value": "表与笔记"},
+        "args": {"kind": "textVisible", "value": "全部笔记"},
       },
       {
         "op": "quickCreate",
@@ -943,7 +943,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "textVisible", "value": "表与笔记"},
+        "args": {"kind": "textVisible", "value": "全部笔记"},
       },
       {
         "op": "quickCreate",
@@ -987,7 +987,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "textVisible", "value": "表与笔记"},
+        "args": {"kind": "textVisible", "value": "全部笔记"},
       },
       {
         "op": "quickCreate",

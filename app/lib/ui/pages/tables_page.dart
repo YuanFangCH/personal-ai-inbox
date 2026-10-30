@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/table_models.dart';
 import '../../modules/tables/table_library.dart';
@@ -19,6 +20,7 @@ class TablesPage extends StatefulWidget {
 class _TablesPageState extends State<TablesPage> {
   final _query = TextEditingController();
   String _normalizedQuery = '';
+  bool _showTables = false;
 
   @override
   void dispose() {
@@ -63,13 +65,38 @@ class _TablesPageState extends State<TablesPage> {
         final custom = tables
             .where((table) => table.role == TableRole.custom)
             .toList(growable: false);
+        final notes =
+            library.entries
+                .where((entry) => entry.type == TableContentType.note)
+                .where(
+                  (entry) =>
+                      _normalizedQuery.isEmpty ||
+                      entry.title.toLowerCase().contains(_normalizedQuery) ||
+                      entry.body.toLowerCase().contains(_normalizedQuery),
+                )
+                .toList(growable: false)
+              ..sort(
+                (left, right) => right.updatedAt.compareTo(left.updatedAt),
+              );
 
         return PageFrame(
-          title: '表与笔记',
-          subtitle:
-              '${library.tables.length} 张表 · ${library.entries.length} 条内容',
+          title: _showTables ? '表与笔记' : '全部笔记',
+          subtitle: _showTables
+              ? '${library.tables.length} 张表 · ${library.entries.length} 条内容'
+              : '${notes.length} 条笔记',
           actions: [
             OutlinedButton.icon(
+              key: Key(
+                _showTables ? 'notebook_show_notes' : 'notebook_show_tables',
+              ),
+              onPressed: () => setState(() => _showTables = !_showTables),
+              icon: Icon(
+                _showTables ? Icons.notes_outlined : Icons.table_chart_outlined,
+              ),
+              label: Text(_showTables ? '全部笔记' : '查看表'),
+            ),
+            OutlinedButton.icon(
+              key: const Key('notebook_recycle_bin'),
               onPressed: () => _openRecovery(context, library),
               icon: const Icon(Icons.restore_outlined),
               label: const Text('回收站'),
@@ -85,13 +112,14 @@ class _TablesPageState extends State<TablesPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TextField(
+                key: const Key('notebook_search_field'),
                 controller: _query,
                 onChanged: (value) => setState(
                   () => _normalizedQuery = value.trim().toLowerCase(),
                 ),
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.search),
-                  hintText: '搜索表名或正文',
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search),
+                  hintText: _showTables ? '搜索表名或内容' : '搜索笔记标题或正文',
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -133,7 +161,19 @@ class _TablesPageState extends State<TablesPage> {
                 ),
                 const SizedBox(height: 16),
               ],
-              if (tables.isEmpty)
+              if (!_showTables) ...[
+                if (notes.isEmpty && matchingEntries.isEmpty)
+                  EmptyState(
+                    icon: Icons.menu_book_outlined,
+                    title: _normalizedQuery.isEmpty ? '还没有笔记' : '没有匹配的笔记',
+                    message: _normalizedQuery.isEmpty
+                        ? '点“收下”记一段文字，或切到表视图管理待办和日程。'
+                        : '试试其他关键词，或在表视图中搜索全部内容。',
+                  )
+                else ...[
+                  ..._buildNoteGroups(context, library, notes),
+                ],
+              ] else if (tables.isEmpty)
                 EmptyState(
                   icon: Icons.menu_book_outlined,
                   title: _normalizedQuery.isEmpty ? '还没有表' : '没有匹配的表',
@@ -184,6 +224,67 @@ class _TablesPageState extends State<TablesPage> {
 
   int _entryCount(TableLibrary library, String tableId) =>
       library.entries.where((entry) => entry.tableId == tableId).length;
+
+  List<Widget> _buildNoteGroups(
+    BuildContext context,
+    TableLibrary library,
+    List<TableEntryDocument> notes,
+  ) {
+    final now = DateTime.now();
+    final cutoff = now.subtract(const Duration(days: 7));
+    final recent = notes
+        .where((entry) => !entry.updatedAt.isBefore(cutoff))
+        .toList(growable: false);
+    final older = notes
+        .where((entry) => entry.updatedAt.isBefore(cutoff))
+        .toList(growable: false);
+    final groups = <String, List<TableEntryDocument>>{};
+    for (final entry in older) {
+      groups
+          .putIfAbsent(DateFormat('M月').format(entry.updatedAt), () => [])
+          .add(entry);
+    }
+    return [
+      if (recent.isNotEmpty) ...[
+        const SectionHeading(title: '最近 7 天'),
+        const SizedBox(height: 10),
+        for (final entry in recent) ...[
+          _NotebookNoteCard(
+            entry: entry,
+            tableTitle:
+                library.findTable(entry.tableId)?.title ?? entry.tableId,
+            onTap: () => _openNote(context, entry),
+          ),
+          const SizedBox(height: 12),
+        ],
+      ],
+      for (final group in groups.entries) ...[
+        const SizedBox(height: 8),
+        SectionHeading(title: group.key),
+        const SizedBox(height: 10),
+        for (final entry in group.value) ...[
+          _NotebookNoteCard(
+            entry: entry,
+            tableTitle:
+                library.findTable(entry.tableId)?.title ?? entry.tableId,
+            onTap: () => _openNote(context, entry),
+          ),
+          const SizedBox(height: 12),
+        ],
+      ],
+    ];
+  }
+
+  Future<void> _openNote(BuildContext context, TableEntryDocument entry) =>
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => TableEntryEditorPage(
+            tableId: entry.tableId,
+            type: TableContentType.note,
+            entry: entry,
+          ),
+        ),
+      );
 
   Future<void> _createTable(BuildContext context, TableLibrary library) async {
     final title = await _askForTitle(context, dialogTitle: '新建表');
@@ -316,6 +417,100 @@ class _TablesPageState extends State<TablesPage> {
   void _showMessage(BuildContext context, String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class _NotebookNoteCard extends StatelessWidget {
+  const _NotebookNoteCard({
+    required this.entry,
+    required this.tableTitle,
+    required this.onTap,
+  });
+
+  final TableEntryDocument entry;
+  final String tableTitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final body = entry.body.trim();
+    return Material(
+      key: ValueKey('notebook_note_${entry.id}'),
+      color: theme.brightness == Brightness.dark
+          ? const Color(0xff202123)
+          : theme.colorScheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 17, 18, 16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 4,
+                height: 34,
+                margin: const EdgeInsets.only(right: 12, top: 2),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      entry.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (body.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        body,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Text(
+                          DateFormat('M月d日').format(entry.updatedAt),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const Spacer(),
+                        Flexible(
+                          child: Text(
+                            tableTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

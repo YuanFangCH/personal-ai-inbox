@@ -89,20 +89,25 @@ void main() {
       (table) => table.title == '考试表',
     );
     final originalStart = DateTime.now().add(const Duration(days: 5));
-    final schedule = await runtime.tables.createEntry(
-      TableEntryDocument(
-        id: 'android_exam_schedule',
-        type: TableContentType.schedule,
-        tableId: examTable.id,
-        title: '期中考试',
-        revision: 1,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        body: '信号与系统期中考试',
-        start: originalStart,
-        end: originalStart.add(const Duration(hours: 2)),
-      ),
+    responses.scheduleTableId = examTable.id;
+    responses.originalStart = originalStart;
+    await runtime.conversations.sendChatMessage(
+      conversation.id,
+      text: '把期中考试日程记到考试表',
     );
+    final createScheduleAction = runtime.conversations
+        .messagesFor(conversation.id)
+        .last
+        .tableActions
+        .single;
+    expect(createScheduleAction.operation, 'content.create');
+    expect(createScheduleAction.status, TableChatActionStatus.applied);
+    final schedule = runtime.tables.entries.singleWhere(
+      (entry) => entry.title == '期中考试',
+    );
+    expect(schedule.tableId, examTable.id);
+    expect(schedule.type, TableContentType.schedule);
+    expect(schedule.start, originalStart);
     responses.scheduleId = schedule.id;
     final changedStart = DateTime.now().add(const Duration(days: 8));
     responses.changedStart = changedStart;
@@ -185,7 +190,9 @@ void main() {
 class _ResponsePlan {
   var calls = 0;
   String? contentTableId;
+  String? scheduleTableId;
   String? scheduleId;
+  DateTime? originalStart;
   DateTime? changedStart;
 
   Future<http.StreamedResponse> next() async {
@@ -241,6 +248,37 @@ class _ResponsePlan {
       }, finish: 'tool_calls');
     }
     if (calls == 3) {
+      final start = originalStart!;
+      return _stream({
+        'choices': [
+          {
+            'delta': {
+              'tool_calls': [
+                {
+                  'index': 0,
+                  'id': 'call_android_schedule_create',
+                  'function': {
+                    'name': 'content.create',
+                    'arguments': jsonEncode({
+                      'table_id': scheduleTableId,
+                      'type': 'schedule',
+                      'title': '期中考试',
+                      'body': '信号与系统期中考试，考场 B203。',
+                      'start': start.toIso8601String(),
+                      'end': start
+                          .add(const Duration(hours: 2))
+                          .toIso8601String(),
+                      'idempotency_key': 'android-exam-schedule-create',
+                    }),
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      }, finish: 'tool_calls');
+    }
+    if (calls == 4) {
       final start = changedStart!;
       return _stream({
         'choices': [

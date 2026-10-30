@@ -6,6 +6,8 @@ import 'package:http/testing.dart';
 import 'package:personal_ai_inbox/bootstrap/app_runtime.dart';
 import 'package:personal_ai_inbox/core/chat_models.dart';
 import 'package:personal_ai_inbox/core/table_models.dart';
+import 'package:personal_ai_inbox/data/memory_attachment_store.dart';
+import 'package:personal_ai_inbox/data/memory_conversation_store.dart';
 import 'package:personal_ai_inbox/data/memory_index_database.dart';
 import 'package:personal_ai_inbox/data/memory_vault_store.dart';
 import 'package:personal_ai_inbox/services/model_client.dart';
@@ -13,6 +15,92 @@ import 'package:personal_ai_inbox/services/model_client.dart';
 import 'test_support.dart';
 
 void main() {
+  test(
+    'startup recovery never replays legacy result writes in table mode',
+    () async {
+      final store = MemoryConversationStore();
+      final now = DateTime.now();
+      const conversationId = 'cnv_legacy_pending_recovery';
+      const userMessageId = 'msg_legacy_pending_user';
+      const assistantMessageId = 'msg_legacy_pending_assistant';
+      await store.upsertConversation(
+        Conversation(
+          id: conversationId,
+          title: '旧格式待恢复会话',
+          createdAt: now,
+          updatedAt: now,
+          autoTitle: false,
+        ),
+      );
+      await store.upsertMessage(
+        ChatMessage(
+          id: userMessageId,
+          conversationId: conversationId,
+          role: ChatRole.user,
+          content: '帮我创建待办',
+          status: ChatMessageStatus.complete,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await store.upsertMessage(
+        ChatMessage(
+          id: assistantMessageId,
+          conversationId: conversationId,
+          role: ChatRole.assistant,
+          content: '',
+          status: ChatMessageStatus.streaming,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await store.upsertGeneration(
+        GenerationRun(
+          assistantMessageId: assistantMessageId,
+          conversationId: conversationId,
+          userMessageId: userMessageId,
+          status: GenerationStatus.responseReady,
+          responseText: '已记录旧格式待办',
+          toolCalls: [
+            {
+              'index': '0',
+              'id': 'call_legacy_pending',
+              'name': 'create_result',
+              'arguments': jsonEncode({
+                'type': 'todo',
+                'title': '不得回放为旧待办',
+                'body': '迁移后的会话恢复必须使用表格式工具。',
+                'confidence': 0.99,
+                'sensitive': false,
+                'due': now.add(const Duration(days: 2)).toIso8601String(),
+              }),
+            },
+          ],
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      final runtime = await AppRuntime.bootstrap(
+        vaultOverride: MemoryVaultStore(),
+        indexOverride: MemoryIndexDatabase(),
+        conversationStoreOverride: store,
+        attachmentStoreOverride: MemoryAttachmentStore(),
+        settingsOverride: FakeSettingsService(deviceId: 'legacy-recovery'),
+      );
+      addTearDown(runtime.shutdown);
+
+      expect(runtime.results.documents, isEmpty);
+      expect(runtime.tables.entries, isEmpty);
+      await runtime.conversations.openConversation(conversationId);
+      final recovered = runtime.conversations
+          .messagesFor(conversationId)
+          .singleWhere((message) => message.id == assistantMessageId);
+      expect(recovered.status, ChatMessageStatus.complete);
+      expect(recovered.actions, isEmpty);
+    },
+  );
+
   test(
     'complete model response applies table content without confirmation',
     () async {

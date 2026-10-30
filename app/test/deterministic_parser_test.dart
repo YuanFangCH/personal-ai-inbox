@@ -15,6 +15,23 @@ void main() {
     expect(result.confidence, greaterThan(0.8));
   });
 
+  test(
+    'records a dated past change as an event without inventing a clock time',
+    () {
+      final result = parser.parse('今天老师调整了考试范围', now);
+
+      expect(result.type, ResultType.event);
+      expect(result.start, DateTime(2026, 10, 4));
+      expect(result.needsReview, isFalse);
+    },
+  );
+
+  test('keeps a plain dated note out of the event category', () {
+    final result = parser.parse('今天整理了考试范围笔记', now);
+
+    expect(result.type, ResultType.knowledge);
+  });
+
   test('parses a deadline as a todo', () {
     final result = parser.parse('10月8日之前完成报告', now);
 

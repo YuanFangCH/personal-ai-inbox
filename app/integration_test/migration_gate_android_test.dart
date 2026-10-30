@@ -19,6 +19,7 @@ import 'package:personal_ai_inbox/data/table_migration_service.dart';
 import 'package:personal_ai_inbox/data/table_repository.dart';
 import 'package:personal_ai_inbox/modules/tables/table_migration_gate.dart';
 import 'package:personal_ai_inbox/ui/pages/table_migration_read_only_page.dart';
+import 'package:personal_ai_inbox/ui/pages/document_detail_page.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 import '../test/test_support.dart';
@@ -182,11 +183,27 @@ void main() {
       body: '第 4 章实验',
       matterId: matter.id,
     );
+    final globalKnowledge = ResultDocument(
+      id: 'knowledge_runtime_migration',
+      type: ResultType.knowledge,
+      title: '学期开始日',
+      status: ResultStatus.canonical,
+      originDevice: 'runtime-migration-test',
+      revision: 1,
+      createdAt: now,
+      updatedAt: now,
+      body: '2026-09-01',
+      extensionFields: const {
+        globalKnowledgeScopeKey: globalKnowledgeScopeValue,
+      },
+    );
     const codec = MarkdownCodec();
     final matterSource = codec.encode(matter);
     final todoSource = codec.encode(todo);
+    final globalKnowledgeSource = codec.encode(globalKnowledge);
     await vault.write(matter.markdownPath, matterSource);
     await vault.write(todo.markdownPath, todoSource);
+    await vault.write(globalKnowledge.markdownPath, globalKnowledgeSource);
     final migration = SqliteMigrationCoordinator(
       supportPath: supportRoot.path,
       settings: _SnapshotSettings(),
@@ -211,23 +228,93 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(runtime.migrationGate.migrationComplete, isTrue);
+    expect(runtime.migrationGate.requiresReadOnly, isFalse);
     expect(runtime.tables.findTable(matter.id)?.body, matter.body);
     expect(runtime.tables.entries.single.title, todo.title);
+    expect(
+      runtime.results.findDocument(globalKnowledge.id)?.body,
+      globalKnowledge.body,
+    );
     expect(await vault.read(matter.markdownPath), matterSource);
     expect(await vault.read(todo.markdownPath), todoSource);
+    expect(find.byKey(const Key('page_home')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('nav_calendar')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('page_calendar')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('nav_more')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('sheet_nav_matters')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('notebook_show_tables')));
+    await tester.pumpAndSettle();
     expect(find.text('AVD 作业表'), findsWidgets);
+    final navigator = tester.state<NavigatorState>(
+      find.byType(Navigator).first,
+    );
+    navigator.push(
+      MaterialPageRoute<void>(
+        builder: (_) => DocumentDetailPage(documentId: matter.id),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('table_body_edit')), findsOneWidget);
+    expect(find.text('课程项目正文'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
     await tester.tap(find.text('AVD 作业表').first);
     await tester.pumpAndSettle();
     expect(find.text('课程项目正文'), findsOneWidget);
     expect(find.text('提交实验报告'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav_more')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('sheet_nav_knowledge')));
+    await tester.pumpAndSettle();
+    expect(find.text('学期开始日'), findsOneWidget);
+    final globalDocument = runtime.results.findDocument(globalKnowledge.id)!;
+    final globalUpdate = await runtime.results.proposeGlobalKnowledgeChange(
+      operation: GlobalKnowledgeOperation.update,
+      candidateId: 'gkc_migration_global_update',
+      targetId: globalDocument.id,
+      expectedRevision: globalDocument.revision,
+      expectedHash: await runtime.results.hashManagedDocument(
+        globalDocument.id,
+      ),
+      proposal: const {
+        'title': '学期开始日',
+        'body': '确认后的新学期事实。',
+        'facts': {'semester_start': '2026-09-01'},
+      },
+    );
+    final appliedGlobalUpdate = await runtime.results
+        .confirmGlobalKnowledgeChange(
+          globalUpdate.id,
+          displayedDigest: globalUpdate.digest,
+        );
+    expect(appliedGlobalUpdate.document.body, '确认后的新学期事实。');
+    await tester.tap(find.byKey(const Key('nav_more')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('sheet_nav_sync')));
+    await tester.pumpAndSettle();
+    expect(find.text('表格式跨端同步尚未接入'), findsOneWidget);
+    expect(find.text('立即同步'), findsNothing);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await runtime.shutdown();
 
     final restarted = await bootstrap();
     expect(restarted.migrationGate.migrationComplete, isTrue);
+    expect(restarted.migrationGate.requiresReadOnly, isFalse);
     expect(restarted.tables.findTable(matter.id)?.body, matter.body);
     expect(restarted.tables.entries.single.title, todo.title);
+    expect(
+      restarted.results.findDocument(globalKnowledge.id)?.body,
+      '确认后的新学期事实。',
+    );
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: restarted));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('page_home')), findsOneWidget);
     await restarted.shutdown();
   });
 }

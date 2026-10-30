@@ -121,7 +121,7 @@ final class AppRuntime {
       );
       migrationGate = TableMigrationGate(
         service: tableMigrationService,
-        onMigrationComplete: tables.initialize,
+        onMigrationComplete: () => runtime!._initializeModules(),
       );
       final chatService = ChatService(
         settings: settingsService,

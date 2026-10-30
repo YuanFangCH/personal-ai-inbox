@@ -35,7 +35,9 @@ class TableMigrationGate extends ChangeNotifier {
   bool get isApplying => _isApplying;
   bool get migrationComplete => _receipt != null;
   bool get requiresReadOnly =>
-      isEnabled && (_error != null || _preview?.hasLegacyContent == true);
+      isEnabled &&
+      (_error != null ||
+          (_preview?.hasLegacyContent == true && !migrationComplete));
 
   Future<void> initialize() async {
     if (!isEnabled) return;

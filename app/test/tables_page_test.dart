@@ -18,6 +18,35 @@ void main() {
       indexOverride: MemoryIndexDatabase(),
       settingsOverride: FakeSettingsService(deviceId: 'tables-page-test'),
     );
+    final eventTable = runtime.tables.tables.singleWhere(
+      (table) => table.role == TableRole.inboxEvent,
+    );
+    final noteTime = DateTime.now();
+    await runtime.tables.createEntry(
+      TableEntryDocument(
+        id: 'nt_all_notes_page',
+        type: TableContentType.note,
+        tableId: eventTable.id,
+        title: '迁移计划笔记',
+        revision: 1,
+        createdAt: noteTime,
+        updatedAt: noteTime,
+        body: '作业表、考试表与日历入口的说明。',
+      ),
+    );
+    final olderNoteTime = noteTime.subtract(const Duration(days: 30));
+    await runtime.tables.createEntry(
+      TableEntryDocument(
+        id: 'nt_older_all_notes_page',
+        type: TableContentType.note,
+        tableId: eventTable.id,
+        title: '上月考试笔记',
+        revision: 1,
+        createdAt: olderNoteTime,
+        updatedAt: olderNoteTime,
+        body: '归档后的复习提纲。',
+      ),
+    );
     await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
     await tester.pumpAndSettle();
 
@@ -27,6 +56,24 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('sheet_nav_matters')));
     await tester.pumpAndSettle();
+    expect(find.text('全部笔记'), findsOneWidget);
+    expect(find.text('2 条笔记'), findsOneWidget);
+    expect(find.text('最近 7 天'), findsOneWidget);
+    expect(
+      find.byKey(const Key('notebook_note_nt_all_notes_page')),
+      findsOneWidget,
+    );
+    expect(find.text('${olderNoteTime.month}月'), findsOneWidget);
+    expect(
+      find.byKey(const Key('notebook_note_nt_older_all_notes_page')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('notebook_note_nt_all_notes_page')));
+    await tester.pumpAndSettle();
+    expect(find.text('迁移计划笔记'), findsWidgets);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await _openTablesView(tester);
     expect(find.text('表与笔记'), findsOneWidget);
     expect(find.text('待办'), findsWidgets);
     expect(find.text('日程'), findsWidgets);
@@ -144,6 +191,7 @@ void main() {
           await tester.tap(find.byKey(const Key('sheet_nav_matters')));
         }
         await tester.pumpAndSettle();
+        await _openTablesView(tester);
         expect(find.text('响应式考试表'), findsWidgets);
         expect(tester.takeException(), isNull, reason: 'table list at $size');
         await tester.scrollUntilVisible(
@@ -223,6 +271,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('sheet_nav_matters')));
     await tester.pumpAndSettle();
+    await _openTablesView(tester);
     await tester.scrollUntilVisible(
       find.text('作业表'),
       250,
@@ -304,6 +353,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('sheet_nav_matters')));
     await tester.pumpAndSettle();
+    await _openTablesView(tester);
     await tester.scrollUntilVisible(
       find.text('课程表'),
       250,
@@ -406,18 +456,35 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('sheet_nav_matters')));
     await tester.pumpAndSettle();
+    await _openTablesView(tester);
     await tester.enterText(find.byType(TextField).first, '滨海教室');
     await tester.pumpAndSettle();
     expect(find.text('期中考试资料'), findsOneWidget);
-    expect(find.byKey(const Key('table_search_entry_nt_search_entry_ui')), findsOneWidget);
-    await tester.tap(find.byKey(const Key('table_search_entry_nt_search_entry_ui')));
+    expect(
+      find.byKey(const Key('table_search_entry_nt_search_entry_ui')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const Key('table_search_entry_nt_search_entry_ui')),
+    );
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('table_entry_title')), findsOneWidget);
     expect(
-      tester.widget<TextField>(find.byKey(const Key('table_entry_title'))).controller!.text,
+      tester
+          .widget<TextField>(find.byKey(const Key('table_entry_title')))
+          .controller!
+          .text,
       '期中考试资料',
     );
     await tester.pumpWidget(const SizedBox.shrink());
     await runtime.shutdown();
   });
+}
+
+Future<void> _openTablesView(WidgetTester tester) async {
+  final toggle = find.byKey(const Key('notebook_show_tables'));
+  if (toggle.evaluate().isNotEmpty) {
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+  }
 }

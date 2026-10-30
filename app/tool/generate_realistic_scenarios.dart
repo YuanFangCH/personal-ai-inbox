@@ -96,7 +96,7 @@ void main() {
         _assert('reviewCount', {'value': 0}),
         _assert('tableEntryCount', {'value': 1}),
         _step('nav', {'page': 'pending'}),
-        _assert('textVisible', {'value': '表与笔记'}),
+        _assert('textVisible', {'value': '全部笔记'}),
         _step('quickCreate', {'kind': 'todo', 'title': '收尾待办 $variant'}),
         _assert('tableEntryCount', {'value': 2}),
         _assert('noException'),

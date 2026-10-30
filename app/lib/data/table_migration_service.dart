@@ -250,7 +250,12 @@ class TableMigrationService {
       issues.add(TableMigrationIssue('vault', '目标数据不满足表 schema：$error'));
       outputs.clear();
     }
+    final globalKnowledgePaths = documents
+        .where((document) => document.isGlobalKnowledge)
+        .map((document) => document.markdownPath)
+        .toSet();
     final sourceDigest = sourceHashes.entries
+        .where((entry) => !globalKnowledgePaths.contains(entry.key))
         .map((entry) => '${entry.key}:${entry.value}')
         .join('\n');
     final outputDigest = outputs.entries

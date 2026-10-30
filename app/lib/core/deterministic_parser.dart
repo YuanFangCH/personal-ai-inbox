@@ -32,6 +32,11 @@ class DeterministicParser {
       return event;
     }
 
+    final occurredEvent = _parseOccurredEvent(text, now);
+    if (occurredEvent != null) {
+      return occurredEvent;
+    }
+
     final isUrl =
         Uri.tryParse(text)?.hasAbsolutePath == true &&
         text.contains('://') &&
@@ -70,6 +75,30 @@ class DeterministicParser {
       summary: text,
       start: start,
       end: end,
+      tags: _inferTags(text),
+      needsReview: false,
+    );
+  }
+
+  ClassificationCandidate? _parseOccurredEvent(String text, DateTime now) {
+    if (RegExp(r'[?？]|吗$|是否').hasMatch(text) ||
+        RegExp(r'(要|准备|打算|计划|将要)').hasMatch(text)) {
+      return null;
+    }
+    final hasEventAction = RegExp(
+      r'(调整|改期|改到|更改|变更|取消|通知|宣布|发生|完成|结束|新增|公布|发布|修改)',
+    ).hasMatch(text);
+    final hasPastCue = RegExp(r'(今天|今日|昨天|刚刚|刚才|此前|已经|已|刚|了)').hasMatch(text);
+    if (!hasEventAction || !hasPastCue) return null;
+
+    final date = _parseRelativeDate(text, now);
+    final occurredAt = date == null || date.isAfter(now) ? now : date;
+    return ClassificationCandidate(
+      type: ResultType.event,
+      title: _titleFor(text, fallback: '事件'),
+      confidence: 0.86,
+      summary: text,
+      start: occurredAt,
       tags: _inferTags(text),
       needsReview: false,
     );

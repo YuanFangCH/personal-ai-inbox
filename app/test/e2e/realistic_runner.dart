@@ -868,7 +868,7 @@ class _Harness {
           case 'SEC-006':
             await _tapKey(tester, 'conversation_manage');
             await _tapKey(tester, 'conversation_tables_page');
-            expect(find.text('表与笔记'), findsWidgets);
+            expect(find.text('全部笔记'), findsWidgets);
           case 'SEC-007':
             await _tapKey(tester, 'conversation_permissions');
             final toggles = tester.widgetList<SwitchListTile>(
@@ -1999,7 +1999,7 @@ class _Harness {
       }
       await _tapKey(tester, 'conversation_manage');
       await _tapKey(tester, 'conversation_tables_page');
-      expect(find.text('表与笔记'), findsWidgets, reason: 'navigation to tables');
+      expect(find.text('全部笔记'), findsWidgets, reason: 'navigation to tables');
       return;
     }
     // The secretary conversation replaces the shell's compact navigation.
@@ -2031,6 +2031,11 @@ class _Harness {
       await _tapKey(tester, 'nav_$page');
     }
     await _settle(tester);
+    if (page == 'matters' &&
+        find.byKey(const Key('notebook_show_tables')).evaluate().isNotEmpty) {
+      await _tapKey(tester, 'notebook_show_tables');
+      await _settle(tester);
+    }
     expect(
       find.byKey(Key('page_$page')),
       findsOneWidget,
@@ -2755,7 +2760,7 @@ class _Harness {
             isTrue,
           );
         } else if (scenario.id == 'SEC-006') {
-          expect(find.text('表与笔记'), findsWidgets);
+          expect(find.text('全部笔记'), findsWidgets);
         } else if (scenario.id == 'SEC-089') {
           expect(find.byKey(const Key('page_calendar')), findsOneWidget);
         } else {

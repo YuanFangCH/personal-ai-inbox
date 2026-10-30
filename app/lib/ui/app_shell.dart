@@ -74,9 +74,7 @@ class _AppShellState extends State<AppShell> {
       animation: migrationGate,
       builder: (context, _) {
         if (migrationGate.requiresReadOnly) {
-          return migrationGate.migrationComplete
-              ? _MigratedTablesWorkspace(gate: migrationGate)
-              : TableMigrationReadOnlyPage(gate: migrationGate);
+          return TableMigrationReadOnlyPage(gate: migrationGate);
         }
         return _buildMain(context);
       },
@@ -138,41 +136,49 @@ class _AppShellState extends State<AppShell> {
         );
         return Scaffold(
           resizeToAvoidBottomInset: true,
-          body: Stack(
+          body: Column(
             children: [
-              Positioned.fill(
-                child: SafeArea(
-                  bottom: false,
-                  child: wide && _page != AppPage.inbox
-                      ? Row(
-                          children: [
-                            _WideNavigation(
-                              selected: _page,
-                              onSelected: (page) =>
-                                  setState(() => _page = page),
-                              extended: constraints.maxWidth >= 1220,
-                            ),
-                            const VerticalDivider(width: 1),
-                            Expanded(child: content),
-                          ],
-                        )
-                      : content,
-                ),
-              ),
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: ListenableBuilder(
-                  listenable: Listenable.merge([
-                    runtime.sync,
-                    runtime.conversations,
-                  ]),
-                  builder: (context, _) =>
-                      runtime.sync.isBusy ||
-                          runtime.conversations.isChatGenerating
-                      ? const LinearProgressIndicator(minHeight: 2)
-                      : const SizedBox.shrink(),
+              if (runtime.migrationGate.migrationComplete)
+                _MigratedSourceBanner(gate: runtime.migrationGate),
+              Expanded(
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: SafeArea(
+                        bottom: false,
+                        child: wide && _page != AppPage.inbox
+                            ? Row(
+                                children: [
+                                  _WideNavigation(
+                                    selected: _page,
+                                    onSelected: (page) =>
+                                        setState(() => _page = page),
+                                    extended: constraints.maxWidth >= 1220,
+                                  ),
+                                  const VerticalDivider(width: 1),
+                                  Expanded(child: content),
+                                ],
+                              )
+                            : content,
+                      ),
+                    ),
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: ListenableBuilder(
+                        listenable: Listenable.merge([
+                          runtime.sync,
+                          runtime.conversations,
+                        ]),
+                        builder: (context, _) =>
+                            runtime.sync.isBusy ||
+                                runtime.conversations.isChatGenerating
+                            ? const LinearProgressIndicator(minHeight: 2)
+                            : const SizedBox.shrink(),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -328,42 +334,33 @@ class _AppShellState extends State<AppShell> {
   }
 }
 
-class _MigratedTablesWorkspace extends StatelessWidget {
-  const _MigratedTablesWorkspace({required this.gate});
+class _MigratedSourceBanner extends StatelessWidget {
+  const _MigratedSourceBanner({required this.gate});
 
   final TableMigrationGate gate;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            MaterialBanner(
-              backgroundColor: colors.primaryContainer,
-              leading: Icon(
-                Icons.lock_outline,
-                color: colors.onPrimaryContainer,
-              ),
-              content: Text(
-                '表格式副本已生成。旧格式源件保留只读，其他旧版模块保持关闭。',
-                style: TextStyle(color: colors.onPrimaryContainer),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => TableMigrationReadOnlyPage(gate: gate),
-                    ),
-                  ),
-                  child: const Text('查看旧资料'),
-                ),
-              ],
-            ),
-            const Expanded(child: TablesPage()),
-          ],
+    return SafeArea(
+      bottom: false,
+      child: MaterialBanner(
+        backgroundColor: colors.primaryContainer,
+        leading: Icon(Icons.lock_outline, color: colors.onPrimaryContainer),
+        content: Text(
+          '表格式副本已生成。原始旧资料作为只读备份保留；全局知识仍按独立确认流程管理。',
+          style: TextStyle(color: colors.onPrimaryContainer),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => TableMigrationReadOnlyPage(gate: gate),
+              ),
+            ),
+            child: const Text('查看旧资料'),
+          ),
+        ],
       ),
     );
   }

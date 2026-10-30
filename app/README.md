@@ -20,7 +20,7 @@ Flutter 客户端首版，目标覆盖 Android 手机、Android 平板和 Window
 
 ## 表与笔记改版状态
 
-P0–P9 首轮实现、定向验收和候选构建已完成。P8替换了旧事项/待处理入口；P9生成 Android Debug APK 和 Windows Release 候选。Android 15 AVD 的表页、捕获、AI表操作/日程改期/删除恢复及合成旧资料迁移用例通过。真实用户资料尚未迁移，Windows 候选未运行验收。详见根目录 [RM_HANDOFF](../RM_HANDOFF.md)、[执行计划](../docs/table-notebook-implementation-plan.md) 和 [验证记录](../test-results/table-notebook-p8-p9-20261030/VALIDATION.md)。
+P0–P9 首轮实现、定向验收和候选构建已完成。笔记页默认展示跨表“全部笔记”卡片，按近七天/月份分组；表管理可切换查看。Android Debug APK 已直接安装到空 AVD，并通过应用内确认迁移合成旧资料、重启读回和旧源哈希核对。真实用户资料尚未迁移，Windows 候选未运行验收。详见根目录 [RM_HANDOFF](../RM_HANDOFF.md)、[执行计划](../docs/table-notebook-implementation-plan.md) 和 [验证记录](../test-results/table-notebook-p8-p9-20261030/VALIDATION.md)。
 
 ## 运行
 

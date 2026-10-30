@@ -159,6 +159,60 @@ void main() {
     },
   );
 
+  test('confirmed global knowledge changes do not reopen completed table migration', () async {
+    final vault = MemoryVaultStore();
+    final index = MemoryIndexDatabase();
+    const codec = MarkdownCodec();
+    final migration = TableMigrationService(
+      vault: vault,
+      index: index,
+      createDatabaseSnapshot: (id) async => 'database-backups/$id.json',
+      estimateDatabaseSnapshotBytes: () async => 128,
+      availableSpaceProbe: (path) async => availableBytes,
+      runWithWriteBarrier: (operation) => operation(),
+    );
+    final matter = _legacy(
+      id: 'matter_global_migration',
+      type: ResultType.matter,
+      title: '课程表',
+      body: '课程表正文',
+      now: now,
+    );
+    final global = _legacy(
+      id: 'knowledge_global_migration',
+      type: ResultType.knowledge,
+      title: '学期开始日',
+      body: '2026-09-01',
+      extensionFields: const {
+        globalKnowledgeScopeKey: globalKnowledgeScopeValue,
+      },
+      now: now,
+    );
+    final matterSource = codec.encode(matter);
+    await vault.write(matter.markdownPath, matterSource);
+    await vault.write(global.markdownPath, codec.encode(global));
+
+    final initial = await migration.preview(
+      now: now,
+      availableBytes: availableBytes,
+    );
+    expect(initial.canApply, isTrue);
+    await migration.apply(initial);
+
+    final updatedGlobal = global.copyWith(body: '2026-09-08');
+    final updatedGlobalSource = codec.encode(updatedGlobal);
+    await vault.write(global.markdownPath, updatedGlobalSource);
+    final afterGlobalApproval = await migration.preview(
+      now: now,
+      availableBytes: availableBytes,
+    );
+
+    expect(afterGlobalApproval.migrationId, initial.migrationId);
+    expect(await migration.completedReceipt(afterGlobalApproval), isNotNull);
+    expect(await vault.read(matter.markdownPath), matterSource);
+    expect(await vault.read(global.markdownPath), updatedGlobalSource);
+  });
+
   test(
     'preflight blocks ambiguous, deleted, draft and conflicted legacy records',
     () async {

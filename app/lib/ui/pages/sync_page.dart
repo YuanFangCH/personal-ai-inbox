@@ -11,6 +11,33 @@ class SyncPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final app = AppScope.sync(context);
+    if (AppScope.migrationGate(context).migrationComplete) {
+      return PageFrame(
+        title: '同步',
+        subtitle: '表格式数据当前仅保存在本机',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SurfacePanel(
+              child: ListTile(
+                leading: Icon(Icons.info_outline),
+                title: Text('表格式跨端同步尚未接入'),
+                subtitle: Text('旧格式同步入口已关闭；迁移后的表、笔记、待办、日程和事件不会上传。'),
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (app.conflictFiles.isNotEmpty)
+              SyncConflictQueue(workspace: app)
+            else
+              const EmptyState(
+                icon: Icons.cloud_done_outlined,
+                title: '没有待处理冲突',
+                message: '迁移前检测到冲突时，应用会先阻止迁移并保留旧资料。',
+              ),
+          ],
+        ),
+      );
+    }
     final results = AppScope.results(context);
     final report = app.lastReport;
     return PageFrame(

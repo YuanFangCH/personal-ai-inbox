@@ -10,6 +10,7 @@ import '../presentation/markdown_presentation.dart';
 import '../widgets/common.dart';
 import 'document_editor_page.dart';
 import 'global_knowledge_page.dart';
+import 'table_detail_page.dart';
 
 class DocumentDetailPage extends StatelessWidget {
   const DocumentDetailPage({super.key, required this.documentId});
@@ -30,6 +31,23 @@ class DocumentDetailPage extends StatelessWidget {
         body: const Center(child: Text('成果不存在或已删除')),
       );
     }
+
+    final migrationComplete = AppScope.migrationGate(context).migrationComplete;
+    if (migrationComplete && !document.isGlobalKnowledge) {
+      final tables = AppScope.tables(context);
+      final table = tables.findTable(document.id);
+      if (table != null) return TableDetailPage(tableId: table.id);
+      for (final entry in tables.entries) {
+        if (entry.id == document.id) {
+          return TableEntryEditorPage(
+            tableId: entry.tableId,
+            type: entry.type,
+            entry: entry,
+          );
+        }
+      }
+    }
+    final legacyReadOnly = migrationComplete && !document.isGlobalKnowledge;
 
     final children = document.type == ResultType.matter
         ? app.documents
@@ -54,7 +72,7 @@ class DocumentDetailPage extends StatelessWidget {
               ),
               icon: const Icon(Icons.lightbulb_outline),
             )
-          else ...[
+          else if (!legacyReadOnly) ...[
             IconButton(
               tooltip: '编辑',
               onPressed: () => Navigator.of(context).push(
@@ -82,48 +100,67 @@ class DocumentDetailPage extends StatelessWidget {
         title: document.title,
         subtitle:
             '${resultTypeLabel(document.type)} · ${DateFormat('yyyy-MM-dd HH:mm').format(document.updatedAt)}',
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final details = _DetailsPanel(document: document, app: app);
-            final content = _ContentPanel(document: document, app: app);
-            if (constraints.maxWidth < 900) {
-              return Column(
-                children: [
-                  details,
-                  const SizedBox(height: 16),
-                  content,
-                  if (children.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    _ChildrenPanel(children: children),
-                  ],
-                  if (backlinks.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    _BacklinksPanel(backlinks: backlinks),
-                  ],
-                ],
-              );
-            }
-            return Column(
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(flex: 2, child: content),
-                    const SizedBox(width: 16),
-                    SizedBox(width: 320, child: details),
-                  ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (legacyReadOnly) ...[
+              const SurfacePanel(
+                child: ListTile(
+                  leading: Icon(Icons.lock_outline),
+                  title: Text('旧格式源件（只读）'),
+                  subtitle: Text('这条记录未自动迁入表；如需整理，请在迁移页面检查并处理。'),
                 ),
-                if (children.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  _ChildrenPanel(children: children),
-                ],
-                if (backlinks.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  _BacklinksPanel(backlinks: backlinks),
-                ],
-              ],
-            );
-          },
+              ),
+              const SizedBox(height: 16),
+            ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final details = _DetailsPanel(document: document, app: app);
+                final content = _ContentPanel(
+                  document: document,
+                  app: app,
+                  readOnly: legacyReadOnly,
+                );
+                if (constraints.maxWidth < 900) {
+                  return Column(
+                    children: [
+                      details,
+                      const SizedBox(height: 16),
+                      content,
+                      if (children.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        _ChildrenPanel(children: children),
+                      ],
+                      if (backlinks.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        _BacklinksPanel(backlinks: backlinks),
+                      ],
+                    ],
+                  );
+                }
+                return Column(
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(flex: 2, child: content),
+                        const SizedBox(width: 16),
+                        SizedBox(width: 320, child: details),
+                      ],
+                    ),
+                    if (children.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      _ChildrenPanel(children: children),
+                    ],
+                    if (backlinks.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      _BacklinksPanel(backlinks: backlinks),
+                    ],
+                  ],
+                );
+              },
+            ),
+          ],
         ),
       ),
     );
@@ -162,10 +199,15 @@ class DocumentDetailPage extends StatelessWidget {
 }
 
 class _ContentPanel extends StatelessWidget {
-  const _ContentPanel({required this.document, required this.app});
+  const _ContentPanel({
+    required this.document,
+    required this.app,
+    required this.readOnly,
+  });
 
   final ResultDocument document;
   final ResultLibrary app;
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -180,7 +222,9 @@ class _ContentPanel extends StatelessWidget {
               value: document.done,
               contentPadding: EdgeInsets.zero,
               title: Text(document.done ? '已完成' : '未完成'),
-              onChanged: (value) => app.toggleTodo(document, value ?? false),
+              onChanged: readOnly
+                  ? null
+                  : (value) => app.toggleTodo(document, value ?? false),
             ),
           if (document.body.trim().isEmpty)
             const Padding(

@@ -23,14 +23,14 @@
 | [0017](0017-conversation-permissions-and-reversible-result-actions.md) | AI 对话按会话授权读取及可撤销成果操作，独立待处理页方向由 0020 取代 | accepted（部分目标已更新） |
 | [0018](0018-confirmed-global-knowledge-for-secretary.md) | 秘书型助理使用三端同步、按需检索且增改删均人工确认的全局知识（待实现） | accepted |
 | [0019](0019-stable-android-release-signing.md) | Android 预览发布从 v1.1.4 起固定使用长期签名密钥 | accepted |
-| [0020](0020-notebook-tables-and-content-permissions.md) | 以笔记式表组织内容，AI 表内内容操作免逐次确认、表结构在对话确认；取代事项与独立待处理页方向 | accepted（目标，未实现） |
-| [0021](0021-table-storage-and-calendar-projection.md) | 表与条目是分离的稳定 Markdown 对象；首页和日历仅投影内容 | accepted（实现草案，待数据契约及同步落地） |
+| [0020](0020-notebook-tables-and-content-permissions.md) | 以笔记式表组织内容，AI 表内内容操作免逐次确认、表结构在对话确认；取代事项与独立待处理页方向 | accepted（本地首轮实现；真实资料未迁移） |
+| [0021](0021-table-storage-and-calendar-projection.md) | 表与条目是分离的稳定 Markdown 对象；首页和日历仅投影内容 | accepted（本地实现；跨端同步未接入） |
 
 相关文档：
 
 - [可执行方案](../personal-ai-inbox-executable-plan.md)
 - [成果同步协议](../sync-protocol.md)
 - [术语表](../../CONTEXT.md)
-- [表与笔记改版规划](../table-notebook-redesign-plan.md)：2026-10-29 新目标；旧事项/四类成果契约尚未迁移。
-- [表与内容数据契约](../table-data-contract.md)：P0 建议 schema、归属、投影、回收站和迁移映射。
+- [表与笔记改版规划](../table-notebook-redesign-plan.md)：用户确认的规则与待定边界；当前进度见执行计划和 RM_HANDOFF。
+- [表与内容数据契约](../table-data-contract.md)：本地 schema、归属、投影、回收站和迁移映射；不代表跨端同步格式已切换。
 - [表交互契约](../table-interaction-contract.md)：页面文字稿、AI 工具输入/回执与 P0 样例走查。

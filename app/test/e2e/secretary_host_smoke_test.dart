@@ -11,6 +11,7 @@ void main() {
   };
   for (final id in const [
     'SEC-001',
+    'SEC-006',
     'SEC-011',
     'SEC-023',
     'SEC-041',

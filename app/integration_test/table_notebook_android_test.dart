@@ -33,6 +33,22 @@ void main() {
       attachmentStoreOverride: MemoryAttachmentStore(),
       settingsOverride: FakeSettingsService(deviceId: 'notebook-android-test'),
     );
+    final eventTable = first.tables.tables.singleWhere(
+      (table) => table.role == TableRole.inboxEvent,
+    );
+    final noteUpdatedAt = DateTime.now();
+    await first.tables.createEntry(
+      TableEntryDocument(
+        id: 'nt_avd_notebook_preview',
+        type: TableContentType.note,
+        tableId: eventTable.id,
+        title: 'AVD 笔记预览',
+        revision: 1,
+        createdAt: noteUpdatedAt,
+        updatedAt: noteUpdatedAt,
+        body: '全部笔记页面按时间展示标题、摘要与所属表。',
+      ),
+    );
     await tester.pumpWidget(PersonalAiInboxApp(runtime: first));
     await tester.pumpAndSettle();
     expect(find.text('今日安排'), findsOneWidget);
@@ -41,12 +57,18 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('sheet_nav_matters')));
     await tester.pumpAndSettle();
-    expect(find.text('表与笔记'), findsOneWidget);
+    expect(find.text('全部笔记'), findsOneWidget);
+    expect(find.text('1 条笔记'), findsOneWidget);
+    expect(
+      find.byKey(const Key('notebook_note_nt_avd_notebook_preview')),
+      findsOneWidget,
+    );
+    expect(find.text('全部笔记页面按时间展示标题、摘要与所属表。'), findsOneWidget);
     await tester.tap(find.byKey(const Key('capture_button')));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const Key('capture_text_field')),
-      '2020年10月1日 09:00 老师调整了考试范围',
+      '今天老师调整了考试范围',
     );
     await tester.tap(find.byKey(const Key('capture_submit')));
     await _waitFor(
@@ -62,6 +84,10 @@ void main() {
     );
     expect(capturedEvent.type, TableContentType.event);
     expect(capturedEvent.occurredAt, isNotNull);
+
+    await tester.tap(find.byKey(const Key('notebook_show_tables')));
+    await tester.pumpAndSettle();
+    expect(find.text('表与笔记'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('create_table_button')));
     await tester.pumpAndSettle();
@@ -222,6 +248,8 @@ void main() {
     await tester.tap(find.byKey(const Key('nav_more')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('sheet_nav_matters')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('notebook_show_tables')));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.byType(PopupMenuButton<String>).last,
