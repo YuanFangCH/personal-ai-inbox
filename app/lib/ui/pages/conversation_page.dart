@@ -19,12 +19,14 @@ import '../presentation/markdown_presentation.dart';
 import '../theme/app_design_tokens.dart';
 import '../widgets/common.dart';
 import 'document_detail_page.dart';
+import 'table_detail_page.dart';
 import 'global_knowledge_page.dart';
 import 'pending_page.dart';
 import '../widgets/global_knowledge_candidate_card.dart';
 
 part 'conversation/attachment_preview.dart';
 part 'conversation/auto_record_card.dart';
+part 'conversation/table_chat_action_card.dart';
 part 'conversation/composer.dart';
 part 'conversation/message_bubble.dart';
 part 'conversation/page_actions.dart';

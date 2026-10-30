@@ -295,7 +295,10 @@ class SqliteConversationStore implements ConversationStore {
         jsonEncode(
           message.attachments.map((attachment) => attachment.toJson()).toList(),
         ),
-        jsonEncode(message.actions.map((action) => action.toJson()).toList()),
+        jsonEncode([
+          ...message.actions.map((action) => action.toJson()),
+          ...message.tableActions.map((action) => action.toJson()),
+        ]),
         message.error,
         message.reasoningContent,
         jsonEncode(message.toolTranscript),
@@ -431,6 +434,7 @@ class SqliteConversationStore implements ConversationStore {
       final actions = _decodeList(row['actions_json']);
       for (final value in actions) {
         if (value is Map) {
+          if (value['kind'] == 'table') continue;
           final action = AutoRecordAction.fromJson(
             value.map((key, value) => MapEntry(key.toString(), value)),
           );
@@ -484,8 +488,18 @@ class SqliteConversationStore implements ConversationStore {
           .toList(growable: false),
       actions: _decodeList(row['actions_json'])
           .whereType<Map>()
+          .where((value) => value['kind'] != 'table')
           .map(
             (value) => AutoRecordAction.fromJson(
+              value.map((key, value) => MapEntry(key.toString(), value)),
+            ),
+          )
+          .toList(growable: false),
+      tableActions: _decodeList(row['actions_json'])
+          .whereType<Map>()
+          .where((value) => value['kind'] == 'table')
+          .map(
+            (value) => TableChatAction.fromJson(
               value.map((key, value) => MapEntry(key.toString(), value)),
             ),
           )

@@ -54,10 +54,15 @@ class TableLibrary extends ChangeNotifier {
   }) => _repository.searchTables(query: query, offset: offset, limit: limit);
 
   Future<TableDocument> createTable({
+    String? id,
     required String title,
     String body = '',
   }) async {
-    final table = await _repository.createTable(title: title, body: body);
+    final table = await _repository.createTable(
+      id: id,
+      title: title,
+      body: body,
+    );
     await refresh();
     return table;
   }
@@ -136,6 +141,7 @@ class TableLibrary extends ChangeNotifier {
     required String eventTitle,
     required String eventBody,
     required String idempotencyKey,
+    DateTime? eventOccurredAt,
     DateTime? now,
   }) async {
     final result = await _repository.changeScheduleFromEvent(
@@ -146,6 +152,7 @@ class TableLibrary extends ChangeNotifier {
       eventTitle: eventTitle,
       eventBody: eventBody,
       idempotencyKey: idempotencyKey,
+      eventOccurredAt: eventOccurredAt,
       now: now,
     );
     await refresh();
@@ -158,6 +165,7 @@ class TableLibrary extends ChangeNotifier {
     TableContentType? type,
     DateTime? from,
     DateTime? through,
+    Map<String, Object?> fieldFilters = const {},
     int offset = 0,
     int limit = 50,
   }) => _repository.searchEntries(
@@ -166,9 +174,12 @@ class TableLibrary extends ChangeNotifier {
     type: type,
     from: from,
     through: through,
+    fieldFilters: fieldFilters,
     offset: offset,
     limit: limit,
   );
+
+  Future<TableEntryDocument?> readEntry(String id) => _repository.readEntry(id);
 
   Future<TableRecoveryBatch> deleteEntry({
     required String id,

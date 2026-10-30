@@ -22,6 +22,7 @@ import '../data/vault_store_factory.dart';
 import '../modules/capture/capture_workflow.dart';
 import '../modules/conversation/conversation_workspace.dart';
 import '../modules/conversation/auto_record_processor.dart';
+import '../modules/conversation/table_action_processor.dart';
 import '../modules/results/result_library.dart';
 import '../modules/tables/table_library.dart';
 import '../modules/tables/table_migration_gate.dart';
@@ -126,6 +127,7 @@ final class AppRuntime {
         settings: settingsService,
         repository: chatRepository,
         results: results,
+        tables: tables,
         modelClient: modelClient,
       );
       final capture = CaptureWorkflow(
@@ -147,6 +149,10 @@ final class AppRuntime {
           results: results,
           captures: capture,
           deviceId: () => repository.deviceId,
+        ),
+        tableActionProcessor: TableActionProcessor(
+          chatRepository: chatRepository,
+          tables: tables,
         ),
         defaultPermissions: () => preferences.settings.defaultAiPermissions,
         imageInputService: ImageInputService(),

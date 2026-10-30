@@ -11,6 +11,7 @@ import '../../services/image_input_service.dart';
 import '../../services/model_client.dart';
 import '../results/result_library.dart';
 import 'auto_record_processor.dart';
+import 'table_action_processor.dart';
 
 /// Application module that owns the local AI conversation lifecycle.
 ///
@@ -23,12 +24,14 @@ class ConversationWorkspace extends ChangeNotifier {
     required ResultLibrary results,
     required ChatService chatService,
     required AutoRecordProcessor autoRecordProcessor,
+    TableActionProcessor? tableActionProcessor,
     AiPermissions Function()? defaultPermissions,
     ImageInputService? imageInputService,
   }) : _repository = repository,
        _results = results,
        _chatService = chatService,
        _autoRecordProcessor = autoRecordProcessor,
+       _tableActionProcessor = tableActionProcessor,
        _defaultPermissions =
            defaultPermissions ?? (() => const AiPermissions()),
        _imageInputService = imageInputService ?? ImageInputService();
@@ -37,6 +40,7 @@ class ConversationWorkspace extends ChangeNotifier {
   final ResultLibrary _results;
   final ChatService _chatService;
   final AutoRecordProcessor _autoRecordProcessor;
+  final TableActionProcessor? _tableActionProcessor;
   final AiPermissions Function() _defaultPermissions;
   final ImageInputService _imageInputService;
 
@@ -113,6 +117,13 @@ class ConversationWorkspace extends ChangeNotifier {
         calls,
         completedAt: generation.updatedAt,
       );
+      final tableActions =
+          await _tableActionProcessor?.processToolCalls(
+            generation.assistantMessageId,
+            calls,
+            completedAt: generation.updatedAt,
+          ) ??
+          const <TableChatAction>[];
       final completedMessage =
           (assistant ??
                   ChatMessage(
@@ -128,6 +139,7 @@ class ConversationWorkspace extends ChangeNotifier {
                 content: generation.responseText,
                 status: ChatMessageStatus.complete,
                 actions: actions,
+                tableActions: tableActions,
                 updatedAt: DateTime.now(),
                 error: null,
               );
@@ -490,9 +502,17 @@ class ConversationWorkspace extends ChangeNotifier {
           toolCalls.values.toList(growable: false),
           completedAt: generation.updatedAt,
         );
+        final tableActions =
+            await _tableActionProcessor?.processToolCalls(
+              assistantMessageId,
+              toolCalls.values.toList(growable: false),
+              completedAt: generation.updatedAt,
+            ) ??
+            const <TableChatAction>[];
         assistant = assistant.copyWith(
           status: ChatMessageStatus.complete,
           actions: actions,
+          tableActions: tableActions,
           updatedAt: DateTime.now(),
           error: null,
         );
@@ -701,6 +721,86 @@ class ConversationWorkspace extends ChangeNotifier {
         action.copyWith(status: status, reason: error.message.toString()),
       );
     }
+  }
+
+  Future<void> confirmTableStructureAction(String actionId) async {
+    final found = await _repository.findTableChatAction(actionId);
+    if (found == null) return;
+    final (message, action) = found;
+    if (action.status != TableChatActionStatus.pendingConfirmation) return;
+    final conversation = await _repository.findConversation(
+      message.conversationId,
+    );
+    final operation = action.proposal['operation'];
+    final allowed = operation == 'create'
+        ? conversation?.aiPermissions.create == true
+        : conversation?.aiPermissions.modifyDelete == true;
+    if (!allowed) {
+      await _updateTableChatAction(
+        message,
+        action.copyWith(
+          status: TableChatActionStatus.failed,
+          message: '当前会话写入权限已关闭，未修改表结构。',
+        ),
+      );
+      return;
+    }
+    final processor = _tableActionProcessor;
+    if (processor == null) return;
+    final updated = await processor.confirmStructure(action);
+    await _updateTableChatAction(message, updated);
+  }
+
+  Future<void> rejectTableStructureAction(String actionId) async {
+    final found = await _repository.findTableChatAction(actionId);
+    if (found == null) return;
+    final (message, action) = found;
+    if (action.status != TableChatActionStatus.pendingConfirmation) return;
+    final updated =
+        _tableActionProcessor?.rejectStructure(action) ??
+        action.copyWith(
+          status: TableChatActionStatus.rejected,
+          message: '已拒绝，未修改表结构。',
+        );
+    await _updateTableChatAction(message, updated);
+  }
+
+  Future<void> undoTableAction(String actionId) async {
+    final found = await _repository.findTableChatAction(actionId);
+    if (found == null) return;
+    final (message, action) = found;
+    final processor = _tableActionProcessor;
+    if (processor == null || !action.canUndo) return;
+    try {
+      await processor.undoDelete(action);
+      await _updateTableChatAction(
+        message,
+        action.copyWith(status: TableChatActionStatus.undone, message: '已恢复。'),
+      );
+    } on Object catch (error) {
+      await _updateTableChatAction(
+        message,
+        action.copyWith(
+          status: TableChatActionStatus.failed,
+          message: error is StateError ? error.message : error.toString(),
+        ),
+      );
+    }
+  }
+
+  Future<void> _updateTableChatAction(
+    ChatMessage message,
+    TableChatAction action,
+  ) async {
+    final updated = message.copyWith(
+      tableActions: message.tableActions
+          .map((item) => item.id == action.id ? action : item)
+          .toList(growable: false),
+      updatedAt: DateTime.now(),
+    );
+    await _saveMessage(updated);
+    _replaceMessage(updated);
+    notifyListeners();
   }
 
   @override

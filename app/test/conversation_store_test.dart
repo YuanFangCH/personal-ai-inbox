@@ -82,6 +82,21 @@ void main() {
               operation: AutoRecordOperation.update,
             ),
           ],
+          tableActions: [
+            TableChatAction(
+              id: 'tbl_act_test',
+              operation: 'table.create',
+              title: '考试表',
+              status: TableChatActionStatus.pendingConfirmation,
+              createdAt: now,
+              tableId: 'tb_exam',
+              proposal: const {
+                'operation': 'create',
+                'table_id': 'tb_exam',
+                'payload': {'title': '考试表'},
+              },
+            ),
+          ],
           reasoningContent: 'hidden model reasoning',
           toolTranscript: const [
             {
@@ -136,6 +151,11 @@ void main() {
       expect(message.attachments.single.fileName, 'test.jpg');
       expect(message.actions.single.resultId, 'td_test');
       expect(message.actions.single.operation, AutoRecordOperation.update);
+      expect(message.tableActions.single.id, 'tbl_act_test');
+      expect(
+        message.tableActions.single.status,
+        TableChatActionStatus.pendingConfirmation,
+      );
       expect(message.reasoningContent, 'hidden model reasoning');
       expect(message.toolTranscript, hasLength(2));
       expect(
@@ -147,6 +167,7 @@ void main() {
         ['cnv_history'],
       );
       expect((await reopened.findAutoRecordAction('act_test'))?.title, '测试待办');
+      expect(await reopened.findAutoRecordAction('tbl_act_test'), isNull);
       final generation = await reopened.findGeneration('msg_test');
       expect(generation?.status, GenerationStatus.responseReady);
       expect(generation?.toolCalls.single['name'], 'create_result');

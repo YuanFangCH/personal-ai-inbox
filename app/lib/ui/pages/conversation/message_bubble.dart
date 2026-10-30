@@ -92,6 +92,10 @@ class _MessageBubble extends StatelessWidget {
                   const SizedBox(height: 10),
                   _AutoRecordCard(action: action, app: app),
                 ],
+                for (final action in message.tableActions) ...[
+                  const SizedBox(height: 10),
+                  _TableChatActionCard(action: action, app: app),
+                ],
                 if (!isUser &&
                     message.status == ChatMessageStatus.complete &&
                     message.content.trim().isNotEmpty) ...[

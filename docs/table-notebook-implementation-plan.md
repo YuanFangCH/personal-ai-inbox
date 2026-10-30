@@ -1,6 +1,6 @@
 # 表与笔记改版：逐步执行计划
 
-日期：2026-10-30。状态：执行中。P0–P4、P5a–P5c及P6首页/日历投影已有首轮实现并通过相关定向主机/AVD验证。P5表页响应式验收、P7 AI、P8完整入口替换、P9候选验收待执行。真实用户资料尚未迁移；用户确认迁移后进入受限表工作区，旧模块保持关闭。
+日期：2026-10-30。状态：执行中。P0–P7已有首轮实现并通过相关定向主机/AVD验证。P5表页响应式验收、P8完整入口替换、P9候选验收待执行。真实用户资料尚未迁移；用户确认迁移后进入受限表工作区，旧模块保持关闭。
 
 ## 1. 执行约定
 
@@ -146,6 +146,8 @@ P6首轮已接通：日历筛选使用设备设置列表（`['*']` 表示默认�
 验证：`flutter test test/calendar_core_test.dart test/calendar_widget_test.dart test/home_page_ui_test.dart test/settings_service_test.dart`；P6首轮28/28、分析14目标无诊断；Android15 AVD1/1；日历320/800/1280宽度五视图通过。迁移启动及设置兼容另外15/15通过。P5表页面宽度仍待检查。测试中的旧 fixture 按新迁移契约调整，不删除旧语义的迁移覆盖。
 
 ## 9. P7：AI 按表读写与对话确认（步骤 59–68）
+
+P7首轮已接入表/内容检索与按需读取，按当前会话权限直接新增/修改/删除/移动表内内容；表正文也按内容权限更新。schedule.change保留通知事件并更新原日程。table.propose生成消息内持久化确认卡，确认时重查会话权限、默认表限制和表revision；stale候选不执行。旧结果写工具在表模式拒绝，独立全局知识审批路径保留。相关主机25/25、20个分析目标无诊断、AVD模拟模型写入/审批/重启读回1/1通过。完整数据与权限边界见 `test-results/table-notebook-p7-20261030/VALIDATION.md`。
 
 主要落点：`services/chat_service.dart`、`modules/conversation/local_retrieval.dart`、`auto_record_processor.dart`、`conversation_workspace.dart`、会话存储和对话页面。
 

@@ -140,6 +140,17 @@ class ChatRepository {
     return _store.findAutoRecordAction(id);
   }
 
+  Future<(ChatMessage, TableChatAction)?> findTableChatAction(String id) async {
+    for (final conversation in await _store.listConversations()) {
+      for (final message in await _store.listMessages(conversation.id)) {
+        for (final action in message.tableActions) {
+          if (action.id == id) return (message, action);
+        }
+      }
+    }
+    return null;
+  }
+
   String newMessageId() => 'msg_${const Uuid().v4()}';
 
   String newActionId() => 'act_${const Uuid().v4()}';

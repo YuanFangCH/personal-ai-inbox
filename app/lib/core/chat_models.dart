@@ -58,6 +58,130 @@ enum AutoRecordStatus {
 
 enum AutoRecordOperation { create, update, delete }
 
+enum TableChatActionStatus {
+  applied,
+  pendingConfirmation,
+  rejected,
+  stale,
+  failed,
+  undone,
+  expired,
+}
+
+class TableChatAction {
+  const TableChatAction({
+    required this.id,
+    required this.operation,
+    required this.title,
+    required this.status,
+    required this.createdAt,
+    this.tableId,
+    this.tableTitle,
+    this.entryId,
+    this.relatedEntryId,
+    this.entryType,
+    this.message,
+    this.undoUntil,
+    this.recoveryBatchId,
+    this.expectedRevision,
+    this.proposal = const {},
+  });
+
+  final String id;
+  final String operation;
+  final String title;
+  final TableChatActionStatus status;
+  final DateTime createdAt;
+  final String? tableId;
+  final String? tableTitle;
+  final String? entryId;
+  final String? relatedEntryId;
+  final String? entryType;
+  final String? message;
+  final DateTime? undoUntil;
+  final String? recoveryBatchId;
+  final int? expectedRevision;
+  final Map<String, Object?> proposal;
+
+  bool get canUndo =>
+      status == TableChatActionStatus.applied &&
+      recoveryBatchId != null &&
+      undoUntil != null &&
+      undoUntil!.isAfter(DateTime.now());
+
+  TableChatAction copyWith({
+    TableChatActionStatus? status,
+    String? message,
+    String? recoveryBatchId,
+    DateTime? undoUntil,
+    Map<String, Object?>? proposal,
+    int? expectedRevision,
+  }) => TableChatAction(
+    id: id,
+    operation: operation,
+    title: title,
+    status: status ?? this.status,
+    createdAt: createdAt,
+    tableId: tableId,
+    tableTitle: tableTitle,
+    entryId: entryId,
+    relatedEntryId: relatedEntryId,
+    entryType: entryType,
+    message: message ?? this.message,
+    undoUntil: undoUntil ?? this.undoUntil,
+    recoveryBatchId: recoveryBatchId ?? this.recoveryBatchId,
+    expectedRevision: expectedRevision ?? this.expectedRevision,
+    proposal: proposal ?? this.proposal,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'kind': 'table',
+    'id': id,
+    'operation': operation,
+    'title': title,
+    'status': status.name,
+    'created_at': createdAt.toIso8601String(),
+    'table_id': tableId,
+    'table_title': tableTitle,
+    'entry_id': entryId,
+    'related_entry_id': relatedEntryId,
+    'entry_type': entryType,
+    'message': message,
+    'undo_until': undoUntil?.toIso8601String(),
+    'recovery_batch_id': recoveryBatchId,
+    'expected_revision': expectedRevision,
+    'proposal': proposal,
+  };
+
+  static TableChatAction fromJson(Map<String, dynamic> json) {
+    final rawProposal = json['proposal'];
+    return TableChatAction(
+      id: json['id'].toString(),
+      operation: json['operation']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      status: TableChatActionStatus.values.firstWhere(
+        (status) => status.name == json['status'],
+        orElse: () => TableChatActionStatus.failed,
+      ),
+      createdAt:
+          DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+          DateTime.now(),
+      tableId: json['table_id']?.toString(),
+      tableTitle: json['table_title']?.toString(),
+      entryId: json['entry_id']?.toString(),
+      relatedEntryId: json['related_entry_id']?.toString(),
+      entryType: json['entry_type']?.toString(),
+      message: json['message']?.toString(),
+      undoUntil: DateTime.tryParse(json['undo_until']?.toString() ?? ''),
+      recoveryBatchId: json['recovery_batch_id']?.toString(),
+      expectedRevision: (json['expected_revision'] as num?)?.toInt(),
+      proposal: rawProposal is Map
+          ? Map<String, Object?>.from(rawProposal)
+          : const {},
+    );
+  }
+}
+
 enum GenerationStatus {
   requesting('requesting'),
   responseReady('response_ready'),
@@ -259,6 +383,7 @@ class AutoRecordAction {
 
   Map<String, dynamic> toJson() {
     return {
+      'kind': 'auto',
       'id': id,
       'type': type.wireName,
       'title': title,
@@ -304,6 +429,7 @@ class ChatMessage {
     required this.updatedAt,
     this.attachments = const [],
     this.actions = const [],
+    this.tableActions = const [],
     this.error,
     this.reasoningContent = '',
     this.toolTranscript = const [],
@@ -318,6 +444,7 @@ class ChatMessage {
   final DateTime updatedAt;
   final List<ChatAttachment> attachments;
   final List<AutoRecordAction> actions;
+  final List<TableChatAction> tableActions;
   final String? error;
   final String reasoningContent;
   final List<Map<String, dynamic>> toolTranscript;
@@ -330,6 +457,7 @@ class ChatMessage {
     DateTime? updatedAt,
     List<ChatAttachment>? attachments,
     List<AutoRecordAction>? actions,
+    List<TableChatAction>? tableActions,
     Object? error = _unset,
     String? reasoningContent,
     List<Map<String, dynamic>>? toolTranscript,
@@ -344,6 +472,7 @@ class ChatMessage {
       updatedAt: updatedAt ?? this.updatedAt,
       attachments: attachments ?? this.attachments,
       actions: actions ?? this.actions,
+      tableActions: tableActions ?? this.tableActions,
       error: identical(error, _unset) ? this.error : error as String?,
       reasoningContent: reasoningContent ?? this.reasoningContent,
       toolTranscript: toolTranscript ?? this.toolTranscript,

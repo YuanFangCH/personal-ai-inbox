@@ -5,19 +5,154 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:personal_ai_inbox/core/chat_models.dart';
 import 'package:personal_ai_inbox/core/models.dart';
+import 'package:personal_ai_inbox/core/table_models.dart';
 import 'package:personal_ai_inbox/data/chat_repository.dart';
 import 'package:personal_ai_inbox/data/memory_attachment_store.dart';
 import 'package:personal_ai_inbox/data/memory_conversation_store.dart';
 import 'package:personal_ai_inbox/data/memory_index_database.dart';
 import 'package:personal_ai_inbox/data/memory_vault_store.dart';
 import 'package:personal_ai_inbox/data/result_repository.dart';
+import 'package:personal_ai_inbox/data/table_repository.dart';
 import 'package:personal_ai_inbox/modules/results/result_library.dart';
+import 'package:personal_ai_inbox/modules/tables/table_library.dart';
 import 'package:personal_ai_inbox/services/chat_service.dart';
 import 'package:personal_ai_inbox/services/model_client.dart';
 
 import 'test_support.dart';
 
 void main() {
+  test(
+    'table mode searches indexed table content and offers no legacy writes',
+    () async {
+      final chats = ChatRepository(
+        store: MemoryConversationStore(),
+        attachments: MemoryAttachmentStore(),
+      );
+      await chats.initialize();
+      final conversation = await chats.createConversation(
+        createdAt: DateTime(2026, 10, 30),
+      );
+      await chats.saveMessage(
+        ChatMessage(
+          id: 'msg_table_question',
+          conversationId: conversation.id,
+          role: ChatRole.user,
+          content: '期中考试在哪里？',
+          status: ChatMessageStatus.complete,
+          createdAt: conversation.createdAt,
+          updatedAt: conversation.updatedAt,
+        ),
+      );
+      final results = ResultLibrary(
+        repository: ResultRepository(
+          vault: MemoryVaultStore(),
+          index: MemoryIndexDatabase(),
+          deviceId: 'chat-table-test',
+        ),
+      );
+      await results.initialize();
+      final tables = TableLibrary(
+        repository: TableRepository(
+          vault: MemoryVaultStore(),
+          index: MemoryIndexDatabase(),
+        ),
+      );
+      await tables.initialize();
+      final examTable = await tables.createTable(title: '考试表');
+      final now = DateTime(2026, 11, 2, 14);
+      await tables.createEntry(
+        TableEntryDocument(
+          id: 'sc_midterm',
+          type: TableContentType.schedule,
+          tableId: examTable.id,
+          title: '期中考试',
+          revision: 1,
+          createdAt: now,
+          updatedAt: now,
+          body: '第三教学楼 101 室',
+          start: now,
+        ),
+      );
+      final requests = <Map<String, dynamic>>[];
+      final service = ChatService(
+        settings: FakeSettingsService(modelKey: 'test-key'),
+        repository: chats,
+        results: results,
+        tables: tables,
+        modelClient: ModelClient(
+          client: MockClient.streaming((request, body) async {
+            final payload =
+                jsonDecode(await body.bytesToString()) as Map<String, dynamic>;
+            requests.add(payload);
+            if (requests.length == 1) {
+              return _stream({
+                'choices': [
+                  {
+                    'delta': {
+                      'tool_calls': [
+                        {
+                          'index': 0,
+                          'id': 'call_table_search',
+                          'function': {
+                            'name': 'content.search',
+                            'arguments': jsonEncode({
+                              'query': '期中考试',
+                              'table_ids': [examTable.id],
+                              'types': ['schedule'],
+                              'limit': 5,
+                            }),
+                          },
+                        },
+                      ],
+                    },
+                  },
+                ],
+              }, finish: 'tool_calls');
+            }
+            return _stream({
+              'choices': [
+                {
+                  'delta': {'content': '在第三教学楼 101 室。'},
+                },
+              ],
+            });
+          }),
+        ),
+      );
+
+      final deltas = await (await service.streamReply(
+        conversationId: conversation.id,
+      )).toList();
+      final tools = requests.first['tools'] as List;
+      final toolNames = tools
+          .map((entry) => (entry as Map)['function']['name'])
+          .toSet();
+      expect(
+        toolNames,
+        containsAll([
+          'table.list',
+          'table.search',
+          'content.search',
+          'content.read',
+        ]),
+      );
+      expect(toolNames, isNot(contains('create_result')));
+      expect(toolNames, isNot(contains('search_results')));
+      final toolMessage = (requests.last['messages'] as List)
+          .cast<Map>()
+          .singleWhere((message) => message['role'] == 'tool');
+      expect(toolMessage['content'], contains(examTable.id));
+      expect(toolMessage['content'], contains('第三教学楼 101 室'));
+      expect(deltas.map((delta) => delta.content).join(), '在第三教学楼 101 室。');
+
+      service.close();
+      await chats.close();
+      tables.dispose();
+      await results.shutdown();
+      results.dispose();
+    },
+  );
+
   test(
     'reads only requested history then sends bounded snippets to model',
     () async {

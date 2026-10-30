@@ -212,12 +212,13 @@ class TableRepository {
   }
 
   Future<TableDocument> createTable({
+    String? id,
     required String title,
     String body = '',
   }) async {
     final now = DateTime.now();
     final table = TableDocument(
-      id: 'tb_${_uuid.v4()}',
+      id: id ?? 'tb_${_uuid.v4()}',
       role: TableRole.custom,
       title: title,
       revision: 1,
@@ -430,6 +431,7 @@ class TableRepository {
     required String eventTitle,
     required String eventBody,
     required String idempotencyKey,
+    DateTime? eventOccurredAt,
     DateTime? now,
   }) => _vault.exclusive(() async {
     _validateId(scheduleId);
@@ -491,7 +493,7 @@ class TableRepository {
       createdAt: timestamp,
       updatedAt: timestamp,
       body: eventBody,
-      occurredAt: timestamp,
+      occurredAt: (eventOccurredAt ?? timestamp).toLocal(),
       affects: [
         ScheduleChange(scheduleId: scheduleId, summary: eventTitle.trim()),
       ],
