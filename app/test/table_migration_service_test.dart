@@ -12,6 +12,7 @@ import 'package:personal_ai_inbox/data/vault_store.dart';
 
 void main() {
   final now = DateTime.parse('2026-10-30T09:00:00+08:00');
+  const availableBytes = 1 << 30;
 
   test(
     'previews and copies legacy records with deterministic table mapping',
@@ -81,7 +82,10 @@ void main() {
         await vault.write(document.markdownPath, legacyCodec.encode(document));
       }
 
-      final plan = await migration.preview(now: now);
+      final plan = await migration.preview(
+        now: now,
+        availableBytes: availableBytes,
+      );
       expect(
         plan.canApply,
         isTrue,
@@ -216,7 +220,10 @@ void main() {
         ),
       );
 
-      final plan = await migration.preview(now: now);
+      final plan = await migration.preview(
+        now: now,
+        availableBytes: availableBytes,
+      );
       expect(plan.canApply, isFalse);
       expect(plan.outputs, isEmpty);
       expect(
@@ -257,14 +264,19 @@ void main() {
     );
     await vault.write(matter.markdownPath, codec.encode(matter));
     await vault.write(todo.markdownPath, codec.encode(todo));
-    final plan = await migration.preview(now: now);
+    final plan = await migration.preview(
+      now: now,
+      availableBytes: availableBytes,
+    );
     vault.failOnNextPath = TableRepository.entryPath(todo.id);
     await expectLater(migration.apply(plan), throwsStateError);
     expect(await vault.read(TableRepository.tablePath(matter.id)), isNotNull);
     expect(await vault.read(TableRepository.entryPath(todo.id)), isNull);
 
     vault.failOnNextPath = null;
-    final receipt = await migration.apply(await migration.preview(now: now));
+    final receipt = await migration.apply(
+      await migration.preview(now: now, availableBytes: availableBytes),
+    );
     expect(receipt.status, 'complete');
     expect(await vault.read(TableRepository.entryPath(todo.id)), isNotNull);
     await migration.rollback(plan.migrationId);
@@ -299,12 +311,44 @@ void main() {
     await vault.write(targetPath, targetSource);
     await vault.write(matter.markdownPath, legacyCodec.encode(matter));
 
-    final plan = await migration.preview(now: now);
+    final plan = await migration.preview(
+      now: now,
+      availableBytes: availableBytes,
+    );
     expect(plan.canApply, isFalse);
     expect(plan.issues.any((issue) => issue.path == targetPath), isTrue);
     await expectLater(migration.apply(plan), throwsStateError);
     expect(await vault.read(targetPath), targetSource);
   });
+
+  test(
+    'preflight blocks when the supplied free-space reading is insufficient',
+    () async {
+      final vault = MemoryVaultStore();
+      final index = MemoryIndexDatabase();
+      final codec = const MarkdownCodec();
+      final migration = TableMigrationService(vault: vault, index: index);
+      final matter = _legacy(
+        id: 'matter_low_space',
+        type: ResultType.matter,
+        title: '空间不足',
+        body: '需要备份和新文件',
+        now: now,
+      );
+      await vault.write(matter.markdownPath, codec.encode(matter));
+
+      final unavailable = await migration.preview(now: now);
+      expect(unavailable.canApply, isFalse);
+      expect(unavailable.issues.single.message, contains('未提供 vault 可用磁盘空间读数'));
+
+      final plan = await migration.preview(now: now, availableBytes: 0);
+      expect(plan.canApply, isFalse);
+      expect(plan.availableBytes, 0);
+      expect(plan.estimatedRequiredBytes, greaterThan(0));
+      expect(plan.issues.single.message, contains('可用空间不足'));
+      await expectLater(migration.apply(plan), throwsStateError);
+    },
+  );
 }
 
 ResultDocument _legacy({

@@ -36,6 +36,7 @@ class TableMigrationService {
 
   Future<TableMigrationPreview> preview({
     DateTime? now,
+    int? availableBytes,
   }) => _vault.exclusive(() async {
     final migrationTime = (now ?? _clock()).toLocal();
     final issues = <TableMigrationIssue>[];
@@ -244,6 +245,20 @@ class TableMigrationService {
       0,
       (sum, markdown) => sum + utf8.encode(markdown).length,
     );
+    final estimatedRequiredBytes =
+        estimatedBackupBytes + estimatedOutputBytes * 2 + 4096;
+    if (availableBytes == null) {
+      issues.add(
+        const TableMigrationIssue('vault', '未提供 vault 可用磁盘空间读数，拒绝执行迁移。'),
+      );
+    } else if (availableBytes < estimatedRequiredBytes) {
+      issues.add(
+        TableMigrationIssue(
+          'vault',
+          '可用空间不足：预计需要 $estimatedRequiredBytes bytes，当前 $availableBytes bytes。',
+        ),
+      );
+    }
     return TableMigrationPreview._(
       migrationId: migrationId,
       sourceHashes: Map.unmodifiable(sourceHashes),
@@ -259,8 +274,8 @@ class TableMigrationService {
       skippedIds: List.unmodifiable(skipped.toSet()),
       estimatedBackupBytes: estimatedBackupBytes,
       estimatedOutputBytes: estimatedOutputBytes,
-      estimatedRequiredBytes:
-          estimatedBackupBytes + estimatedOutputBytes * 2 + 4096,
+      estimatedRequiredBytes: estimatedRequiredBytes,
+      availableBytes: availableBytes,
     );
   });
 
@@ -526,6 +541,7 @@ class TableMigrationPreview {
     required this.estimatedBackupBytes,
     required this.estimatedOutputBytes,
     required this.estimatedRequiredBytes,
+    required this.availableBytes,
   });
 
   final String migrationId;
@@ -539,8 +555,9 @@ class TableMigrationPreview {
   final int estimatedBackupBytes;
   final int estimatedOutputBytes;
   final int estimatedRequiredBytes;
+  final int? availableBytes;
 
-  bool get canApply => issues.isEmpty;
+  bool get canApply => issues.isEmpty && availableBytes != null;
 }
 
 class TableMigrationReceipt {
