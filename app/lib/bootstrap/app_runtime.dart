@@ -12,6 +12,7 @@ import '../data/memory_attachment_store.dart';
 import '../data/memory_conversation_store.dart';
 import '../data/result_repository.dart';
 import '../data/settings_service.dart';
+import '../data/migration_coordinator.dart';
 import '../data/migration_coordinator_factory.dart';
 import '../data/sync_engine.dart';
 import '../data/sync_provider.dart';
@@ -44,6 +45,7 @@ final class AppRuntime {
     ConversationStore? conversationStoreOverride,
     AttachmentStore? attachmentStoreOverride,
     SettingsService? settingsOverride,
+    MigrationCoordinator? migrationCoordinatorOverride,
     ModelClient? modelClient,
     SyncProvider? syncProvider,
     FileInputService? fileInputService,
@@ -54,12 +56,14 @@ final class AppRuntime {
         ? await appSupportPath()
         : 'memory';
     final settingsService = settingsOverride ?? SettingsService();
-    final migration = vaultOverride != null
-        ? null
-        : await createMigrationCoordinator(
-            supportPath: supportPath,
-            settings: settingsService,
-          );
+    final migration =
+        migrationCoordinatorOverride ??
+        (vaultOverride != null
+            ? null
+            : await createMigrationCoordinator(
+                supportPath: supportPath,
+                settings: settingsService,
+              ));
     try {
       await migration?.prepare();
     } catch (_) {
@@ -83,7 +87,6 @@ final class AppRuntime {
         runWithWriteBarrier: (operation) =>
             migrationGate.runStartupMigrationBarrier(operation),
       );
-      migrationGate = TableMigrationGate(service: tableMigrationService);
       final settings = await settingsService.load();
       final repository = ResultRepository(
         vault: vault,
@@ -114,6 +117,10 @@ final class AppRuntime {
       final results = ResultLibrary(repository: repository);
       final tables = TableLibrary(
         repository: repository.createTableRepository(),
+      );
+      migrationGate = TableMigrationGate(
+        service: tableMigrationService,
+        onMigrationComplete: tables.initialize,
       );
       final chatService = ChatService(
         settings: settingsService,
@@ -215,7 +222,10 @@ final class AppRuntime {
     if (migrationGate.isEnabled) {
       await initializeConversationStore?.call();
       await migrationGate.initialize();
-      if (migrationGate.requiresReadOnly) return;
+      if (migrationGate.requiresReadOnly) {
+        if (migrationGate.migrationComplete) await tables.initialize();
+        return;
+      }
     }
     await _initializeModules();
   }

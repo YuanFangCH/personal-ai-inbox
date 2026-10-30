@@ -1,6 +1,6 @@
 # 表与笔记改版：逐步执行计划
 
-日期：2026-10-30。状态：执行中。P0契约/文字稿、P1模型/codec、P2本地索引/repository/runtime和P3a恢复账本schema、P3b删除/恢复/到期处理已完成并做本地故障注入验证；P3c事件联动/同步兼容、迁移及后续UI/AI工作待执行。Android15 AVD默认表重启smoke通过；Flutter integration runner的VM Service连接问题仍待处理。
+日期：2026-10-30。状态：执行中。P0–P4首轮已完成；P5a表列表/正文/基础条目界面已实现并通过主机和 AVD 定向验证。P5字段/移动细节、P6首页/日历、P7 AI、P8完整入口替换、P9候选验收待执行。真实用户资料尚未迁移；用户确认迁移后进入受限表工作区，旧模块保持关闭。
 
 ## 1. 执行约定
 
@@ -93,7 +93,7 @@ P3a（删除恢复账本与索引 schema）、P3b（删除/恢复/到期清理�
 
 主要落点：`data/migration_coordinator.dart`、`sqlite_migration_coordinator.dart`、`bootstrap/app_runtime.dart`、repository。
 
-P4 当前阶段：迁移预检/确定性映射/vault Markdown备份/SQLite、会话与设置独立快照/关联 journal、重放和 hash 回滚已有首轮实现；Android StatFs与Windows GetDiskFreeSpaceExW通过定向验证。AppRuntime 检出旧资料后进入只读门，旧写入/恢复/同步模块不启动，页面展示原文及阻断原因。预检通过后经用户确认可生成新格式副本，旧源保留；迁移完成后仍只读，直到 P5 新表页面接管。旧事项→表；未来且有开始时间的旧日历项→日程，过去/无开始时间项要求人工判定。候选升级/恢复演练和真实迁移仍待完成。
+P4 首轮完成：迁移预检/确定性映射/vault Markdown备份/SQLite、会话与设置独立快照/关联 journal、重放和 hash 回滚已实现；Android StatFs与Windows GetDiskFreeSpaceExW通过定向验证。AppRuntime 检出旧资料后进入只读门，旧写入/恢复/同步模块不启动，页面展示原文及阻断原因。预检通过后经用户确认可生成新格式副本，旧源保留；迁移后通过 P5a 的受限表工作区访问副本，旧模块保持关闭。旧事项→表；未来且有开始时间的旧日历项→日程，过去/无开始时间项要求人工判定。真实资料未自动迁移，候选包恢复/升级验收仍待 P9。
 
 | 步骤 | 执行动作 | 完成条件 |
 |---|---|---|
@@ -112,6 +112,8 @@ P4 当前阶段：迁移预检/确定性映射/vault Markdown备份/SQLite、会
 ## 7. P5：表与笔记的手工使用（步骤 43–51）
 
 主要落点：`ui/app_shell.dart`、`app_scope.dart`、`matters_page.dart` 的替代页面、`document_detail_page.dart`、`document_editor_page.dart`、`quick_create_sheet.dart`。
+
+P5a 首轮已接“表与笔记”列表、三默认表只读结构标记、自定义表创建/改名/删除与回收站恢复、可编辑表正文、笔记/待办/日程/事件新增编辑及待办完成切换。首页区块未修改。迁移后仅开放表工作区。P5整体仍待自定义字段、跨表移动、完整字段校验和样式/100场景验收。
 
 | 步骤 | 执行动作 | 完成条件 |
 |---|---|---|

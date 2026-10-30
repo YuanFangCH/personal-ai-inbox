@@ -6,13 +6,19 @@ import '../../data/table_migration_service.dart';
 /// review. The production runtime performs this check before starting modules
 /// that can write user data.
 class TableMigrationGate extends ChangeNotifier {
-  TableMigrationGate({required TableMigrationService service})
-    : _service = service,
-      isEnabled = true;
+  TableMigrationGate({
+    required TableMigrationService service,
+    this.onMigrationComplete,
+  }) : _service = service,
+       isEnabled = true;
 
-  TableMigrationGate.disabled() : _service = null, isEnabled = false;
+  TableMigrationGate.disabled()
+    : _service = null,
+      onMigrationComplete = null,
+      isEnabled = false;
 
   final TableMigrationService? _service;
+  final Future<void> Function()? onMigrationComplete;
   final bool isEnabled;
 
   TableMigrationPreview? _preview;
@@ -68,8 +74,10 @@ class TableMigrationGate extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      _receipt = await service.apply(current);
-      return _receipt!;
+      final receipt = await service.apply(current);
+      await onMigrationComplete?.call();
+      _receipt = receipt;
+      return receipt;
     } on Object catch (error) {
       _error = error.toString();
       rethrow;

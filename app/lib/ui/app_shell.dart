@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../modules/tables/table_migration_gate.dart';
 import 'app_scope.dart';
 import 'pages/calendar_page.dart';
 import 'pages/conversation_page.dart';
@@ -7,7 +8,7 @@ import 'pages/global_knowledge_page.dart';
 import 'pages/home_page.dart';
 import 'pages/inbox_page.dart';
 import 'pages/knowledge_page.dart';
-import 'pages/matters_page.dart';
+import 'pages/tables_page.dart';
 import 'pages/table_migration_read_only_page.dart';
 import 'pages/pending_page.dart';
 import 'pages/settings_page.dart';
@@ -19,7 +20,7 @@ enum AppPage {
   home('首页', Icons.space_dashboard_outlined),
   inbox('秘书', Icons.forum_outlined),
   calendar('日历', Icons.calendar_month_outlined),
-  matters('事项', Icons.account_tree_outlined),
+  matters('表与笔记', Icons.table_chart_outlined),
   knowledge('知识', Icons.menu_book_outlined),
   sync('同步', Icons.sync_outlined),
   settings('设置', Icons.tune_outlined);
@@ -73,9 +74,14 @@ class _AppShellState extends State<AppShell> {
     final migrationGate = AppScope.migrationGate(context);
     return AnimatedBuilder(
       animation: migrationGate,
-      builder: (context, _) => migrationGate.requiresReadOnly
-          ? TableMigrationReadOnlyPage(gate: migrationGate)
-          : _buildMain(context),
+      builder: (context, _) {
+        if (migrationGate.requiresReadOnly) {
+          return migrationGate.migrationComplete
+              ? _MigratedTablesWorkspace(gate: migrationGate)
+              : TableMigrationReadOnlyPage(gate: migrationGate);
+        }
+        return _buildMain(context);
+      },
     );
   }
 
@@ -94,7 +100,7 @@ class _AppShellState extends State<AppShell> {
             runtime.conversations,
           ],
           AppPage.calendar => [runtime.results, runtime.preferences],
-          AppPage.matters => [runtime.results],
+          AppPage.matters => [runtime.tables],
           AppPage.knowledge => const <Listenable>[],
           AppPage.sync => [runtime.results, runtime.sync],
           AppPage.settings => [runtime.results, runtime.preferences],
@@ -249,7 +255,7 @@ class _AppShellState extends State<AppShell> {
         onNavigate: _navigateFromSecretary,
       ),
       AppPage.calendar => const CalendarPage(),
-      AppPage.matters => const MattersPage(),
+      AppPage.matters => const TablesPage(),
       AppPage.knowledge => const KnowledgePage(),
       AppPage.sync => const SyncPage(),
       AppPage.settings => const SettingsPage(),
@@ -324,6 +330,47 @@ class _AppShellState extends State<AppShell> {
   }
 }
 
+class _MigratedTablesWorkspace extends StatelessWidget {
+  const _MigratedTablesWorkspace({required this.gate});
+
+  final TableMigrationGate gate;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            MaterialBanner(
+              backgroundColor: colors.primaryContainer,
+              leading: Icon(
+                Icons.lock_outline,
+                color: colors.onPrimaryContainer,
+              ),
+              content: Text(
+                '表格式副本已生成。旧格式源件保留只读，其他旧版模块保持关闭。',
+                style: TextStyle(color: colors.onPrimaryContainer),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => TableMigrationReadOnlyPage(gate: gate),
+                    ),
+                  ),
+                  child: const Text('查看旧资料'),
+                ),
+              ],
+            ),
+            const Expanded(child: TablesPage()),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _WideNavigation extends StatelessWidget {
   const _WideNavigation({
     required this.selected,
@@ -379,7 +426,7 @@ class _WideNavigation extends StatelessWidget {
       AppPage.home => Icons.space_dashboard,
       AppPage.inbox => Icons.forum,
       AppPage.calendar => Icons.calendar_month,
-      AppPage.matters => Icons.account_tree,
+      AppPage.matters => Icons.table_chart,
       AppPage.knowledge => Icons.menu_book,
       AppPage.sync => Icons.sync,
       AppPage.settings => Icons.tune,

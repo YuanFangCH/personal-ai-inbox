@@ -69,7 +69,7 @@ class TableLibrary extends ChangeNotifier {
 
   Future<TableEntryDocument> createEntry(TableEntryDocument entry) async {
     final created = await _repository.createEntry(entry);
-    await refresh(tableId: entry.tableId);
+    await refresh();
     return created;
   }
 
@@ -81,7 +81,7 @@ class TableLibrary extends ChangeNotifier {
       entry,
       expectedRevision: expectedRevision,
     );
-    await refresh(tableId: updated.tableId);
+    await refresh();
     return updated;
   }
 
@@ -95,7 +95,7 @@ class TableLibrary extends ChangeNotifier {
       tableId: tableId,
       expectedRevision: expectedRevision,
     );
-    await refresh(tableId: tableId);
+    await refresh();
     return moved;
   }
 
@@ -119,7 +119,7 @@ class TableLibrary extends ChangeNotifier {
       idempotencyKey: idempotencyKey,
       now: now,
     );
-    await refresh(tableId: result.schedule.tableId);
+    await refresh();
     return result;
   }
 
@@ -153,7 +153,7 @@ class TableLibrary extends ChangeNotifier {
       idempotencyKey: idempotencyKey,
       now: now,
     );
-    await refresh(tableId: batch.tableId);
+    await refresh();
     return batch;
   }
 
@@ -178,7 +178,7 @@ class TableLibrary extends ChangeNotifier {
     DateTime? now,
   }) async {
     final batch = await _repository.restoreRecoveryBatch(id, now: now);
-    await refresh(tableId: batch.tableId);
+    await refresh();
     return batch;
   }
 }
