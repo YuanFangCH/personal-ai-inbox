@@ -93,7 +93,7 @@ P3a（删除恢复账本与索引 schema）、P3b（删除/恢复/到期清理�
 
 主要落点：`data/migration_coordinator.dart`、`sqlite_migration_coordinator.dart`、`bootstrap/app_runtime.dart`、repository。
 
-P4 当前阶段：迁移预检/确定性映射/vault Markdown备份/SQLite、会话与设置独立快照/关联 journal、重放和 hash 回滚已有首轮实现；Android StatFs与Windows GetDiskFreeSpaceExW通过定向验证。AppRuntime 检出旧资料后进入只读迁移门，旧模块暂不启动，页面展示原文及预检阻断。旧事项→表；未来且有开始时间的旧日历事件→日程，过去/无开始时间事件要求人工判定。迁移确认/执行入口暂不开放，待 P5 新表 UI 接通后再完成回滚、候选升级和真实迁移边界验证。
+P4 当前阶段：迁移预检/确定性映射/vault Markdown备份/SQLite、会话与设置独立快照/关联 journal、重放和 hash 回滚已有首轮实现；Android StatFs与Windows GetDiskFreeSpaceExW通过定向验证。AppRuntime 检出旧资料后进入只读门，旧写入/恢复/同步模块不启动，页面展示原文及阻断原因。预检通过后经用户确认可生成新格式副本，旧源保留；迁移完成后仍只读，直到 P5 新表页面接管。旧事项→表；未来且有开始时间的旧日历项→日程，过去/无开始时间项要求人工判定。候选升级/恢复演练和真实迁移仍待完成。
 
 | 步骤 | 执行动作 | 完成条件 |
 |---|---|---|

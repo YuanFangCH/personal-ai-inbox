@@ -426,6 +426,21 @@ class TableMigrationService {
     );
   }
 
+  Future<TableMigrationReceipt?> completedReceipt(TableMigrationPreview plan) =>
+      _vault.exclusive(() async {
+        final source = await _vault.read(_journalPath(plan.migrationId));
+        if (source == null) return null;
+        final journal = _decodeJournal(source, plan.migrationId);
+        if (journal['status'] != 'complete') return null;
+        for (final output in plan.outputs.entries) {
+          final current = await _vault.read(output.key);
+          if (current == null || _hash(current) != _hash(output.value)) {
+            throw StateError('迁移完成目标与预检不一致：${output.key}');
+          }
+        }
+        return TableMigrationReceipt.fromJournal(journal);
+      });
+
   Future<void> rollback(String migrationId) => _vault.exclusive(() async {
     final path = _journalPath(migrationId);
     final source = await _vault.read(path);

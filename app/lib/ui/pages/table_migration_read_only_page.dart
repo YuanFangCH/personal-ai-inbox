@@ -9,6 +9,36 @@ class TableMigrationReadOnlyPage extends StatelessWidget {
 
   final TableMigrationGate gate;
 
+  Future<void> _confirmAndApply(BuildContext context) async {
+    final preview = gate.preview;
+    if (preview == null || !preview.canApply || gate.migrationComplete) return;
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认迁移旧资料'),
+        content: Text(
+          '将创建 ${preview.tables.length} 张表和 ${preview.entries.length} 条内容。应用会先备份 vault、数据库、会话和设置并校验空间；旧 Markdown 源件保留。迁移后仍保持只读，直到新表页面接管。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('开始迁移'),
+          ),
+        ],
+      ),
+    );
+    if (approved != true) return;
+    try {
+      await gate.applyMigration();
+    } on Object {
+      // The gate keeps the failure visible and retains all source files.
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -53,19 +83,47 @@ class TableMigrationReadOnlyPage extends StatelessWidget {
                     ? _ErrorState(message: gate.error!)
                     : preview == null
                     ? const Center(child: Text('正在检查旧资料…'))
-                    : _PreviewContent(preview: preview),
+                    : _PreviewContent(
+                        preview: preview,
+                        migrationComplete: gate.migrationComplete,
+                      ),
               ),
               SafeArea(
                 top: false,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: gate.isChecking ? null : gate.refresh,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('重新检查'),
-                    ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if ((gate.preview?.canApply ?? false) &&
+                          !gate.migrationComplete)
+                        FilledButton.icon(
+                          onPressed: gate.isChecking || gate.isApplying
+                              ? null
+                              : () => _confirmAndApply(context),
+                          icon: gate.isApplying
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.drive_file_move_outline),
+                          label: Text(gate.isApplying ? '迁移中…' : '迁移到表格式'),
+                        ),
+                      if ((gate.preview?.canApply ?? false) &&
+                          !gate.migrationComplete)
+                        const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: gate.isChecking || gate.isApplying
+                            ? null
+                            : gate.refresh,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('重新检查'),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -78,9 +136,13 @@ class TableMigrationReadOnlyPage extends StatelessWidget {
 }
 
 class _PreviewContent extends StatelessWidget {
-  const _PreviewContent({required this.preview});
+  const _PreviewContent({
+    required this.preview,
+    required this.migrationComplete,
+  });
 
   final TableMigrationPreview preview;
+  final bool migrationComplete;
 
   @override
   Widget build(BuildContext context) {
@@ -92,6 +154,17 @@ class _PreviewContent extends StatelessWidget {
         Text(
           '发现 ${preview.legacyRecords.length} 条可读取旧资料；拟建立 ${preview.tables.length} 张表和 ${preview.entries.length} 条内容。全局知识保留在原独立管理中。',
         ),
+        if (migrationComplete) ...[
+          const SizedBox(height: 12),
+          Card(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            child: const ListTile(
+              leading: Icon(Icons.task_alt),
+              title: Text('迁移副本已生成'),
+              subtitle: Text('旧 Markdown 源件仍保留；当前继续只读，直到新表页面接管。'),
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         Text(
           '空间估算：备份 ${_formatBytes(preview.estimatedBackupBytes)}，新格式文件 ${_formatBytes(preview.estimatedOutputBytes)}，本次总计约 ${_formatBytes(preview.estimatedRequiredBytes)}。',
