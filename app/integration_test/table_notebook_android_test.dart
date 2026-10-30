@@ -56,8 +56,10 @@ void main() {
       'AVD 作业表',
     );
     await tester.tap(find.byKey(const Key('table_name_save')));
-    await _waitFor(tester, () =>
-        first.tables.tables.any((table) => table.title == 'AVD 作业表'));
+    await _waitFor(
+      tester,
+      () => first.tables.tables.any((table) => table.title == 'AVD 作业表'),
+    );
     expect(
       first.tables.tables.any((table) => table.title == 'AVD 作业表'),
       isTrue,
@@ -75,12 +77,12 @@ void main() {
       '数字信号处理作业安排。',
     );
     await tester.tap(find.byKey(const Key('table_body_dialog_save')));
-    await _waitFor(tester, () =>
-        first.tables.tables.any(
-          (table) =>
-              table.title == 'AVD 作业表' &&
-              table.body == '数字信号处理作业安排。',
-        ));
+    await _waitFor(
+      tester,
+      () => first.tables.tables.any(
+        (table) => table.title == 'AVD 作业表' && table.body == '数字信号处理作业安排。',
+      ),
+    );
     await tester.tap(find.byKey(const Key('table_add_content')));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(ListTile, '笔记').last);
@@ -91,9 +93,49 @@ void main() {
       '提交前检查图表。',
     );
     await tester.tap(find.byKey(const Key('table_entry_save')));
-    await _waitFor(tester, () =>
-        first.tables.entries.any((entry) => entry.title == '实验报告'));
+    await _waitFor(
+      tester,
+      () => first.tables.entries.any((entry) => entry.title == '实验报告'),
+    );
     expect(find.text('实验报告'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('manage_table_fields')),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('manage_table_fields')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('add_table_field')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('table_field_name')), '课程');
+    await tester.tap(find.byKey(const Key('table_field_save')));
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('实验报告'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('实验报告').last);
+    await tester.pumpAndSettle();
+    final fieldId = first.tables.tables
+        .singleWhere((candidate) => candidate.title == 'AVD 作业表')
+        .fields
+        .single
+        .id;
+    await tester.enterText(
+      find.byKey(ValueKey('custom_field_$fieldId')),
+      '信号与系统',
+    );
+    await tester.tap(find.byKey(const Key('table_entry_save')));
+    await _waitFor(
+      tester,
+      () => first.tables.entries.any(
+        (entry) => entry.customValues[fieldId] == '信号与系统',
+      ),
+    );
 
     await tester.pumpWidget(const SizedBox.shrink());
     await first.shutdown();
@@ -116,6 +158,17 @@ void main() {
           .singleWhere((entry) => entry.title == '实验报告')
           .body,
       '提交前检查图表。',
+    );
+    final reopenedFieldId = reopened.tables
+        .findTable(table.id)!
+        .fields
+        .single
+        .id;
+    expect(
+      reopened.tables.entries
+          .singleWhere((entry) => entry.title == '实验报告')
+          .customValues[reopenedFieldId],
+      '信号与系统',
     );
     await reopened.shutdown();
   });

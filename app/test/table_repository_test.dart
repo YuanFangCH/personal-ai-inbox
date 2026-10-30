@@ -670,6 +670,274 @@ void main() {
     },
   );
 
+  test(
+    'moves entries by stable ID and refuses to drop populated field values',
+    () async {
+      final vault = MemoryVaultStore();
+      final index = MemoryIndexDatabase();
+      final repository = TableRepository(vault: vault, index: index);
+      await repository.initialize();
+      final now = DateTime.parse('2026-10-29T09:00:00+08:00');
+      final source = await repository.createTable(title: '作业');
+      final sourceWithFields = await repository.updateTable(
+        source.copyWith(
+          fields: [
+            TableFieldDefinition(
+              id: 'fld_course',
+              name: '课程',
+              type: CustomFieldType.text,
+            ),
+            TableFieldDefinition(
+              id: 'fld_optional',
+              name: '备注',
+              type: CustomFieldType.text,
+            ),
+          ],
+        ),
+        expectedRevision: source.revision,
+      );
+      final compatible = await repository.createTable(title: '考试');
+      await repository.updateTable(
+        compatible.copyWith(
+          fields: [
+            TableFieldDefinition(
+              id: 'fld_course',
+              name: '课程',
+              type: CustomFieldType.text,
+            ),
+          ],
+        ),
+        expectedRevision: compatible.revision,
+      );
+      final incompatible = await repository.createTable(title: '归档');
+      final note = TableEntryDocument(
+        id: 'nt_stable_move',
+        type: TableContentType.note,
+        tableId: sourceWithFields.id,
+        title: '复习安排',
+        revision: 1,
+        createdAt: now,
+        updatedAt: now,
+        body: '同一份正文',
+        customValues: const {'fld_course': '信号与系统', 'fld_optional': null},
+      );
+      await repository.createEntry(note);
+
+      final moved = await repository.moveEntry(
+        id: note.id,
+        tableId: compatible.id,
+        expectedRevision: note.revision,
+      );
+      expect(moved.id, note.id);
+      expect(moved.tableId, compatible.id);
+      expect(moved.customValues, {'fld_course': '信号与系统'});
+      await expectLater(
+        repository.moveEntry(
+          id: note.id,
+          tableId: incompatible.id,
+          expectedRevision: moved.revision,
+        ),
+        throwsStateError,
+      );
+      expect((await repository.readEntry(note.id))?.tableId, compatible.id);
+      expect((await repository.readEntry(note.id))?.body, note.body);
+    },
+  );
+
+  test('removes a populated field as one recoverable schema batch', () async {
+    final vault = MemoryVaultStore();
+    final index = MemoryIndexDatabase();
+    final repository = TableRepository(vault: vault, index: index);
+    await repository.initialize();
+    final now = DateTime.parse('2026-10-29T09:00:00+08:00');
+    final table = await repository.createTable(title: '字段恢复');
+    final field = TableFieldDefinition(
+      id: 'fld_course_recover',
+      name: '课程',
+      type: CustomFieldType.text,
+    );
+    final withField = await repository.updateTable(
+      table.copyWith(fields: [field]),
+      expectedRevision: table.revision,
+    );
+    final note = TableEntryDocument(
+      id: 'nt_field_recover',
+      type: TableContentType.note,
+      tableId: table.id,
+      title: '课程笔记',
+      revision: 1,
+      createdAt: now,
+      updatedAt: now,
+      body: '正文保留',
+      customValues: {field.id: '信号与系统'},
+    );
+    await repository.createEntry(note);
+
+    final batch = await repository.removeTableField(
+      tableId: table.id,
+      fieldId: field.id,
+      expectedRevision: withField.revision,
+      idempotencyKey: 'remove-course-field',
+      now: now,
+    );
+    expect(batch.scope, TableRecoveryScope.fieldChange);
+    expect((await repository.readTable(table.id))!.fields, isEmpty);
+    expect((await repository.readEntry(note.id))!.customValues, isEmpty);
+    expect(await repository.recoveryBatches(), isEmpty);
+    expect(await repository.fieldChangeRecoveryBatches(tableId: table.id), [
+      batch,
+    ]);
+
+    await repository.restoreRecoveryBatch(
+      batch.id,
+      now: now.add(const Duration(days: 29)),
+    );
+    expect((await repository.readTable(table.id))!.fields.single.id, field.id);
+    expect(
+      (await repository.readEntry(note.id))!.customValues[field.id],
+      '信号与系统',
+    );
+    expect(
+      await repository.fieldChangeRecoveryBatches(tableId: table.id),
+      isEmpty,
+    );
+
+    final currentTable = (await repository.readTable(table.id))!;
+    final expiring = await repository.removeTableField(
+      tableId: table.id,
+      fieldId: field.id,
+      expectedRevision: currentTable.revision,
+      idempotencyKey: 'remove-course-field-expiring',
+      now: now.add(const Duration(days: 40)),
+    );
+    await repository.purgeExpiredRecoveryBatches(now: expiring.expiresAt);
+    expect(
+      (await index.findTableRecoveryBatch(expiring.id))?.status,
+      TableRecoveryStatus.expired,
+    );
+    final survivingEntry = await repository.readEntry(note.id);
+    expect(survivingEntry?.body, note.body);
+    expect(survivingEntry?.deleted, isFalse);
+    expect(survivingEntry?.customValues, isEmpty);
+  });
+
+  test(
+    'moves mapped select values to different target field and option IDs',
+    () async {
+      final vault = MemoryVaultStore();
+      final index = MemoryIndexDatabase();
+      final repository = TableRepository(vault: vault, index: index);
+      await repository.initialize();
+      final now = DateTime.parse('2026-10-29T09:00:00+08:00');
+      final source = await repository.createTable(title: '课程');
+      final sourceField = TableFieldDefinition(
+        id: 'fld_source_course',
+        name: '科目',
+        type: CustomFieldType.singleSelect,
+        options: const [TableFieldOption(id: 'opt_source_math', label: '数学')],
+      );
+      await repository.updateTable(
+        source.copyWith(fields: [sourceField]),
+        expectedRevision: source.revision,
+      );
+      final target = await repository.createTable(title: '考试');
+      final targetField = TableFieldDefinition(
+        id: 'fld_target_subject',
+        name: '考试科目',
+        type: CustomFieldType.singleSelect,
+        options: const [TableFieldOption(id: 'opt_target_math', label: '数学')],
+      );
+      await repository.updateTable(
+        target.copyWith(fields: [targetField]),
+        expectedRevision: target.revision,
+      );
+      final note = TableEntryDocument(
+        id: 'nt_mapped_select_move',
+        type: TableContentType.note,
+        tableId: source.id,
+        title: '数学考试',
+        revision: 1,
+        createdAt: now,
+        updatedAt: now,
+        body: '正文',
+        customValues: const {'fld_source_course': 'opt_source_math'},
+      );
+      await repository.createEntry(note);
+
+      final moved = await repository.moveEntry(
+        id: note.id,
+        tableId: target.id,
+        expectedRevision: note.revision,
+        fieldMapping: {sourceField.id: targetField.id},
+        optionMapping: {
+          sourceField.id: {'opt_source_math': 'opt_target_math'},
+        },
+      );
+      expect(moved.id, note.id);
+      expect(moved.tableId, target.id);
+      expect(moved.customValues, {targetField.id: 'opt_target_math'});
+    },
+  );
+
+  test('replays a partially applied field deletion after restart', () async {
+    final vault = _FailingVaultStore(MemoryVaultStore());
+    final index = MemoryIndexDatabase();
+    final repository = TableRepository(vault: vault, index: index);
+    await repository.initialize();
+    final now = DateTime.parse('2026-10-29T09:00:00+08:00');
+    final table = await repository.createTable(title: '字段删除重放');
+    final field = TableFieldDefinition(
+      id: 'fld_replay',
+      name: '章节',
+      type: CustomFieldType.text,
+    );
+    final withField = await repository.updateTable(
+      table.copyWith(fields: [field]),
+      expectedRevision: table.revision,
+    );
+    final note = TableEntryDocument(
+      id: 'nt_field_replay',
+      type: TableContentType.note,
+      tableId: table.id,
+      title: '正文',
+      revision: 1,
+      createdAt: now,
+      updatedAt: now,
+      body: '原文',
+      customValues: {field.id: '第 2 章'},
+    );
+    await repository.createEntry(note);
+    vault.failOnNextManagedWrite = 2;
+    await expectLater(
+      repository.removeTableField(
+        tableId: table.id,
+        fieldId: field.id,
+        expectedRevision: withField.revision,
+        idempotencyKey: 'field-replay',
+        now: now,
+      ),
+      throwsStateError,
+    );
+    vault.failOnNextManagedWrite = null;
+
+    final restarted = TableRepository(vault: vault, index: index);
+    await restarted.initialize();
+    final batch = (await index.listTableRecoveryBatches(activeOnly: true))
+        .single;
+    expect(batch.scope, TableRecoveryScope.fieldChange);
+    expect((await restarted.readTable(table.id))!.fields, isEmpty);
+    expect((await restarted.readEntry(note.id))!.customValues, isEmpty);
+    await restarted.restoreRecoveryBatch(
+      batch.id,
+      now: now.add(const Duration(minutes: 1)),
+    );
+    expect((await restarted.readTable(table.id))!.fields.single.id, field.id);
+    expect(
+      (await restarted.readEntry(note.id))!.customValues[field.id],
+      '第 2 章',
+    );
+  });
+
   test('rejects stale updates and missing table ownership', () async {
     final vault = MemoryVaultStore();
     final index = MemoryIndexDatabase();

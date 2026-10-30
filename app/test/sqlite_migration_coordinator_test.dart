@@ -94,7 +94,7 @@ void main() {
       await migration.prepare();
       final indexPath = '${directory.path}/index.sqlite3';
       final conversationPath = '${directory.path}/conversations.sqlite3';
-      _markMigrated(indexPath, version: 9);
+      _markMigrated(indexPath, version: 10);
       await expectLater(migration.complete(), throwsA(isA<StateError>()));
       _markMigrated(conversationPath, version: 5);
       await migration.complete();
@@ -115,7 +115,7 @@ void main() {
     final conversationPath = '${directory.path}/conversations.sqlite3';
     _createLegacyDatabase(indexPath, 'index_payload');
     _createLegacyDatabase(conversationPath, 'conversation_payload');
-    _markMigrated(indexPath, version: 9);
+    _markMigrated(indexPath, version: 10);
     _markMigrated(conversationPath, version: 5);
     final settings = _MigrationSettings({'device_id': 'snapshot-device'});
     final migration = SqliteMigrationCoordinator(
@@ -138,7 +138,7 @@ void main() {
     expect(manifest['databases'], hasLength(2));
     for (final raw in manifest['databases'] as List<dynamic>) {
       final row = raw as Map<String, dynamic>;
-      expect(row['user_version'], row['name'] == 'index.sqlite3' ? 9 : 5);
+      expect(row['user_version'], row['name'] == 'index.sqlite3' ? 10 : 5);
       final snapshot = sqlite3.open(row['backup'] as String);
       expect(snapshot.select('PRAGMA quick_check').single.values.single, 'ok');
       expect(

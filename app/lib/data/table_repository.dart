@@ -186,8 +186,10 @@ class TableRepository {
     return List.unmodifiable(tables);
   }
 
-  Future<TableDocument?> readTable(String id) =>
-      _vault.exclusive(() => _readTableUnlocked(id));
+  Future<TableDocument?> readTable(String id) => _vault.exclusive(() {
+    _validateId(id);
+    return _readTableUnlocked(id);
+  });
 
   Future<TableDocument?> _readTableUnlocked(String id) async {
     final source = await _vault.read(tablePath(id));
@@ -236,6 +238,7 @@ class TableRepository {
     TableDocument proposed, {
     required int expectedRevision,
   }) async => _vault.exclusive(() async {
+    _validateId(proposed.id);
     final path = tablePath(proposed.id);
     final source = await _vault.read(path);
     if (source == null) throw StateError('表不存在：${proposed.id}');
@@ -307,6 +310,7 @@ class TableRepository {
   }
 
   Future<TableEntryDocument?> readEntry(String id) async {
+    _validateId(id);
     final source = await _vault.exclusive(() => _vault.read(entryPath(id)));
     if (source == null) return null;
     final entry = _codec.decodeEntry(source);
@@ -318,6 +322,8 @@ class TableRepository {
 
   Future<TableEntryDocument> createEntry(TableEntryDocument entry) async =>
       _vault.exclusive(() async {
+        _validateId(entry.id);
+        _validateId(entry.tableId);
         if (await _vault.read(entryPath(entry.id)) != null) {
           throw StateError('内容 ID 已存在：${entry.id}');
         }
@@ -333,6 +339,8 @@ class TableRepository {
     TableEntryDocument proposed, {
     required int expectedRevision,
   }) async => _vault.exclusive(() async {
+    _validateId(proposed.id);
+    _validateId(proposed.tableId);
     final path = entryPath(proposed.id);
     final previous = await _vault.read(path);
     if (previous == null) throw StateError('内容不存在：${proposed.id}');
@@ -354,14 +362,65 @@ class TableRepository {
     required String id,
     required String tableId,
     required int expectedRevision,
-  }) async {
-    final current = await readEntry(id);
-    if (current == null) throw StateError('内容不存在：$id');
-    return updateEntry(
-      current.copyWith(tableId: tableId),
-      expectedRevision: expectedRevision,
+    Map<String, String> fieldMapping = const {},
+    Map<String, Map<String, String>> optionMapping = const {},
+  }) => _vault.exclusive(() async {
+    _validateId(id);
+    _validateId(tableId);
+    final path = entryPath(id);
+    final previous = await _vault.read(path);
+    if (previous == null) throw StateError('内容不存在：$id');
+    final current = _codec.decodeEntry(previous);
+    _checkRevision(current.revision, expectedRevision);
+    if (current.deleted) throw StateError('内容已删除：$id');
+    final source = await _readTableUnlocked(current.tableId);
+    if (source == null || source.deleted) {
+      throw StateError('源表不存在或已删除：${current.tableId}');
+    }
+    await _requireWritableTableUnlocked(tableId);
+    final target = await _readTableUnlocked(tableId);
+    if (target == null) throw StateError('目标表不存在：$tableId');
+    final targetFields = {for (final field in target.fields) field.id: field};
+    final sourceFields = {for (final field in source.fields) field.id: field};
+    final values = <String, Object?>{};
+    final assignedFields = <String>{};
+    for (final value in current.customValues.entries) {
+      if (value.value == null) continue;
+      final sourceField = sourceFields[value.key];
+      final targetFieldId = fieldMapping[value.key] ?? value.key;
+      final targetField = targetFields[targetFieldId];
+      if (sourceField == null || targetField == null) {
+        throw StateError(
+          '目标表缺少有值字段“${sourceField?.name ?? value.key}”，移动前需处理字段映射。',
+        );
+      }
+      if (sourceField.type != targetField.type) {
+        throw StateError('字段“${sourceField.name}”类型不兼容，不能移动此内容。');
+      }
+      if (!assignedFields.add(targetFieldId)) {
+        throw StateError('多个源字段映射到了同一目标字段“${targetField.name}”。');
+      }
+      final optionIds = optionMapping[value.key] ?? const <String, String>{};
+      final mappedValue = switch (sourceField.type) {
+        CustomFieldType.singleSelect => optionIds[value.value] ?? value.value,
+        CustomFieldType.multiSelect =>
+          (value.value as List<Object?>)
+              .map((optionId) => optionIds[optionId] ?? optionId)
+              .toList(growable: false),
+        _ => value.value,
+      };
+      values[targetFieldId] = mappedValue;
+    }
+    final moved = current.copyWith(
+      tableId: tableId,
+      revision: current.revision + 1,
+      updatedAt: DateTime.now(),
+      customValues: values,
     );
-  }
+    final encoded = _codec.encodeEntry(moved, fields: target.fields);
+    await _writeAndIndexEntry(moved, encoded, previous: previous);
+    return moved;
+  });
 
   Future<ScheduleChangeResult> changeScheduleFromEvent({
     required String scheduleId,
@@ -483,6 +542,7 @@ class TableRepository {
     required DateTime createdAt,
     required Duration lifetime,
     required List<_RecoveryObject> objects,
+    Map<String, Object?> metadata = const {},
   }) async {
     if (await _index.findTableRecoveryBatch(id) != null) {
       throw StateError('删除批次已存在：$id');
@@ -523,7 +583,7 @@ class TableRepository {
       status: TableRecoveryStatus.prepared,
       createdAt: createdAt,
       expiresAt: createdAt.add(lifetime),
-      manifestJson: jsonEncode({'objects': descriptors}),
+      manifestJson: jsonEncode({...metadata, 'objects': descriptors}),
     );
     try {
       await _index.upsertTableRecoveryBatch(batch);
@@ -641,7 +701,10 @@ class TableRepository {
     }
     final pending = batch.copyWith(
       status: TableRecoveryStatus.restoring,
-      manifestJson: jsonEncode({'objects': updatedObjects}),
+      manifestJson: jsonEncode({
+        ...Map<String, dynamic>.from(jsonDecode(batch.manifestJson) as Map),
+        'objects': updatedObjects,
+      }),
       error: null,
     );
     await _index.upsertTableRecoveryBatch(pending);
@@ -1014,8 +1077,132 @@ class TableRepository {
 
   Future<List<TableRecoveryBatch>> recoveryBatches() async =>
       (await _index.listTableRecoveryBatches(activeOnly: true))
-          .where((batch) => batch.scope != TableRecoveryScope.scheduleChange)
+          .where(
+            (batch) =>
+                batch.scope == TableRecoveryScope.entry ||
+                batch.scope == TableRecoveryScope.table,
+          )
           .toList(growable: false);
+
+  Future<List<TableRecoveryBatch>> fieldChangeRecoveryBatches({
+    String? tableId,
+  }) async => (await _index.listTableRecoveryBatches(activeOnly: true))
+      .where(
+        (batch) =>
+            batch.scope == TableRecoveryScope.fieldChange &&
+            (tableId == null || batch.tableId == tableId),
+      )
+      .toList(growable: false);
+
+  Future<TableRecoveryBatch> removeTableField({
+    required String tableId,
+    required String fieldId,
+    required int expectedRevision,
+    String? idempotencyKey,
+    DateTime? now,
+  }) => _vault.exclusive(() async {
+    _validateId(tableId);
+    _validateId(fieldId);
+    final operationKey =
+        idempotencyKey ??
+        'remove-field-${_hash('$tableId|$fieldId|$expectedRevision').substring(0, 32)}';
+    final batchId = _recoveryId(operationKey);
+    final prior = await _index.findTableRecoveryBatch(batchId);
+    if (prior != null) {
+      final decoded = jsonDecode(prior.manifestJson);
+      final operation = decoded is Map ? decoded['operation'] : null;
+      if (prior.scope != TableRecoveryScope.fieldChange ||
+          prior.tableId != tableId ||
+          operation is! Map ||
+          operation['field_id'] != fieldId) {
+        throw StateError('字段删除幂等键已用于其他结构变更');
+      }
+      return prior;
+    }
+    final activeBatches = await _index.listTableRecoveryBatches(
+      activeOnly: true,
+    );
+    if (activeBatches.any((batch) => batch.tableId == tableId)) {
+      throw StateError('该表有未完成的恢复/日程联动批次，请先恢复或等待到期。');
+    }
+    final tablePathValue = tablePath(tableId);
+    final tableSource = await _vault.read(tablePathValue);
+    if (tableSource == null) throw StateError('表不存在：$tableId');
+    final table = _codec.decodeTable(tableSource);
+    _checkRevision(table.revision, expectedRevision);
+    if (table.deleted) throw StateError('表已删除：$tableId');
+    TableFieldDefinition? field;
+    for (final candidate in table.fields) {
+      if (candidate.id == fieldId) field = candidate;
+    }
+    if (field == null) throw StateError('字段不存在：$fieldId');
+    final timestamp = (now ?? _clock()).toLocal();
+    final remainingFields = table.fields
+        .where((candidate) => candidate.id != fieldId)
+        .toList(growable: false);
+    final updatedTable = table.copyWith(
+      revision: table.revision + 1,
+      updatedAt: timestamp,
+      fields: remainingFields,
+    );
+    final objects = <_RecoveryObject>[
+      _RecoveryObject(
+        kind: 'table',
+        id: table.id,
+        sourcePath: tablePathValue,
+        before: tableSource,
+        deleted: _codec.encodeTable(updatedTable),
+        deleteTarget: false,
+      ),
+    ];
+    for (final row in await _index.listTableEntries(
+      tableId: tableId,
+      includeDeleted: true,
+    )) {
+      final path = entryPath(row.id);
+      final source = await _vault.read(path);
+      if (source == null) {
+        throw StateError('字段影响内容缺失，停止删除以避免丢值：${row.id}');
+      }
+      final entry = _codec.decodeEntry(source);
+      if (entry.tableId != tableId) {
+        throw StateError('字段影响内容归属已变化：${entry.id}');
+      }
+      if (!entry.customValues.containsKey(fieldId)) continue;
+      final values = Map<String, Object?>.of(entry.customValues)
+        ..remove(fieldId);
+      final updatedEntry = entry.copyWith(
+        revision: entry.revision + 1,
+        updatedAt: timestamp,
+        customValues: values,
+      );
+      objects.add(
+        _RecoveryObject(
+          kind: 'entry',
+          id: entry.id,
+          sourcePath: path,
+          before: source,
+          deleted: _codec.encodeEntry(updatedEntry, fields: remainingFields),
+          deleteTarget: false,
+        ),
+      );
+    }
+    return _prepareDeleteBatch(
+      id: batchId,
+      scope: TableRecoveryScope.fieldChange,
+      tableId: tableId,
+      createdAt: timestamp,
+      lifetime: tableRecoveryWindow,
+      objects: objects,
+      metadata: {
+        'operation': {
+          'kind': 'remove_field',
+          'field_id': field.id,
+          'field_name': field.name,
+        },
+      },
+    );
+  });
 
   Future<void> purgeExpiredRecoveryBatches({DateTime? now}) =>
       _expireRecoveryBatches((now ?? _clock()).toLocal());

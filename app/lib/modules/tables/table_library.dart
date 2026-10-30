@@ -40,6 +40,10 @@ class TableLibrary extends ChangeNotifier {
   Future<List<TableRecoveryBatch>> recoveryBatches() =>
       _repository.recoveryBatches();
 
+  Future<List<TableRecoveryBatch>> fieldChangeRecoveryBatches({
+    String? tableId,
+  }) => _repository.fieldChangeRecoveryBatches(tableId: tableId);
+
   Future<List<TableDocument>> searchTables({
     required String query,
     int offset = 0,
@@ -67,6 +71,24 @@ class TableLibrary extends ChangeNotifier {
     return updated;
   }
 
+  Future<TableRecoveryBatch> removeTableField({
+    required String tableId,
+    required String fieldId,
+    required int expectedRevision,
+    String? idempotencyKey,
+    DateTime? now,
+  }) async {
+    final batch = await _repository.removeTableField(
+      tableId: tableId,
+      fieldId: fieldId,
+      expectedRevision: expectedRevision,
+      idempotencyKey: idempotencyKey,
+      now: now,
+    );
+    await refresh();
+    return batch;
+  }
+
   Future<TableEntryDocument> createEntry(TableEntryDocument entry) async {
     final created = await _repository.createEntry(entry);
     await refresh();
@@ -89,11 +111,15 @@ class TableLibrary extends ChangeNotifier {
     required String id,
     required String tableId,
     required int expectedRevision,
+    Map<String, String> fieldMapping = const {},
+    Map<String, Map<String, String>> optionMapping = const {},
   }) async {
     final moved = await _repository.moveEntry(
       id: id,
       tableId: tableId,
       expectedRevision: expectedRevision,
+      fieldMapping: fieldMapping,
+      optionMapping: optionMapping,
     );
     await refresh();
     return moved;

@@ -5,6 +5,7 @@ import '../../core/table_models.dart';
 import '../../modules/tables/table_library.dart';
 import '../app_scope.dart';
 import '../widgets/common.dart';
+import 'table_fields_page.dart';
 
 class TableDetailPage extends StatelessWidget {
   const TableDetailPage({super.key, required this.tableId});
@@ -52,6 +53,15 @@ class TableDetailPage extends StatelessWidget {
                 _TableBodyPanel(
                   table: table,
                   onEdit: () => _editTableBody(context, library, table),
+                ),
+                const SizedBox(height: 14),
+                _TableFieldsPanel(
+                  fields: table.fields,
+                  onManage: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (_) => TableFieldsPage(tableId: table.id),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 22),
                 SectionHeading(
@@ -138,13 +148,19 @@ class TableDetailPage extends StatelessWidget {
     TableContentType type = TableContentType.note,
     TableEntryDocument? entry,
   }) async {
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
+    final movedTo = await Navigator.of(context).push<String>(
+      MaterialPageRoute<String>(
         builder: (_) => TableEntryEditorPage(
           tableId: ownerTableId,
           type: entry?.type ?? type,
           entry: entry,
         ),
+      ),
+    );
+    if (!context.mounted || movedTo == null || movedTo == ownerTableId) return;
+    await Navigator.of(context).pushReplacement<void, void>(
+      MaterialPageRoute<void>(
+        builder: (_) => TableDetailPage(tableId: movedTo),
       ),
     );
   }
@@ -203,6 +219,41 @@ class _TableBodyPanel extends StatelessWidget {
   }
 }
 
+class _TableFieldsPanel extends StatelessWidget {
+  const _TableFieldsPanel({required this.fields, required this.onManage});
+
+  final List<TableFieldDefinition> fields;
+  final VoidCallback onManage;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SurfacePanel(
+      padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
+      child: Row(
+        children: [
+          Icon(Icons.tune_outlined, color: theme.colorScheme.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              fields.isEmpty
+                  ? '自定义字段 · 尚未设置'
+                  : '自定义字段 · ${fields.map((field) => field.name).join('、')}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          TextButton(
+            key: const Key('manage_table_fields'),
+            onPressed: onManage,
+            child: const Text('管理'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _TableBodyDialog extends StatefulWidget {
   const _TableBodyDialog({required this.initialValue});
 
@@ -253,6 +304,114 @@ class _TableBodyDialogState extends State<_TableBodyDialog> {
         key: const Key('table_body_dialog_save'),
         onPressed: () => Navigator.pop(context, _controller.text),
         child: const Text('保存正文'),
+      ),
+    ],
+  );
+}
+
+class _FieldMappingDialog extends StatefulWidget {
+  const _FieldMappingDialog({
+    required this.sourceFields,
+    required this.targetFields,
+  });
+
+  final List<TableFieldDefinition> sourceFields;
+  final List<TableFieldDefinition> targetFields;
+
+  @override
+  State<_FieldMappingDialog> createState() => _FieldMappingDialogState();
+}
+
+class _FieldMappingDialogState extends State<_FieldMappingDialog> {
+  late final Map<String, String?> _mapping;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _mapping = {
+      for (final source in widget.sourceFields)
+        source.id: _defaultTarget(source)?.id,
+    };
+  }
+
+  TableFieldDefinition? _defaultTarget(TableFieldDefinition source) {
+    final sameId = widget.targetFields.where(
+      (target) => target.id == source.id && target.type == source.type,
+    );
+    if (sameId.length == 1) return sameId.single;
+    final sameName = widget.targetFields.where(
+      (target) => target.name == source.name && target.type == source.type,
+    );
+    return sameName.length == 1 ? sameName.single : null;
+  }
+
+  void _confirm() {
+    if (_mapping.values.any((targetId) => targetId == null)) {
+      setState(() => _error = '请为每个有值字段选择目标字段。');
+      return;
+    }
+    final selectedIds = _mapping.values.cast<String>().toList();
+    if (selectedIds.toSet().length != selectedIds.length) {
+      setState(() => _error = '每个源字段需要映射到不同的目标字段。');
+      return;
+    }
+    Navigator.pop(context, {
+      for (final entry in _mapping.entries) entry.key: entry.value!,
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('映射自定义字段'),
+    content: SizedBox(
+      width: 560,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('移动时会保留内容 ID，并按下列映射转换字段归属。选项值按相同标签匹配。'),
+            const SizedBox(height: 12),
+            for (final source in widget.sourceFields) ...[
+              DropdownButtonFormField<String>(
+                key: ValueKey('map_field_${source.id}'),
+                initialValue: _mapping[source.id],
+                decoration: InputDecoration(
+                  labelText: '${source.name}（${_customTypeLabel(source.type)}）',
+                ),
+                items: [
+                  for (final target in widget.targetFields.where(
+                    (target) => target.type == source.type,
+                  ))
+                    DropdownMenuItem(
+                      value: target.id,
+                      child: Text(target.name),
+                    ),
+                ],
+                onChanged: (value) =>
+                    setState(() => _mapping[source.id] = value),
+              ),
+              const SizedBox(height: 8),
+            ],
+            if (_error != null)
+              Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+          ],
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('取消移动'),
+      ),
+      FilledButton(
+        key: const Key('confirm_field_mapping'),
+        onPressed: _confirm,
+        child: const Text('确认映射并移动'),
       ),
     ],
   );
@@ -397,6 +556,8 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
   DateTime? _start;
   DateTime? _end;
   DateTime? _occurredAt;
+  late final Map<String, Object?> _customValues;
+  final Map<String, TextEditingController> _customTextControllers = {};
   bool _done = false;
   bool _saving = false;
   String? _error;
@@ -415,6 +576,7 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
     _end = entry?.end;
     _occurredAt = entry?.occurredAt;
     _done = entry?.done ?? false;
+    _customValues = Map<String, Object?>.of(entry?.customValues ?? const {});
   }
 
   @override
@@ -422,8 +584,14 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
     _title.dispose();
     _body.dispose();
     _tags.dispose();
+    for (final controller in _customTextControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
+
+  List<TableFieldDefinition> get _fields =>
+      AppScope.tables(context).findTable(widget.tableId)?.fields ?? const [];
 
   @override
   Widget build(BuildContext context) {
@@ -436,6 +604,13 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
               : '新建${_typeLabel(widget.type)}',
         ),
         actions: [
+          if (_editing && AppScope.tables(context).tables.length > 1)
+            IconButton(
+              key: const Key('move_table_entry'),
+              tooltip: '移动到其他表',
+              onPressed: _saving ? null : _moveToAnotherTable,
+              icon: const Icon(Icons.drive_file_move_outlined),
+            ),
           if (_editing)
             IconButton(
               tooltip: '删除',
@@ -488,6 +663,15 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
               border: OutlineInputBorder(),
             ),
           ),
+          if (_fields.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const SectionHeading(title: '自定义字段'),
+            const SizedBox(height: 8),
+            for (final field in _fields) ...[
+              _customFieldInput(field),
+              const SizedBox(height: 10),
+            ],
+          ],
           const SizedBox(height: 16),
           ..._timeFields(context),
           if (widget.type == TableContentType.todo)
@@ -543,6 +727,178 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
     }
   }
 
+  Widget _customFieldInput(TableFieldDefinition field) {
+    final storedValue = _customValues[field.id] ?? field.defaultValue;
+    final label = field.required ? '${field.name}（必填）' : field.name;
+    switch (field.type) {
+      case CustomFieldType.text:
+        final controller = _customTextControllers.putIfAbsent(
+          field.id,
+          () => TextEditingController(text: storedValue?.toString() ?? ''),
+        );
+        return TextField(
+          key: ValueKey('custom_field_${field.id}'),
+          controller: controller,
+          decoration: InputDecoration(
+            labelText: label,
+            border: const OutlineInputBorder(),
+          ),
+        );
+      case CustomFieldType.number:
+        final controller = _customTextControllers.putIfAbsent(
+          field.id,
+          () => TextEditingController(text: storedValue?.toString() ?? ''),
+        );
+        return TextField(
+          key: ValueKey('custom_field_${field.id}'),
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: label,
+            border: const OutlineInputBorder(),
+          ),
+        );
+      case CustomFieldType.date:
+        final date = storedValue is String
+            ? DateTime.tryParse(storedValue)
+            : null;
+        return _DateTimeField(
+          key: ValueKey('custom_field_${field.id}'),
+          label: label,
+          value: date,
+          onPick: (value) => setState(() {
+            if (value == null) {
+              _customValues.remove(field.id);
+            } else {
+              _customValues[field.id] = value.toIso8601String();
+            }
+          }),
+        );
+      case CustomFieldType.singleSelect:
+        final selected =
+            storedValue is String &&
+                field.options.any((option) => option.id == storedValue)
+            ? storedValue
+            : null;
+        return Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                key: ValueKey('custom_field_${field.id}'),
+                initialValue: selected,
+                decoration: InputDecoration(
+                  labelText: label,
+                  border: const OutlineInputBorder(),
+                ),
+                items: [
+                  for (final option in field.options)
+                    DropdownMenuItem(
+                      value: option.id,
+                      child: Text(option.label),
+                    ),
+                ],
+                onChanged: (value) => setState(() {
+                  if (value == null) {
+                    _customValues.remove(field.id);
+                  } else {
+                    _customValues[field.id] = value;
+                  }
+                }),
+              ),
+            ),
+            if (selected != null)
+              IconButton(
+                tooltip: '清除字段值',
+                onPressed: () => setState(() => _customValues.remove(field.id)),
+                icon: const Icon(Icons.close),
+              ),
+          ],
+        );
+      case CustomFieldType.multiSelect:
+        final selected = storedValue is List
+            ? storedValue.whereType<String>().toSet()
+            : <String>{};
+        return InputDecorator(
+          decoration: InputDecoration(
+            labelText: label,
+            border: const OutlineInputBorder(),
+          ),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              for (final option in field.options)
+                FilterChip(
+                  label: Text(option.label),
+                  selected: selected.contains(option.id),
+                  onSelected: (enabled) => setState(() {
+                    final values = {...selected};
+                    if (enabled) {
+                      values.add(option.id);
+                    } else {
+                      values.remove(option.id);
+                    }
+                    if (values.isEmpty) {
+                      _customValues.remove(field.id);
+                    } else {
+                      _customValues[field.id] = values.toList(growable: false);
+                    }
+                  }),
+                ),
+            ],
+          ),
+        );
+      case CustomFieldType.checkbox:
+        return Row(
+          children: [
+            Expanded(
+              child: SwitchListTile(
+                key: ValueKey('custom_field_${field.id}'),
+                contentPadding: EdgeInsets.zero,
+                title: Text(label),
+                value: storedValue is bool ? storedValue : false,
+                onChanged: (value) =>
+                    setState(() => _customValues[field.id] = value),
+              ),
+            ),
+            if (_customValues.containsKey(field.id))
+              IconButton(
+                tooltip: '清除字段值',
+                onPressed: () => setState(() => _customValues.remove(field.id)),
+                icon: const Icon(Icons.close),
+              ),
+          ],
+        );
+    }
+  }
+
+  Map<String, Object?> _readCustomValues() {
+    final values = Map<String, Object?>.of(_customValues);
+    for (final field in _fields) {
+      if (field.type == CustomFieldType.text ||
+          field.type == CustomFieldType.number) {
+        final text = _customTextControllers[field.id]?.text ?? '';
+        if (text.isEmpty) {
+          values.remove(field.id);
+        } else if (field.type == CustomFieldType.text) {
+          values[field.id] = text;
+        } else {
+          final number = num.tryParse(text);
+          if (number == null || !number.isFinite) {
+            throw FormatException('“${field.name}”必须填写有效数字。');
+          }
+          values[field.id] = number;
+        }
+      }
+      final value = values[field.id] ?? field.defaultValue;
+      if (field.required &&
+          (value == null || value == '' || (value is List && value.isEmpty))) {
+        throw FormatException('请填写必填字段“${field.name}”。');
+      }
+    }
+    return values;
+  }
+
   Future<void> _save() async {
     final title = _title.text.trim();
     if (title.isEmpty) {
@@ -555,6 +911,13 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
     }
     if (_start != null && _end != null && !_end!.isAfter(_start!)) {
       setState(() => _error = '结束时间必须晚于开始时间。');
+      return;
+    }
+    final Map<String, Object?> customValues;
+    try {
+      customValues = _readCustomValues();
+    } on FormatException catch (error) {
+      setState(() => _error = error.message);
       return;
     }
     setState(() {
@@ -588,6 +951,7 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
             start: _start,
             end: _end,
             occurredAt: _occurredAt,
+            customValues: customValues,
           ),
         );
       } else {
@@ -602,6 +966,7 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
             start: _start,
             end: _end,
             occurredAt: _occurredAt,
+            customValues: customValues,
           ),
           expectedRevision: existing.revision,
         );
@@ -613,6 +978,156 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
       if (mounted) setState(() => _saving = false);
     }
   }
+
+  Future<void> _moveToAnotherTable() async {
+    final entry = widget.entry;
+    if (entry == null) return;
+    final library = AppScope.tables(context);
+    final targets = library.tables
+        .where((table) => table.id != entry.tableId && !table.deleted)
+        .toList(growable: false);
+    final target = await showModalBottomSheet<TableDocument>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const ListTile(title: Text('移动到哪张表？')),
+            for (final table in targets)
+              ListTile(
+                leading: const Icon(Icons.table_chart_outlined),
+                title: Text(table.title),
+                subtitle: Text(_roleLabel(table.role)),
+                onTap: () => Navigator.pop(context, table),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || target == null) return;
+    final source = library.findTable(entry.tableId);
+    if (source == null) {
+      setState(() => _error = '原表不存在，无法移动。');
+      return;
+    }
+    final sourceFields = {for (final field in source.fields) field.id: field};
+    final populatedFields = entry.customValues.entries
+        .where((value) => value.value != null)
+        .map((value) => sourceFields[value.key])
+        .whereType<TableFieldDefinition>()
+        .toList(growable: false);
+    if (populatedFields.length !=
+        entry.customValues.values.where((value) => value != null).length) {
+      setState(() => _error = '内容中的字段值与源表定义不一致，已停止移动。');
+      return;
+    }
+    final unrepresentableFields = populatedFields
+        .where(
+          (field) =>
+              !target.fields.any((candidate) => candidate.type == field.type),
+        )
+        .map((field) => field.name)
+        .toList(growable: false);
+    if (unrepresentableFields.isNotEmpty) {
+      await _showFieldMoveError(
+        '目标表没有同类型字段：${unrepresentableFields.join('、')}。源表内容未改变。',
+      );
+      return;
+    }
+    var fieldMapping = <String, String>{};
+    if (populatedFields.isNotEmpty) {
+      final selectedMapping = await showDialog<Map<String, String>>(
+        context: context,
+        builder: (context) => _FieldMappingDialog(
+          sourceFields: populatedFields,
+          targetFields: target.fields,
+        ),
+      );
+      if (!mounted || selectedMapping == null) return;
+      fieldMapping = selectedMapping;
+    }
+    final optionMapping = <String, Map<String, String>>{};
+    final incompatible = <String>[];
+    final targetFields = {for (final field in target.fields) field.id: field};
+    for (final value in entry.customValues.entries.where(
+      (value) => value.value != null,
+    )) {
+      final oldField = sourceFields[value.key]!;
+      final targetFieldId = fieldMapping[value.key] ?? value.key;
+      final newField = targetFields[targetFieldId];
+      if (newField == null || oldField.type != newField.type) {
+        incompatible.add(oldField.name);
+        continue;
+      }
+      if (oldField.type == CustomFieldType.singleSelect ||
+          oldField.type == CustomFieldType.multiSelect) {
+        final selectedOptionIds = oldField.type == CustomFieldType.singleSelect
+            ? [value.value as String]
+            : (value.value as List<Object?>).cast<String>();
+        final mapping = <String, String>{};
+        for (final sourceOptionId in selectedOptionIds) {
+          TableFieldOption? sourceOption;
+          for (final option in oldField.options) {
+            if (option.id == sourceOptionId) sourceOption = option;
+          }
+          final selectedSourceOption = sourceOption;
+          final matches = selectedSourceOption == null
+              ? const <TableFieldOption>[]
+              : newField.options
+                    .where(
+                      (option) => option.label == selectedSourceOption.label,
+                    )
+                    .toList(growable: false);
+          if (matches.length != 1) {
+            incompatible.add(
+              '${oldField.name} / ${sourceOption?.label ?? sourceOptionId}',
+            );
+          } else {
+            mapping[sourceOptionId] = matches.single.id;
+          }
+        }
+        optionMapping[value.key] = mapping;
+      } else if (!_fitsField(value.value, newField)) {
+        incompatible.add(oldField.name);
+      }
+    }
+    if (incompatible.isNotEmpty) {
+      await _showFieldMoveError(
+        '目标表中没有兼容定义/选项：${incompatible.toSet().join('、')}。源表内容未改变。',
+        title: '有字段值无法映射',
+      );
+      return;
+    }
+    try {
+      await library.moveEntry(
+        id: entry.id,
+        tableId: target.id,
+        expectedRevision: entry.revision,
+        fieldMapping: fieldMapping,
+        optionMapping: optionMapping,
+      );
+      if (mounted) Navigator.pop(context, target.id);
+    } on Object catch (error) {
+      if (mounted) setState(() => _error = '移动失败：$error');
+    }
+  }
+
+  Future<void> _showFieldMoveError(
+    String message, {
+    String title = '目标表字段不兼容',
+  }) => showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: Text(message),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('返回'),
+        ),
+      ],
+    ),
+  );
 
   Future<void> _delete() async {
     final existing = widget.entry;
@@ -647,6 +1162,7 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
 
 class _DateTimeField extends StatelessWidget {
   const _DateTimeField({
+    super.key,
     required this.label,
     required this.value,
     required this.onPick,
@@ -705,6 +1221,39 @@ DateTime? _businessTime(TableEntryDocument entry) => switch (entry.type) {
   TableContentType.todo => entry.due,
   TableContentType.schedule => entry.start,
   TableContentType.event => entry.occurredAt,
+};
+
+bool _fitsField(Object? value, TableFieldDefinition field) {
+  if (value == null) return true;
+  switch (field.type) {
+    case CustomFieldType.text:
+      return value is String;
+    case CustomFieldType.number:
+      return value is num && value.isFinite;
+    case CustomFieldType.date:
+      return value is String && DateTime.tryParse(value) != null;
+    case CustomFieldType.singleSelect:
+      return value is String &&
+          field.options.any((option) => option.id == value);
+    case CustomFieldType.multiSelect:
+      return value is List &&
+          value.every(
+            (item) =>
+                item is String &&
+                field.options.any((option) => option.id == item),
+          );
+    case CustomFieldType.checkbox:
+      return value is bool;
+  }
+}
+
+String _customTypeLabel(CustomFieldType type) => switch (type) {
+  CustomFieldType.text => '文本',
+  CustomFieldType.number => '数字',
+  CustomFieldType.date => '日期时间',
+  CustomFieldType.singleSelect => '单选',
+  CustomFieldType.multiSelect => '多选',
+  CustomFieldType.checkbox => '勾选',
 };
 
 String _formatDateTime(DateTime value) =>

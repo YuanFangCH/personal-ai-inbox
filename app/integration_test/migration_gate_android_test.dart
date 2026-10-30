@@ -150,7 +150,7 @@ void main() {
     final supportRoot = Directory('${root.path}/support');
     await vaultRoot.create();
     await supportRoot.create();
-    _createDatabase('${supportRoot.path}/index.sqlite3', 9, 'index_seed');
+    _createDatabase('${supportRoot.path}/index.sqlite3', 10, 'index_seed');
     _createDatabase(
       '${supportRoot.path}/conversations.sqlite3',
       5,

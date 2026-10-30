@@ -25,8 +25,8 @@ class SqliteIndexDatabase implements IndexDatabase {
         ..execute('PRAGMA foreign_keys = ON');
       final version =
           _database.select('PRAGMA user_version').single['user_version'] as int;
-      if (version > 9) {
-        throw StateError('索引数据库版本 $version 高于此应用支持的版本 9');
+      if (version > 10) {
+        throw StateError('索引数据库版本 $version 高于此应用支持的版本 10');
       }
       _database.execute('BEGIN EXCLUSIVE');
       final hasRecoveryBatches = _database
@@ -34,11 +34,15 @@ class SqliteIndexDatabase implements IndexDatabase {
             "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'table_recovery_batches'",
           )
           .isNotEmpty;
-      if (version == 8 && hasRecoveryBatches) {
+      final priorRecoveryTable =
+          version >= 8 && version < 10 && hasRecoveryBatches
+          ? 'table_recovery_batches_v$version'
+          : null;
+      if (priorRecoveryTable != null) {
         _database
           ..execute('DROP INDEX IF EXISTS table_recovery_expiration')
           ..execute(
-            'ALTER TABLE table_recovery_batches RENAME TO table_recovery_batches_v8',
+            'ALTER TABLE table_recovery_batches RENAME TO $priorRecoveryTable',
           );
       }
       _database
@@ -122,7 +126,7 @@ class SqliteIndexDatabase implements IndexDatabase {
       _database.execute('''
         CREATE TABLE IF NOT EXISTS table_recovery_batches (
           id TEXT PRIMARY KEY,
-          scope TEXT NOT NULL CHECK (scope IN ('entry', 'table', 'scheduleChange')),
+          scope TEXT NOT NULL CHECK (scope IN ('entry', 'table', 'scheduleChange', 'fieldChange')),
           table_id TEXT NOT NULL,
           status TEXT NOT NULL CHECK (
             status IN ('prepared', 'active', 'restoring', 'restored', 'expired', 'failed')
@@ -133,16 +137,16 @@ class SqliteIndexDatabase implements IndexDatabase {
           error TEXT
         )
       ''');
-      if (version == 8 && hasRecoveryBatches) {
+      if (priorRecoveryTable != null) {
         _database
           ..execute('''
             INSERT INTO table_recovery_batches (
               id, scope, table_id, status, created_at, expires_at, manifest_json, error
             )
             SELECT id, scope, table_id, status, created_at, expires_at, manifest_json, error
-            FROM table_recovery_batches_v8
+            FROM $priorRecoveryTable
           ''')
-          ..execute('DROP TABLE table_recovery_batches_v8');
+          ..execute('DROP TABLE $priorRecoveryTable');
       }
       _database.execute(
         'CREATE INDEX IF NOT EXISTS table_recovery_expiration ON table_recovery_batches(status, expires_at)',
@@ -217,7 +221,7 @@ class SqliteIndexDatabase implements IndexDatabase {
           'ALTER TABLE objects ADD COLUMN global_knowledge INTEGER NOT NULL DEFAULT 0',
         );
       }
-      if (version < 9) _database.execute('PRAGMA user_version = 9');
+      if (version < 10) _database.execute('PRAGMA user_version = 10');
       _database.execute('COMMIT');
     } catch (_) {
       try {

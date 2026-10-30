@@ -239,7 +239,7 @@ class TableEntryDocument {
 
 const _tableUnset = Object();
 
-enum TableRecoveryScope { entry, table, scheduleChange }
+enum TableRecoveryScope { entry, table, scheduleChange, fieldChange }
 
 enum TableRecoveryStatus {
   prepared,
