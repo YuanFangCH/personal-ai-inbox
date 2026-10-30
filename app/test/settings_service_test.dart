@@ -5,6 +5,27 @@ import 'package:personal_ai_inbox/core/models.dart';
 import 'package:personal_ai_inbox/data/settings_service.dart';
 
 void main() {
+  test('persists home table order and calendar filters per device', () async {
+    final preferences = _MemoryPreferencesStore({'device_id': 'device_views'});
+    final service = SettingsService(
+      preferenceStore: preferences,
+      keyStore: _MemorySecureKeyStore(),
+    );
+    final current = await service.load();
+    await service.saveConfiguration(
+      current.copyWith(
+        homeTableOrder: const ['tb_exam', 'tb_homework'],
+        calendarVisibleTableIds: const ['tb_exam'],
+      ),
+    );
+    final reopened = await service.load();
+    expect(reopened.homeTableOrder, ['tb_exam', 'tb_homework']);
+    expect(reopened.calendarVisibleTableIds, ['tb_exam']);
+    final portable = await service.exportPortableSettings();
+    expect(portable.containsKey('home_table_order'), isFalse);
+    expect(portable.containsKey('calendar_visible_table_ids'), isFalse);
+  });
+
   test(
     'migrates old preferences and preserves invalid existing values',
     () async {
@@ -29,6 +50,7 @@ void main() {
       expect(settings.allowImageEgress, isFalse);
       expect(settings.hasModelKey, isTrue);
       expect(settings.defaultAiPermissions, const AiPermissions());
+      expect(settings.calendarVisibleTableIds, ['*']);
       expect(settings.validate(), isNotEmpty);
       expect(
         jsonDecode(persisted!)['schema_version'],

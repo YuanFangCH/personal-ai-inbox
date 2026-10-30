@@ -54,6 +54,8 @@ class DevicePreferences extends ChangeNotifier {
     int? imageMessageLimit,
     int? imageLimit,
     AiPermissions? defaultAiPermissions,
+    List<String>? homeTableOrder,
+    List<String>? calendarVisibleTableIds,
   }) {
     return _enqueue<void>(() async {
       final current = _settings ?? await _adapter.load();
@@ -72,6 +74,8 @@ class DevicePreferences extends ChangeNotifier {
         imageMessageLimit: imageMessageLimit,
         imageLimit: imageLimit,
         defaultAiPermissions: defaultAiPermissions,
+        homeTableOrder: homeTableOrder,
+        calendarVisibleTableIds: calendarVisibleTableIds,
       );
       final next = await _guard<AppSettings>(
         code: 'settings_update_failed',

@@ -1,4 +1,5 @@
 import 'models.dart';
+import 'table_models.dart';
 
 enum CalendarSection {
   calendar('日程'),
@@ -40,6 +41,10 @@ class CalendarOccurrence {
     required this.start,
     required this.end,
     required this.allDay,
+    required this.instanceId,
+    this.tableId,
+    this.tableTitle,
+    this.sourceLabel,
   });
 
   final ResultDocument document;
@@ -47,8 +52,73 @@ class CalendarOccurrence {
   final DateTime start;
   final DateTime end;
   final bool allDay;
+  final String instanceId;
+  final String? tableId;
+  final String? tableTitle;
+  final String? sourceLabel;
 
   bool get done => kind == CalendarItemKind.todo && document.done;
+}
+
+/// Projects only time-bearing table entries into the calendar's display model.
+/// Notes never project, even when their body or tags mention a date.
+List<ResultDocument> projectTableCalendarDocuments({
+  required Iterable<TableDocument> tables,
+  required Iterable<TableEntryDocument> entries,
+  required Iterable<String> visibleTableIds,
+}) {
+  final tableById = {for (final table in tables) table.id: table};
+  final visible = visibleTableIds.toSet();
+  final showAll = visible.contains('*');
+  final documents = <ResultDocument>[];
+  for (final entry in entries) {
+    final table = tableById[entry.tableId];
+    if (table == null ||
+        table.deleted ||
+        (!showAll && !visible.contains(table.id))) {
+      continue;
+    }
+    final type = switch (entry.type) {
+      TableContentType.todo when entry.due != null => ResultType.todo,
+      TableContentType.schedule when entry.start != null => ResultType.event,
+      TableContentType.event when entry.occurredAt != null => ResultType.event,
+      _ => null,
+    };
+    if (type == null) continue;
+    final start = switch (entry.type) {
+      TableContentType.schedule => entry.start,
+      TableContentType.event => entry.occurredAt,
+      _ => null,
+    };
+    documents.add(
+      ResultDocument(
+        id: entry.id,
+        type: type,
+        title: entry.title,
+        status: ResultStatus.canonical,
+        originDevice: 'table',
+        revision: entry.revision,
+        createdAt: entry.createdAt,
+        updatedAt: entry.updatedAt,
+        body: entry.body,
+        tags: entry.tags,
+        due: entry.type == TableContentType.todo ? entry.due : null,
+        done: entry.type == TableContentType.todo && entry.done,
+        start: start,
+        end: entry.type == TableContentType.schedule ? entry.end : null,
+        allDay: entry.type == TableContentType.schedule && entry.allDay,
+        recurrence: entry.type == TableContentType.schedule
+            ? entry.recurrence
+            : null,
+        extensionFields: {
+          'table_id': table.id,
+          'table_title': table.title,
+          'table_content_type': entry.type.name,
+        },
+      ),
+    );
+  }
+  return List.unmodifiable(documents);
 }
 
 List<CalendarOccurrence> buildCalendarOccurrences({
@@ -171,6 +241,10 @@ List<CalendarOccurrence> _eventOccurrences(
         start: start,
         end: start.add(duration),
         allDay: event.allDay,
+        instanceId: event.id,
+        tableId: _stringExtension(event, 'table_id'),
+        tableTitle: _stringExtension(event, 'table_title'),
+        sourceLabel: _calendarSourceLabel(event),
       ),
     ];
   }
@@ -189,6 +263,10 @@ List<CalendarOccurrence> _eventOccurrences(
           start: candidate,
           end: candidate.add(duration),
           allDay: event.allDay,
+          instanceId: '${event.id}@${candidate.toIso8601String()}',
+          tableId: _stringExtension(event, 'table_id'),
+          tableTitle: _stringExtension(event, 'table_title'),
+          sourceLabel: _calendarSourceLabel(event),
         ),
       )
       .toList(growable: false);
@@ -208,8 +286,20 @@ CalendarOccurrence? _todoOccurrence(ResultDocument todo) {
         ? _dateOnly(due).add(const Duration(days: 1))
         : due.add(const Duration(hours: 1)),
     allDay: dateOnly || todo.allDay,
+    instanceId: todo.id,
+    tableId: _stringExtension(todo, 'table_id'),
+    tableTitle: _stringExtension(todo, 'table_title'),
+    sourceLabel: _calendarSourceLabel(todo),
   );
 }
+
+String? _stringExtension(ResultDocument document, String key) {
+  final value = document.extensionFields[key];
+  return value is String ? value : null;
+}
+
+String? _calendarSourceLabel(ResultDocument document) =>
+    _stringExtension(document, 'table_content_type');
 
 Duration _eventDuration(ResultDocument event, DateTime start) {
   final end = event.end;

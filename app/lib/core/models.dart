@@ -53,7 +53,7 @@ class AiPermissions {
 }
 
 class AppSettings {
-  static const currentSchemaVersion = 3;
+  static const currentSchemaVersion = 4;
 
   const AppSettings({
     required this.deviceId,
@@ -74,6 +74,8 @@ class AppSettings {
     this.imageMessageLimit = 4,
     this.imageLimit = 8,
     this.defaultAiPermissions = const AiPermissions(),
+    this.homeTableOrder = const [],
+    this.calendarVisibleTableIds = const ['*'],
   });
 
   final String deviceId;
@@ -94,6 +96,12 @@ class AppSettings {
   final int imageMessageLimit;
   final int imageLimit;
   final AiPermissions defaultAiPermissions;
+
+  /// Table IDs shown as optional modules below the existing home sections.
+  final List<String> homeTableOrder;
+
+  /// Empty means every table is visible in the calendar.
+  final List<String> calendarVisibleTableIds;
 
   List<String> validate() {
     final errors = <String>[];
@@ -159,6 +167,8 @@ class AppSettings {
     int? imageMessageLimit,
     int? imageLimit,
     AiPermissions? defaultAiPermissions,
+    List<String>? homeTableOrder,
+    List<String>? calendarVisibleTableIds,
   }) => AppSettings(
     deviceId: deviceId ?? this.deviceId,
     themeMode: themeMode ?? this.themeMode,
@@ -180,6 +190,9 @@ class AppSettings {
     imageMessageLimit: imageMessageLimit ?? this.imageMessageLimit,
     imageLimit: imageLimit ?? this.imageLimit,
     defaultAiPermissions: defaultAiPermissions ?? this.defaultAiPermissions,
+    homeTableOrder: homeTableOrder ?? this.homeTableOrder,
+    calendarVisibleTableIds:
+        calendarVisibleTableIds ?? this.calendarVisibleTableIds,
   );
 }
 

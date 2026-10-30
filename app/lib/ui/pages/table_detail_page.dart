@@ -538,11 +538,13 @@ class TableEntryEditorPage extends StatefulWidget {
     required this.tableId,
     required this.type,
     this.entry,
+    this.initialDate,
   });
 
   final String tableId;
   final TableContentType type;
   final TableEntryDocument? entry;
+  final DateTime? initialDate;
 
   @override
   State<TableEntryEditorPage> createState() => _TableEntryEditorPageState();
@@ -571,10 +573,22 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
     _title = TextEditingController(text: entry?.title ?? '');
     _body = TextEditingController(text: entry?.body ?? '');
     _tags = TextEditingController(text: entry?.tags.join(', ') ?? '');
-    _due = entry?.due;
-    _start = entry?.start;
+    _due =
+        entry?.due ??
+        (entry == null && widget.type == TableContentType.todo
+            ? widget.initialDate
+            : null);
+    _start =
+        entry?.start ??
+        (entry == null && widget.type == TableContentType.schedule
+            ? widget.initialDate
+            : null);
     _end = entry?.end;
-    _occurredAt = entry?.occurredAt;
+    _occurredAt =
+        entry?.occurredAt ??
+        (entry == null && widget.type == TableContentType.event
+            ? widget.initialDate
+            : null);
     _done = entry?.done ?? false;
     _customValues = Map<String, Object?>.of(entry?.customValues ?? const {});
   }

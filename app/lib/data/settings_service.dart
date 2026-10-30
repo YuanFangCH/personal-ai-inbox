@@ -413,6 +413,8 @@ class SettingsService {
     'context_message_limit': settings.contextMessageLimit,
     'image_message_limit': settings.imageMessageLimit,
     'image_limit': settings.imageLimit,
+    'home_table_order': settings.homeTableOrder,
+    'calendar_visible_table_ids': settings.calendarVisibleTableIds,
   };
 
   AppSettings _settingsFromMap(Map<String, dynamic> map, String deviceId) {
@@ -451,7 +453,26 @@ class SettingsService {
       contextMessageLimit: _intValue(map, 'context_message_limit') ?? 20,
       imageMessageLimit: _intValue(map, 'image_message_limit') ?? 4,
       imageLimit: _intValue(map, 'image_limit') ?? 8,
+      homeTableOrder: _stringListValue(map, 'home_table_order'),
+      calendarVisibleTableIds: _stringListValue(
+        map,
+        'calendar_visible_table_ids',
+        fallback: const ['*'],
+      ),
     );
+  }
+
+  List<String> _stringListValue(
+    Map<String, dynamic> map,
+    String key, {
+    List<String> fallback = const [],
+  }) {
+    final value = map[key];
+    if (value == null) return fallback;
+    if (value is! List || value.any((item) => item is! String)) {
+      throw FormatException('端配置“$key”必须是字符串列表。原始配置已保留。');
+    }
+    return value.cast<String>();
   }
 
   AiPermissions _readAiPermissions(Map<String, dynamic> map) {

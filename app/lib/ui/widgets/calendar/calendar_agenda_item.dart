@@ -46,12 +46,31 @@ class CalendarAgendaItem extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(
-                item.document.title,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  decoration: item.done ? TextDecoration.lineThrough : null,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.document.title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      decoration: item.done ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
+                  if (item.tableTitle != null || item.sourceLabel != null)
+                    Text(
+                      [
+                        if (item.sourceLabel != null)
+                          _sourceLabel(item.sourceLabel!),
+                        if (item.tableTitle != null) item.tableTitle!,
+                      ].join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                ],
               ),
             ),
             const SizedBox(width: 8),
@@ -65,3 +84,10 @@ class CalendarAgendaItem extends StatelessWidget {
     );
   }
 }
+
+String _sourceLabel(String value) => switch (value) {
+  'schedule' => '日程',
+  'event' => '事件',
+  'todo' => '待办',
+  _ => value,
+};

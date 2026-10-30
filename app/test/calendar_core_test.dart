@@ -1,8 +1,72 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_ai_inbox/core/calendar.dart';
 import 'package:personal_ai_inbox/core/models.dart';
+import 'package:personal_ai_inbox/core/table_models.dart';
 
 void main() {
+  test('projects only dated table actions and respects table visibility', () {
+    final now = DateTime(2026, 10, 30, 14);
+    final table = TableDocument(
+      id: 'tb_course',
+      role: TableRole.custom,
+      title: '课程',
+      revision: 1,
+      createdAt: now,
+      updatedAt: now,
+      body: '',
+    );
+    final otherTable = TableDocument(
+      id: 'tb_hidden',
+      role: TableRole.custom,
+      title: '未显示',
+      revision: 1,
+      createdAt: now,
+      updatedAt: now,
+      body: '',
+    );
+    final entries = [
+      _tableEntry('nt_note', table.id, TableContentType.note, now),
+      _tableEntry('td_no_date', table.id, TableContentType.todo, now),
+      _tableEntry('td_date', table.id, TableContentType.todo, now, due: now),
+      _tableEntry(
+        'sc_exam',
+        table.id,
+        TableContentType.schedule,
+        now,
+        start: now,
+      ),
+      _tableEntry(
+        'ev_change',
+        table.id,
+        TableContentType.event,
+        now,
+        occurredAt: now,
+      ),
+      _tableEntry(
+        'sc_other',
+        otherTable.id,
+        TableContentType.schedule,
+        now,
+        start: now,
+      ),
+    ];
+
+    final projected = projectTableCalendarDocuments(
+      tables: [table, otherTable],
+      entries: entries,
+      visibleTableIds: [table.id],
+    );
+
+    expect(projected.map((item) => item.id), [
+      'td_date',
+      'sc_exam',
+      'ev_change',
+    ]);
+    expect(projected.first.type, ResultType.todo);
+    expect(projected[1].extensionFields['table_content_type'], 'schedule');
+    expect(projected[2].extensionFields['table_content_type'], 'event');
+  });
+
   test('expands daily recurrence and respects count', () {
     final event = _event(
       id: 'ev_daily',
@@ -19,6 +83,7 @@ void main() {
 
     expect(items, hasLength(3));
     expect(items.map((item) => item.start.day), [1, 2, 3]);
+    expect(items.map((item) => item.instanceId).toSet(), hasLength(3));
   });
 
   test('expands weekly recurrence by weekday', () {
@@ -97,6 +162,28 @@ void main() {
     expect(start, DateTime(2026, 9, 28));
   });
 }
+
+TableEntryDocument _tableEntry(
+  String id,
+  String tableId,
+  TableContentType type,
+  DateTime now, {
+  DateTime? due,
+  DateTime? start,
+  DateTime? occurredAt,
+}) => TableEntryDocument(
+  id: id,
+  type: type,
+  tableId: tableId,
+  title: id,
+  revision: 1,
+  createdAt: now,
+  updatedAt: now,
+  body: '',
+  due: due,
+  start: start,
+  occurredAt: occurredAt,
+);
 
 ResultDocument _event({
   required String id,

@@ -138,7 +138,10 @@ class CalendarDayCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final inMonth = day.month == month.month;
+    final dayKey =
+        '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
     return InkWell(
+      key: ValueKey('calendar_day_$dayKey'),
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: LayoutBuilder(

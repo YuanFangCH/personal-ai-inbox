@@ -3,13 +3,13 @@ import 'package:intl/intl.dart';
 
 import '../../core/calendar.dart';
 import '../../core/models.dart';
-import '../../modules/results/result_library.dart';
+import '../../core/table_models.dart';
+import '../../modules/tables/table_library.dart';
 import '../app_scope.dart';
 import '../widgets/common.dart';
-import '../widgets/quick_create_sheet.dart';
 import 'calendar_page.dart';
-import 'document_detail_page.dart';
-import 'knowledge_page.dart';
+import 'table_detail_page.dart';
+import 'tables_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -17,24 +17,43 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: AppScope.results(context),
+      animation: Listenable.merge([
+        AppScope.results(context),
+        AppScope.tables(context),
+        AppScope.preferences(context),
+      ]),
       builder: (context, _) => _buildHome(context),
     );
   }
 
   Widget _buildHome(BuildContext context) {
-    final app = AppScope.results(context);
+    final tableLibrary = AppScope.tables(context);
     final now = DateTime.now();
+    final projected = projectTableCalendarDocuments(
+      tables: tableLibrary.tables,
+      entries: tableLibrary.entries,
+      visibleTableIds: const ['*'],
+    );
     final events =
-        app.events
+        projected
             .where(
               (event) => event.start != null && isSameDay(event.start!, now),
             )
             .toList()
           ..sort((a, b) => a.start!.compareTo(b.start!));
-    final openTodos = app.todos.where((todo) => !todo.done).toList()
-      ..sort(_compareTodo);
-    final recentKnowledge = app.knowledge.toList(growable: false);
+    final openTodos =
+        tableLibrary.entries
+            .where(
+              (entry) => entry.type == TableContentType.todo && !entry.done,
+            )
+            .map((entry) => _asTodoDocument(entry, tableLibrary))
+            .toList()
+          ..sort(_compareTodo);
+    final recentKnowledge =
+        tableLibrary.entries
+            .where((entry) => entry.type == TableContentType.note)
+            .toList()
+          ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
 
     return PageFrame(
       title: '首页',
@@ -47,6 +66,7 @@ class HomePage extends StatelessWidget {
           );
           final todos = _TodoSection(
             todos: openTodos.take(wide ? 6 : 4).toList(growable: false),
+            onOpen: (document) => _openTableDocument(context, document),
           );
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -69,8 +89,11 @@ class HomePage extends StatelessWidget {
               _KnowledgeSection(
                 documents: recentKnowledge
                     .take(wide ? 4 : 3)
+                    .map((entry) => _asNoteDocument(entry, tableLibrary))
                     .toList(growable: false),
               ),
+              const SizedBox(height: 28),
+              const _HomeTableModules(),
             ],
           );
         },
@@ -86,6 +109,62 @@ class HomePage extends StatelessWidget {
     if (b.due == null) return -1;
     return a.due!.compareTo(b.due!);
   }
+
+  static ResultDocument _asTodoDocument(
+    TableEntryDocument entry,
+    TableLibrary library,
+  ) => _asTableDocument(entry, library, ResultType.todo);
+
+  static ResultDocument _asNoteDocument(
+    TableEntryDocument entry,
+    TableLibrary library,
+  ) => _asTableDocument(entry, library, ResultType.knowledge);
+
+  static ResultDocument _asTableDocument(
+    TableEntryDocument entry,
+    TableLibrary library,
+    ResultType type,
+  ) {
+    final table = library.findTable(entry.tableId);
+    return ResultDocument(
+      id: entry.id,
+      type: type,
+      title: entry.title,
+      status: ResultStatus.canonical,
+      originDevice: 'table',
+      revision: entry.revision,
+      createdAt: entry.createdAt,
+      updatedAt: entry.updatedAt,
+      body: entry.body,
+      tags: entry.tags,
+      due: entry.due,
+      done: entry.done,
+      extensionFields: {
+        'table_id': entry.tableId,
+        'table_title': table?.title ?? entry.tableId,
+      },
+    );
+  }
+}
+
+void _openTableDocument(BuildContext context, ResultDocument document) {
+  final library = AppScope.tables(context);
+  TableEntryDocument? entry;
+  for (final candidate in library.entries) {
+    if (candidate.id == document.id) entry = candidate;
+  }
+  final tableId = document.extensionFields['table_id'];
+  if (entry == null || tableId is! String) return;
+  final selected = entry;
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => TableEntryEditorPage(
+        tableId: tableId,
+        type: selected.type,
+        entry: selected,
+      ),
+    ),
+  );
 }
 
 class _AgendaSection extends StatelessWidget {
@@ -129,11 +208,7 @@ class _AgendaRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return InkWell(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => DocumentDetailPage(documentId: document.id),
-        ),
-      ),
+      onTap: () => _openTableDocument(context, document),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
@@ -187,9 +262,10 @@ class _AgendaRow extends StatelessWidget {
 }
 
 class _TodoSection extends StatelessWidget {
-  const _TodoSection({required this.todos});
+  const _TodoSection({required this.todos, required this.onOpen});
 
   final List<ResultDocument> todos;
+  final ValueChanged<ResultDocument> onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -213,11 +289,21 @@ class _TodoSection extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               FilledButton.tonalIcon(
-                onPressed: () => showQuickCreateSheet(
-                  context,
-                  initialDate: DateTime.now(),
-                  type: ResultType.todo,
-                ),
+                onPressed: () {
+                  final library = AppScope.tables(context);
+                  final table = library.tables.firstWhere(
+                    (candidate) => candidate.role == TableRole.inboxTodo,
+                  );
+                  Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (_) => TableEntryEditorPage(
+                        tableId: table.id,
+                        type: TableContentType.todo,
+                        initialDate: DateTime.now(),
+                      ),
+                    ),
+                  );
+                },
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('新建'),
               ),
@@ -225,16 +311,17 @@ class _TodoSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        _TodoList(todos: todos),
+        _TodoList(todos: todos, onOpen: onOpen),
       ],
     );
   }
 }
 
 class _TodoList extends StatefulWidget {
-  const _TodoList({required this.todos});
+  const _TodoList({required this.todos, required this.onOpen});
 
   final List<ResultDocument> todos;
+  final ValueChanged<ResultDocument> onOpen;
 
   @override
   State<_TodoList> createState() => _TodoListState();
@@ -252,7 +339,7 @@ class _TodoListState extends State<_TodoList> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final target = widget.todos;
-      final library = AppScope.results(context);
+      final library = AppScope.tables(context);
       final reduceMotion = MediaQuery.disableAnimationsOf(context);
       final duration = reduceMotion ? Duration.zero : _duration;
       final targetIds = target.map((todo) => todo.id).toSet();
@@ -262,7 +349,7 @@ class _TodoListState extends State<_TodoList> {
         if (targetIds.contains(_items[index].id)) continue;
         final removed = _items.removeAt(index);
         changed = true;
-        final current = library.findDocument(removed.id);
+        final current = _findEntry(library, removed.id);
         final completed = current?.done == true;
         _listKey.currentState?.removeItem(
           index,
@@ -286,7 +373,7 @@ class _TodoListState extends State<_TodoList> {
           changed = true;
         } else if (existingIndex != index) {
           final moved = _items.removeAt(existingIndex);
-          final completed = library.findDocument(moved.id)?.done == true;
+          final completed = _findEntry(library, moved.id)?.done == true;
           _listKey.currentState?.removeItem(
             existingIndex,
             (context, animation) => _buildItem(
@@ -323,7 +410,7 @@ class _TodoListState extends State<_TodoList> {
 
   @override
   Widget build(BuildContext context) {
-    final library = AppScope.results(context);
+    final library = AppScope.tables(context);
     final empty = _items.isEmpty && widget.todos.isEmpty && !_removingLastItem;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -345,7 +432,7 @@ class _TodoListState extends State<_TodoList> {
     BuildContext context,
     ResultDocument todo,
     Animation<double> animation,
-    ResultLibrary library, {
+    TableLibrary library, {
     bool completed = false,
   }) {
     final curved = CurvedAnimation(
@@ -361,7 +448,8 @@ class _TodoListState extends State<_TodoList> {
         child: _TodoRow(
           key: ValueKey('home_todo_${todo.id}'),
           document: todo,
-          app: library,
+          library: library,
+          onOpen: widget.onOpen,
           completedFeedback: completed,
         ),
       ),
@@ -373,12 +461,14 @@ class _TodoRow extends StatefulWidget {
   const _TodoRow({
     super.key,
     required this.document,
-    required this.app,
+    required this.library,
+    required this.onOpen,
     this.completedFeedback = false,
   });
 
   final ResultDocument document;
-  final ResultLibrary app;
+  final TableLibrary library;
+  final ValueChanged<ResultDocument> onOpen;
   final bool completedFeedback;
 
   @override
@@ -392,7 +482,12 @@ class _TodoRowState extends State<_TodoRow> {
     if (value == null || _saving) return;
     setState(() => _saving = true);
     try {
-      await widget.app.toggleTodo(widget.document, value);
+      final entry = _findEntry(widget.library, widget.document.id);
+      if (entry == null) throw StateError('待办已不存在');
+      await widget.library.updateEntry(
+        entry.copyWith(done: value),
+        expectedRevision: entry.revision,
+      );
     } on Object {
       if (!mounted) return;
       setState(() => _saving = false);
@@ -425,14 +520,7 @@ class _TodoRowState extends State<_TodoRow> {
           ),
         Expanded(
           child: InkWell(
-            onTap: _saving
-                ? null
-                : () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) =>
-                          DocumentDetailPage(documentId: widget.document.id),
-                    ),
-                  ),
+            onTap: _saving ? null : () => widget.onOpen(widget.document),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 10),
               child: Column(
@@ -490,10 +578,10 @@ class _KnowledgeSection extends StatelessWidget {
         SectionHeading(
           title: '最近知识',
           trailing: _SectionAction(
-            label: '查看全部',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const KnowledgePage()),
-            ),
+            label: '查看各表',
+            onPressed: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute<void>(builder: (_) => const TablesPage())),
           ),
         ),
         const SizedBox(height: 4),
@@ -503,18 +591,243 @@ class _KnowledgeSection extends StatelessWidget {
           for (var index = 0; index < documents.length; index++) ...[
             DocumentListTile(
               document: documents[index],
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) =>
-                      DocumentDetailPage(documentId: documents[index].id),
-                ),
-              ),
+              onTap: () => _openTableDocument(context, documents[index]),
             ),
             if (index != documents.length - 1) const Divider(height: 1),
           ],
       ],
     );
   }
+}
+
+class _HomeTableModules extends StatefulWidget {
+  const _HomeTableModules();
+
+  @override
+  State<_HomeTableModules> createState() => _HomeTableModulesState();
+}
+
+class _HomeTableModulesState extends State<_HomeTableModules> {
+  final Set<String> _expanded = {};
+
+  @override
+  Widget build(BuildContext context) {
+    final library = AppScope.tables(context);
+    final preferences = AppScope.preferences(context);
+    return AnimatedBuilder(
+      animation: Listenable.merge([library, preferences]),
+      builder: (context, _) {
+        final order = preferences.settings.homeTableOrder
+            .where((id) => library.findTable(id) != null)
+            .toList(growable: false);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SectionHeading(
+              title: '我的表',
+              trailing: FilledButton.tonalIcon(
+                key: const Key('home_add_table_module'),
+                onPressed: () => _addTable(context, order),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('添加表'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (order.isEmpty)
+              const _EmptySection(label: '添加常用表，在首页查看内容摘要。')
+            else
+              for (var index = 0; index < order.length; index++)
+                _HomeTableCard(
+                  key: ValueKey('home_table_${order[index]}'),
+                  table: library.findTable(order[index])!,
+                  entries:
+                      library.entries
+                          .where((entry) => entry.tableId == order[index])
+                          .toList()
+                        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt)),
+                  expanded: _expanded.contains(order[index]),
+                  onToggleExpanded: () => setState(() {
+                    if (!_expanded.add(order[index])) {
+                      _expanded.remove(order[index]);
+                    }
+                  }),
+                  onOpen: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => TableDetailPage(tableId: order[index]),
+                    ),
+                  ),
+                  onMove: (offset) => _moveTable(order, index, offset),
+                  onRemove: () => preferences.update(
+                    homeTableOrder: order
+                        .where((id) => id != order[index])
+                        .toList(growable: false),
+                  ),
+                ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _addTable(BuildContext context, List<String> order) async {
+    final library = AppScope.tables(context);
+    final preferences = AppScope.preferences(context);
+    final candidates = library.tables
+        .where((table) => !order.contains(table.id))
+        .toList(growable: false);
+    if (candidates.isEmpty) return;
+    final selected = await showModalBottomSheet<TableDocument>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const ListTile(title: Text('添加到首页')),
+            for (final table in candidates)
+              ListTile(
+                leading: const Icon(Icons.table_chart_outlined),
+                title: Text(table.title),
+                subtitle: Text(
+                  '${library.entries.where((entry) => entry.tableId == table.id).length} 条内容',
+                ),
+                onTap: () => Navigator.pop(context, table),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || selected == null) return;
+    await preferences.update(homeTableOrder: [...order, selected.id]);
+  }
+
+  Future<void> _moveTable(List<String> order, int index, int offset) async {
+    final destination = index + offset;
+    if (destination < 0 || destination >= order.length) return;
+    final updated = List<String>.of(order);
+    final moved = updated.removeAt(index);
+    updated.insert(destination, moved);
+    await AppScope.preferences(context).update(homeTableOrder: updated);
+  }
+}
+
+class _HomeTableCard extends StatelessWidget {
+  const _HomeTableCard({
+    super.key,
+    required this.table,
+    required this.entries,
+    required this.expanded,
+    required this.onToggleExpanded,
+    required this.onOpen,
+    required this.onMove,
+    required this.onRemove,
+  });
+
+  final TableDocument table;
+  final List<TableEntryDocument> entries;
+  final bool expanded;
+  final VoidCallback onToggleExpanded;
+  final VoidCallback onOpen;
+  final ValueChanged<int> onMove;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = expanded ? entries : entries.take(5).toList();
+    return Card(
+      key: ValueKey('home_table_card_${table.id}'),
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: onOpen,
+                    child: Text(
+                      table.title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: '上移',
+                  onPressed: () => onMove(-1),
+                  icon: const Icon(Icons.arrow_upward, size: 18),
+                ),
+                IconButton(
+                  tooltip: '下移',
+                  onPressed: () => onMove(1),
+                  icon: const Icon(Icons.arrow_downward, size: 18),
+                ),
+                IconButton(
+                  tooltip: '从首页移除',
+                  onPressed: onRemove,
+                  icon: const Icon(Icons.remove_circle_outline, size: 18),
+                ),
+              ],
+            ),
+            if (visible.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Text('这张表还没有内容。'),
+              )
+            else
+              for (final entry in visible)
+                ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    entry.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(_tableEntrySummary(entry)),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => TableEntryEditorPage(
+                        tableId: table.id,
+                        type: entry.type,
+                        entry: entry,
+                      ),
+                    ),
+                  ),
+                ),
+            if (entries.length > 5)
+              TextButton(
+                onPressed: onToggleExpanded,
+                child: Text(expanded ? '收起' : '展开全部 ${entries.length} 条'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _tableEntrySummary(TableEntryDocument entry) {
+  final type = switch (entry.type) {
+    TableContentType.note => '笔记',
+    TableContentType.todo => '待办',
+    TableContentType.schedule => '日程',
+    TableContentType.event => '事件',
+  };
+  final time = switch (entry.type) {
+    TableContentType.todo => entry.due,
+    TableContentType.schedule => entry.start,
+    TableContentType.event => entry.occurredAt,
+    TableContentType.note => null,
+  };
+  return time == null ? type : '$type · ${friendlyDate(time)}';
+}
+
+TableEntryDocument? _findEntry(TableLibrary library, String id) {
+  for (final entry in library.entries) {
+    if (entry.id == id) return entry;
+  }
+  return null;
 }
 
 class _SectionAction extends StatelessWidget {

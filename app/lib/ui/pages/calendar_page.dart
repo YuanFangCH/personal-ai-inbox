@@ -3,13 +3,11 @@ import 'package:intl/intl.dart';
 
 import '../../core/calendar.dart';
 import '../../core/models.dart';
-import '../../modules/results/result_library.dart';
+import '../../core/table_models.dart';
 import '../app_scope.dart';
 import '../widgets/calendar_views.dart';
 import '../widgets/common.dart';
-import '../widgets/quick_create_sheet.dart';
-import '../widgets/todos_pane.dart';
-import 'document_detail_page.dart';
+import 'table_detail_page.dart';
 
 class CalendarPage extends StatefulWidget {
   const CalendarPage({
@@ -39,8 +37,27 @@ class _CalendarPageState extends State<CalendarPage> {
 
   @override
   Widget build(BuildContext context) {
-    final app = AppScope.results(context);
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        AppScope.tables(context),
+        AppScope.preferences(context),
+      ]),
+      builder: (context, _) => _buildCalendar(context),
+    );
+  }
+
+  Widget _buildCalendar(BuildContext context) {
+    final library = AppScope.tables(context);
     final preferences = AppScope.preferences(context);
+    final tableDocuments = projectTableCalendarDocuments(
+      tables: library.tables,
+      entries: library.entries,
+      visibleTableIds: preferences.settings.calendarVisibleTableIds,
+    );
+    final events = tableDocuments.where(
+      (item) => item.type == ResultType.event,
+    );
+    final todos = tableDocuments.where((item) => item.type == ResultType.todo);
     final detailed = preferences.settings.calendarMonthDetailed;
     final density = detailed
         ? CalendarMonthDensity.detailed
@@ -49,20 +66,26 @@ class _CalendarPageState extends State<CalendarPage> {
     final occurrences = range == null
         ? const <CalendarOccurrence>[]
         : buildCalendarOccurrences(
-            events: app.events,
-            todos: app.todos,
+            events: events,
+            todos: todos,
             rangeStart: range.$1,
             rangeEnd: range.$2,
           );
     final page = PageFrame(
       title: _pageTitle(),
-      subtitle: _pageSubtitle(app),
+      subtitle: _pageSubtitle(todos),
       actions: [
+        OutlinedButton.icon(
+          key: const Key('calendar_table_filter'),
+          onPressed: () => _showTableFilter(context),
+          icon: const Icon(Icons.filter_list),
+          label: Text(_filterLabel(library.tables)),
+        ),
         FilledButton.icon(
           key: const Key('calendar_quick_create'),
           onPressed: _quickCreate,
           icon: const Icon(Icons.add),
-          label: Text(_section == CalendarSection.todos ? '新建待办' : '新建事件'),
+          label: Text(_section == CalendarSection.todos ? '新建待办' : '新建日程'),
         ),
         if (_section == CalendarSection.calendar &&
             _mode == CalendarRangeMode.month)
@@ -137,7 +160,7 @@ class _CalendarPageState extends State<CalendarPage> {
             ),
             child: KeyedSubtree(
               key: ValueKey('${_section.name}_${_mode.name}'),
-              child: _buildSection(app, occurrences, density),
+              child: _buildSection(occurrences, density, todos.toList()),
             ),
           ),
         ],
@@ -161,9 +184,9 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   Widget _buildSection(
-    ResultLibrary app,
     List<CalendarOccurrence> occurrences,
     CalendarMonthDensity density,
+    List<ResultDocument> todos,
   ) {
     return switch (_section) {
       CalendarSection.calendar => Column(
@@ -182,7 +205,10 @@ class _CalendarPageState extends State<CalendarPage> {
         occurrences: occurrences,
         onOpenDocument: _openDocument,
       ),
-      CalendarSection.todos => const TodosPane(),
+      CalendarSection.todos => _TableTodosPane(
+        todos: todos,
+        onOpen: _openDocument,
+      ),
     };
   }
 
@@ -296,12 +322,12 @@ class _CalendarPageState extends State<CalendarPage> {
     };
   }
 
-  String _pageSubtitle(ResultLibrary app) {
+  String _pageSubtitle(Iterable<ResultDocument> todos) {
     return switch (_section) {
       CalendarSection.calendar => monthDayHeader(_selectedDay),
       CalendarSection.myDay => fullDateHeader(_selectedDay),
       CalendarSection.todos =>
-        '${app.todos.where((todo) => !todo.done).length} 项未完成',
+        '${todos.where((todo) => !todo.done).length} 项未完成',
     };
   }
 
@@ -343,30 +369,290 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   Future<void> _quickCreate({DateTime? initialStart}) async {
-    final created = await showQuickCreateSheet(
-      context,
-      initialDate: initialStart ?? _selectedDay,
-      type: _section == CalendarSection.todos
-          ? ResultType.todo
-          : ResultType.event,
-      initialStart: initialStart,
+    final library = AppScope.tables(context);
+    final type = _section == CalendarSection.todos
+        ? TableContentType.todo
+        : TableContentType.schedule;
+    final settings = AppScope.preferences(context).settings;
+    final visibleTables = settings.calendarVisibleTableIds.contains('*')
+        ? library.tables
+        : library.tables
+              .where(
+                (table) => settings.calendarVisibleTableIds.contains(table.id),
+              )
+              .toList(growable: false);
+    final defaultRole = type == TableContentType.todo
+        ? TableRole.inboxTodo
+        : TableRole.inboxSchedule;
+    final candidates = visibleTables.isEmpty ? library.tables : visibleTables;
+    final target = candidates.length == 1
+        ? candidates.single
+        : await showModalBottomSheet<TableDocument>(
+            context: context,
+            builder: (context) => SafeArea(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  const ListTile(title: Text('保存到哪张表？')),
+                  for (final table in candidates)
+                    ListTile(
+                      leading: Icon(
+                        table.role == defaultRole
+                            ? Icons.inbox_outlined
+                            : Icons.table_chart_outlined,
+                      ),
+                      title: Text(table.title),
+                      onTap: () => Navigator.pop(context, table),
+                    ),
+                ],
+              ),
+            ),
+          );
+    if (!mounted || target == null) return;
+    final date = initialStart ?? _selectedDay;
+    final initialDate = type == TableContentType.schedule
+        ? DateTime(
+            date.year,
+            date.month,
+            date.day,
+            date.hour == 0 ? 9 : date.hour,
+            date.minute,
+          )
+        : DateTime(date.year, date.month, date.day);
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => TableEntryEditorPage(
+          tableId: target.id,
+          type: type,
+          initialDate: initialDate,
+        ),
+      ),
     );
-    if (created == null || !mounted) {
-      return;
-    }
-    final date = created.start ?? created.due;
-    if (date != null) {
-      setState(() {
-        _selectedDay = DateTime(date.year, date.month, date.day);
-      });
-    }
+    if (mounted) setState(() {});
   }
 
   void _openDocument(ResultDocument document) {
+    final tableId = document.extensionFields['table_id'];
+    TableEntryDocument? entry;
+    for (final candidate in AppScope.tables(context).entries) {
+      if (candidate.id == document.id) entry = candidate;
+    }
+    if (tableId is! String || entry == null) return;
+    final currentEntry = entry;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => DocumentDetailPage(documentId: document.id),
+        builder: (_) => TableEntryEditorPage(
+          tableId: tableId,
+          type: currentEntry.type,
+          entry: currentEntry,
+        ),
       ),
+    );
+  }
+
+  String _filterLabel(List<TableDocument> tables) {
+    final selected = AppScope.preferences(context)
+        .settings
+        .calendarVisibleTableIds;
+    if (selected.contains('*')) return '全部表';
+    return '显示 ${selected.length}/${tables.length} 张表';
+  }
+
+  Future<void> _showTableFilter(BuildContext context) async {
+    final library = AppScope.tables(context);
+    final preferences = AppScope.preferences(context);
+    final existing = preferences.settings.calendarVisibleTableIds;
+    final selected = existing.contains('*')
+        ? library.tables.map((table) => table.id).toSet()
+        : existing.toSet();
+    final result = await showDialog<Set<String>>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('日历显示哪些表'),
+          content: SizedBox(
+            width: 420,
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                for (final table in library.tables)
+                  CheckboxListTile(
+                    value: selected.contains(table.id),
+                    title: Text(table.title),
+                    onChanged: (value) => setDialogState(() {
+                      if (value == true) {
+                        selected.add(table.id);
+                      } else {
+                        selected.remove(table.id);
+                      }
+                    }),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => setDialogState(() {
+                selected
+                  ..clear()
+                  ..addAll(library.tables.map((table) => table.id));
+              }),
+              child: const Text('全选'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, Set.of(selected)),
+              child: const Text('应用'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (result == null) return;
+    final allIds = library.tables.map((table) => table.id).toSet();
+    await preferences.update(
+      calendarVisibleTableIds:
+          result.length == allIds.length && result.containsAll(allIds)
+          ? const ['*']
+          : result.toList(growable: false),
+    );
+  }
+}
+
+enum _TableTodoFilter { open, today, upcoming, completed }
+
+class _TableTodosPane extends StatefulWidget {
+  const _TableTodosPane({required this.todos, required this.onOpen});
+
+  final List<ResultDocument> todos;
+  final ValueChanged<ResultDocument> onOpen;
+
+  @override
+  State<_TableTodosPane> createState() => _TableTodosPaneState();
+}
+
+class _TableTodosPaneState extends State<_TableTodosPane> {
+  _TableTodoFilter _filter = _TableTodoFilter.open;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final filtered =
+        widget.todos.where((todo) {
+          return switch (_filter) {
+            _TableTodoFilter.open => !todo.done,
+            _TableTodoFilter.today =>
+              !todo.done && todo.due != null && isSameDay(todo.due!, now),
+            _TableTodoFilter.upcoming =>
+              !todo.done && todo.due != null && todo.due!.isAfter(now),
+            _TableTodoFilter.completed => todo.done,
+          };
+        }).toList()..sort(
+          (a, b) => (a.due ?? a.updatedAt).compareTo(b.due ?? b.updatedAt),
+        );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SegmentedButton<_TableTodoFilter>(
+            segments: const [
+              ButtonSegment(value: _TableTodoFilter.open, label: Text('未完成')),
+              ButtonSegment(value: _TableTodoFilter.today, label: Text('今天')),
+              ButtonSegment(
+                value: _TableTodoFilter.upcoming,
+                label: Text('即将到期'),
+              ),
+              ButtonSegment(
+                value: _TableTodoFilter.completed,
+                label: Text('已完成'),
+              ),
+            ],
+            selected: {_filter},
+            onSelectionChanged: (value) =>
+                setState(() => _filter = value.first),
+          ),
+        ),
+        const SizedBox(height: 14),
+        if (filtered.isEmpty)
+          const EmptyState(
+            icon: Icons.task_alt,
+            title: '这里没有待办',
+            message: '切换筛选条件，或在日历中添加一条待办。',
+          )
+        else
+          SurfacePanel(
+            child: Column(
+              children: [
+                for (var index = 0; index < filtered.length; index++) ...[
+                  _TableTodoTile(
+                    document: filtered[index],
+                    onOpen: widget.onOpen,
+                  ),
+                  if (index != filtered.length - 1) const Divider(height: 1),
+                ],
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _TableTodoTile extends StatelessWidget {
+  const _TableTodoTile({required this.document, required this.onOpen});
+
+  final ResultDocument document;
+  final ValueChanged<ResultDocument> onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final library = AppScope.tables(context);
+    final id = document.id;
+    TableEntryDocument? entry;
+    for (final candidate in library.entries) {
+      if (candidate.id == id) entry = candidate;
+    }
+    final overdue =
+        document.due != null &&
+        !document.done &&
+        document.due!.isBefore(DateTime.now());
+    final tableTitle = document.extensionFields['table_title'];
+    return ListTile(
+      leading: Checkbox(
+        value: document.done,
+        onChanged: entry == null
+            ? null
+            : (value) async {
+                await library.updateEntry(
+                  entry!.copyWith(done: value ?? false),
+                  expectedRevision: entry.revision,
+                );
+              },
+      ),
+      title: Text(
+        document.title,
+        style: TextStyle(
+          decoration: document.done ? TextDecoration.lineThrough : null,
+        ),
+      ),
+      subtitle: Wrap(
+        spacing: 6,
+        children: [
+          if (tableTitle is String) StatusPill(label: tableTitle),
+          if (document.due != null)
+            StatusPill(
+              label:
+                  '${friendlyDate(document.due!)} ${DateFormat('HH:mm').format(document.due!)}',
+              icon: Icons.schedule,
+              tone: overdue ? StatusTone.danger : StatusTone.neutral,
+            ),
+        ],
+      ),
+      onTap: () => onOpen(document),
     );
   }
 }

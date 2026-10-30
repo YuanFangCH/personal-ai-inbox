@@ -173,6 +173,31 @@ void main() {
 
     await tester.pumpWidget(PersonalAiInboxApp(runtime: reopened));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('home_add_table_module')));
+    await tester.tap(find.byKey(const Key('home_add_table_module')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('AVD 作业表').last);
+    await tester.pumpAndSettle();
+    expect(reopened.preferences.settings.homeTableOrder, [table.id]);
+
+    await reopened.preferences.update(calendarVisibleTableIds: [table.id]);
+    await tester.tap(find.byKey(const Key('nav_calendar')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('calendar_quick_create')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('table_entry_title')),
+      'AVD 考试安排',
+    );
+    await tester.tap(find.byKey(const Key('table_entry_save')));
+    await _waitFor(
+      tester,
+      () => reopened.tables.entries.any(
+        (entry) => entry.title == 'AVD 考试安排' && entry.tableId == table.id,
+      ),
+    );
+    expect(find.text('AVD 考试安排'), findsWidgets);
+
     await tester.tap(find.byKey(const Key('nav_more')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('sheet_nav_matters')));
