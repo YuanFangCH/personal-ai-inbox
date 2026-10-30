@@ -91,6 +91,107 @@ void main() {
     await runtime.shutdown();
   });
 
+  testWidgets(
+    'table list, detail and field editor fit phone tablet and desktop widths',
+    (tester) async {
+      final runtime = await AppRuntime.bootstrap(
+        vaultOverride: MemoryVaultStore(),
+        indexOverride: MemoryIndexDatabase(),
+        settingsOverride: FakeSettingsService(deviceId: 'table-responsive-ui'),
+      );
+      final table = await runtime.tables.createTable(title: '响应式考试表');
+      await runtime.tables.updateTable(
+        table.copyWith(
+          fields: [
+            TableFieldDefinition(
+              id: 'fld_long_responsive',
+              name: '跨页面长度较长的自定义字段名称',
+              type: CustomFieldType.text,
+            ),
+          ],
+        ),
+        expectedRevision: table.revision,
+      );
+      await runtime.tables.createEntry(
+        TableEntryDocument(
+          id: 'nt_responsive',
+          type: TableContentType.note,
+          tableId: table.id,
+          title: '带长标题的响应式条目与内容',
+          revision: 1,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+          body: '正文在窄屏和宽屏都能滚动读取。',
+        ),
+      );
+      await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+      await tester.pumpAndSettle();
+
+      for (final size in const [
+        Size(320, 780),
+        Size(800, 900),
+        Size(1280, 900),
+      ]) {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        await tester.pumpAndSettle();
+        if (size.width >= 1024) {
+          await tester.tap(find.byKey(const Key('nav_matters')));
+        } else {
+          await tester.tap(find.byKey(const Key('nav_more')));
+          await tester.pumpAndSettle();
+          await tester.tap(find.byKey(const Key('sheet_nav_matters')));
+        }
+        await tester.pumpAndSettle();
+        expect(find.text('响应式考试表'), findsWidgets);
+        expect(tester.takeException(), isNull, reason: 'table list at $size');
+        await tester.scrollUntilVisible(
+          find.text('响应式考试表').last,
+          250,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.tap(find.text('响应式考试表').first);
+        await tester.pumpAndSettle();
+        expect(find.text('带长标题的响应式条目与内容'), findsOneWidget);
+        expect(tester.takeException(), isNull, reason: 'table detail at $size');
+        await tester.ensureVisible(
+          find.byKey(const Key('manage_table_fields')),
+        );
+        await tester.tap(find.byKey(const Key('manage_table_fields')));
+        await tester.pumpAndSettle();
+        expect(find.text('跨页面长度较长的自定义字段名称'), findsOneWidget);
+        expect(tester.takeException(), isNull, reason: 'field editor at $size');
+        await tester.pageBack();
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.byKey(const Key('table_add_content')));
+        await tester.tap(find.byKey(const Key('table_add_content')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(ListTile, '笔记').last);
+        await tester.pumpAndSettle();
+        final entryTitle = '窄宽屏编辑 ${size.width.toInt()}';
+        await tester.enterText(
+          find.byKey(const Key('table_entry_title')),
+          entryTitle,
+        );
+        await tester.enterText(
+          find.byKey(const Key('table_entry_body')),
+          '编辑器在当前宽度下保持可滚动。',
+        );
+        await tester.tap(find.byKey(const Key('table_entry_save')));
+        await tester.pumpAndSettle();
+        expect(find.text(entryTitle), findsOneWidget);
+        expect(tester.takeException(), isNull, reason: 'entry editor at $size');
+        await tester.pageBack();
+        await tester.pumpAndSettle();
+      }
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await runtime.shutdown();
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+    },
+  );
+
   testWidgets('moves a note between tables without changing its identity', (
     tester,
   ) async {
