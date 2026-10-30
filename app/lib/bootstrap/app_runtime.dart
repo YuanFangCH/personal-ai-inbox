@@ -133,6 +133,7 @@ final class AppRuntime {
       final capture = CaptureWorkflow(
         repository: repository,
         results: results,
+        tables: tables,
         indexDatabase: index,
         captureService: CaptureService(
           settings: settingsService,

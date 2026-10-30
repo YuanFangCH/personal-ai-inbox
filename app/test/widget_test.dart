@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_ai_inbox/app.dart';
 import 'package:personal_ai_inbox/core/deterministic_parser.dart';
-import 'package:personal_ai_inbox/core/models.dart';
+import 'package:personal_ai_inbox/core/table_models.dart';
 import 'package:personal_ai_inbox/data/memory_index_database.dart';
 import 'package:personal_ai_inbox/data/memory_vault_store.dart';
 import 'package:personal_ai_inbox/data/result_repository.dart';
@@ -16,7 +16,7 @@ import 'package:personal_ai_inbox/services/capture_service.dart';
 import 'test_support.dart';
 
 void main() {
-  testWidgets('captures text and shows the generated result', (tester) async {
+  testWidgets('captures text into the table model', (tester) async {
     final controller = await _controller();
     await tester.pumpWidget(PersonalAiInboxApp(runtime: controller.runtime));
     await tester.pumpAndSettle();
@@ -36,17 +36,29 @@ void main() {
     await tester.tap(find.byKey(const Key('capture_submit')));
     await tester.pumpAndSettle();
 
-    expect(controller.documents, hasLength(1));
-    expect(controller.documents.single.type, ResultType.event);
-    expect(find.textContaining('已生成事件'), findsOneWidget);
+    expect(controller.tableEntries, hasLength(1));
+    expect(controller.tableEntries.single.type, TableContentType.schedule);
+    expect(find.textContaining('已保存到'), findsOneWidget);
   });
 
   testWidgets('renders core navigation on a compact viewport', (tester) async {
     final controller = await _controller();
-    await controller.createManual(
-      type: ResultType.todo,
-      title: '买牛奶',
-      due: DateTime(2026, 10, 5, 18),
+    final todoTable = controller.runtime.tables.tables.singleWhere(
+      (table) => table.role == TableRole.inboxTodo,
+    );
+    final now = DateTime(2026, 10, 5, 18);
+    await controller.runtime.tables.createEntry(
+      TableEntryDocument(
+        id: 'td_milk',
+        type: TableContentType.todo,
+        tableId: todoTable.id,
+        title: '买牛奶',
+        revision: 1,
+        createdAt: now,
+        updatedAt: now,
+        body: '',
+        due: now,
+      ),
     );
     await tester.pumpWidget(PersonalAiInboxApp(runtime: controller.runtime));
     await tester.pumpAndSettle();

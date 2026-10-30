@@ -21,7 +21,6 @@ import '../widgets/common.dart';
 import 'document_detail_page.dart';
 import 'table_detail_page.dart';
 import 'global_knowledge_page.dart';
-import 'pending_page.dart';
 import '../widgets/global_knowledge_candidate_card.dart';
 
 part 'conversation/attachment_preview.dart';
@@ -569,7 +568,7 @@ class _SecretaryDesktopNavigation extends StatelessWidget {
     const destinations = [
       ('home', '首页', Icons.space_dashboard_outlined),
       ('calendar', '日历', Icons.calendar_month_outlined),
-      ('matters', '事项', Icons.account_tree_outlined),
+      ('matters', '表与笔记', Icons.table_chart_outlined),
       ('knowledge', '知识', Icons.menu_book_outlined),
     ];
     final theme = Theme.of(context);
@@ -614,7 +613,7 @@ class _SecretaryDesktopNavigation extends StatelessWidget {
                       value: 'global_knowledge',
                       child: Text('全局知识库'),
                     ),
-                    PopupMenuItem(value: 'pending', child: Text('待处理')),
+                    PopupMenuItem(value: 'matters', child: Text('表与笔记')),
                     PopupMenuItem(value: 'settings', child: Text('设置')),
                     PopupMenuItem(value: 'sync', child: Text('同步')),
                   ],

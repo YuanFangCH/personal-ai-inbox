@@ -175,7 +175,7 @@ void main() {
     expect(find.byKey(const Key('secretary_nav_home')), findsOneWidget);
     expect(find.byKey(const Key('secretary_nav_more')), findsOneWidget);
     expect(find.byKey(const Key('conversation_search')), findsOneWidget);
-    expect(find.byKey(const Key('conversation_pending_page')), findsNothing);
+    expect(find.byKey(const Key('conversation_tables_page')), findsNothing);
     expect(
       find.byKey(const Key('conversation_global_knowledge')),
       findsNothing,
@@ -212,7 +212,7 @@ void main() {
     await tester.tap(find.byKey(const Key('secretary_nav_more')));
     await tester.pumpAndSettle();
     expect(find.text('全局知识库'), findsOneWidget);
-    expect(find.text('待处理'), findsOneWidget);
+    expect(find.text('表与笔记'), findsWidgets);
     expect(find.text('设置'), findsOneWidget);
     expect(find.text('同步'), findsOneWidget);
     expect(tester.takeException(), isNull);

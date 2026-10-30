@@ -1,9 +1,11 @@
 import '../../core/models.dart';
+import '../../core/table_models.dart';
 
 class CaptureOutcome {
   const CaptureOutcome._({
     required this.status,
     this.document,
+    this.tableEntry,
     this.capture,
     this.usedModel = false,
     this.warning,
@@ -21,6 +23,17 @@ class CaptureOutcome {
          warning: warning,
        );
 
+  const CaptureOutcome.tableCreated(
+    TableEntryDocument entry, {
+    bool usedModel = false,
+    String? warning,
+  }) : this._(
+         status: CaptureOutcomeStatus.created,
+         tableEntry: entry,
+         usedModel: usedModel,
+         warning: warning,
+       );
+
   const CaptureOutcome.review(CaptureRecord capture, {String? warning})
     : this._(
         status: CaptureOutcomeStatus.review,
@@ -33,6 +46,7 @@ class CaptureOutcome {
 
   final CaptureOutcomeStatus status;
   final ResultDocument? document;
+  final TableEntryDocument? tableEntry;
   final CaptureRecord? capture;
   final bool usedModel;
   final String? warning;

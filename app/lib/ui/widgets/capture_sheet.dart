@@ -134,8 +134,10 @@ class _CaptureSheetState extends State<_CaptureSheet> {
       }
       final message = switch (result.status) {
         CaptureOutcomeStatus.created =>
-          '已生成${resultTypeLabel(result.document!.type)}：${result.document!.title}',
-        CaptureOutcomeStatus.review => '已进入确认队列',
+          result.tableEntry != null
+              ? '已保存到「${AppScope.tables(context).findTable(result.tableEntry!.tableId)?.title ?? '表'}」：${result.tableEntry!.title}'
+              : '已生成${resultTypeLabel(result.document!.type)}：${result.document!.title}',
+        CaptureOutcomeStatus.review => '已保存到待整理区，可从「表与笔记」继续处理',
         CaptureOutcomeStatus.failure => result.message ?? '捕获失败',
       };
       Navigator.pop(context);

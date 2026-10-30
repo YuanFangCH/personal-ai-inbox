@@ -1,23 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:path/path.dart' as p;
 
 import '../../core/models.dart';
+import '../../core/table_models.dart';
 import '../../modules/capture/capture_workflow.dart';
-import '../../modules/sync/sync_workspace.dart';
-import '../presentation/domain_presentation.dart';
 import '../app_scope.dart';
 import 'common.dart';
 
-class ReviewQueue extends StatelessWidget {
-  const ReviewQueue({super.key});
+class CaptureReviewQueue extends StatelessWidget {
+  const CaptureReviewQueue({super.key});
 
   @override
   Widget build(BuildContext context) {
     final captureWorkflow = AppScope.capture(context);
-    final syncWorkspace = AppScope.sync(context);
     final reviews = captureWorkflow.reviewCaptures;
-    final conflicts = syncWorkspace.conflictFiles;
-    if (reviews.isEmpty && conflicts.isEmpty) {
+    if (reviews.isEmpty) {
       return const SizedBox.shrink();
     }
     return AnimatedSize(
@@ -30,7 +26,10 @@ class ReviewQueue extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (reviews.isNotEmpty) ...[
-            SectionHeading(title: '待确认', trailing: Text('${reviews.length} 项')),
+            SectionHeading(
+              title: '待整理捕获',
+              trailing: Text('${reviews.length} 项'),
+            ),
             const SizedBox(height: 8),
             Column(
               children: [
@@ -43,28 +42,6 @@ class ReviewQueue extends StatelessWidget {
                     ),
                   ),
                   if (index != reviews.length - 1) const Divider(height: 1),
-                ],
-              ],
-            ),
-            const SizedBox(height: 18),
-          ],
-          if (conflicts.isNotEmpty) ...[
-            SectionHeading(
-              title: '同步冲突',
-              trailing: Text('${conflicts.length} 项'),
-            ),
-            const SizedBox(height: 8),
-            Column(
-              children: [
-                for (var index = 0; index < conflicts.length; index++) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: _ConflictTile(
-                      path: conflicts[index],
-                      syncWorkspace: syncWorkspace,
-                    ),
-                  ),
-                  if (index != conflicts.length - 1) const Divider(height: 1),
                 ],
               ],
             ),
@@ -87,7 +64,7 @@ class _ReviewCaptureTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final type = capture.candidateType ?? ResultType.knowledge;
+    final type = _captureTableType(capture);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 13),
       child: Column(
@@ -97,7 +74,7 @@ class _ReviewCaptureTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(
-                resultTypeIcon(type),
+                _captureTypeIcon(type),
                 color: Theme.of(context).colorScheme.primary,
               ),
               const SizedBox(width: 12),
@@ -129,9 +106,21 @@ class _ReviewCaptureTile extends StatelessWidget {
                   tone: StatusTone.warning,
                 ),
               FilledButton.tonalIcon(
-                onPressed: () => captureWorkflow.acceptCapture(capture),
+                onPressed: () =>
+                    _accept(captureWorkflow, capture, context: context),
                 icon: const Icon(Icons.check, size: 18),
-                label: const Text('按建议生成'),
+                label: const Text('按建议保存'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _accept(
+                  captureWorkflow,
+                  capture,
+                  type: TableContentType.note,
+                  title: capture.candidateTitle ?? '待整理笔记',
+                  context: context,
+                ),
+                icon: const Icon(Icons.notes_outlined, size: 18),
+                label: const Text('保存为笔记'),
               ),
               OutlinedButton.icon(
                 onPressed: () => _changeAndAccept(context),
@@ -156,12 +145,37 @@ class _ReviewCaptureTile extends StatelessWidget {
       animationStyle: reducedMotionAnimationStyle(context),
       builder: (context) => _ReviewDialog(capture: capture),
     );
+    if (!context.mounted) return;
     if (decision != null) {
-      await captureWorkflow.acceptCapture(
+      await _accept(
+        captureWorkflow,
         capture,
         type: decision.type,
         title: decision.title,
+        context: context,
       );
+    }
+  }
+
+  Future<void> _accept(
+    CaptureWorkflow workflow,
+    CaptureRecord capture, {
+    TableContentType? type,
+    String? title,
+    BuildContext? context,
+  }) async {
+    try {
+      await workflow.acceptCaptureToTable(capture, type: type, title: title);
+    } on Object catch (error) {
+      if (context != null && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '保存捕获失败：${error is StateError ? error.message : error}',
+            ),
+          ),
+        );
+      }
     }
   }
 }
@@ -169,7 +183,7 @@ class _ReviewCaptureTile extends StatelessWidget {
 class _ReviewDecision {
   const _ReviewDecision(this.type, this.title);
 
-  final ResultType type;
+  final TableContentType type;
   final String title;
 }
 
@@ -184,7 +198,7 @@ class _ReviewDialog extends StatefulWidget {
 
 class _ReviewDialogState extends State<_ReviewDialog> {
   late final TextEditingController _title;
-  late ResultType _type;
+  late TableContentType _type;
 
   @override
   void initState() {
@@ -192,7 +206,7 @@ class _ReviewDialogState extends State<_ReviewDialog> {
     _title = TextEditingController(
       text: widget.capture.candidateTitle ?? '待整理',
     );
-    _type = widget.capture.candidateType ?? ResultType.knowledge;
+    _type = _captureTableType(widget.capture);
   }
 
   @override
@@ -204,20 +218,20 @@ class _ReviewDialogState extends State<_ReviewDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('调整成果'),
+      title: const Text('调整捕获归类'),
       content: SizedBox(
         width: 520,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SegmentedButton<ResultType>(
+            SegmentedButton<TableContentType>(
               segments: [
-                for (final type in ResultType.values)
+                for (final type in _availableCaptureTypes(widget.capture))
                   ButtonSegment(
                     value: type,
-                    icon: Icon(resultTypeIcon(type)),
-                    label: Text(resultTypeLabel(type)),
+                    icon: Icon(_captureTypeIcon(type)),
+                    label: Text(_captureTypeLabel(type)),
                   ),
               ],
               selected: {_type},
@@ -242,57 +256,44 @@ class _ReviewDialogState extends State<_ReviewDialog> {
             context,
             _ReviewDecision(_type, _title.text.trim()),
           ),
-          child: const Text('生成'),
+          child: const Text('保存到表'),
         ),
       ],
     );
   }
 }
 
-class _ConflictTile extends StatelessWidget {
-  const _ConflictTile({required this.path, required this.syncWorkspace});
+TableContentType _captureTableType(CaptureRecord capture) =>
+    switch (capture.candidateType) {
+      ResultType.todo => TableContentType.todo,
+      ResultType.event =>
+        capture.candidateAt?.isAfter(DateTime.now()) == true
+            ? TableContentType.schedule
+            : TableContentType.event,
+      ResultType.matter ||
+      ResultType.knowledge ||
+      null => TableContentType.note,
+    };
 
-  final String path;
-  final SyncWorkspace syncWorkspace;
+List<TableContentType> _availableCaptureTypes(CaptureRecord capture) => [
+  TableContentType.note,
+  TableContentType.todo,
+  TableContentType.event,
+  if (capture.candidateType == ResultType.event &&
+      capture.candidateAt?.isAfter(DateTime.now()) == true)
+    TableContentType.schedule,
+];
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          const Icon(Icons.call_split),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  p.basename(path),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                Text(
-                  '远端版本已保留为冲突副本',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ),
-          PopupMenuButton<String>(
-            tooltip: '裁决冲突',
-            onSelected: (value) => syncWorkspace.resolveConflict(
-              path,
-              useRemote: value == 'remote',
-            ),
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'local', child: Text('保留本地版本')),
-              PopupMenuItem(value: 'remote', child: Text('使用远端版本')),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
+String _captureTypeLabel(TableContentType type) => switch (type) {
+  TableContentType.note => '笔记',
+  TableContentType.todo => '待办',
+  TableContentType.schedule => '日程',
+  TableContentType.event => '事件',
+};
+
+IconData _captureTypeIcon(TableContentType type) => switch (type) {
+  TableContentType.note => Icons.notes_outlined,
+  TableContentType.todo => Icons.check_circle_outline,
+  TableContentType.schedule => Icons.event_outlined,
+  TableContentType.event => Icons.history,
+};

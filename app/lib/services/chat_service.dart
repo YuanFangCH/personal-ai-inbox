@@ -698,6 +698,10 @@ ${tableMode ? '数据存储使用笔记式表：先按表/类型/时间/字段�
         'type': ['string', 'null'],
         'format': 'date-time',
       },
+      'all_day': {'type': 'boolean'},
+      'recurrence': {
+        'type': ['string', 'null'],
+      },
       'occurred_at': {
         'type': ['string', 'null'],
         'format': 'date-time',

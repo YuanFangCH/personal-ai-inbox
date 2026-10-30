@@ -102,7 +102,7 @@ void main() {
 
       await tester.tap(find.byKey(const Key('conversation_manage')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('conversation_pending_page')));
+      await tester.tap(find.byKey(const Key('conversation_global_knowledge')));
       await tester.pumpAndSettle();
       expect(find.textContaining('下学期'), findsOneWidget);
       await tester.tap(find.text('确认新增').first);

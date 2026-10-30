@@ -77,7 +77,7 @@ void main() {
         _step('nav', {'page': 'calendar'}),
         _step('calendarMode', {'mode': variant.isEven ? 'month' : 'week'}),
         _step('quickCreate', {'kind': 'todo', 'title': '补充待办 $variant'}),
-        _assert('resultCount', {'value': 6}),
+        _assert('resultCount', {'value': 5}),
         _assert('typeCount', {
           'counts': {type: 2, 'todo': type == 'todo' ? 3 : 2},
         }),
@@ -86,22 +86,19 @@ void main() {
     );
   }
 
-  // ----------------------------------------------------------------- review
+  // ---------------------------------------------------------------- capture fallback
   const ambiguous = ['记住：英语比赛在下周三', '明天', '下周找时间和王老师聊聊论文'];
   for (var variant = 0; variant < 10; variant++) {
     final text = ambiguous[variant % ambiguous.length];
-    final accept = variant.isEven;
     scenarios.add(
-      build('review', accept ? '待整理项按建议生成：$text' : '待整理项忽略：$text', [
+      build('capture', '低置信捕获保留为表内笔记：$text', [
         _step('capture', {'text': text}),
-        _assert('reviewCount', {'value': 1}),
-        _assert('resultCount', {'value': 0}),
-        _step('nav', {'page': 'pending'}),
-        _step('scroll', {'times': 1}),
-        _step('tapText', {'value': accept ? '按建议生成' : '忽略'}),
         _assert('reviewCount', {'value': 0}),
+        _assert('tableEntryCount', {'value': 1}),
+        _step('nav', {'page': 'pending'}),
+        _assert('textVisible', {'value': '表与笔记'}),
         _step('quickCreate', {'kind': 'todo', 'title': '收尾待办 $variant'}),
-        _assert('resultCount', {'value': accept ? 2 : 1}),
+        _assert('tableEntryCount', {'value': 2}),
         _assert('noException'),
       ]),
     );
@@ -148,7 +145,7 @@ void main() {
         _step('quickCreate', {'kind': 'event', 'title': '$matter 追加日程'}),
         _assert('todoDone', {'title': '$matter 待办 2', 'value': true}),
         _assert('typeCount', {
-          'counts': {'matter': 1, 'todo': 2, 'event': 2},
+          'counts': {'todo': 2, 'event': 2},
         }),
         _assert('noException'),
       ]),
@@ -329,7 +326,7 @@ void main() {
           build('sync', '空通道同步保持本地成果', [
             _step('seed', {'kind': 'mixed'}),
             _step('sync', {'seed': 'none'}),
-            _assert('resultCount', {'value': 4}),
+            _assert('resultCount', {'value': 3}),
             _assert('conflictCount', {'value': 0}),
             _step('openDoc', {'title': '综合知识', 'page': 'knowledge'}),
             _step('scroll', {'times': 1}),
@@ -344,7 +341,7 @@ void main() {
               'seed': 'remoteNew',
               'title': '远端知识 ${variant + 1}',
             }),
-            _assert('resultCount', {'value': 5}),
+            _assert('resultCount', {'value': 4}),
             _assert('titleExists', {'value': '远端知识 ${variant + 1}'}),
             _assert('conflictCount', {'value': 0}),
             _step('openDoc', {'title': '远端知识 ${variant + 1}'}),
@@ -389,9 +386,9 @@ void main() {
       build('persistence', '真实文件冷启动后成果仍在', [
         _step('seed', {'kind': 'mixed'}),
         _step('capture', {'text': '今天买了一本书'}),
-        _assert('resultCount', {'value': 5}),
+        _assert('resultCount', {'value': 4}),
         _step('restart'),
-        _assert('resultCount', {'value': 5}),
+        _assert('resultCount', {'value': 4}),
         _step('nav', {'page': 'knowledge'}),
         _step('scroll', {'times': 1}),
         _assert('typeCount', {
@@ -446,13 +443,13 @@ void main() {
       build('mixed', '捕获、日历、同步与重启的连续流程', [
         _step('seed', {'kind': 'matterTree', 'title': matter}),
         _step('capture', {'text': '周五前提交评审材料'}),
-        _assert('resultCount', {'value': 5}),
+        _assert('resultCount', {'value': 4}),
         _step('nav', {'page': 'calendar'}),
         _step('calendarMode', {'mode': 'week'}),
         _step('quickCreate', {'kind': 'todo', 'title': '$matter 追加待办'}),
         _step('sync', {'seed': 'none'}),
         _step('restart'),
-        _assert('resultCount', {'value': 6}),
+        _assert('resultCount', {'value': 5}),
         _assert('noException'),
       ]),
     );

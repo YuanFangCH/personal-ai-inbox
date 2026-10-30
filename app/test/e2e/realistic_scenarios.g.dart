@@ -31,7 +31,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 6},
+        "args": {"kind": "resultCount", "value": 5},
       },
       {
         "op": "assert",
@@ -78,7 +78,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 6},
+        "args": {"kind": "resultCount", "value": 5},
       },
       {
         "op": "assert",
@@ -125,7 +125,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 6},
+        "args": {"kind": "resultCount", "value": 5},
       },
       {
         "op": "assert",
@@ -172,7 +172,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 6},
+        "args": {"kind": "resultCount", "value": 5},
       },
       {
         "op": "assert",
@@ -219,7 +219,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 6},
+        "args": {"kind": "resultCount", "value": 5},
       },
       {
         "op": "assert",
@@ -266,7 +266,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 6},
+        "args": {"kind": "resultCount", "value": 5},
       },
       {
         "op": "assert",
@@ -313,7 +313,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 6},
+        "args": {"kind": "resultCount", "value": 5},
       },
       {
         "op": "assert",
@@ -360,7 +360,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 6},
+        "args": {"kind": "resultCount", "value": 5},
       },
       {
         "op": "assert",
@@ -407,7 +407,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 6},
+        "args": {"kind": "resultCount", "value": 5},
       },
       {
         "op": "assert",
@@ -454,7 +454,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 6},
+        "args": {"kind": "resultCount", "value": 5},
       },
       {
         "op": "assert",
@@ -501,7 +501,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 6},
+        "args": {"kind": "resultCount", "value": 5},
       },
       {
         "op": "assert",
@@ -548,7 +548,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 6},
+        "args": {"kind": "resultCount", "value": 5},
       },
       {
         "op": "assert",
@@ -568,8 +568,8 @@ const realisticScenarioMaps = <Map<String, Object?>>[
   {
     "id": "e2e_013",
     "platform": "phone",
-    "category": "review",
-    "title": "待整理项按建议生成：记住：英语比赛在下周三",
+    "category": "capture",
+    "title": "低置信捕获保留为表内笔记：记住：英语比赛在下周三",
     "theme": "dark",
     "fontScale": 1.0,
     "steps": [
@@ -579,27 +579,19 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "reviewCount", "value": 1},
+        "args": {"kind": "reviewCount", "value": 0},
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 0},
+        "args": {"kind": "tableEntryCount", "value": 1},
       },
       {
         "op": "nav",
         "args": {"page": "pending"},
       },
       {
-        "op": "scroll",
-        "args": {"times": 1},
-      },
-      {
-        "op": "tapText",
-        "args": {"value": "按建议生成"},
-      },
-      {
         "op": "assert",
-        "args": {"kind": "reviewCount", "value": 0},
+        "args": {"kind": "textVisible", "value": "表与笔记"},
       },
       {
         "op": "quickCreate",
@@ -607,7 +599,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 2},
+        "args": {"kind": "tableEntryCount", "value": 2},
       },
       {
         "op": "assert",
@@ -620,8 +612,8 @@ const realisticScenarioMaps = <Map<String, Object?>>[
   {
     "id": "e2e_014",
     "platform": "phone",
-    "category": "review",
-    "title": "待整理项忽略：明天",
+    "category": "capture",
+    "title": "低置信捕获保留为表内笔记：明天",
     "theme": "light",
     "fontScale": 1.15,
     "steps": [
@@ -631,27 +623,19 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "reviewCount", "value": 1},
+        "args": {"kind": "reviewCount", "value": 0},
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 0},
+        "args": {"kind": "tableEntryCount", "value": 1},
       },
       {
         "op": "nav",
         "args": {"page": "pending"},
       },
       {
-        "op": "scroll",
-        "args": {"times": 1},
-      },
-      {
-        "op": "tapText",
-        "args": {"value": "忽略"},
-      },
-      {
         "op": "assert",
-        "args": {"kind": "reviewCount", "value": 0},
+        "args": {"kind": "textVisible", "value": "表与笔记"},
       },
       {
         "op": "quickCreate",
@@ -659,7 +643,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 1},
+        "args": {"kind": "tableEntryCount", "value": 2},
       },
       {
         "op": "assert",
@@ -672,8 +656,8 @@ const realisticScenarioMaps = <Map<String, Object?>>[
   {
     "id": "e2e_015",
     "platform": "tablet",
-    "category": "review",
-    "title": "待整理项按建议生成：下周找时间和王老师聊聊论文",
+    "category": "capture",
+    "title": "低置信捕获保留为表内笔记：下周找时间和王老师聊聊论文",
     "theme": "light",
     "fontScale": 1.3,
     "steps": [
@@ -683,27 +667,19 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "reviewCount", "value": 1},
+        "args": {"kind": "reviewCount", "value": 0},
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 0},
+        "args": {"kind": "tableEntryCount", "value": 1},
       },
       {
         "op": "nav",
         "args": {"page": "pending"},
       },
       {
-        "op": "scroll",
-        "args": {"times": 1},
-      },
-      {
-        "op": "tapText",
-        "args": {"value": "按建议生成"},
-      },
-      {
         "op": "assert",
-        "args": {"kind": "reviewCount", "value": 0},
+        "args": {"kind": "textVisible", "value": "表与笔记"},
       },
       {
         "op": "quickCreate",
@@ -711,7 +687,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 2},
+        "args": {"kind": "tableEntryCount", "value": 2},
       },
       {
         "op": "assert",
@@ -724,8 +700,8 @@ const realisticScenarioMaps = <Map<String, Object?>>[
   {
     "id": "e2e_016",
     "platform": "windows",
-    "category": "review",
-    "title": "待整理项忽略：记住：英语比赛在下周三",
+    "category": "capture",
+    "title": "低置信捕获保留为表内笔记：记住：英语比赛在下周三",
     "theme": "dark",
     "fontScale": 1.5,
     "steps": [
@@ -735,27 +711,19 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "reviewCount", "value": 1},
+        "args": {"kind": "reviewCount", "value": 0},
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 0},
+        "args": {"kind": "tableEntryCount", "value": 1},
       },
       {
         "op": "nav",
         "args": {"page": "pending"},
       },
       {
-        "op": "scroll",
-        "args": {"times": 1},
-      },
-      {
-        "op": "tapText",
-        "args": {"value": "忽略"},
-      },
-      {
         "op": "assert",
-        "args": {"kind": "reviewCount", "value": 0},
+        "args": {"kind": "textVisible", "value": "表与笔记"},
       },
       {
         "op": "quickCreate",
@@ -763,7 +731,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 1},
+        "args": {"kind": "tableEntryCount", "value": 2},
       },
       {
         "op": "assert",
@@ -776,8 +744,8 @@ const realisticScenarioMaps = <Map<String, Object?>>[
   {
     "id": "e2e_017",
     "platform": "phone",
-    "category": "review",
-    "title": "待整理项按建议生成：明天",
+    "category": "capture",
+    "title": "低置信捕获保留为表内笔记：明天",
     "theme": "light",
     "fontScale": 1.0,
     "steps": [
@@ -787,27 +755,19 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "reviewCount", "value": 1},
+        "args": {"kind": "reviewCount", "value": 0},
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 0},
+        "args": {"kind": "tableEntryCount", "value": 1},
       },
       {
         "op": "nav",
         "args": {"page": "pending"},
       },
       {
-        "op": "scroll",
-        "args": {"times": 1},
-      },
-      {
-        "op": "tapText",
-        "args": {"value": "按建议生成"},
-      },
-      {
         "op": "assert",
-        "args": {"kind": "reviewCount", "value": 0},
+        "args": {"kind": "textVisible", "value": "表与笔记"},
       },
       {
         "op": "quickCreate",
@@ -815,7 +775,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 2},
+        "args": {"kind": "tableEntryCount", "value": 2},
       },
       {
         "op": "assert",
@@ -828,8 +788,8 @@ const realisticScenarioMaps = <Map<String, Object?>>[
   {
     "id": "e2e_018",
     "platform": "phone",
-    "category": "review",
-    "title": "待整理项忽略：下周找时间和王老师聊聊论文",
+    "category": "capture",
+    "title": "低置信捕获保留为表内笔记：下周找时间和王老师聊聊论文",
     "theme": "light",
     "fontScale": 1.15,
     "steps": [
@@ -839,27 +799,19 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "reviewCount", "value": 1},
+        "args": {"kind": "reviewCount", "value": 0},
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 0},
+        "args": {"kind": "tableEntryCount", "value": 1},
       },
       {
         "op": "nav",
         "args": {"page": "pending"},
       },
       {
-        "op": "scroll",
-        "args": {"times": 1},
-      },
-      {
-        "op": "tapText",
-        "args": {"value": "忽略"},
-      },
-      {
         "op": "assert",
-        "args": {"kind": "reviewCount", "value": 0},
+        "args": {"kind": "textVisible", "value": "表与笔记"},
       },
       {
         "op": "quickCreate",
@@ -867,7 +819,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 1},
+        "args": {"kind": "tableEntryCount", "value": 2},
       },
       {
         "op": "assert",
@@ -880,8 +832,8 @@ const realisticScenarioMaps = <Map<String, Object?>>[
   {
     "id": "e2e_019",
     "platform": "tablet",
-    "category": "review",
-    "title": "待整理项按建议生成：记住：英语比赛在下周三",
+    "category": "capture",
+    "title": "低置信捕获保留为表内笔记：记住：英语比赛在下周三",
     "theme": "dark",
     "fontScale": 1.3,
     "steps": [
@@ -891,27 +843,19 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "reviewCount", "value": 1},
+        "args": {"kind": "reviewCount", "value": 0},
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 0},
+        "args": {"kind": "tableEntryCount", "value": 1},
       },
       {
         "op": "nav",
         "args": {"page": "pending"},
       },
       {
-        "op": "scroll",
-        "args": {"times": 1},
-      },
-      {
-        "op": "tapText",
-        "args": {"value": "按建议生成"},
-      },
-      {
         "op": "assert",
-        "args": {"kind": "reviewCount", "value": 0},
+        "args": {"kind": "textVisible", "value": "表与笔记"},
       },
       {
         "op": "quickCreate",
@@ -919,7 +863,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 2},
+        "args": {"kind": "tableEntryCount", "value": 2},
       },
       {
         "op": "assert",
@@ -932,8 +876,8 @@ const realisticScenarioMaps = <Map<String, Object?>>[
   {
     "id": "e2e_020",
     "platform": "windows",
-    "category": "review",
-    "title": "待整理项忽略：明天",
+    "category": "capture",
+    "title": "低置信捕获保留为表内笔记：明天",
     "theme": "light",
     "fontScale": 1.5,
     "steps": [
@@ -943,27 +887,19 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "reviewCount", "value": 1},
+        "args": {"kind": "reviewCount", "value": 0},
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 0},
+        "args": {"kind": "tableEntryCount", "value": 1},
       },
       {
         "op": "nav",
         "args": {"page": "pending"},
       },
       {
-        "op": "scroll",
-        "args": {"times": 1},
-      },
-      {
-        "op": "tapText",
-        "args": {"value": "忽略"},
-      },
-      {
         "op": "assert",
-        "args": {"kind": "reviewCount", "value": 0},
+        "args": {"kind": "textVisible", "value": "表与笔记"},
       },
       {
         "op": "quickCreate",
@@ -971,7 +907,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 1},
+        "args": {"kind": "tableEntryCount", "value": 2},
       },
       {
         "op": "assert",
@@ -984,8 +920,8 @@ const realisticScenarioMaps = <Map<String, Object?>>[
   {
     "id": "e2e_021",
     "platform": "phone",
-    "category": "review",
-    "title": "待整理项按建议生成：下周找时间和王老师聊聊论文",
+    "category": "capture",
+    "title": "低置信捕获保留为表内笔记：下周找时间和王老师聊聊论文",
     "theme": "light",
     "fontScale": 1.0,
     "steps": [
@@ -995,27 +931,19 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "reviewCount", "value": 1},
+        "args": {"kind": "reviewCount", "value": 0},
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 0},
+        "args": {"kind": "tableEntryCount", "value": 1},
       },
       {
         "op": "nav",
         "args": {"page": "pending"},
       },
       {
-        "op": "scroll",
-        "args": {"times": 1},
-      },
-      {
-        "op": "tapText",
-        "args": {"value": "按建议生成"},
-      },
-      {
         "op": "assert",
-        "args": {"kind": "reviewCount", "value": 0},
+        "args": {"kind": "textVisible", "value": "表与笔记"},
       },
       {
         "op": "quickCreate",
@@ -1023,7 +951,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 2},
+        "args": {"kind": "tableEntryCount", "value": 2},
       },
       {
         "op": "assert",
@@ -1036,8 +964,8 @@ const realisticScenarioMaps = <Map<String, Object?>>[
   {
     "id": "e2e_022",
     "platform": "phone",
-    "category": "review",
-    "title": "待整理项忽略：记住：英语比赛在下周三",
+    "category": "capture",
+    "title": "低置信捕获保留为表内笔记：记住：英语比赛在下周三",
     "theme": "dark",
     "fontScale": 1.15,
     "steps": [
@@ -1047,27 +975,19 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "reviewCount", "value": 1},
+        "args": {"kind": "reviewCount", "value": 0},
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 0},
+        "args": {"kind": "tableEntryCount", "value": 1},
       },
       {
         "op": "nav",
         "args": {"page": "pending"},
       },
       {
-        "op": "scroll",
-        "args": {"times": 1},
-      },
-      {
-        "op": "tapText",
-        "args": {"value": "忽略"},
-      },
-      {
         "op": "assert",
-        "args": {"kind": "reviewCount", "value": 0},
+        "args": {"kind": "textVisible", "value": "表与笔记"},
       },
       {
         "op": "quickCreate",
@@ -1075,7 +995,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 1},
+        "args": {"kind": "tableEntryCount", "value": 2},
       },
       {
         "op": "assert",
@@ -1985,7 +1905,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
         "op": "assert",
         "args": {
           "kind": "typeCount",
-          "counts": {"matter": 1, "todo": 2, "event": 2},
+          "counts": {"todo": 2, "event": 2},
         },
       },
       {
@@ -2044,7 +1964,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
         "op": "assert",
         "args": {
           "kind": "typeCount",
-          "counts": {"matter": 1, "todo": 2, "event": 2},
+          "counts": {"todo": 2, "event": 2},
         },
       },
       {
@@ -2103,7 +2023,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
         "op": "assert",
         "args": {
           "kind": "typeCount",
-          "counts": {"matter": 1, "todo": 2, "event": 2},
+          "counts": {"todo": 2, "event": 2},
         },
       },
       {
@@ -2162,7 +2082,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
         "op": "assert",
         "args": {
           "kind": "typeCount",
-          "counts": {"matter": 1, "todo": 2, "event": 2},
+          "counts": {"todo": 2, "event": 2},
         },
       },
       {
@@ -2221,7 +2141,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
         "op": "assert",
         "args": {
           "kind": "typeCount",
-          "counts": {"matter": 1, "todo": 2, "event": 2},
+          "counts": {"todo": 2, "event": 2},
         },
       },
       {
@@ -2280,7 +2200,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
         "op": "assert",
         "args": {
           "kind": "typeCount",
-          "counts": {"matter": 1, "todo": 2, "event": 2},
+          "counts": {"todo": 2, "event": 2},
         },
       },
       {
@@ -2339,7 +2259,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
         "op": "assert",
         "args": {
           "kind": "typeCount",
-          "counts": {"matter": 1, "todo": 2, "event": 2},
+          "counts": {"todo": 2, "event": 2},
         },
       },
       {
@@ -2398,7 +2318,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
         "op": "assert",
         "args": {
           "kind": "typeCount",
-          "counts": {"matter": 1, "todo": 2, "event": 2},
+          "counts": {"todo": 2, "event": 2},
         },
       },
       {
@@ -3673,7 +3593,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 4},
+        "args": {"kind": "resultCount", "value": 3},
       },
       {
         "op": "assert",
@@ -3713,7 +3633,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 5},
+        "args": {"kind": "resultCount", "value": 4},
       },
       {
         "op": "assert",
@@ -3825,7 +3745,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 4},
+        "args": {"kind": "resultCount", "value": 3},
       },
       {
         "op": "assert",
@@ -3865,7 +3785,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 5},
+        "args": {"kind": "resultCount", "value": 4},
       },
       {
         "op": "assert",
@@ -3977,7 +3897,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 4},
+        "args": {"kind": "resultCount", "value": 3},
       },
       {
         "op": "assert",
@@ -4017,7 +3937,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 5},
+        "args": {"kind": "resultCount", "value": 4},
       },
       {
         "op": "assert",
@@ -4057,12 +3977,12 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 5},
+        "args": {"kind": "resultCount", "value": 4},
       },
       {"op": "restart"},
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 5},
+        "args": {"kind": "resultCount", "value": 4},
       },
       {
         "op": "nav",
@@ -4105,12 +4025,12 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 5},
+        "args": {"kind": "resultCount", "value": 4},
       },
       {"op": "restart"},
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 5},
+        "args": {"kind": "resultCount", "value": 4},
       },
       {
         "op": "nav",
@@ -4153,12 +4073,12 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 5},
+        "args": {"kind": "resultCount", "value": 4},
       },
       {"op": "restart"},
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 5},
+        "args": {"kind": "resultCount", "value": 4},
       },
       {
         "op": "nav",
@@ -4201,12 +4121,12 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 5},
+        "args": {"kind": "resultCount", "value": 4},
       },
       {"op": "restart"},
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 5},
+        "args": {"kind": "resultCount", "value": 4},
       },
       {
         "op": "nav",
@@ -4249,12 +4169,12 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 5},
+        "args": {"kind": "resultCount", "value": 4},
       },
       {"op": "restart"},
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 5},
+        "args": {"kind": "resultCount", "value": 4},
       },
       {
         "op": "nav",
@@ -4297,12 +4217,12 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 5},
+        "args": {"kind": "resultCount", "value": 4},
       },
       {"op": "restart"},
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 5},
+        "args": {"kind": "resultCount", "value": 4},
       },
       {
         "op": "nav",
@@ -4913,7 +4833,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 5},
+        "args": {"kind": "resultCount", "value": 4},
       },
       {
         "op": "nav",
@@ -4934,7 +4854,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       {"op": "restart"},
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 6},
+        "args": {"kind": "resultCount", "value": 5},
       },
       {
         "op": "assert",
@@ -4962,7 +4882,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 5},
+        "args": {"kind": "resultCount", "value": 4},
       },
       {
         "op": "nav",
@@ -4983,7 +4903,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       {"op": "restart"},
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 6},
+        "args": {"kind": "resultCount", "value": 5},
       },
       {
         "op": "assert",
@@ -5011,7 +4931,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 5},
+        "args": {"kind": "resultCount", "value": 4},
       },
       {
         "op": "nav",
@@ -5032,7 +4952,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       {"op": "restart"},
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 6},
+        "args": {"kind": "resultCount", "value": 5},
       },
       {
         "op": "assert",
@@ -5060,7 +4980,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       },
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 5},
+        "args": {"kind": "resultCount", "value": 4},
       },
       {
         "op": "nav",
@@ -5081,7 +5001,7 @@ const realisticScenarioMaps = <Map<String, Object?>>[
       {"op": "restart"},
       {
         "op": "assert",
-        "args": {"kind": "resultCount", "value": 6},
+        "args": {"kind": "resultCount", "value": 5},
       },
       {
         "op": "assert",

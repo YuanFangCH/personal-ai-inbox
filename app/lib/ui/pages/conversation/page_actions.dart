@@ -143,7 +143,9 @@ mixin _ConversationPageActions on State<ConversationPage> {
       await _returnToHome();
       return;
     }
-    if (destination == 'pending' || destination == 'global_knowledge') {
+    if (destination == 'pending' ||
+        destination == 'matters' ||
+        destination == 'global_knowledge') {
       _composerFocusNode.unfocus();
       _closeAttachmentTray();
       widget.onNavigate?.call(destination);
@@ -428,16 +430,8 @@ mixin _ConversationPageActions on State<ConversationPage> {
               conversation.preview.toLowerCase().contains(query);
         })
         .toList(growable: false);
-    final pendingCount =
+    final captureReviewCount =
         AppScope.capture(context).reviewCaptures.length +
-        AppScope.sync(context).conflictFiles.length +
-        AppScope.results(context).globalKnowledgeCandidates
-            .where(
-              (candidate) =>
-                  candidate.status != GlobalKnowledgeCandidateStatus.applied &&
-                  candidate.status != GlobalKnowledgeCandidateStatus.rejected,
-            )
-            .length +
         AppScope.results(context).draftDocuments.length;
     final groupedRows = _groupedConversationRows(conversations);
     final historySearch = Padding(
@@ -516,17 +510,18 @@ mixin _ConversationPageActions on State<ConversationPage> {
       const SizedBox(height: 8),
       if (inDrawer || !widget.isWide) ...[
         ListTile(
-          key: const Key('conversation_pending_page'),
-          leading: const Icon(Icons.inbox_outlined),
-          title: const Text('待处理'),
-          trailing: pendingCount == 0
+          key: const Key('conversation_tables_page'),
+          leading: const Icon(Icons.table_chart_outlined),
+          title: const Text('表与笔记'),
+          trailing: captureReviewCount == 0
               ? null
-              : StatusPill(label: '$pendingCount', tone: StatusTone.warning),
+              : StatusPill(
+                  label: '$captureReviewCount',
+                  tone: StatusTone.warning,
+                ),
           onTap: () {
             if (inDrawer) Navigator.pop(context);
-            Navigator.of(this.context).push(
-              MaterialPageRoute<void>(builder: (_) => const PendingPage()),
-            );
+            widget.onNavigate?.call('matters');
           },
         ),
         ListTile(

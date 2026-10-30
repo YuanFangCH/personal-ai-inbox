@@ -6,6 +6,7 @@ import 'package:personal_ai_inbox/bootstrap/app_runtime.dart';
 import 'package:personal_ai_inbox/core/chat_models.dart';
 import 'package:personal_ai_inbox/core/deterministic_parser.dart';
 import 'package:personal_ai_inbox/core/models.dart';
+import 'package:personal_ai_inbox/core/table_models.dart';
 import 'package:personal_ai_inbox/data/attachment_store.dart';
 import 'package:personal_ai_inbox/data/attachment_store_factory.dart';
 import 'package:personal_ai_inbox/data/chat_repository.dart';
@@ -75,6 +76,7 @@ class TestAppHost extends ChangeNotifier {
     final capture = CaptureWorkflow(
       repository: repository,
       results: results,
+      tables: tables,
       indexDatabase: indexDatabase,
       captureService: captureService,
     );
@@ -115,6 +117,7 @@ class TestAppHost extends ChangeNotifier {
   TestAppHost._(this._runtime) {
     _runtime.preferences.addListener(_handleModuleChange);
     _runtime.results.addListener(_handleModuleChange);
+    _runtime.tables.addListener(_handleModuleChange);
     _runtime.capture.addListener(_handleModuleChange);
     _runtime.conversations.addListener(_handleModuleChange);
     _runtime.sync.addListener(_handleModuleChange);
@@ -240,6 +243,8 @@ class TestAppHost extends ChangeNotifier {
   List<ResultDocument> get matters => _runtime.results.matters;
 
   List<ResultDocument> get knowledge => _runtime.results.knowledge;
+
+  List<TableEntryDocument> get tableEntries => _runtime.tables.entries;
 
   List<CaptureRecord> get captures => _runtime.capture.captures;
 

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_ai_inbox/app.dart';
 import 'package:personal_ai_inbox/core/deterministic_parser.dart';
 import 'package:personal_ai_inbox/core/models.dart';
+import 'package:personal_ai_inbox/core/table_models.dart';
 import 'package:personal_ai_inbox/data/memory_index_database.dart';
 import 'package:personal_ai_inbox/data/memory_vault_store.dart';
 import 'package:personal_ai_inbox/data/result_repository.dart';
@@ -76,21 +77,30 @@ void main() {
     expect(find.text('待确认'), findsNothing);
     await tester.tap(find.byKey(const Key('conversation_manage')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('conversation_pending_page')));
+    await tester.tap(find.byKey(const Key('conversation_tables_page')));
     await tester.pumpAndSettle();
 
-    expect(find.text('待确认'), findsOneWidget);
-    expect(find.text('按建议生成'), findsOneWidget);
+    expect(find.text('表与笔记'), findsOneWidget);
+    expect(find.text('待整理捕获'), findsOneWidget);
+    expect(find.text('按建议保存'), findsOneWidget);
     expect(find.text('调整'), findsOneWidget);
     expect(find.text('忽略'), findsOneWidget);
-    expect(find.text('同步冲突'), findsOneWidget);
-    expect(find.byTooltip('裁决冲突'), findsOneWidget);
 
-    await tester.tap(find.text('按建议生成'));
+    await tester.tap(find.text('按建议保存'));
     await tester.pumpAndSettle();
     expect(controller.reviewCaptures, isEmpty);
-    expect(controller.documents, hasLength(1));
+    expect(controller.runtime.tables.entries, hasLength(1));
+    expect(
+      controller.runtime.tables.entries.single.type,
+      TableContentType.note,
+    );
 
+    await tester.tap(find.byKey(const Key('nav_more')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('sheet_nav_sync')));
+    await tester.pumpAndSettle();
+    expect(find.text('同步冲突'), findsOneWidget);
+    expect(find.byTooltip('裁决冲突'), findsOneWidget);
     await tester.tap(find.byTooltip('裁决冲突'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('保留本地版本'));

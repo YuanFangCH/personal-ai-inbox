@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:personal_ai_inbox/bootstrap/app_runtime.dart';
+import 'package:personal_ai_inbox/core/calendar.dart';
 import 'package:personal_ai_inbox/core/chat_models.dart';
 import 'package:personal_ai_inbox/core/table_models.dart';
 import 'package:personal_ai_inbox/data/io_vault_store.dart';
@@ -30,6 +31,10 @@ void main() {
     final chats = MemoryConversationStore();
     final attachments = MemoryAttachmentStore();
     final responses = _ResponsePlan();
+    final settings = FakeSettingsService(
+      deviceId: 'table-ai-android',
+      modelKey: 'local-test-key',
+    );
 
     Future<AppRuntime> boot() async {
       final index = SqliteIndexDatabase(indexPath);
@@ -39,10 +44,7 @@ void main() {
         indexOverride: index,
         conversationStoreOverride: chats,
         attachmentStoreOverride: attachments,
-        settingsOverride: FakeSettingsService(
-          deviceId: 'table-ai-android',
-          modelKey: 'local-test-key',
-        ),
+        settingsOverride: settings,
         modelClient: ModelClient(
           client: MockClient.streaming((request, body) async {
             expect(request.url.path, endsWith('/chat/completions'));
@@ -82,6 +84,72 @@ void main() {
     expect(runtime.tables.tables.any((table) => table.title == '考试表'), isFalse);
     await runtime.conversations.confirmTableStructureAction(structureAction.id);
     expect(runtime.tables.tables.any((table) => table.title == '考试表'), isTrue);
+
+    final examTable = runtime.tables.tables.singleWhere(
+      (table) => table.title == '考试表',
+    );
+    final originalStart = DateTime.now().add(const Duration(days: 5));
+    final schedule = await runtime.tables.createEntry(
+      TableEntryDocument(
+        id: 'android_exam_schedule',
+        type: TableContentType.schedule,
+        tableId: examTable.id,
+        title: '期中考试',
+        revision: 1,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        body: '信号与系统期中考试',
+        start: originalStart,
+        end: originalStart.add(const Duration(hours: 2)),
+      ),
+    );
+    responses.scheduleId = schedule.id;
+    final changedStart = DateTime.now().add(const Duration(days: 8));
+    responses.changedStart = changedStart;
+    await runtime.conversations.sendChatMessage(
+      conversation.id,
+      text: '老师把期中考试改期了',
+    );
+    final changeAction = runtime.conversations
+        .messagesFor(conversation.id)
+        .last
+        .tableActions
+        .single;
+    expect(changeAction.operation, 'schedule.change');
+    expect(changeAction.status, TableChatActionStatus.applied);
+    final changedSchedule = runtime.tables.entries.singleWhere(
+      (entry) => entry.id == schedule.id,
+    );
+    final notification = runtime.tables.entries.singleWhere(
+      (entry) => entry.id == changeAction.relatedEntryId,
+    );
+    expect(changedSchedule.start, changedStart);
+    expect(notification.type, TableContentType.event);
+    expect(notification.affects.single.scheduleId, schedule.id);
+
+    await runtime.preferences.update(
+      calendarVisibleTableIds: [examTable.id],
+      homeTableOrder: [examTable.id],
+    );
+    expect(runtime.preferences.settings.calendarVisibleTableIds, [
+      examTable.id,
+    ]);
+    expect(runtime.preferences.settings.homeTableOrder, [examTable.id]);
+    final calendarProjection = projectTableCalendarDocuments(
+      tables: runtime.tables.tables,
+      entries: runtime.tables.entries,
+      visibleTableIds: runtime.preferences.settings.calendarVisibleTableIds,
+    );
+    expect(calendarProjection.map((entry) => entry.id), contains(schedule.id));
+    expect(
+      calendarProjection.map((entry) => entry.id),
+      contains(notification.id),
+    );
+    final deleted = await runtime.tables.deleteTable(
+      id: examTable.id,
+      expectedRevision: examTable.revision,
+      idempotencyKey: 'android-delete-exam-table',
+    );
     await runtime.shutdown();
 
     runtime = await boot();
@@ -91,7 +159,25 @@ void main() {
           .tableId,
       homework.id,
     );
+    expect(runtime.tables.tables.any((table) => table.title == '考试表'), isFalse);
+    expect(runtime.preferences.settings.calendarVisibleTableIds, [
+      examTable.id,
+    ]);
+    expect(runtime.preferences.settings.homeTableOrder, [examTable.id]);
+    final recoveryBatches = await runtime.tables.recoveryBatches();
+    expect(recoveryBatches.any((batch) => batch.id == deleted.id), isTrue);
+    await runtime.tables.restoreRecoveryBatch(deleted.id);
     expect(runtime.tables.tables.any((table) => table.title == '考试表'), isTrue);
+    expect(
+      runtime.tables.entries
+          .singleWhere((entry) => entry.id == schedule.id)
+          .start,
+      changedStart,
+    );
+    expect(
+      runtime.tables.entries.any((entry) => entry.id == notification.id),
+      isTrue,
+    );
     await runtime.shutdown();
   });
 }
@@ -99,6 +185,8 @@ void main() {
 class _ResponsePlan {
   var calls = 0;
   String? contentTableId;
+  String? scheduleId;
+  DateTime? changedStart;
 
   Future<http.StreamedResponse> next() async {
     calls++;
@@ -143,6 +231,38 @@ class _ResponsePlan {
                       'operation': 'create',
                       'payload': {'title': '考试表'},
                       'idempotency_key': 'android-table-create',
+                    }),
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      }, finish: 'tool_calls');
+    }
+    if (calls == 3) {
+      final start = changedStart!;
+      return _stream({
+        'choices': [
+          {
+            'delta': {
+              'tool_calls': [
+                {
+                  'index': 0,
+                  'id': 'call_android_schedule_change',
+                  'function': {
+                    'name': 'schedule.change',
+                    'arguments': jsonEncode({
+                      'schedule_id': scheduleId,
+                      'if_revision': 1,
+                      'event_title': '老师调整了考试日期',
+                      'event_body': '考试改到新的日期。',
+                      'event_occurred_at': DateTime.now().toIso8601String(),
+                      'new_start': start.toIso8601String(),
+                      'new_end': start
+                          .add(const Duration(hours: 2))
+                          .toIso8601String(),
+                      'idempotency_key': 'android-schedule-change',
                     }),
                   },
                 },

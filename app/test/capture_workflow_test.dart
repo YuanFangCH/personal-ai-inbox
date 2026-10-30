@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_ai_inbox/core/deterministic_parser.dart';
 import 'package:personal_ai_inbox/core/models.dart';
+import 'package:personal_ai_inbox/core/table_models.dart';
 import 'package:personal_ai_inbox/data/index_database.dart';
 import 'package:personal_ai_inbox/data/memory_index_database.dart';
 import 'package:personal_ai_inbox/data/memory_vault_store.dart';
@@ -258,6 +259,90 @@ class _RecordingIndexDatabase implements IndexDatabase {
   @override
   Future<void> replaceResults(List<IndexedResult> results) =>
       _delegate.replaceResults(results);
+
+  @override
+  Future<void> upsertTable(IndexedTable table) => _delegate.upsertTable(table);
+
+  @override
+  Future<void> removeTable(String id) => _delegate.removeTable(id);
+
+  @override
+  Future<IndexedTable?> findTable(String id) => _delegate.findTable(id);
+
+  @override
+  Future<List<IndexedTable>> listTables({bool includeDeleted = false}) =>
+      _delegate.listTables(includeDeleted: includeDeleted);
+
+  @override
+  Future<List<IndexedTable>> searchTables({
+    required String query,
+    required int limit,
+    required int offset,
+    bool includeDeleted = false,
+  }) => _delegate.searchTables(
+    query: query,
+    limit: limit,
+    offset: offset,
+    includeDeleted: includeDeleted,
+  );
+
+  @override
+  Future<void> upsertTableEntry(IndexedTableEntry entry) =>
+      _delegate.upsertTableEntry(entry);
+
+  @override
+  Future<void> removeTableEntry(String id) => _delegate.removeTableEntry(id);
+
+  @override
+  Future<IndexedTableEntry?> findTableEntry(String id) =>
+      _delegate.findTableEntry(id);
+
+  @override
+  Future<List<IndexedTableEntry>> listTableEntries({
+    String? tableId,
+    TableContentType? type,
+    bool includeDeleted = false,
+  }) => _delegate.listTableEntries(
+    tableId: tableId,
+    type: type,
+    includeDeleted: includeDeleted,
+  );
+
+  @override
+  Future<List<IndexedTableEntry>> searchTableEntries({
+    required String query,
+    required int limit,
+    required int offset,
+    String? tableId,
+    TableContentType? type,
+    DateTime? from,
+    DateTime? through,
+    Map<String, Object?> fieldFilters = const {},
+    bool includeDeleted = false,
+  }) => _delegate.searchTableEntries(
+    query: query,
+    limit: limit,
+    offset: offset,
+    tableId: tableId,
+    type: type,
+    from: from,
+    through: through,
+    fieldFilters: fieldFilters,
+    includeDeleted: includeDeleted,
+  );
+
+  @override
+  Future<void> upsertTableRecoveryBatch(TableRecoveryBatch batch) =>
+      _delegate.upsertTableRecoveryBatch(batch);
+
+  @override
+  Future<TableRecoveryBatch?> findTableRecoveryBatch(String id) =>
+      _delegate.findTableRecoveryBatch(id);
+
+  @override
+  Future<List<TableRecoveryBatch>> listTableRecoveryBatches({
+    bool activeOnly = false,
+  }) => _delegate.listTableRecoveryBatches(activeOnly: activeOnly);
 
   @override
   Future<void> insertCapture(CaptureRecord capture) async {

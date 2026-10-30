@@ -6,6 +6,7 @@ import '../../core/chat_models.dart';
 import '../../core/models.dart';
 import '../../core/table_models.dart';
 import '../../data/chat_repository.dart';
+import '../../data/table_repository.dart';
 import '../tables/table_library.dart';
 import 'auto_record_processor.dart';
 
@@ -134,6 +135,8 @@ class TableActionProcessor {
       'due',
       'start',
       'end',
+      'all_day',
+      'recurrence',
       'occurred_at',
       'done',
       'custom_values',
@@ -150,6 +153,17 @@ class TableActionProcessor {
     final start = _date(payload['start']);
     final end = _date(payload['end']);
     final occurredAt = _date(payload['occurred_at']);
+    if (payload['all_day'] != null && payload['all_day'] is! bool) {
+      throw StateError('all_day 必须是布尔值。');
+    }
+    if (payload['done'] != null && payload['done'] is! bool) {
+      throw StateError('done 必须是布尔值。');
+    }
+    if (payload['recurrence'] != null && payload['recurrence'] is! String) {
+      throw StateError('recurrence 必须是文本。');
+    }
+    final allDay = payload['all_day'] == true;
+    final recurrence = payload['recurrence'] as String?;
     if (type == TableContentType.schedule && start == null) {
       throw StateError('日程必须提供开始时间。');
     }
@@ -173,6 +187,8 @@ class TableActionProcessor {
         tags: tags,
         done: payload['done'] == true,
         customValues: values,
+        allDay: allDay,
+        recurrence: recurrence,
       )) {
         return _applied(
           actionId,
@@ -181,6 +197,7 @@ class TableActionProcessor {
           title,
           table,
           entry: existing,
+          undoUntil: createdAt.add(TableRepository.entryUndoWindow),
           message: '重放时已找到相同内容。',
         );
       }
@@ -202,6 +219,8 @@ class TableActionProcessor {
         done: payload['done'] == true,
         start: start,
         end: end,
+        allDay: allDay,
+        recurrence: recurrence,
         occurredAt: occurredAt,
         customValues: values,
       ),
@@ -213,6 +232,7 @@ class TableActionProcessor {
       title,
       table,
       entry: entry,
+      undoUntil: createdAt.add(TableRepository.entryUndoWindow),
     );
   }
 
@@ -638,10 +658,24 @@ class TableActionProcessor {
 
   Future<void> undoDelete(TableChatAction action) async {
     final batchId = action.recoveryBatchId;
-    if (batchId == null || !action.canUndo) {
+    if (!action.canUndo) {
       throw StateError('内容恢复时限已过或恢复批次缺失。');
     }
-    await _tables.restoreRecoveryBatch(batchId);
+    if (batchId != null) {
+      await _tables.restoreRecoveryBatch(batchId);
+      return;
+    }
+    if (action.operation == 'content.create' && action.entryId != null) {
+      final entry = await _tables.readEntry(action.entryId!);
+      if (entry == null || entry.deleted) return;
+      await _tables.deleteEntry(
+        id: entry.id,
+        expectedRevision: entry.revision,
+        idempotencyKey: 'undo_${action.id}',
+      );
+      return;
+    }
+    throw StateError('此表操作不支持撤销。');
   }
 
   Map<String, Object?> _normalizeProposal(
@@ -932,6 +966,8 @@ class TableActionProcessor {
     required DateTime? start,
     required DateTime? end,
     required DateTime? occurredAt,
+    required bool allDay,
+    required String? recurrence,
     required List<String> tags,
     required bool done,
     required Map<String, Object?> customValues,
@@ -944,6 +980,8 @@ class TableActionProcessor {
       entry.start == start &&
       entry.end == end &&
       entry.occurredAt == occurredAt &&
+      entry.allDay == allDay &&
+      entry.recurrence == recurrence &&
       entry.done == done &&
       jsonEncode(entry.tags) == jsonEncode(tags) &&
       jsonEncode(entry.customValues) == jsonEncode(customValues);

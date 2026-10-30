@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../app_scope.dart';
 import '../widgets/common.dart';
+import '../widgets/sync_conflict_queue.dart';
 
 class SyncPage extends StatelessWidget {
   const SyncPage({super.key});
@@ -138,6 +139,8 @@ class SyncPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          SyncConflictQueue(workspace: app),
+          if (app.conflictFiles.isNotEmpty) const SizedBox(height: 16),
           SurfacePanel(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

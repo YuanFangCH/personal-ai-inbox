@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:personal_ai_inbox/app.dart';
 import 'package:personal_ai_inbox/bootstrap/app_runtime.dart';
+import 'package:personal_ai_inbox/core/table_models.dart';
 import 'package:personal_ai_inbox/data/io_vault_store.dart';
 import 'package:personal_ai_inbox/data/memory_attachment_store.dart';
 import 'package:personal_ai_inbox/data/memory_conversation_store.dart';
@@ -41,6 +42,26 @@ void main() {
     await tester.tap(find.byKey(const Key('sheet_nav_matters')));
     await tester.pumpAndSettle();
     expect(find.text('表与笔记'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('capture_button')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('capture_text_field')),
+      '2020年10月1日 09:00 老师调整了考试范围',
+    );
+    await tester.tap(find.byKey(const Key('capture_submit')));
+    await _waitFor(
+      tester,
+      () => first.tables.entries.any(
+        (entry) =>
+            entry.type == TableContentType.event &&
+            entry.body.contains('老师调整了考试范围'),
+      ),
+    );
+    final capturedEvent = first.tables.entries.singleWhere(
+      (entry) => entry.body.contains('老师调整了考试范围'),
+    );
+    expect(capturedEvent.type, TableContentType.event);
+    expect(capturedEvent.occurredAt, isNotNull);
 
     await tester.tap(find.byKey(const Key('create_table_button')));
     await tester.pumpAndSettle();

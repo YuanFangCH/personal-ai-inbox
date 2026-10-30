@@ -23,6 +23,7 @@ import 'package:personal_ai_inbox/core/chat_models.dart';
 import 'package:personal_ai_inbox/core/deterministic_parser.dart';
 import 'package:personal_ai_inbox/core/markdown_codec.dart';
 import 'package:personal_ai_inbox/core/models.dart';
+import 'package:personal_ai_inbox/core/table_models.dart';
 import 'package:personal_ai_inbox/data/chat_repository.dart';
 import 'package:personal_ai_inbox/data/index_database.dart';
 import 'package:personal_ai_inbox/data/io_vault_store.dart';
@@ -39,6 +40,7 @@ import 'package:personal_ai_inbox/data/sync_provider.dart';
 import 'package:personal_ai_inbox/data/vault_store.dart';
 import 'package:personal_ai_inbox/modules/capture/capture_workflow.dart';
 import 'package:personal_ai_inbox/modules/conversation/auto_record_processor.dart';
+import 'package:personal_ai_inbox/modules/conversation/table_action_processor.dart';
 import 'package:personal_ai_inbox/modules/conversation/local_retrieval.dart';
 import 'package:personal_ai_inbox/modules/conversation/conversation_workspace.dart';
 import 'package:personal_ai_inbox/modules/results/result_library.dart';
@@ -238,6 +240,7 @@ class _Harness {
   late FakeSettingsService settings;
   late ResultRepository repository;
   late ResultLibrary results;
+  late TableLibrary tables;
   late CaptureWorkflow capture;
   late ConversationWorkspace conversations;
   late SyncWorkspace sync;
@@ -245,6 +248,18 @@ class _Harness {
 
   AppRuntime get runtime => _runtime!;
   ChatRepository get chatRepository => _chatRepository!;
+  int get _contentCount => results.documents.length + tables.entries.length;
+
+  int _countType(ResultType type) =>
+      results.documents.where((document) => document.type == type).length +
+      tables.entries.where((entry) {
+        return switch (entry.type) {
+          TableContentType.note => type == ResultType.knowledge,
+          TableContentType.todo => type == ResultType.todo,
+          TableContentType.schedule ||
+          TableContentType.event => type == ResultType.event,
+        };
+      }).length;
 
   bool _storagePrepared = false;
   bool get _useIo => scenario.category == 'persistence';
@@ -312,15 +327,18 @@ class _Harness {
       adapter: SettingsServiceDevicePreferencesAdapter(settings),
     );
     results = ResultLibrary(repository: repository);
+    tables = TableLibrary(repository: repository.createTableRepository());
     final chatService = ChatService(
       settings: settings,
       repository: chatRepository,
       results: results,
+      tables: tables,
       modelClient: modelClient,
     );
     capture = CaptureWorkflow(
       repository: repository,
       results: results,
+      tables: tables,
       indexDatabase: index,
       captureService: CaptureService(
         settings: settings,
@@ -338,6 +356,10 @@ class _Harness {
         captures: capture,
         deviceId: () => repository.deviceId,
       ),
+      tableActionProcessor: TableActionProcessor(
+        chatRepository: chatRepository,
+        tables: tables,
+      ),
       imageInputService: _matrixImageInputService(),
     );
     sync = SyncWorkspace(
@@ -352,7 +374,7 @@ class _Harness {
     _runtime = AppRuntime(
       preferences: preferences,
       results: results,
-      tables: TableLibrary(repository: repository.createTableRepository()),
+      tables: tables,
       capture: capture,
       conversations: conversations,
       sync: sync,
@@ -562,7 +584,7 @@ class _Harness {
   }
 
   List<String> _toolChunks() {
-    final arguments = jsonEncode(_resolveTokens(scenario.toolPayload));
+    final arguments = jsonEncode(_tableToolPayload());
     final first = arguments.substring(0, arguments.length ~/ 2);
     final second = arguments.substring(first.length);
     return [
@@ -574,7 +596,7 @@ class _Harness {
                 {
                   'index': 0,
                   'id': 'call_e2e',
-                  'function': {'name': 'create_result', 'arguments': first},
+                  'function': {'name': 'content.create', 'arguments': first},
                 },
               ],
             },
@@ -596,6 +618,45 @@ class _Harness {
         ],
       })}\n\n',
     ];
+  }
+
+  Map<String, Object?> _tableToolPayload() {
+    final payload = Map<String, Object?>.from(
+      _resolveTokens(scenario.toolPayload) as Map,
+    );
+    final originalType = payload['type'] as String? ?? 'knowledge';
+    final start = DateTime.tryParse(payload['start'] as String? ?? '');
+    final type = switch (originalType) {
+      'todo' => TableContentType.todo,
+      'event' when start != null && start.isAfter(DateTime.now()) =>
+        TableContentType.schedule,
+      'event' => TableContentType.event,
+      _ => TableContentType.note,
+    };
+    final role = switch (type) {
+      TableContentType.todo => TableRole.inboxTodo,
+      TableContentType.schedule => TableRole.inboxSchedule,
+      TableContentType.event || TableContentType.note => TableRole.inboxEvent,
+    };
+    final table = tables.tables.singleWhere((item) => item.role == role);
+    return {
+      'table_id': table.id,
+      'type': type.name,
+      'title': payload['title'] as String? ?? '脚本条目',
+      'body': payload['body'] as String? ?? '',
+      'tags': payload['tags'] as List? ?? const [],
+      if (type == TableContentType.todo && payload['due'] != null)
+        'due': payload['due'],
+      if (type == TableContentType.schedule) ...{
+        'start': payload['start'],
+        'end': payload['end'],
+        'all_day': payload['all_day'] == true,
+        'recurrence': payload['recurrence'],
+      },
+      if (type == TableContentType.event && start != null)
+        'occurred_at': start.toIso8601String(),
+      'idempotency_key': 'e2e-${scenario.id}',
+    };
   }
 
   List<String> _contentChunks(String text) {
@@ -806,8 +867,8 @@ class _Harness {
             );
           case 'SEC-006':
             await _tapKey(tester, 'conversation_manage');
-            await _tapKey(tester, 'conversation_pending_page');
-            expect(find.text('待处理'), findsOneWidget);
+            await _tapKey(tester, 'conversation_tables_page');
+            expect(find.text('表与笔记'), findsWidgets);
           case 'SEC-007':
             await _tapKey(tester, 'conversation_permissions');
             final toggles = tester.widgetList<SwitchListTile>(
@@ -1931,13 +1992,14 @@ class _Harness {
       tester.view.physicalSize.width / tester.view.devicePixelRatio;
 
   Future<void> _goto(WidgetTester tester, String page) async {
+    if (page == 'knowledge') page = 'matters';
     if (page == 'pending') {
       if (find.byKey(const Key('conversation_manage')).evaluate().isEmpty) {
         await _goto(tester, 'inbox');
       }
       await _tapKey(tester, 'conversation_manage');
-      await _tapKey(tester, 'conversation_pending_page');
-      expect(find.text('待处理'), findsOneWidget, reason: 'navigation to pending');
+      await _tapKey(tester, 'conversation_tables_page');
+      expect(find.text('表与笔记'), findsWidgets, reason: 'navigation to tables');
       return;
     }
     // The secretary conversation replaces the shell's compact navigation.
@@ -2023,7 +2085,7 @@ class _Harness {
   }
 
   Future<void> _capture(WidgetTester tester, String text) async {
-    final before = results.documents.length;
+    final before = tables.entries.length;
     final reviewsBefore = capture.reviewCaptures.length;
     await _goto(tester, 'knowledge');
     await _tapKey(tester, 'capture_button');
@@ -2040,7 +2102,7 @@ class _Harness {
     await _waitFor(
       tester,
       () =>
-          results.documents.length != before ||
+          tables.entries.length != before ||
           capture.reviewCaptures.length != reviewsBefore,
       reason: 'capture "$text" to settle',
     );
@@ -2065,18 +2127,22 @@ class _Harness {
       tester,
       kind == 'todo' ? 'calendar_section_todos' : 'calendar_section_calendar',
     );
-    final before = results.documents.length;
+    final before = _contentCount;
+    final role = kind == 'todo' ? TableRole.inboxTodo : TableRole.inboxSchedule;
+    final table = tables.tables.singleWhere((item) => item.role == role);
+    await preferences.update(calendarVisibleTableIds: [table.id]);
+    await _settle(tester);
     await _tapKey(tester, 'calendar_quick_create');
     await tester.enterText(
-      find.byKey(const Key('quick_create_title')),
+      find.byKey(const Key('table_entry_title')),
       step.args['title'] as String,
     );
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pump();
-    await _tapKey(tester, 'quick_create_save');
+    await _tapKey(tester, 'table_entry_save');
     await _waitFor(
       tester,
-      () => results.documents.length > before,
+      () => _contentCount > before,
       reason: 'quick create result',
     );
     await _settle(tester);
@@ -2094,7 +2160,10 @@ class _Harness {
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    final row = find.ancestor(of: target.first, matching: find.byType(Row));
+    final row = find.ancestor(
+      of: target.first,
+      matching: find.byType(ListTile),
+    );
     final checkbox = find.descendant(
       of: row.first,
       matching: find.byType(Checkbox),
@@ -2114,7 +2183,16 @@ class _Harness {
     }
     // Restrict to plain Text widgets: the search field also contains the typed
     // query, and tapping it would not open a document.
-    final target = _exactText(title);
+    var target = _exactText(title);
+    if (target.evaluate().isEmpty &&
+        tables.entries.any((entry) => entry.title == title)) {
+      final field = find.byType(TextField).first;
+      await tester.ensureVisible(field);
+      await tester.tap(field);
+      await tester.enterText(field, title);
+      await _settle(tester);
+      target = _exactText(title);
+    }
     try {
       await _waitFor(
         tester,
@@ -2169,7 +2247,7 @@ class _Harness {
   }
 
   Future<void> _newChat(WidgetTester tester, String text) async {
-    final before = results.documents.length;
+    final before = _contentCount;
     final reviewsBefore = capture.reviewCaptures.length;
     await _startChat(tester, text);
     await tester.pump(const Duration(milliseconds: 300));
@@ -2185,7 +2263,7 @@ class _Harness {
       await _waitFor(
         tester,
         () =>
-            results.documents.length != before ||
+            _contentCount != before ||
             capture.reviewCaptures.length != reviewsBefore,
         reason: 'auto record to finish',
       );
@@ -2247,35 +2325,61 @@ class _Harness {
       case 'knowledgeBulk':
         final count = (args['count'] as num).toInt();
         final prefix = args['prefix'] as String? ?? '知识条目';
+        final table = tables.tables.singleWhere(
+          (item) => item.role == TableRole.inboxEvent,
+        );
         for (var index = 0; index < count; index++) {
-          await results.createManual(
-            type: ResultType.knowledge,
-            title: '$prefix $index',
-            body: '第 $index 条知识正文，包含检索关键词 ${args['keyword'] ?? ''}。',
-            tags: const ['批量'],
+          final now = DateTime.now();
+          await tables.createEntry(
+            TableEntryDocument(
+              id: 'nt_${scenario.id}_knowledge_$index',
+              type: TableContentType.note,
+              tableId: table.id,
+              title: '$prefix $index',
+              revision: 1,
+              createdAt: now,
+              updatedAt: now,
+              body: '第 $index 条知识正文，包含检索关键词 ${args['keyword'] ?? ''}。',
+              tags: const ['批量'],
+            ),
           );
         }
       case 'matterTree':
         final title = args['title'] as String? ?? '项目推进';
-        final matter = await results.createManual(
-          type: ResultType.matter,
+        final table = await tables.createTable(
           title: title,
           body: '$title 的要求与背景。',
         );
         for (var index = 0; index < 2; index++) {
-          await results.createManual(
-            type: ResultType.todo,
-            title: '$title 待办 ${index + 1}',
-            due: DateTime.now().add(Duration(days: 1 + index)),
-            matterId: matter.id,
+          final now = DateTime.now();
+          await tables.createEntry(
+            TableEntryDocument(
+              id: 'nt_${scenario.id}_todo_$index',
+              type: TableContentType.todo,
+              tableId: table.id,
+              title: '$title 待办 ${index + 1}',
+              revision: 1,
+              createdAt: now,
+              updatedAt: now,
+              body: '由计划里的事项转换成表内待办。',
+              due: now.add(Duration(days: 1 + index)),
+            ),
           );
         }
-        await results.createManual(
-          type: ResultType.event,
-          title: '$title 会议',
-          start: DateTime.now().add(const Duration(hours: 3)),
-          end: DateTime.now().add(const Duration(hours: 4)),
-          matterId: matter.id,
+        final now = DateTime.now();
+        await tables.createEntry(
+          TableEntryDocument(
+            id: 'nt_${scenario.id}_meeting',
+            type: TableContentType.schedule,
+            tableId: table.id,
+            title: '$title 会议',
+            revision: 1,
+            createdAt: now,
+            updatedAt: now,
+            body: '',
+            start: now.add(const Duration(hours: 3)),
+            end: now.add(const Duration(hours: 4)),
+          ),
         );
       case 'processingCapture':
         await _index!.insertCapture(
@@ -2289,26 +2393,46 @@ class _Harness {
           ),
         );
       case 'mixed':
-        await results.createManual(
-          type: ResultType.matter,
-          title: '综合事项',
-          body: '综合事项正文。',
+        final table = await tables.createTable(title: '综合事项', body: '综合事项正文。');
+        final now = DateTime.now();
+        await tables.createEntry(
+          TableEntryDocument(
+            id: 'nt_${scenario.id}_todo',
+            type: TableContentType.todo,
+            tableId: table.id,
+            title: '综合待办',
+            revision: 1,
+            createdAt: now,
+            updatedAt: now,
+            body: '',
+            due: now.add(const Duration(days: 2)),
+          ),
         );
-        await results.createManual(
-          type: ResultType.todo,
-          title: '综合待办',
-          due: DateTime.now().add(const Duration(days: 2)),
+        await tables.createEntry(
+          TableEntryDocument(
+            id: 'nt_${scenario.id}_schedule',
+            type: TableContentType.schedule,
+            tableId: table.id,
+            title: '综合日程',
+            revision: 1,
+            createdAt: now,
+            updatedAt: now,
+            body: '',
+            start: now.add(const Duration(days: 1, hours: 2)),
+            end: now.add(const Duration(days: 1, hours: 3)),
+          ),
         );
-        await results.createManual(
-          type: ResultType.event,
-          title: '综合日程',
-          start: DateTime.now().add(const Duration(days: 1, hours: 2)),
-          end: DateTime.now().add(const Duration(days: 1, hours: 3)),
-        );
-        await results.createManual(
-          type: ResultType.knowledge,
-          title: '综合知识',
-          body: '综合知识正文。',
+        await tables.createEntry(
+          TableEntryDocument(
+            id: 'nt_${scenario.id}_note',
+            type: TableContentType.note,
+            tableId: table.id,
+            title: '综合知识',
+            revision: 1,
+            createdAt: now,
+            updatedAt: now,
+            body: '综合知识正文。',
+          ),
         );
       default:
         throw StateError('Unsupported seed: $kind');
@@ -2325,18 +2449,21 @@ class _Harness {
         break;
       case 'remoteNew':
         final now = DateTime.now();
-        final remoteDocument = ResultDocument(
-          id: 'kn_remote_${scenario.id.toLowerCase()}',
-          type: ResultType.knowledge,
-          title: title ?? '远端新增知识',
-          status: ResultStatus.canonical,
-          originDevice: 'remote-device',
-          revision: 1,
-          createdAt: now,
-          updatedAt: now,
-          body: '远端新增正文。',
+        final table = tables.tables.singleWhere(
+          (item) => item.role == TableRole.inboxEvent,
         );
-        syncProvider.seed(_codec.encode(remoteDocument), remoteDocument);
+        await tables.createEntry(
+          TableEntryDocument(
+            id: 'nt_remote_${scenario.id.toLowerCase()}',
+            type: TableContentType.note,
+            tableId: table.id,
+            title: title ?? '远端新增知识',
+            revision: 1,
+            createdAt: now,
+            updatedAt: now,
+            body: '远端新增正文。',
+          ),
+        );
       case 'conflict':
         final local = await results.createManual(
           type: ResultType.knowledge,
@@ -2373,7 +2500,7 @@ class _Harness {
     WidgetTester tester, {
     required bool useRemote,
   }) async {
-    await _goto(tester, 'pending');
+    await _goto(tester, 'sync');
     final menu = find.byTooltip('裁决冲突');
     await tester.scrollUntilVisible(
       menu.first,
@@ -2470,18 +2597,30 @@ class _Harness {
           reason: 'case starts with a clean conversation store',
         );
         expect(capture.reviewCaptures, isEmpty);
+      case 'tableEntryCount':
+        expect(
+          tables.entries.length,
+          (args['value'] as num).toInt(),
+          reason: 'table entry count',
+        );
+      case 'tableEntryTitleExists':
+        expect(
+          tables.entries.any((entry) => entry.title == args['value']),
+          isTrue,
+          reason: 'missing table entry "${args['value']}"',
+        );
       case 'resultCount':
         expect(
-          results.documents.length,
+          _contentCount,
           (args['value'] as num).toInt(),
-          reason: 'result count',
+          reason: 'legacy results plus table entries count',
         );
       case 'typeCount':
         final counts = (args['counts'] as Map).cast<String, Object?>();
         for (final entry in counts.entries) {
           final type = ResultType.parse(entry.key);
           expect(
-            results.documents.where((document) => document.type == type).length,
+            _countType(type),
             (entry.value as num).toInt(),
             reason: 'count for ${entry.key}',
           );
@@ -2489,14 +2628,16 @@ class _Harness {
       case 'titleExists':
         final title = args['value'] as String;
         expect(
-          results.documents.any((document) => document.title == title),
+          results.documents.any((document) => document.title == title) ||
+              tables.entries.any((entry) => entry.title == title),
           isTrue,
           reason: 'missing result "$title"',
         );
       case 'titleMissing':
         final title = args['value'] as String;
         expect(
-          results.documents.any((document) => document.title == title),
+          results.documents.any((document) => document.title == title) ||
+              tables.entries.any((entry) => entry.title == title),
           isFalse,
           reason: 'unexpected result "$title"',
         );
@@ -2521,18 +2662,46 @@ class _Harness {
       case 'bodyContains':
         final title = args['title'] as String;
         final needle = args['value'] as String;
-        final match = results.documents.where(
+        final legacyMatch = results.documents.where(
           (document) => document.title == title,
         );
-        expect(match, isNotEmpty, reason: 'missing result "$title"');
-        expect(match.first.body, contains(needle), reason: 'body of "$title"');
+        final tableMatch = tables.entries.where(
+          (entry) => entry.title == title,
+        );
+        final tableDocumentMatch = tables.tables.where(
+          (table) => table.title == title,
+        );
+        expect(
+          legacyMatch.isNotEmpty ||
+              tableMatch.isNotEmpty ||
+              tableDocumentMatch.isNotEmpty,
+          isTrue,
+          reason: 'missing result "$title"',
+        );
+        final body = legacyMatch.isNotEmpty
+            ? legacyMatch.first.body
+            : tableMatch.isNotEmpty
+            ? tableMatch.first.body
+            : tableDocumentMatch.first.body;
+        expect(body, contains(needle), reason: 'body of "$title"');
       case 'todoDone':
         final title = args['title'] as String;
-        final match = results.documents.where(
+        final legacyMatch = results.documents.where(
           (document) => document.title == title,
         );
-        expect(match, isNotEmpty, reason: 'missing todo "$title"');
-        expect(match.first.done, args['value'] == true);
+        final tableMatch = tables.entries.where(
+          (entry) =>
+              entry.title == title && entry.type == TableContentType.todo,
+        );
+        expect(
+          legacyMatch.isNotEmpty || tableMatch.isNotEmpty,
+          isTrue,
+          reason: 'missing todo "$title"',
+        );
+        final done = legacyMatch.isNotEmpty
+            ? legacyMatch.first.done
+            : tableMatch.first.done;
+        expect(done, args['value'] == true);
       case 'themeDark':
         expect(
           preferences.settings.themeMode == ThemePreference.dark,
@@ -2586,7 +2755,7 @@ class _Harness {
             isTrue,
           );
         } else if (scenario.id == 'SEC-006') {
-          expect(find.text('待处理'), findsOneWidget);
+          expect(find.text('表与笔记'), findsWidgets);
         } else if (scenario.id == 'SEC-089') {
           expect(find.byKey(const Key('page_calendar')), findsOneWidget);
         } else {

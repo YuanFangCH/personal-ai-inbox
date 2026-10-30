@@ -6,6 +6,7 @@ import '../../core/models.dart';
 import '../../modules/results/result_library.dart';
 import '../app_scope.dart';
 import '../widgets/common.dart';
+import '../widgets/global_knowledge_candidate_card.dart';
 
 class GlobalKnowledgePage extends StatefulWidget {
   const GlobalKnowledgePage({super.key});
@@ -66,9 +67,18 @@ class _GlobalKnowledgePageState extends State<GlobalKnowledgePage> {
   @override
   Widget build(BuildContext context) {
     final results = _results;
+    final candidates = results?.globalKnowledgeCandidates
+        .where(
+          (candidate) =>
+              candidate.status == GlobalKnowledgeCandidateStatus.pending ||
+              candidate.status == GlobalKnowledgeCandidateStatus.approved ||
+              candidate.status == GlobalKnowledgeCandidateStatus.stale ||
+              candidate.status == GlobalKnowledgeCandidateStatus.failed,
+        )
+        .toList(growable: false) ?? const <GlobalKnowledgeCandidate>[];
     return PageFrame(
       title: '全局知识库',
-      subtitle: '已确认后随成果同步到手机、平板和 Windows',
+      subtitle: '候选在此确认；已确认知识随成果同步到手机、平板和 Windows',
       actions: [
         FilledButton.icon(
           key: const Key('global_knowledge_add'),
@@ -95,7 +105,7 @@ class _GlobalKnowledgePageState extends State<GlobalKnowledgePage> {
                 ),
               ],
             )
-          : _documents.isEmpty
+          : _documents.isEmpty && candidates.isEmpty
           ? const EmptyState(
               icon: Icons.lightbulb_outline,
               title: '还没有全局知识',
@@ -104,6 +114,26 @@ class _GlobalKnowledgePageState extends State<GlobalKnowledgePage> {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (candidates.isNotEmpty) ...[
+                  SectionHeading(
+                    title: '候选确认',
+                    trailing: Text('${candidates.length} 项'),
+                  ),
+                  const SizedBox(height: 8),
+                  for (final candidate in candidates) ...[
+                    GlobalKnowledgeCandidateCard(
+                      candidate: candidate,
+                      results: results!,
+                      showActions:
+                          candidate.status == GlobalKnowledgeCandidateStatus.pending,
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                ],
+                if (_documents.isNotEmpty) ...[
+                  SectionHeading(title: '已确认的全局知识'),
+                  const SizedBox(height: 8),
+                ],
                 for (final document in _documents) ...[
                   _KnowledgeTile(
                     document: document,

@@ -79,8 +79,8 @@ const secretaryScenarioMaps = <Map<String, Object?>>[
     'id': "SEC-006",
     'platform': "tablet",
     'category': "navigation",
-    'title': "独立待处理页处理捕获、草稿和冲突",
-    'assertions': "入口可达、三类动作各生效，侧栏仅管理会话",
+    'title': "表与笔记、全局知识和同步入口分别可达",
+    'assertions': "表页承接捕获/草稿，全局候选在全局知识库，同步冲突在同步页",
     'steps': [
       "navigateInbox",
       "baselineState",

@@ -7,10 +7,8 @@ import 'pages/conversation_page.dart';
 import 'pages/global_knowledge_page.dart';
 import 'pages/home_page.dart';
 import 'pages/inbox_page.dart';
-import 'pages/knowledge_page.dart';
 import 'pages/tables_page.dart';
 import 'pages/table_migration_read_only_page.dart';
-import 'pages/pending_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/sync_page.dart';
 import 'theme/app_design_tokens.dart';
@@ -21,7 +19,7 @@ enum AppPage {
   inbox('秘书', Icons.forum_outlined),
   calendar('日历', Icons.calendar_month_outlined),
   matters('表与笔记', Icons.table_chart_outlined),
-  knowledge('知识', Icons.menu_book_outlined),
+  knowledge('全局知识库', Icons.lightbulb_outline),
   sync('同步', Icons.sync_outlined),
   settings('设置', Icons.tune_outlined);
 
@@ -100,7 +98,7 @@ class _AppShellState extends State<AppShell> {
             runtime.conversations,
           ],
           AppPage.calendar => [runtime.results, runtime.preferences],
-          AppPage.matters => [runtime.tables],
+          AppPage.matters => [runtime.tables, runtime.capture, runtime.results],
           AppPage.knowledge => const <Listenable>[],
           AppPage.sync => [runtime.results, runtime.sync],
           AppPage.settings => [runtime.results, runtime.preferences],
@@ -256,7 +254,7 @@ class _AppShellState extends State<AppShell> {
       ),
       AppPage.calendar => const CalendarPage(),
       AppPage.matters => const TablesPage(),
-      AppPage.knowledge => const KnowledgePage(),
+      AppPage.knowledge => const GlobalKnowledgePage(),
       AppPage.sync => const SyncPage(),
       AppPage.settings => const SettingsPage(),
     };
@@ -270,6 +268,7 @@ class _AppShellState extends State<AppShell> {
       'knowledge' => AppPage.knowledge,
       'settings' => AppPage.settings,
       'sync' => AppPage.sync,
+      'pending' => AppPage.matters,
       _ => null,
     };
     if (page != null) {
@@ -278,7 +277,6 @@ class _AppShellState extends State<AppShell> {
     }
     final route = switch (destination) {
       'global_knowledge' => const GlobalKnowledgePage(),
-      'pending' => const PendingPage(),
       _ => null,
     };
     if (route != null) {

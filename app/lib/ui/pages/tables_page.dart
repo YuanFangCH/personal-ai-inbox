@@ -5,6 +5,8 @@ import '../../modules/tables/table_library.dart';
 import '../app_scope.dart';
 import '../theme/app_design_tokens.dart';
 import '../widgets/common.dart';
+import '../widgets/review_queue.dart';
+import '../widgets/legacy_draft_queue.dart';
 import 'table_detail_page.dart';
 
 class TablesPage extends StatefulWidget {
@@ -27,15 +29,32 @@ class _TablesPageState extends State<TablesPage> {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: AppScope.tables(context),
+      animation: Listenable.merge([
+        AppScope.tables(context),
+        AppScope.capture(context),
+        AppScope.results(context),
+      ]),
       builder: (context, _) {
         final library = AppScope.tables(context);
+        final matchingEntries = _normalizedQuery.isEmpty
+            ? const <TableEntryDocument>[]
+            : library.entries
+                  .where(
+                    (entry) =>
+                        entry.title.toLowerCase().contains(_normalizedQuery) ||
+                        entry.body.toLowerCase().contains(_normalizedQuery),
+                  )
+                  .toList(growable: false);
+        final matchingTableIds = matchingEntries
+            .map((entry) => entry.tableId)
+            .toSet();
         final tables = library.tables
             .where((table) {
               if (_normalizedQuery.isEmpty) return true;
               final query = _normalizedQuery;
               return table.title.toLowerCase().contains(query) ||
-                  table.body.toLowerCase().contains(query);
+                  table.body.toLowerCase().contains(query) ||
+                  matchingTableIds.contains(table.id);
             })
             .toList(growable: false);
         final defaults = tables
@@ -77,6 +96,43 @@ class _TablesPageState extends State<TablesPage> {
                 ),
               ),
               const SizedBox(height: 20),
+              if (matchingEntries.isNotEmpty) ...[
+                const SectionHeading(title: '匹配内容'),
+                const SizedBox(height: 8),
+                for (final entry in matchingEntries) ...[
+                  ListTile(
+                    key: ValueKey('table_search_entry_${entry.id}'),
+                    leading: const Icon(Icons.notes_outlined),
+                    title: Text(entry.title),
+                    subtitle: Text(
+                      '${library.findTable(entry.tableId)?.title ?? entry.tableId} · ${_entryTypeLabel(entry.type)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => TableEntryEditorPage(
+                          tableId: entry.tableId,
+                          type: entry.type,
+                          entry: entry,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Divider(height: 1),
+                ],
+                const SizedBox(height: 12),
+              ],
+              if (AppScope.capture(context).reviewCaptures.isNotEmpty) ...[
+                const CaptureReviewQueue(),
+                const SizedBox(height: 16),
+              ],
+              if (AppScope.results(context).draftDocuments.isNotEmpty) ...[
+                LegacyDraftQueue(
+                  documents: AppScope.results(context).draftDocuments,
+                ),
+                const SizedBox(height: 16),
+              ],
               if (tables.isEmpty)
                 EmptyState(
                   icon: Icons.menu_book_outlined,
@@ -503,3 +559,10 @@ class _TableCard extends StatelessWidget {
 }
 
 String _formatDate(DateTime value) => '${value.month}月${value.day}日';
+
+String _entryTypeLabel(TableContentType type) => switch (type) {
+  TableContentType.note => '笔记',
+  TableContentType.todo => '待办',
+  TableContentType.schedule => '日程',
+  TableContentType.event => '事件',
+};

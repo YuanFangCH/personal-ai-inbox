@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_ai_inbox/app.dart';
 import 'package:personal_ai_inbox/bootstrap/app_runtime.dart';
+import 'package:personal_ai_inbox/core/models.dart';
 import 'package:personal_ai_inbox/core/table_models.dart';
 import 'package:personal_ai_inbox/data/memory_index_database.dart';
 import 'package:personal_ai_inbox/data/memory_vault_store.dart';
@@ -339,6 +340,83 @@ void main() {
     expect(moved.customValues['fld_course_target'], '信号与系统');
     expect(find.text('复习表'), findsWidgets);
 
+    await tester.pumpWidget(const SizedBox.shrink());
+    await runtime.shutdown();
+  });
+
+  testWidgets('legacy drafts remain readable and can be copied into a table', (
+    tester,
+  ) async {
+    final runtime = await AppRuntime.bootstrap(
+      vaultOverride: MemoryVaultStore(),
+      indexOverride: MemoryIndexDatabase(),
+      settingsOverride: FakeSettingsService(deviceId: 'legacy-draft-route'),
+    );
+    final draft = await runtime.results.createManual(
+      type: ResultType.knowledge,
+      title: '旧草稿复习计划',
+      body: '周三整理考试资料。',
+      status: ResultStatus.draft,
+    );
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav_more')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('sheet_nav_matters')));
+    await tester.pumpAndSettle();
+    expect(find.text('旧格式草稿'), findsOneWidget);
+    await tester.tap(find.byKey(Key('legacy_draft_copy_${draft.id}')));
+    await tester.pumpAndSettle();
+    final copied = runtime.tables.entries.singleWhere(
+      (entry) => entry.extensionFields['legacy_source_id'] == draft.id,
+    );
+    expect(copied.type, TableContentType.note);
+    expect(copied.body, draft.body);
+    expect(runtime.results.findDocument(draft.id)!.status, ResultStatus.draft);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await runtime.shutdown();
+  });
+
+  testWidgets('table search finds entry titles and body across tables', (
+    tester,
+  ) async {
+    final runtime = await AppRuntime.bootstrap(
+      vaultOverride: MemoryVaultStore(),
+      indexOverride: MemoryIndexDatabase(),
+      settingsOverride: FakeSettingsService(deviceId: 'table-entry-search-ui'),
+    );
+    final table = runtime.tables.tables.singleWhere(
+      (item) => item.role == TableRole.inboxEvent,
+    );
+    await runtime.tables.createEntry(
+      TableEntryDocument(
+        id: 'nt_search_entry_ui',
+        type: TableContentType.note,
+        tableId: table.id,
+        title: '期中考试资料',
+        revision: 1,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        body: '查找关键词：滨海教室。',
+      ),
+    );
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav_more')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('sheet_nav_matters')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, '滨海教室');
+    await tester.pumpAndSettle();
+    expect(find.text('期中考试资料'), findsOneWidget);
+    expect(find.byKey(const Key('table_search_entry_nt_search_entry_ui')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('table_search_entry_nt_search_entry_ui')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('table_entry_title')), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.byKey(const Key('table_entry_title'))).controller!.text,
+      '期中考试资料',
+    );
     await tester.pumpWidget(const SizedBox.shrink());
     await runtime.shutdown();
   });

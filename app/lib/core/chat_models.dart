@@ -105,9 +105,10 @@ class TableChatAction {
 
   bool get canUndo =>
       status == TableChatActionStatus.applied &&
-      recoveryBatchId != null &&
       undoUntil != null &&
-      undoUntil!.isAfter(DateTime.now());
+      undoUntil!.isAfter(DateTime.now()) &&
+      (recoveryBatchId != null ||
+          (operation == 'content.create' && entryId != null));
 
   TableChatAction copyWith({
     TableChatActionStatus? status,
