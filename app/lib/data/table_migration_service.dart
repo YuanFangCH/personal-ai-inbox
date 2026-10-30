@@ -10,6 +10,10 @@ import 'index_database.dart';
 import 'table_repository.dart';
 import 'vault_store.dart';
 
+typedef TableMigrationWriteBarrier = Future<TableMigrationReceipt> Function(
+  Future<TableMigrationReceipt> Function() operation,
+);
+
 /// Plans and copies accepted legacy Markdown into the table format.
 ///
 /// Legacy files are retained. Promotion only adds table-format files and is
@@ -24,13 +28,17 @@ class TableMigrationService {
     DateTime Function()? clock,
     Future<String> Function(String migrationId)? createDatabaseSnapshot,
     Future<int> Function()? estimateDatabaseSnapshotBytes,
+    Future<int?> Function(String vaultRoot)? availableSpaceProbe,
+    TableMigrationWriteBarrier? runWithWriteBarrier,
   }) : _vault = vault,
        _index = index,
        _legacyCodec = legacyCodec,
        _tableCodec = tableCodec,
        _clock = clock ?? DateTime.now,
        _createDatabaseSnapshot = createDatabaseSnapshot,
-       _estimateDatabaseSnapshotBytes = estimateDatabaseSnapshotBytes;
+       _estimateDatabaseSnapshotBytes = estimateDatabaseSnapshotBytes,
+       _availableSpaceProbe = availableSpaceProbe,
+       _runWithWriteBarrier = runWithWriteBarrier;
 
   final VaultStore _vault;
   final IndexDatabase _index;
@@ -39,6 +47,8 @@ class TableMigrationService {
   final DateTime Function() _clock;
   final Future<String> Function(String migrationId)? _createDatabaseSnapshot;
   final Future<int> Function()? _estimateDatabaseSnapshotBytes;
+  final Future<int?> Function(String vaultRoot)? _availableSpaceProbe;
+  final TableMigrationWriteBarrier? _runWithWriteBarrier;
 
   Future<TableMigrationPreview> preview({
     DateTime? now,
@@ -46,6 +56,16 @@ class TableMigrationService {
   }) => _vault.exclusive(() async {
     final migrationTime = (now ?? _clock()).toLocal();
     final issues = <TableMigrationIssue>[];
+    var measuredAvailableBytes = availableBytes;
+    if (measuredAvailableBytes == null && _availableSpaceProbe != null) {
+      try {
+        measuredAvailableBytes = await _availableSpaceProbe(
+          await _vault.describeRoot(),
+        );
+      } on Object catch (error) {
+        issues.add(TableMigrationIssue('vault', '读取磁盘可用空间失败：$error'));
+      }
+    }
     final allMarkdownPaths =
         (await _vault.listMarkdownFiles())
             .where((path) => !path.startsWith('vault/.table-migrations/'))
@@ -272,15 +292,15 @@ class TableMigrationService {
         estimatedOutputBytes * 2 +
         (estimatedDatabaseBackupBytes ?? 0) +
         4096;
-    if (availableBytes == null) {
+    if (measuredAvailableBytes == null) {
       issues.add(
         const TableMigrationIssue('vault', '未提供 vault 可用磁盘空间读数，拒绝执行迁移。'),
       );
-    } else if (availableBytes < estimatedRequiredBytes) {
+    } else if (measuredAvailableBytes < estimatedRequiredBytes) {
       issues.add(
         TableMigrationIssue(
           'vault',
-          '可用空间不足：预计需要 $estimatedRequiredBytes bytes，当前 $availableBytes bytes。',
+          '可用空间不足：预计需要 $estimatedRequiredBytes bytes，当前 $measuredAvailableBytes bytes。',
         ),
       );
     }
@@ -288,6 +308,9 @@ class TableMigrationService {
       issues.add(
         const TableMigrationIssue('databases', '数据库、会话与设置备份回调未接入，拒绝执行迁移。'),
       );
+    }
+    if (_runWithWriteBarrier == null) {
+      issues.add(const TableMigrationIssue('runtime', '应用级写暂停门未接入，拒绝执行迁移。'));
     }
     return TableMigrationPreview._(
       migrationId: migrationId,
@@ -306,13 +329,18 @@ class TableMigrationService {
       estimatedOutputBytes: estimatedOutputBytes,
       estimatedDatabaseBackupBytes: estimatedDatabaseBackupBytes,
       estimatedRequiredBytes: estimatedRequiredBytes,
-      availableBytes: availableBytes,
+      availableBytes: measuredAvailableBytes,
     );
   });
 
-  Future<TableMigrationReceipt> apply(TableMigrationPreview plan) =>
-      _vault.exclusive(() async {
-        if (!plan.canApply) throw StateError('迁移预检存在阻断项，拒绝写入。');
+  Future<TableMigrationReceipt> apply(TableMigrationPreview plan) async {
+    if (!plan.canApply) throw StateError('迁移预检存在阻断项，拒绝写入。');
+    final runWithWriteBarrier = _runWithWriteBarrier;
+    if (runWithWriteBarrier == null) {
+      throw StateError('应用级写暂停门未接入，拒绝迁移。');
+    }
+    return runWithWriteBarrier(
+      () => _vault.exclusive(() async {
         final createDatabaseSnapshot = _createDatabaseSnapshot;
         if (createDatabaseSnapshot == null) {
           throw StateError('数据库、会话与设置备份未接入，拒绝迁移。');
@@ -376,7 +404,9 @@ class TableMigrationService {
         journal['completed_at'] = DateTime.now().toIso8601String();
         await _vault.write(journalPath, jsonEncode(journal));
         return TableMigrationReceipt.fromJournal(journal);
-      });
+      }),
+    );
+  }
 
   Future<void> rollback(String migrationId) => _vault.exclusive(() async {
     final path = _journalPath(migrationId);

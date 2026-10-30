@@ -25,6 +25,8 @@ void main() {
         index: index,
         createDatabaseSnapshot: (id) async => 'database-backups/$id.json',
         estimateDatabaseSnapshotBytes: () async => 128,
+        availableSpaceProbe: (path) async => availableBytes,
+        runWithWriteBarrier: (operation) => operation(),
       );
       final matter = _legacy(
         id: 'matter_course',
@@ -87,10 +89,7 @@ void main() {
         await vault.write(document.markdownPath, legacyCodec.encode(document));
       }
 
-      final plan = await migration.preview(
-        now: now,
-        availableBytes: availableBytes,
-      );
+      final plan = await migration.preview(now: now);
       expect(
         plan.canApply,
         isTrue,
@@ -98,6 +97,7 @@ void main() {
             .map((issue) => '${issue.path}: ${issue.message}')
             .join('\n'),
       );
+      expect(plan.availableBytes, availableBytes);
       expect(plan.tables.map((table) => table.id), [matter.id]);
       expect(
         {
@@ -170,6 +170,7 @@ void main() {
         index: index,
         createDatabaseSnapshot: (id) async => 'database-backups/$id.json',
         estimateDatabaseSnapshotBytes: () async => 128,
+        runWithWriteBarrier: (operation) => operation(),
       );
       final missingMatter = _legacy(
         id: 'todo_orphan',
@@ -269,6 +270,7 @@ void main() {
       index: index,
       createDatabaseSnapshot: (id) async => 'database-backups/$id.json',
       estimateDatabaseSnapshotBytes: () async => 128,
+      runWithWriteBarrier: (operation) => operation(),
     );
     final matter = _legacy(
       id: 'matter_replay',
@@ -317,6 +319,7 @@ void main() {
       index: index,
       createDatabaseSnapshot: (id) async => 'database-backups/$id.json',
       estimateDatabaseSnapshotBytes: () async => 128,
+      runWithWriteBarrier: (operation) => operation(),
     );
     final matter = _legacy(
       id: 'matter_existing_target',
@@ -360,6 +363,7 @@ void main() {
         index: index,
         createDatabaseSnapshot: (id) async => 'database-backups/$id.json',
         estimateDatabaseSnapshotBytes: () async => 128,
+        runWithWriteBarrier: (operation) => operation(),
       );
       final matter = _legacy(
         id: 'matter_low_space',
@@ -384,6 +388,8 @@ void main() {
       final withoutDatabaseBackup = TableMigrationService(
         vault: vault,
         index: index,
+        estimateDatabaseSnapshotBytes: () async => 128,
+        runWithWriteBarrier: (operation) => operation(),
       );
       final noBackupPlan = await withoutDatabaseBackup.preview(
         now: now,
@@ -396,6 +402,24 @@ void main() {
       );
       await expectLater(
         withoutDatabaseBackup.apply(noBackupPlan),
+        throwsStateError,
+      );
+
+      final withoutWriteBarrier = TableMigrationService(
+        vault: vault,
+        index: index,
+        createDatabaseSnapshot: (id) async => 'database-backups/$id.json',
+        estimateDatabaseSnapshotBytes: () async => 128,
+        availableSpaceProbe: (path) async => availableBytes,
+      );
+      final noBarrierPlan = await withoutWriteBarrier.preview(now: now);
+      expect(noBarrierPlan.canApply, isFalse);
+      expect(
+        noBarrierPlan.issues.any((issue) => issue.path == 'runtime'),
+        isTrue,
+      );
+      await expectLater(
+        withoutWriteBarrier.apply(noBarrierPlan),
         throwsStateError,
       );
     },

@@ -3,6 +3,7 @@ package com.yuanfang.aitext.personal_ai_inbox
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.StatFs
 import android.provider.OpenableColumns
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -27,6 +28,13 @@ class MainActivity : FlutterActivity() {
             if (call.method == "getInitialPayload") {
                 result.success(pendingSharedPayload)
                 pendingSharedPayload = null
+            } else if (call.method == "getAvailableSpaceBytes") {
+                val path = call.argument<String>("path") ?: filesDir.absolutePath
+                try {
+                    result.success(StatFs(path).availableBytes)
+                } catch (error: Exception) {
+                    result.error("disk_space_unavailable", error.message, null)
+                }
             } else {
                 result.notImplemented()
             }
