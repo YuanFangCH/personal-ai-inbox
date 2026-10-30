@@ -1,6 +1,6 @@
 # 表与笔记改版：逐步执行计划
 
-日期：2026-10-30。状态：执行中。P0契约/文字稿、P1模型/codec和P2本地索引/repository/runtime已完成首轮；28项定向测试、APK构建和Android15 AVD默认表启动/重启smoke通过。Flutter integration runner的VM Service连接、删除/恢复事务、迁移及P3–P9仍待执行。
+日期：2026-10-30。状态：执行中。P0契约/文字稿、P1模型/codec、P2本地索引/repository/runtime和P3a恢复账本schema、P3b删除/恢复/到期处理已完成并做本地故障注入验证；P3c事件联动/同步兼容、迁移及后续UI/AI工作待执行。Android15 AVD默认表重启smoke通过；Flutter integration runner的VM Service连接问题仍待处理。
 
 ## 1. 执行约定
 
@@ -72,6 +72,8 @@ P0 建议默认值（尚非用户决定）：
 验证：`flutter test test/sqlite_index_database_test.dart test/result_repository_test.dart test/result_library_test.dart`；按实际影响补充 `io_vault_store_test.dart`。
 
 ## 5. P3：回收站、联动与协议（步骤 25–33）
+
+P3a（删除恢复账本与索引 schema）、P3b（删除/恢复/到期清理）、P3c（事件联动和同步兼容）已在本轮合并实现；schema 当前为 v9。恢复材料及故障边界通过局部故障注入验证后，才进入后续页面接线。
 
 | 步骤 | 执行动作与落点 | 完成条件 |
 |---|---|---|

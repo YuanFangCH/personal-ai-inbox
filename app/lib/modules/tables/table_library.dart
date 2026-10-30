@@ -29,12 +29,16 @@ class TableLibrary extends ChangeNotifier {
   }
 
   Future<void> refresh({String? tableId}) async {
+    await _repository.purgeExpiredRecoveryBatches();
     _tables = List.unmodifiable(await _repository.listTables());
     _entries = List.unmodifiable(
       await _repository.listEntries(tableId: tableId),
     );
     notifyListeners();
   }
+
+  Future<List<TableRecoveryBatch>> recoveryBatches() =>
+      _repository.recoveryBatches();
 
   Future<List<TableDocument>> searchTables({
     required String query,
@@ -95,6 +99,30 @@ class TableLibrary extends ChangeNotifier {
     return moved;
   }
 
+  Future<ScheduleChangeResult> changeScheduleFromEvent({
+    required String scheduleId,
+    required int expectedRevision,
+    required DateTime start,
+    DateTime? end,
+    required String eventTitle,
+    required String eventBody,
+    required String idempotencyKey,
+    DateTime? now,
+  }) async {
+    final result = await _repository.changeScheduleFromEvent(
+      scheduleId: scheduleId,
+      expectedRevision: expectedRevision,
+      start: start,
+      end: end,
+      eventTitle: eventTitle,
+      eventBody: eventBody,
+      idempotencyKey: idempotencyKey,
+      now: now,
+    );
+    await refresh(tableId: result.schedule.tableId);
+    return result;
+  }
+
   Future<List<TableEntryDocument>> searchEntries({
     required String query,
     String? tableId,
@@ -112,4 +140,45 @@ class TableLibrary extends ChangeNotifier {
     offset: offset,
     limit: limit,
   );
+
+  Future<TableRecoveryBatch> deleteEntry({
+    required String id,
+    required int expectedRevision,
+    String? idempotencyKey,
+    DateTime? now,
+  }) async {
+    final batch = await _repository.deleteEntry(
+      id: id,
+      expectedRevision: expectedRevision,
+      idempotencyKey: idempotencyKey,
+      now: now,
+    );
+    await refresh(tableId: batch.tableId);
+    return batch;
+  }
+
+  Future<TableRecoveryBatch> deleteTable({
+    required String id,
+    required int expectedRevision,
+    String? idempotencyKey,
+    DateTime? now,
+  }) async {
+    final batch = await _repository.deleteTable(
+      id: id,
+      expectedRevision: expectedRevision,
+      idempotencyKey: idempotencyKey,
+      now: now,
+    );
+    await refresh();
+    return batch;
+  }
+
+  Future<TableRecoveryBatch> restoreRecoveryBatch(
+    String id, {
+    DateTime? now,
+  }) async {
+    final batch = await _repository.restoreRecoveryBatch(id, now: now);
+    await refresh(tableId: batch.tableId);
+    return batch;
+  }
 }

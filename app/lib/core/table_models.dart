@@ -238,3 +238,53 @@ class TableEntryDocument {
 }
 
 const _tableUnset = Object();
+
+enum TableRecoveryScope { entry, table, scheduleChange }
+
+enum TableRecoveryStatus {
+  prepared,
+  active,
+  restoring,
+  restored,
+  expired,
+  failed,
+}
+
+class TableRecoveryBatch {
+  const TableRecoveryBatch({
+    required this.id,
+    required this.scope,
+    required this.tableId,
+    required this.status,
+    required this.createdAt,
+    required this.expiresAt,
+    required this.manifestJson,
+    this.error,
+  });
+
+  final String id;
+  final TableRecoveryScope scope;
+  final String tableId;
+  final TableRecoveryStatus status;
+  final DateTime createdAt;
+  final DateTime expiresAt;
+  final String manifestJson;
+  final String? error;
+
+  TableRecoveryBatch copyWith({
+    TableRecoveryStatus? status,
+    String? manifestJson,
+    Object? error = _recoveryUnset,
+  }) => TableRecoveryBatch(
+    id: id,
+    scope: scope,
+    tableId: tableId,
+    status: status ?? this.status,
+    createdAt: createdAt,
+    expiresAt: expiresAt,
+    manifestJson: manifestJson ?? this.manifestJson,
+    error: identical(error, _recoveryUnset) ? this.error : error as String?,
+  );
+}
+
+const _recoveryUnset = Object();

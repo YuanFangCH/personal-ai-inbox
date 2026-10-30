@@ -63,6 +63,14 @@ abstract interface class IndexDatabase {
     bool includeDeleted = false,
   });
 
+  Future<void> upsertTableRecoveryBatch(TableRecoveryBatch batch);
+
+  Future<TableRecoveryBatch?> findTableRecoveryBatch(String id);
+
+  Future<List<TableRecoveryBatch>> listTableRecoveryBatches({
+    bool activeOnly = false,
+  });
+
   Future<void> insertCapture(CaptureRecord capture);
 
   Future<void> updateCapture(CaptureRecord capture);

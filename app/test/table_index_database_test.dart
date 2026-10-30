@@ -158,7 +158,7 @@ void main() {
     await database.open();
     addTearDown(database.close);
     final check = sqlite3.open(path);
-    expect(check.select('PRAGMA user_version').single['user_version'], 7);
+    expect(check.select('PRAGMA user_version').single['user_version'], 9);
     expect(
       check.select('SELECT name FROM sqlite_master WHERE name = ?', [
         'notebook_tables',
@@ -166,5 +166,107 @@ void main() {
       hasLength(1),
     );
     check.close();
+  });
+
+  test('SQLite persists and filters recovery ledger states', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'table-recovery-index',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final path = '${directory.path}/index.sqlite3';
+    final now = DateTime.parse('2026-10-29T09:00:00+08:00');
+    final batch = TableRecoveryBatch(
+      id: 'rb_delete_exam',
+      scope: TableRecoveryScope.table,
+      tableId: 'tb_exam',
+      status: TableRecoveryStatus.prepared,
+      createdAt: now,
+      expiresAt: now.add(const Duration(days: 30)),
+      manifestJson: '{"objects":[]}',
+    );
+    final first = SqliteIndexDatabase(path);
+    await first.open();
+    await first.upsertTableRecoveryBatch(batch);
+    expect(
+      (await first.findTableRecoveryBatch(batch.id))?.status,
+      TableRecoveryStatus.prepared,
+    );
+    expect(
+      await first.listTableRecoveryBatches(activeOnly: true),
+      hasLength(1),
+    );
+    await first.upsertTableRecoveryBatch(
+      batch.copyWith(status: TableRecoveryStatus.restored),
+    );
+    expect(await first.listTableRecoveryBatches(activeOnly: true), isEmpty);
+    await first.close();
+
+    final reopened = SqliteIndexDatabase(path);
+    await reopened.open();
+    final stored = await reopened.findTableRecoveryBatch(batch.id);
+    expect(stored?.scope, TableRecoveryScope.table);
+    expect(stored?.status, TableRecoveryStatus.restored);
+    expect(stored?.manifestJson, '{"objects":[]}');
+    await reopened.close();
+  });
+
+  test('SQLite v8 recovery scope migration preserves batches and accepts schedule changes', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'table-recovery-v8-migration',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final path = '${directory.path}/index.sqlite3';
+    final raw = sqlite3.open(path);
+    raw.execute('''
+      CREATE TABLE table_recovery_batches (
+        id TEXT PRIMARY KEY,
+        scope TEXT NOT NULL CHECK (scope IN ('entry', 'table')),
+        table_id TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (
+          status IN ('prepared', 'active', 'restoring', 'restored', 'expired', 'failed')
+        ),
+        created_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        manifest_json TEXT NOT NULL,
+        error TEXT
+      )
+    ''');
+    raw.execute(
+      'CREATE INDEX table_recovery_expiration ON table_recovery_batches(status, expires_at)',
+    );
+    raw.execute('''
+      INSERT INTO table_recovery_batches VALUES (
+        'rb_keep', 'table', 'tb_exam', 'active',
+        '2026-10-29T01:00:00.000Z', '2026-11-28T01:00:00.000Z', '{"objects":[]}', NULL
+      )
+    ''');
+    raw.execute('PRAGMA user_version = 8');
+    raw.close();
+
+    final database = SqliteIndexDatabase(path);
+    await database.open();
+    expect(
+      (await database.findTableRecoveryBatch('rb_keep'))?.scope,
+      TableRecoveryScope.table,
+    );
+    final scheduleChange = TableRecoveryBatch(
+      id: 'rb_schedule_change',
+      scope: TableRecoveryScope.scheduleChange,
+      tableId: 'tb_exam',
+      status: TableRecoveryStatus.active,
+      createdAt: DateTime.parse('2026-10-29T09:00:00+08:00'),
+      expiresAt: DateTime.parse('2026-10-29T09:10:00+08:00'),
+      manifestJson: '{"objects":[]}',
+    );
+    await database.upsertTableRecoveryBatch(scheduleChange);
+    await database.close();
+
+    final migrated = sqlite3.open(path);
+    expect(migrated.select('PRAGMA user_version').single['user_version'], 9);
+    expect(
+      migrated.select('SELECT id FROM table_recovery_batches ORDER BY id'),
+      hasLength(2),
+    );
+    migrated.close();
   });
 }

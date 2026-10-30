@@ -15,7 +15,7 @@ void main() {
     final versionDatabase = sqlite3.open('${directory.path}/index.sqlite3');
     expect(
       versionDatabase.select('PRAGMA user_version').single['user_version'],
-      7,
+      9,
     );
     versionDatabase.close();
 
@@ -184,7 +184,7 @@ void main() {
     final migratedVersion = sqlite3.open(path);
     expect(
       migratedVersion.select('PRAGMA user_version').single['user_version'],
-      7,
+      9,
     );
     migratedVersion.close();
     await migrated.upsertReversibleAction(

@@ -8,6 +8,7 @@ class MemoryIndexDatabase implements IndexDatabase {
   final Map<String, IndexedResult> _results = {};
   final Map<String, IndexedTable> _tables = {};
   final Map<String, IndexedTableEntry> _tableEntries = {};
+  final Map<String, TableRecoveryBatch> _tableRecoveryBatches = {};
   final Map<String, CaptureRecord> _captures = {};
   final Map<String, IdempotentOperation> _operations = {};
   final Map<String, SyncConflictRecord> _conflicts = {};
@@ -202,6 +203,30 @@ class MemoryIndexDatabase implements IndexDatabase {
     return entries.skip(safeOffset).take(limit.clamp(1, 100)).toList();
   }
 
+  @override
+  Future<void> upsertTableRecoveryBatch(TableRecoveryBatch batch) async {
+    _tableRecoveryBatches[batch.id] = batch;
+  }
+
+  @override
+  Future<TableRecoveryBatch?> findTableRecoveryBatch(String id) async =>
+      _tableRecoveryBatches[id];
+
+  @override
+  Future<List<TableRecoveryBatch>> listTableRecoveryBatches({
+    bool activeOnly = false,
+  }) async =>
+      _tableRecoveryBatches.values
+          .where(
+            (batch) =>
+                !activeOnly ||
+                batch.status == TableRecoveryStatus.prepared ||
+                batch.status == TableRecoveryStatus.active ||
+                batch.status == TableRecoveryStatus.restoring,
+          )
+          .toList(growable: false)
+        ..sort((left, right) => right.createdAt.compareTo(left.createdAt));
+
   bool _matchesFieldFilter(
     String encodedValues,
     MapEntry<String, Object?> filter,
@@ -240,6 +265,7 @@ class MemoryIndexDatabase implements IndexDatabase {
     _results.clear();
     _tables.clear();
     _tableEntries.clear();
+    _tableRecoveryBatches.clear();
     _captures.clear();
   }
 

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -8,6 +9,7 @@ import 'package:personal_ai_inbox/data/memory_vault_store.dart';
 import 'package:personal_ai_inbox/data/io_vault_store.dart';
 import 'package:personal_ai_inbox/data/sqlite_index_database.dart';
 import 'package:personal_ai_inbox/data/table_repository.dart';
+import 'package:personal_ai_inbox/data/vault_store.dart';
 
 void main() {
   test(
@@ -167,6 +169,507 @@ void main() {
     );
   });
 
+  test('deletes and restores one entry inside the short undo window', () async {
+    final vault = MemoryVaultStore();
+    final index = MemoryIndexDatabase();
+    final repository = TableRepository(vault: vault, index: index);
+    await repository.initialize();
+    final table = await repository.createTable(title: '单条撤销');
+    final now = DateTime.parse('2026-10-29T09:00:00+08:00');
+    final note = TableEntryDocument(
+      id: 'nt_single_undo',
+      type: TableContentType.note,
+      tableId: table.id,
+      title: '可撤销内容',
+      revision: 1,
+      createdAt: now,
+      updatedAt: now,
+      body: '保留正文',
+    );
+    await repository.createEntry(note);
+
+    final batch = await repository.deleteEntry(
+      id: note.id,
+      expectedRevision: 1,
+      idempotencyKey: 'single-delete-once',
+      now: now,
+    );
+    expect(batch.scope, TableRecoveryScope.entry);
+    expect((await repository.readEntry(note.id))?.deleted, isTrue);
+    expect(
+      (await repository.deleteEntry(
+        id: note.id,
+        expectedRevision: 1,
+        idempotencyKey: 'single-delete-once',
+        now: now,
+      )).id,
+      batch.id,
+    );
+
+    final restored = await repository.restoreRecoveryBatch(
+      batch.id,
+      now: now.add(const Duration(minutes: 9)),
+    );
+    final entry = await repository.readEntry(note.id);
+    expect(restored.status, TableRecoveryStatus.restored);
+    expect(entry?.deleted, isFalse);
+    expect(entry?.id, note.id);
+    expect(entry?.revision, 3);
+    expect(entry?.body, note.body);
+
+    final expiringEntry = TableEntryDocument(
+      id: 'nt_single_expiring',
+      type: TableContentType.note,
+      tableId: note.tableId,
+      title: '短期撤销超时',
+      revision: 1,
+      createdAt: now,
+      updatedAt: now,
+      body: note.body,
+    );
+    await repository.createEntry(expiringEntry);
+    final expiringBatch = await repository.deleteEntry(
+      id: expiringEntry.id,
+      expectedRevision: 1,
+      idempotencyKey: 'single-delete-expiring',
+      now: now,
+    );
+    await expectLater(
+      repository.restoreRecoveryBatch(
+        expiringBatch.id,
+        now: now.add(const Duration(minutes: 10)),
+      ),
+      throwsStateError,
+    );
+    expect((await repository.readEntry(expiringEntry.id))?.body, isEmpty);
+  });
+
+  test(
+    'deletes a custom table as one 30-day batch and protects defaults',
+    () async {
+      final vault = MemoryVaultStore();
+      final index = MemoryIndexDatabase();
+      final repository = TableRepository(vault: vault, index: index);
+      await repository.initialize();
+      final now = DateTime.parse('2026-10-29T09:00:00+08:00');
+      final table = await repository.createTable(title: '考试', body: '考试说明');
+      final entry = TableEntryDocument(
+        id: 'nt_exam_notice',
+        type: TableContentType.note,
+        tableId: table.id,
+        title: '地点通知',
+        revision: 1,
+        createdAt: now,
+        updatedAt: now,
+        body: '三教101',
+      );
+      await repository.createEntry(entry);
+
+      final batch = await repository.deleteTable(
+        id: table.id,
+        expectedRevision: 1,
+        idempotencyKey: 'delete-exam-once',
+        now: now,
+      );
+      expect(batch.scope, TableRecoveryScope.table);
+      expect((await repository.readTable(table.id))?.deleted, isTrue);
+      expect((await repository.readEntry(entry.id))?.deleted, isTrue);
+      await expectLater(
+        repository.deleteTable(
+          id: TableRepository.defaultTables.first.$1,
+          expectedRevision: 1,
+          now: now,
+        ),
+        throwsStateError,
+      );
+
+      final restored = await repository.restoreRecoveryBatch(
+        batch.id,
+        now: now.add(const Duration(days: 29)),
+      );
+      expect(restored.status, TableRecoveryStatus.restored);
+      expect((await repository.readTable(table.id))?.body, '考试说明');
+      expect((await repository.readEntry(entry.id))?.body, '三教101');
+      expect((await repository.readEntry(entry.id))?.tableId, table.id);
+    },
+  );
+
+  test('resumes a table restore interrupted between object writes', () async {
+    final vault = _FailingVaultStore(MemoryVaultStore());
+    final index = MemoryIndexDatabase();
+    final repository = TableRepository(vault: vault, index: index);
+    await repository.initialize();
+    final table = await repository.createTable(title: '恢复中断');
+    final now = DateTime.parse('2026-10-29T09:00:00+08:00');
+    final entry = TableEntryDocument(
+      id: 'nt_restore_interrupted',
+      type: TableContentType.note,
+      tableId: table.id,
+      title: '恢复正文',
+      revision: 1,
+      createdAt: now,
+      updatedAt: now,
+      body: '前像',
+    );
+    await repository.createEntry(entry);
+    final batch = await repository.deleteTable(
+      id: table.id,
+      expectedRevision: 1,
+      now: now,
+    );
+    vault.failOnNextManagedWrite = 2;
+    await expectLater(
+      repository.restoreRecoveryBatch(
+        batch.id,
+        now: now.add(const Duration(days: 1)),
+      ),
+      throwsStateError,
+    );
+    expect(
+      (await index.findTableRecoveryBatch(batch.id))?.status,
+      TableRecoveryStatus.restoring,
+    );
+    vault.failOnNextManagedWrite = null;
+
+    final restarted = TableRepository(vault: vault, index: index);
+    await restarted.initialize();
+    expect(
+      (await index.findTableRecoveryBatch(batch.id))?.status,
+      TableRecoveryStatus.restored,
+    );
+    expect((await restarted.readTable(table.id))?.deleted, isFalse);
+    expect((await restarted.readEntry(entry.id))?.body, '前像');
+  });
+
+  test(
+    'table deletion removes and restores external schedule references',
+    () async {
+      final vault = MemoryVaultStore();
+      final index = MemoryIndexDatabase();
+      final repository = TableRepository(vault: vault, index: index);
+      await repository.initialize();
+      final scheduleTable = await repository.createTable(title: '考试');
+      final eventTable = await repository.createTable(title: '教务通知');
+      final now = DateTime.parse('2026-10-29T09:00:00+08:00');
+      final schedule = TableEntryDocument(
+        id: 'sc_cross_table',
+        type: TableContentType.schedule,
+        tableId: scheduleTable.id,
+        title: '期中考试',
+        revision: 1,
+        createdAt: now,
+        updatedAt: now,
+        body: '',
+        start: now.add(const Duration(days: 2)),
+      );
+      final event = TableEntryDocument(
+        id: 'ev_cross_table',
+        type: TableContentType.event,
+        tableId: eventTable.id,
+        title: '改期通知',
+        revision: 1,
+        createdAt: now,
+        updatedAt: now,
+        body: '考试改期',
+        affects: [ScheduleChange(scheduleId: schedule.id)],
+      );
+      await repository.createEntry(schedule);
+      await repository.createEntry(event);
+
+      final batch = await repository.deleteTable(
+        id: scheduleTable.id,
+        expectedRevision: 1,
+        now: now,
+      );
+      expect((await repository.readEntry(event.id))!.affects, isEmpty);
+
+      await repository.restoreRecoveryBatch(
+        batch.id,
+        now: now.add(const Duration(days: 1)),
+      );
+      expect(
+        (await repository.readEntry(event.id))!.affects.single.scheduleId,
+        schedule.id,
+      );
+    },
+  );
+
+  test(
+    'single schedule deletion removes and restores its event links',
+    () async {
+      final vault = MemoryVaultStore();
+      final index = MemoryIndexDatabase();
+      final repository = TableRepository(vault: vault, index: index);
+      await repository.initialize();
+      final scheduleTable = await repository.createTable(title: '考试安排');
+      final eventTable = await repository.createTable(title: '考试通知');
+      final now = DateTime.parse('2026-10-29T09:00:00+08:00');
+      final schedule = TableEntryDocument(
+        id: 'sc_single_delete',
+        type: TableContentType.schedule,
+        tableId: scheduleTable.id,
+        title: '期末考试',
+        revision: 1,
+        createdAt: now,
+        updatedAt: now,
+        body: '',
+        start: now.add(const Duration(days: 5)),
+      );
+      final event = TableEntryDocument(
+        id: 'ev_single_delete',
+        type: TableContentType.event,
+        tableId: eventTable.id,
+        title: '考试改期',
+        revision: 1,
+        createdAt: now,
+        updatedAt: now,
+        body: '',
+        affects: [ScheduleChange(scheduleId: schedule.id)],
+      );
+      await repository.createEntry(schedule);
+      await repository.createEntry(event);
+
+      final batch = await repository.deleteEntry(
+        id: schedule.id,
+        expectedRevision: schedule.revision,
+        now: now,
+      );
+      expect((await repository.readEntry(event.id))!.affects, isEmpty);
+      expect(
+        (await index.findTableRecoveryBatch(batch.id))!.manifestJson,
+        contains(event.id),
+      );
+
+      await repository.restoreRecoveryBatch(
+        batch.id,
+        now: now.add(const Duration(minutes: 1)),
+      );
+      expect((await repository.readEntry(schedule.id))!.deleted, isFalse);
+      expect(
+        (await repository.readEntry(event.id))!.affects.single.scheduleId,
+        schedule.id,
+      );
+    },
+  );
+
+  test(
+    'schedule change commits a linked event and can be undone together',
+    () async {
+      final vault = MemoryVaultStore();
+      final index = MemoryIndexDatabase();
+      final repository = TableRepository(vault: vault, index: index);
+      await repository.initialize();
+      final table = await repository.createTable(title: '考试');
+      final now = DateTime.parse('2026-10-29T09:00:00+08:00');
+      final originalStart = now.add(const Duration(days: 2));
+      final schedule = TableEntryDocument(
+        id: 'sc_rescheduled',
+        type: TableContentType.schedule,
+        tableId: table.id,
+        title: '期中考试',
+        revision: 1,
+        createdAt: now,
+        updatedAt: now,
+        body: '高数',
+        start: originalStart,
+      );
+      await repository.createEntry(schedule);
+      final newStart = now.add(const Duration(days: 5));
+
+      final changed = await repository.changeScheduleFromEvent(
+        scheduleId: schedule.id,
+        expectedRevision: 1,
+        start: newStart,
+        eventTitle: '考试改期通知',
+        eventBody: '老师把考试从周五改到周一',
+        idempotencyKey: 'exam-rescheduled',
+        now: now,
+      );
+      expect(changed.batch.scope, TableRecoveryScope.scheduleChange);
+      expect(changed.schedule.start!.isAtSameMomentAs(newStart), isTrue);
+      expect(changed.event.type, TableContentType.event);
+      expect(changed.event.body, '老师把考试从周五改到周一');
+      expect(changed.event.affects.single.scheduleId, schedule.id);
+
+      final retry = await repository.changeScheduleFromEvent(
+        scheduleId: schedule.id,
+        expectedRevision: 1,
+        start: originalStart,
+        eventTitle: '重试不得重复',
+        eventBody: '重试',
+        idempotencyKey: 'exam-rescheduled',
+        now: now,
+      );
+      expect(retry.event.id, changed.event.id);
+      expect(
+        (await repository.listEntries(
+          tableId: table.id,
+          type: TableContentType.event,
+        )),
+        hasLength(1),
+      );
+
+      final undone = await repository.restoreRecoveryBatch(
+        changed.batch.id,
+        now: now.add(const Duration(minutes: 5)),
+      );
+      expect(undone.status, TableRecoveryStatus.restored);
+      expect(
+        (await repository.readEntry(schedule.id))!.start!
+            .isAtSameMomentAs(originalStart),
+        isTrue,
+      );
+      expect((await repository.readEntry(changed.event.id))?.deleted, isTrue);
+    },
+  );
+
+  test(
+    'replays a partially written schedule change without duplicating its event',
+    () async {
+      final vault = _FailingVaultStore(MemoryVaultStore());
+      final index = MemoryIndexDatabase();
+      final repository = TableRepository(vault: vault, index: index);
+      await repository.initialize();
+      final table = await repository.createTable(title: '故障恢复');
+      final now = DateTime.parse('2026-11-29T09:00:00+08:00');
+      final schedule = TableEntryDocument(
+        id: 'sc_replay',
+        type: TableContentType.schedule,
+        tableId: table.id,
+        title: '考试',
+        revision: 1,
+        createdAt: now,
+        updatedAt: now,
+        body: '',
+        start: now.add(const Duration(days: 2)),
+      );
+      await repository.createEntry(schedule);
+      vault.failOnNextManagedWrite = 2;
+      await expectLater(
+        repository.changeScheduleFromEvent(
+          scheduleId: schedule.id,
+          expectedRevision: 1,
+          start: now.add(const Duration(days: 5)),
+          eventTitle: '考试改期',
+          eventBody: '通知正文',
+          idempotencyKey: 'schedule-change-replay',
+          now: now,
+        ),
+        throwsStateError,
+      );
+      vault.failOnNextManagedWrite = null;
+
+      final restarted = TableRepository(vault: vault, index: index);
+      await restarted.initialize();
+      final events = await restarted.listEntries(
+        tableId: table.id,
+        type: TableContentType.event,
+      );
+      expect(events, hasLength(1));
+      expect(
+        (await restarted.readEntry(schedule.id))!.start!
+            .isAtSameMomentAs(now.add(const Duration(days: 5))),
+        isTrue,
+      );
+      final batch = (await index.listTableRecoveryBatches(
+        activeOnly: true,
+      )).singleWhere((item) => item.scope == TableRecoveryScope.scheduleChange);
+      expect(batch.status, TableRecoveryStatus.active);
+    },
+  );
+
+  test(
+    'expires full-table recovery material at 30 days and hardens tombstones',
+    () async {
+      final vault = MemoryVaultStore();
+      final index = MemoryIndexDatabase();
+      final repository = TableRepository(vault: vault, index: index);
+      await repository.initialize();
+      final now = DateTime.parse('2026-10-29T09:00:00+08:00');
+      final table = await repository.createTable(title: '超期表', body: '有期限');
+      final child = TableEntryDocument(
+        id: 'nt_expired_child',
+        type: TableContentType.note,
+        tableId: table.id,
+        title: '正文',
+        revision: 1,
+        createdAt: now,
+        updatedAt: now,
+        body: '到期应清空',
+      );
+      await repository.createEntry(child);
+      final batch = await repository.deleteTable(
+        id: table.id,
+        expectedRevision: 1,
+        idempotencyKey: 'expire-table',
+        now: now,
+      );
+
+      await repository.purgeExpiredRecoveryBatches(
+        now: now.add(const Duration(days: 30)),
+      );
+
+      expect(
+        (await index.findTableRecoveryBatch(batch.id))?.status,
+        TableRecoveryStatus.expired,
+      );
+      expect((await repository.readTable(table.id))?.body, isEmpty);
+      expect((await repository.readEntry(child.id))?.body, isEmpty);
+      final manifest = jsonDecode(batch.manifestJson) as Map<String, dynamic>;
+      final first = (manifest['objects'] as List).first as Map<String, dynamic>;
+      expect(await vault.read(first['before_path'] as String), isNull);
+      await expectLater(
+        repository.restoreRecoveryBatch(
+          batch.id,
+          now: now.add(const Duration(days: 30)),
+        ),
+        throwsStateError,
+      );
+    },
+  );
+
+  test(
+    'replays a partially applied table deletion from its prepared ledger',
+    () async {
+      final vault = _FailingVaultStore(MemoryVaultStore());
+      final index = MemoryIndexDatabase();
+      final repository = TableRepository(vault: vault, index: index);
+      await repository.initialize();
+      final table = await repository.createTable(title: '中断恢复');
+      final now = DateTime.parse('2026-10-29T09:00:00+08:00');
+      final entry = TableEntryDocument(
+        id: 'nt_interrupted',
+        type: TableContentType.note,
+        tableId: table.id,
+        title: '正文',
+        revision: 1,
+        createdAt: now,
+        updatedAt: now,
+        body: '保存前像',
+      );
+      await repository.createEntry(entry);
+      vault.failOnNextManagedWrite = 2;
+
+      await expectLater(
+        repository.deleteTable(id: table.id, expectedRevision: 1, now: now),
+        throwsStateError,
+      );
+      final pending = (await index.listTableRecoveryBatches(activeOnly: true))
+          .single;
+      expect(pending.status, TableRecoveryStatus.prepared);
+      vault.failOnNextManagedWrite = null;
+
+      final restarted = TableRepository(vault: vault, index: index);
+      await restarted.initialize();
+      expect(
+        (await index.findTableRecoveryBatch(pending.id))?.status,
+        TableRecoveryStatus.active,
+      );
+      expect((await restarted.readTable(table.id))?.deleted, isTrue);
+      expect((await restarted.readEntry(entry.id))?.deleted, isTrue);
+    },
+  );
+
   test('rejects stale updates and missing table ownership', () async {
     final vault = MemoryVaultStore();
     final index = MemoryIndexDatabase();
@@ -254,4 +757,48 @@ void main() {
       await reopenedIndex.close();
     },
   );
+}
+
+class _FailingVaultStore implements VaultStore {
+  _FailingVaultStore(this._inner);
+
+  final MemoryVaultStore _inner;
+  int? _failureWriteNumber;
+  var _managedWrites = 0;
+
+  set failOnNextManagedWrite(int? value) {
+    _managedWrites = 0;
+    _failureWriteNumber = value;
+  }
+
+  @override
+  Future<void> initialize() => _inner.initialize();
+
+  @override
+  Future<T> exclusive<T>(Future<T> Function() operation) =>
+      _inner.exclusive(operation);
+
+  @override
+  Future<String?> read(String relativePath) => _inner.read(relativePath);
+
+  @override
+  Future<void> write(String relativePath, String contents) async {
+    if (relativePath.startsWith('vault/tables/') ||
+        relativePath.startsWith('vault/items/')) {
+      _managedWrites++;
+      if (_managedWrites == _failureWriteNumber) {
+        throw StateError('injected interrupted managed write');
+      }
+    }
+    await _inner.write(relativePath, contents);
+  }
+
+  @override
+  Future<void> delete(String relativePath) => _inner.delete(relativePath);
+
+  @override
+  Future<List<String>> listMarkdownFiles() => _inner.listMarkdownFiles();
+
+  @override
+  Future<String> describeRoot() => _inner.describeRoot();
 }

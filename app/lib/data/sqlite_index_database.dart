@@ -25,10 +25,22 @@ class SqliteIndexDatabase implements IndexDatabase {
         ..execute('PRAGMA foreign_keys = ON');
       final version =
           _database.select('PRAGMA user_version').single['user_version'] as int;
-      if (version > 7) {
-        throw StateError('索引数据库版本 $version 高于此应用支持的版本 7');
+      if (version > 9) {
+        throw StateError('索引数据库版本 $version 高于此应用支持的版本 9');
       }
       _database.execute('BEGIN EXCLUSIVE');
+      final hasRecoveryBatches = _database
+          .select(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'table_recovery_batches'",
+          )
+          .isNotEmpty;
+      if (version == 8 && hasRecoveryBatches) {
+        _database
+          ..execute('DROP INDEX IF EXISTS table_recovery_expiration')
+          ..execute(
+            'ALTER TABLE table_recovery_batches RENAME TO table_recovery_batches_v8',
+          );
+      }
       _database
         ..execute('''
         CREATE TABLE IF NOT EXISTS objects (
@@ -107,6 +119,34 @@ class SqliteIndexDatabase implements IndexDatabase {
           custom_values_json TEXT NOT NULL
         )
       ''');
+      _database.execute('''
+        CREATE TABLE IF NOT EXISTS table_recovery_batches (
+          id TEXT PRIMARY KEY,
+          scope TEXT NOT NULL CHECK (scope IN ('entry', 'table', 'scheduleChange')),
+          table_id TEXT NOT NULL,
+          status TEXT NOT NULL CHECK (
+            status IN ('prepared', 'active', 'restoring', 'restored', 'expired', 'failed')
+          ),
+          created_at TEXT NOT NULL,
+          expires_at TEXT NOT NULL,
+          manifest_json TEXT NOT NULL,
+          error TEXT
+        )
+      ''');
+      if (version == 8 && hasRecoveryBatches) {
+        _database
+          ..execute('''
+            INSERT INTO table_recovery_batches (
+              id, scope, table_id, status, created_at, expires_at, manifest_json, error
+            )
+            SELECT id, scope, table_id, status, created_at, expires_at, manifest_json, error
+            FROM table_recovery_batches_v8
+          ''')
+          ..execute('DROP TABLE table_recovery_batches_v8');
+      }
+      _database.execute(
+        'CREATE INDEX IF NOT EXISTS table_recovery_expiration ON table_recovery_batches(status, expires_at)',
+      );
       _database
         ..execute(
           'CREATE INDEX IF NOT EXISTS table_entries_table ON table_entries(table_id, deleted, updated_at DESC)',
@@ -177,7 +217,7 @@ class SqliteIndexDatabase implements IndexDatabase {
           'ALTER TABLE objects ADD COLUMN global_knowledge INTEGER NOT NULL DEFAULT 0',
         );
       }
-      if (version < 7) _database.execute('PRAGMA user_version = 7');
+      if (version < 9) _database.execute('PRAGMA user_version = 9');
       _database.execute('COMMIT');
     } catch (_) {
       try {
@@ -521,6 +561,54 @@ class SqliteIndexDatabase implements IndexDatabase {
     return rows.map(_tableEntryFromRow).toList(growable: false);
   }
 
+  @override
+  Future<void> upsertTableRecoveryBatch(TableRecoveryBatch batch) async {
+    _database.execute(
+      '''
+      INSERT INTO table_recovery_batches (
+        id, scope, table_id, status, created_at, expires_at, manifest_json, error
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        status = excluded.status,
+        manifest_json = excluded.manifest_json,
+        error = excluded.error
+      ''',
+      [
+        batch.id,
+        batch.scope.name,
+        batch.tableId,
+        batch.status.name,
+        batch.createdAt.toUtc().toIso8601String(),
+        batch.expiresAt.toUtc().toIso8601String(),
+        batch.manifestJson,
+        batch.error,
+      ],
+    );
+  }
+
+  @override
+  Future<TableRecoveryBatch?> findTableRecoveryBatch(String id) async {
+    final rows = _database.select(
+      'SELECT * FROM table_recovery_batches WHERE id = ?',
+      [id],
+    );
+    return rows.isEmpty ? null : _recoveryBatchFromRow(rows.first);
+  }
+
+  @override
+  Future<List<TableRecoveryBatch>> listTableRecoveryBatches({
+    bool activeOnly = false,
+  }) async {
+    final rows = activeOnly
+        ? _database.select(
+            "SELECT * FROM table_recovery_batches WHERE status IN ('prepared', 'active', 'restoring') ORDER BY created_at DESC",
+          )
+        : _database.select(
+            'SELECT * FROM table_recovery_batches ORDER BY created_at DESC',
+          );
+    return rows.map(_recoveryBatchFromRow).toList(growable: false);
+  }
+
   Object? _sqliteJsonFilterValue(Object? value) {
     if (value is DateTime) return value.toIso8601String();
     if (value is bool) return value ? 1 : 0;
@@ -589,6 +677,7 @@ class SqliteIndexDatabase implements IndexDatabase {
       ..execute('DELETE FROM objects')
       ..execute('DELETE FROM notebook_tables')
       ..execute('DELETE FROM table_entries')
+      ..execute('DELETE FROM table_recovery_batches')
       ..execute('DELETE FROM captures');
   }
 
@@ -914,6 +1003,17 @@ class SqliteIndexDatabase implements IndexDatabase {
     localHash: row['local_hash'] as String,
     searchText: row['search_text'] as String,
     customValuesJson: row['custom_values_json'] as String,
+  );
+
+  TableRecoveryBatch _recoveryBatchFromRow(Row row) => TableRecoveryBatch(
+    id: row['id'] as String,
+    scope: TableRecoveryScope.values.byName(row['scope'] as String),
+    tableId: row['table_id'] as String,
+    status: TableRecoveryStatus.values.byName(row['status'] as String),
+    createdAt: DateTime.parse(row['created_at'] as String).toLocal(),
+    expiresAt: DateTime.parse(row['expires_at'] as String).toLocal(),
+    manifestJson: row['manifest_json'] as String,
+    error: row['error'] as String?,
   );
 
   CaptureRecord _captureFromRow(Row row) {
