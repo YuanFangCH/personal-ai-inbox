@@ -274,6 +274,10 @@ void main() {
       expect(batch.scope, TableRecoveryScope.table);
       expect((await repository.readTable(table.id))?.deleted, isTrue);
       expect((await repository.readEntry(entry.id))?.deleted, isTrue);
+      final preview = await repository.previewDeletedTable(batch.id);
+      expect(preview?.table.title, '考试');
+      expect(preview?.table.body, '考试说明');
+      expect(preview?.entries.map((item) => item.title), ['地点通知']);
       await expectLater(
         repository.deleteTable(
           id: TableRepository.defaultTables.first.$1,

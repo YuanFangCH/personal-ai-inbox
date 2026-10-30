@@ -287,4 +287,11 @@ class TableRecoveryBatch {
   );
 }
 
+class TableRecoveryPreview {
+  const TableRecoveryPreview({required this.table, required this.entries});
+
+  final TableDocument table;
+  final List<TableEntryDocument> entries;
+}
+
 const _recoveryUnset = Object();

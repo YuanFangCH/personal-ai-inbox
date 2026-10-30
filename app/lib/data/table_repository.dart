@@ -1084,6 +1084,43 @@ class TableRepository {
           )
           .toList(growable: false);
 
+  Future<TableRecoveryPreview?> previewDeletedTable(String batchId) =>
+      _vault.exclusive(() async {
+        final batch = await _index.findTableRecoveryBatch(batchId);
+        if (batch == null ||
+            batch.scope != TableRecoveryScope.table ||
+            batch.status != TableRecoveryStatus.active) {
+          return null;
+        }
+        final manifest = jsonDecode(batch.manifestJson) as Map<String, dynamic>;
+        final objects = manifest['objects'] as List<dynamic>;
+        final tableObject = objects
+            .whereType<Map<String, dynamic>>()
+            .firstWhere((object) => object['kind'] == 'table');
+        final tableSource = await _vault.read(
+          tableObject['before_path'] as String,
+        );
+        if (tableSource == null) {
+          throw StateError('回收站缺少表快照：$batchId');
+        }
+        final table = _codec.decodeTable(tableSource);
+        final entries = <TableEntryDocument>[];
+        for (final object in objects.whereType<Map<String, dynamic>>()) {
+          if (object['kind'] != 'entry' || object['delete_target'] == false) {
+            continue;
+          }
+          final source = await _vault.read(object['before_path'] as String);
+          if (source == null) {
+            throw StateError('回收站缺少内容快照：${object['id']}');
+          }
+          entries.add(_codec.decodeEntry(source));
+        }
+        return TableRecoveryPreview(
+          table: table,
+          entries: List.unmodifiable(entries),
+        );
+      });
+
   Future<List<TableRecoveryBatch>> fieldChangeRecoveryBatches({
     String? tableId,
   }) async => (await _index.listTableRecoveryBatches(activeOnly: true))

@@ -62,6 +62,31 @@ void main() {
     expect(find.text('复习清单'), findsOneWidget);
     expect(find.text('整理第三章笔记'), findsOneWidget);
 
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byType(PopupMenuButton<String>).last,
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byType(PopupMenuButton<String>).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('删除表'));
+    await tester.pumpAndSettle();
+    expect(find.text('删除这张表？'), findsOneWidget);
+    await tester.tap(find.text('删除表和内容'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('回收站'));
+    await tester.pumpAndSettle();
+    expect(find.text('作业表'), findsOneWidget);
+    expect(find.textContaining('1 条内容 · 剩余'), findsOneWidget);
+    await tester.tap(find.text('作业表'));
+    await tester.pumpAndSettle();
+    expect(find.text('复习清单'), findsOneWidget);
+    await tester.tap(find.text('恢复整表'));
+    await tester.pumpAndSettle();
+    expect(runtime.tables.tables.any((table) => table.title == '作业表'), isTrue);
+
     await tester.pumpWidget(const SizedBox.shrink());
     await runtime.shutdown();
   });

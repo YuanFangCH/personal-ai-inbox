@@ -251,15 +251,34 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('单选').last);
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('add_table_field_option')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('table_field_option_0')), '数学');
+    await tester.tap(find.byKey(const Key('add_table_field_option')));
+    await tester.pumpAndSettle();
     await tester.enterText(
-      find.byKey(const Key('table_field_options')),
-      '数学\n信号与系统',
+      find.byKey(const Key('table_field_option_1')),
+      '信号与系统',
     );
     await tester.tap(find.byKey(const Key('table_field_save')));
     await tester.pumpAndSettle();
     final original = runtime.tables.findTable(table.id)!.fields.single;
     expect(original.type, CustomFieldType.singleSelect);
     expect(original.options.map((option) => option.label), ['数学', '信号与系统']);
+    final selectedAt = DateTime(2026, 10, 30, 10);
+    await runtime.tables.createEntry(
+      TableEntryDocument(
+        id: 'nt_option_use',
+        type: TableContentType.note,
+        tableId: table.id,
+        title: '已选科目',
+        revision: 1,
+        createdAt: selectedAt,
+        updatedAt: selectedAt,
+        body: '',
+        customValues: {original.id: original.options.first.id},
+      ),
+    );
 
     await tester.tap(find.byType(PopupMenuButton<String>).last);
     await tester.pumpAndSettle();
@@ -278,6 +297,33 @@ void main() {
       renamed.options.map((option) => option.id),
       original.options.map((option) => option.id),
     );
+
+    await tester.tap(find.byType(PopupMenuButton<String>).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('编辑选项'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('remove_table_field_option_0')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('table_field_save')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('正在使用被移除的选项'), findsOneWidget);
+    expect(
+      runtime.tables.findTable(table.id)!.fields.single.options.first.id,
+      original.options.first.id,
+    );
+    await tester.tap(find.byType(PopupMenuButton<String>).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('编辑选项'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('table_field_option_0')),
+      '数学基础',
+    );
+    await tester.tap(find.byKey(const Key('table_field_save')));
+    await tester.pumpAndSettle();
+    final edited = runtime.tables.findTable(table.id)!.fields.single;
+    expect(edited.options.first.id, original.options.first.id);
+    expect(edited.options.first.label, '数学基础');
     await tester.pumpWidget(const SizedBox.shrink());
     await runtime.shutdown();
   });

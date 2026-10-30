@@ -200,6 +200,13 @@ class _TablesPageState extends State<TablesPage> {
 
   Future<void> _openRecovery(BuildContext context, TableLibrary library) async {
     final batches = await library.recoveryBatches();
+    final previews = <String, TableRecoveryPreview>{};
+    for (final batch in batches.where(
+      (batch) => batch.scope == TableRecoveryScope.table,
+    )) {
+      final preview = await library.previewDeletedTable(batch.id);
+      if (preview != null) previews[batch.id] = preview;
+    }
     if (!context.mounted) return;
     await showModalBottomSheet<void>(
       context: context,
@@ -219,23 +226,19 @@ class _TablesPageState extends State<TablesPage> {
                     Text('回收站', style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 12),
                     for (final batch in batches)
-                      ListTile(
-                        leading: const Icon(Icons.table_chart_outlined),
-                        title: Text(batch.tableId),
-                        subtitle: Text('到期时间：${_formatDate(batch.expiresAt)}'),
-                        trailing: TextButton(
-                          onPressed: () async {
-                            try {
-                              await library.restoreRecoveryBatch(batch.id);
-                              if (context.mounted) Navigator.pop(context);
-                            } on Object catch (error) {
-                              if (context.mounted) {
-                                _showMessage(context, '恢复失败：$error');
-                              }
+                      _RecoveryTableTile(
+                        batch: batch,
+                        preview: previews[batch.id],
+                        onRestore: () async {
+                          try {
+                            await library.restoreRecoveryBatch(batch.id);
+                            if (context.mounted) Navigator.pop(context);
+                          } on Object catch (error) {
+                            if (context.mounted) {
+                              _showMessage(context, '恢复失败：$error');
                             }
-                          },
-                          child: const Text('恢复'),
-                        ),
+                          }
+                        },
                       ),
                   ],
                 ),
@@ -259,6 +262,66 @@ class _TablesPageState extends State<TablesPage> {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 }
+
+class _RecoveryTableTile extends StatelessWidget {
+  const _RecoveryTableTile({
+    required this.batch,
+    required this.preview,
+    required this.onRestore,
+  });
+
+  final TableRecoveryBatch batch;
+  final TableRecoveryPreview? preview;
+  final VoidCallback onRestore;
+
+  @override
+  Widget build(BuildContext context) {
+    final remaining = batch.expiresAt.difference(DateTime.now());
+    final days = remaining.inDays;
+    final hours = remaining.inHours.remainder(24);
+    final remainingLabel = remaining.isNegative
+        ? '已超过恢复期限，正在清理'
+        : days > 0
+        ? '剩余 $days 天 $hours 小时'
+        : '剩余 ${remaining.inHours} 小时';
+    final title = preview?.table.title ?? batch.tableId;
+    final entries = preview?.entries ?? const <TableEntryDocument>[];
+    return ExpansionTile(
+      leading: const Icon(Icons.table_chart_outlined),
+      title: Text(title),
+      subtitle: Text('${entries.length} 条内容 · $remainingLabel'),
+      children: [
+        for (final entry in entries.take(5))
+          ListTile(
+            dense: true,
+            title: Text(entry.title),
+            subtitle: Text(_contentTypeLabel(entry.type)),
+          ),
+        if (entries.length > 5)
+          ListTile(dense: true, title: Text('另有 ${entries.length - 5} 条内容')),
+        if (preview == null)
+          const ListTile(dense: true, title: Text('暂时无法读取预览，恢复账本仍保留原内容。')),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 12, bottom: 8),
+            child: FilledButton.tonal(
+              onPressed: remaining.isNegative ? null : onRestore,
+              child: const Text('恢复整表'),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _contentTypeLabel(TableContentType type) => switch (type) {
+  TableContentType.note => '笔记',
+  TableContentType.todo => '待办',
+  TableContentType.schedule => '日程',
+  TableContentType.event => '事件',
+};
 
 class _TableTitleDialog extends StatefulWidget {
   const _TableTitleDialog({

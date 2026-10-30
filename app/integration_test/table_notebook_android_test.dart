@@ -170,6 +170,35 @@ void main() {
           .customValues[reopenedFieldId],
       '信号与系统',
     );
+
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: reopened));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav_more')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('sheet_nav_matters')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byType(PopupMenuButton<String>).last,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byType(PopupMenuButton<String>).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('删除表'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('删除表和内容'));
+    await _waitFor(tester, () => reopened.tables.findTable(table.id) == null);
+    await tester.tap(find.text('回收站'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('AVD 作业表'));
+    await tester.pumpAndSettle();
+    expect(find.text('实验报告'), findsOneWidget);
+    await tester.tap(find.text('恢复整表'));
+    await _waitFor(tester, () => reopened.tables.findTable(table.id) != null);
+    expect(
+      reopened.tables.entries.any((entry) => entry.title == '实验报告'),
+      isTrue,
+    );
     await reopened.shutdown();
   });
 }

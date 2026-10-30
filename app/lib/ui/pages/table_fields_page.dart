@@ -71,13 +71,27 @@ class TableFieldsPage extends StatelessWidget {
                         onSelected: (action) {
                           if (action == 'rename') {
                             _renameField(context, library, table, field);
+                          } else if (action == 'options') {
+                            _editField(context, library, table, field);
                           } else if (action == 'delete') {
                             _deleteField(context, library, table, field);
                           }
                         },
-                        itemBuilder: (context) => const [
-                          PopupMenuItem(value: 'rename', child: Text('重命名')),
-                          PopupMenuItem(value: 'delete', child: Text('删除字段')),
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'rename',
+                            child: Text('重命名'),
+                          ),
+                          if (field.type == CustomFieldType.singleSelect ||
+                              field.type == CustomFieldType.multiSelect)
+                            const PopupMenuItem(
+                              value: 'options',
+                              child: Text('编辑选项'),
+                            ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Text('删除字段'),
+                          ),
                         ],
                       ),
                     ),
@@ -138,6 +152,58 @@ class TableFieldsPage extends StatelessWidget {
       );
     } on Object catch (error) {
       if (context.mounted) _showMessage(context, '重命名失败：$error');
+    }
+  }
+
+  Future<void> _editField(
+    BuildContext context,
+    TableLibrary library,
+    TableDocument table,
+    TableFieldDefinition field,
+  ) async {
+    final edited = await showDialog<TableFieldDefinition>(
+      context: context,
+      builder: (context) => _FieldDefinitionDialog(existing: field),
+    );
+    if (!context.mounted || edited == null) return;
+    final retainedOptionIds = edited.options.map((option) => option.id).toSet();
+    final removedOptions = field.options
+        .where((option) => !retainedOptionIds.contains(option.id))
+        .toList(growable: false);
+    final usedCounts = <String, int>{};
+    for (final entry in library.entries.where(
+      (entry) => entry.tableId == table.id && !entry.deleted,
+    )) {
+      final value = entry.customValues[field.id];
+      for (final removed in removedOptions) {
+        final used = field.type == CustomFieldType.singleSelect
+            ? value == removed.id
+            : value is List && value.contains(removed.id);
+        if (used) {
+          usedCounts.update(
+            removed.id,
+            (count) => count + 1,
+            ifAbsent: () => 1,
+          );
+        }
+      }
+    }
+    if (usedCounts.isNotEmpty) {
+      final count = usedCounts.values.fold<int>(0, (sum, value) => sum + value);
+      _showMessage(context, '有 $count 条内容正在使用被移除的选项。请先清空这些值，再删除选项。');
+      return;
+    }
+    try {
+      await library.updateTable(
+        table.copyWith(
+          fields: table.fields
+              .map((candidate) => candidate.id == field.id ? edited : candidate)
+              .toList(growable: false),
+        ),
+        expectedRevision: table.revision,
+      );
+    } on Object catch (error) {
+      if (context.mounted) _showMessage(context, '保存字段选项失败：$error');
     }
   }
 
@@ -247,7 +313,9 @@ class _FieldRecoverySection extends StatelessWidget {
 }
 
 class _FieldDefinitionDialog extends StatefulWidget {
-  const _FieldDefinitionDialog();
+  const _FieldDefinitionDialog({this.existing});
+
+  final TableFieldDefinition? existing;
 
   @override
   State<_FieldDefinitionDialog> createState() => _FieldDefinitionDialogState();
@@ -255,14 +323,31 @@ class _FieldDefinitionDialog extends StatefulWidget {
 
 class _FieldDefinitionDialogState extends State<_FieldDefinitionDialog> {
   final _name = TextEditingController();
-  final _options = TextEditingController();
+  final _optionControllers = <TextEditingController>[];
+  final _optionIds = <String?>[];
   CustomFieldType _type = CustomFieldType.text;
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    final existing = widget.existing;
+    if (existing != null) {
+      _name.text = existing.name;
+      _type = existing.type;
+      for (final option in existing.options) {
+        _optionIds.add(option.id);
+        _optionControllers.add(TextEditingController(text: option.label));
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _name.dispose();
-    _options.dispose();
+    for (final controller in _optionControllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -272,11 +357,9 @@ class _FieldDefinitionDialogState extends State<_FieldDefinitionDialog> {
       setState(() => _error = '请填写字段名称。');
       return;
     }
-    final optionLabels = _options.text
-        .split(RegExp(r'[,，\n]'))
-        .map((value) => value.trim())
+    final optionLabels = _optionControllers
+        .map((controller) => controller.text.trim())
         .where((value) => value.isNotEmpty)
-        .toSet()
         .toList(growable: false);
     final select =
         _type == CustomFieldType.singleSelect ||
@@ -285,26 +368,43 @@ class _FieldDefinitionDialogState extends State<_FieldDefinitionDialog> {
       setState(() => _error = '单选和多选字段至少需要一个选项。');
       return;
     }
+    if (optionLabels.toSet().length != optionLabels.length) {
+      setState(() => _error = '选项名称不能重复。');
+      return;
+    }
+    final options = <TableFieldOption>[];
+    if (select) {
+      for (var index = 0; index < _optionControllers.length; index++) {
+        final label = _optionControllers[index].text.trim();
+        if (label.isEmpty) continue;
+        options.add(
+          TableFieldOption(
+            id:
+                _optionIds[index] ??
+                'opt_${const Uuid().v4().replaceAll('-', '')}',
+            label: label,
+          ),
+        );
+      }
+    }
     Navigator.pop(
       context,
       TableFieldDefinition(
-        id: 'fld_${const Uuid().v4().replaceAll('-', '')}',
+        id:
+            widget.existing?.id ??
+            'fld_${const Uuid().v4().replaceAll('-', '')}',
         name: name,
-        type: _type,
-        options: [
-          for (final label in optionLabels)
-            TableFieldOption(
-              id: 'opt_${const Uuid().v4().replaceAll('-', '')}',
-              label: label,
-            ),
-        ],
+        type: widget.existing?.type ?? _type,
+        options: options,
+        required: widget.existing?.required ?? false,
+        defaultValue: widget.existing?.defaultValue,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('新增自定义字段'),
+    title: Text(widget.existing == null ? '新增自定义字段' : '编辑字段选项'),
     content: SingleChildScrollView(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -316,32 +416,56 @@ class _FieldDefinitionDialogState extends State<_FieldDefinitionDialog> {
             decoration: const InputDecoration(labelText: '字段名称'),
           ),
           const SizedBox(height: 12),
-          DropdownButtonFormField<CustomFieldType>(
-            key: const Key('table_field_type'),
-            initialValue: _type,
-            decoration: const InputDecoration(labelText: '字段类型'),
-            items: [
-              for (final type in CustomFieldType.values)
-                DropdownMenuItem(
-                  value: type,
-                  child: Text(_fieldTypeLabel(type)),
-                ),
-            ],
-            onChanged: (value) {
-              if (value != null) setState(() => _type = value);
-            },
-          ),
+          if (widget.existing == null)
+            DropdownButtonFormField<CustomFieldType>(
+              key: const Key('table_field_type'),
+              initialValue: _type,
+              decoration: const InputDecoration(labelText: '字段类型'),
+              items: [
+                for (final type in CustomFieldType.values)
+                  DropdownMenuItem(
+                    value: type,
+                    child: Text(_fieldTypeLabel(type)),
+                  ),
+              ],
+              onChanged: (value) {
+                if (value != null) setState(() => _type = value);
+              },
+            ),
           if (_type == CustomFieldType.singleSelect ||
               _type == CustomFieldType.multiSelect) ...[
             const SizedBox(height: 12),
-            TextField(
-              key: const Key('table_field_options'),
-              controller: _options,
-              minLines: 2,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: '选项',
-                hintText: '每行或用逗号分隔',
+            for (var index = 0; index < _optionControllers.length; index++)
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      key: Key('table_field_option_$index'),
+                      controller: _optionControllers[index],
+                      decoration: InputDecoration(labelText: '选项 ${index + 1}'),
+                    ),
+                  ),
+                  IconButton(
+                    key: Key('remove_table_field_option_$index'),
+                    tooltip: '移除选项',
+                    onPressed: () => setState(() {
+                      _optionControllers.removeAt(index).dispose();
+                      _optionIds.removeAt(index);
+                    }),
+                    icon: const Icon(Icons.remove_circle_outline),
+                  ),
+                ],
+              ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                key: const Key('add_table_field_option'),
+                onPressed: () => setState(() {
+                  _optionIds.add(null);
+                  _optionControllers.add(TextEditingController());
+                }),
+                icon: const Icon(Icons.add),
+                label: const Text('添加选项'),
               ),
             ),
           ],
@@ -363,7 +487,7 @@ class _FieldDefinitionDialogState extends State<_FieldDefinitionDialog> {
       FilledButton(
         key: const Key('table_field_save'),
         onPressed: _save,
-        child: const Text('保存字段'),
+        child: Text(widget.existing == null ? '保存字段' : '保存选项'),
       ),
     ],
   );

@@ -40,6 +40,9 @@ class TableLibrary extends ChangeNotifier {
   Future<List<TableRecoveryBatch>> recoveryBatches() =>
       _repository.recoveryBatches();
 
+  Future<TableRecoveryPreview?> previewDeletedTable(String batchId) =>
+      _repository.previewDeletedTable(batchId);
+
   Future<List<TableRecoveryBatch>> fieldChangeRecoveryBatches({
     String? tableId,
   }) => _repository.fieldChangeRecoveryBatches(tableId: tableId);

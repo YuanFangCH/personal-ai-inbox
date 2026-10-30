@@ -34,7 +34,7 @@
 表与笔记改版已细化为 [10 个工作包、80 个执行步骤](docs/table-notebook-implementation-plan.md)。P1模型/codec与P2首轮存储、SQLite v7、按表查询和 runtime 默认表初始化已有28项定向测试、局部分析及APK构建通过。Android15 AVD安装最新 Debug APK后启动、重启成功；Flutter integration driver的VM Service连接仍待修复。详情见 `test-results/table-notebook-p2-20261030/VALIDATION.md`。
 P3本地数据层首轮已实现：SQLite v10恢复账本、单条内容撤销、整表30天恢复/到期清理，以及“通知事件与原日程同批更新/撤销”。P5b新增的字段删除恢复账本从schema v9升级到v10。21项P3 repository/index用例及相关 analyzer 通过；Android 15 AVD默认表重启核验通过。完整状态以 `RM_HANDOFF.md` 与执行计划为准。
 P4 迁移预检/暂存首轮已实现：可判定旧成果映射、备份 vault 与 SQLite/会话/设置并关联 journal，支持重放和 hash 回滚。Android/Windows 容量探测已接入。发现旧资料时应用启动进入只读预检；用户确认后可在本地生成新格式副本，源件保留，随后进入受限表工作区，旧模块保持关闭。主机和 AVD 的 P4 验证通过，均只用合成资料。
-P5a 已将“事项”导航换成“表与笔记”列表，支持默认表/自定义表浏览、创建/改名/删除与 30 天恢复，表正文编辑及笔记/待办/日程/事件的基本新增编辑。P5b 已接六类自定义字段和值编辑、字段改名和字段删除恢复、带字段兼容映射的安全跨表移动，SQLite 索引升级至 v10。定向主机用例 50/50、Android 15 AVD 表/迁移用例 6/6 通过，相关 analyzer 无诊断；详情见 `test-results/table-notebook-p5b-20261030/VALIDATION.md`。P5 的选项维护、快速新建日期联动和完整窄/宽屏验收仍待完成；首页表模块、日历投影和 AI 表工具尚未接入。
+P5a 已将“事项”导航换成“表与笔记”列表，支持默认表/自定义表浏览、创建/改名/删除与 30 天恢复，表正文编辑及笔记/待办/日程/事件的基本新增编辑。P5b 接入六类字段和值、字段删除恢复和安全跨表移动；P5c 增加选项稳定 ID 编辑、阻止删除仍被使用的选项，以及回收站表名/内容预览/剩余期限/整表恢复。SQLite 索引为 v10。P5c 定向主机用例 25/25、Android 15 AVD 1/1 通过，相关 analyzer 无诊断；详情见 `test-results/table-notebook-p5c-20261030/VALIDATION.md`。P5 还待从日历上下文快速新建和完整窄/宽屏验收；首页表模块、日历投影和 AI 表工具尚未接入。
 
 2026-10-29 已启动表与笔记改版：三个默认表仅兜底且不可删除，表混合收纳内容；日历只显示表内正式内容，首页可排序展示表模块。AI 内容操作默认免逐次确认，表结构操作在对话确认；普通知识进表，全局知识独立审批。首版支持六种自定义字段；调整通知保留为事件并更新原日程，自定义表及内容可在 30 天内整表恢复。旧事项迁移保留正文和关联内容。完整需求见[改版规划](docs/table-notebook-redesign-plan.md)，执行顺序和代码状态见[执行计划](docs/table-notebook-implementation-plan.md)。
 
