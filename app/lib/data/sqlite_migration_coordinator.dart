@@ -150,6 +150,172 @@ class SqliteMigrationCoordinator implements MigrationCoordinator {
     await _releaseLock();
   }
 
+  /// Creates a durable database/settings snapshot for a table migration.
+  ///
+  /// Callers must pause writes across the vault and local databases while this
+  /// manifest is prepared. The method owns the startup lock and is idempotent
+  /// for one migration ID.
+  @override
+  Future<String> createTableMigrationSnapshot(String migrationId) async {
+    if (!RegExp(r'^tm_[a-f0-9]{24}$').hasMatch(migrationId)) {
+      throw ArgumentError.value(migrationId, 'migrationId');
+    }
+    final ownsLock = _startupLock == null;
+    if (ownsLock) {
+      await Directory(supportPath).create(recursive: true);
+      final lockFile = File(p.join(supportPath, '.migration-startup.lock'));
+      _startupLock = await lockFile.open(mode: FileMode.append);
+      await _startupLock!.lock(FileLock.exclusive);
+    }
+    try {
+      final backupRoot = Directory(
+        p.join(supportPath, '.migration-backups', 'table-$migrationId'),
+      );
+      await backupRoot.create(recursive: true);
+      final manifestPath = p.join(backupRoot.path, 'manifest.json');
+      final existingManifest = File(manifestPath);
+      if (await existingManifest.exists()) {
+        await _validateTableMigrationSnapshot(
+          await existingManifest.readAsString(),
+          migrationId,
+        );
+        return manifestPath;
+      }
+
+      // A crash before the manifest commit leaves an incomplete snapshot set.
+      // Discard those per-migration files and take every source again under
+      // this lock so databases and settings cannot come from mixed attempts.
+      for (final name in [_indexFile, _conversationFile, 'preferences.json']) {
+        final partial = File(p.join(backupRoot.path, name));
+        if (await partial.exists()) await partial.delete();
+      }
+      final partialManifest = File('$manifestPath.tmp');
+      if (await partialManifest.exists()) await partialManifest.delete();
+
+      final databases = <Map<String, Object?>>[];
+      for (final name in [_indexFile, _conversationFile]) {
+        final source = p.join(supportPath, name);
+        final sourceFile = File(source);
+        final exists = await sourceFile.exists();
+        String? backupPath;
+        String? backupHash;
+        int? userVersion;
+        if (exists) {
+          backupPath = p.join(backupRoot.path, name);
+          final backupFile = File(backupPath);
+          if (!await backupFile.exists()) {
+            await _snapshotDatabase(source, backupPath);
+          } else {
+            final snapshot = sqlite3.open(backupPath);
+            try {
+              if (snapshot.select('PRAGMA quick_check').first.values.first !=
+                  'ok') {
+                throw StateError('既有 SQLite 迁移快照损坏：$name');
+              }
+            } finally {
+              snapshot.close();
+            }
+          }
+          backupHash = await _sha256File(backupPath);
+          userVersion = await _readUserVersion(backupPath);
+        }
+        databases.add({
+          'name': name,
+          'existed': exists,
+          'source': source,
+          'backup': backupPath,
+          'backup_sha256': backupHash,
+          'user_version': userVersion,
+        });
+      }
+      final settingsPath = p.join(backupRoot.path, 'preferences.json');
+      final settingsJson = jsonEncode(
+        await _settings.exportMigrationPreferences(),
+      );
+      final settingsFile = File(settingsPath);
+      if (!await settingsFile.exists()) {
+        await settingsFile.writeAsString(settingsJson, flush: true);
+      }
+      final storedSettings = await settingsFile.readAsString();
+      final manifest = jsonEncode({
+        'schema_version': 1,
+        'migration_id': migrationId,
+        'created_at': DateTime.now().toIso8601String(),
+        'databases': databases,
+        'settings_backup': settingsPath,
+        'settings_backup_sha256': sha256
+            .convert(utf8.encode(storedSettings))
+            .toString(),
+      });
+      await File('$manifestPath.tmp').writeAsString(manifest, flush: true);
+      await File('$manifestPath.tmp').rename(manifestPath);
+      await _validateTableMigrationSnapshot(manifest, migrationId);
+      return manifestPath;
+    } finally {
+      if (ownsLock) await _releaseLock();
+    }
+  }
+
+  @override
+  Future<int> estimateTableMigrationSnapshotBytes() async {
+    var bytes = 0;
+    for (final name in [_indexFile, _conversationFile]) {
+      for (final suffix in const ['', '-wal', '-shm']) {
+        final file = File(p.join(supportPath, '$name$suffix'));
+        if (await file.exists()) bytes += await file.length();
+      }
+    }
+    final settingsJson = jsonEncode(
+      await _settings.exportMigrationPreferences(),
+    );
+    return bytes + utf8.encode(settingsJson).length;
+  }
+
+  Future<void> _validateTableMigrationSnapshot(
+    String manifestSource,
+    String migrationId,
+  ) async {
+    final value = jsonDecode(manifestSource);
+    if (value is! Map<String, dynamic> ||
+        value['schema_version'] != 1 ||
+        value['migration_id'] != migrationId ||
+        value['databases'] is! List ||
+        value['settings_backup'] is! String ||
+        value['settings_backup_sha256'] is! String) {
+      throw StateError('表迁移数据库备份清单损坏：$migrationId');
+    }
+    final root = p.normalize(
+      p.join(supportPath, '.migration-backups', 'table-$migrationId'),
+    );
+    for (final raw in value['databases'] as List) {
+      if (raw is! Map ||
+          raw['name'] is! String ||
+          raw['existed'] is! bool ||
+          !(const {_indexFile, _conversationFile}.contains(raw['name']))) {
+        throw StateError('表迁移数据库项损坏。');
+      }
+      if (raw['existed'] == false) continue;
+      final backup = raw['backup'];
+      final expectedHash = raw['backup_sha256'];
+      if (backup is! String || expectedHash is! String) {
+        throw StateError('表迁移数据库快照缺失。');
+      }
+      if (!p.isWithin(root, p.normalize(backup)) ||
+          !await File(backup).exists() ||
+          await _sha256File(backup) != expectedHash) {
+        throw StateError('表迁移数据库快照校验失败：${raw['name']}');
+      }
+    }
+    final settingsPath = value['settings_backup'] as String;
+    final settingsHash = value['settings_backup_sha256'] as String;
+    if (!p.isWithin(root, p.normalize(settingsPath)) ||
+        !await File(settingsPath).exists() ||
+        sha256.convert(await File(settingsPath).readAsBytes()).toString() !=
+            settingsHash) {
+      throw StateError('表迁移端配置快照校验失败。');
+    }
+  }
+
   Future<void> _restore(Map<String, dynamic> state) async {
     final rawDatabases = state['databases'];
     final rawSettingsBackup = state['settings_backup'];

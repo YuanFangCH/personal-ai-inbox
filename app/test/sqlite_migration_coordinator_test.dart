@@ -106,6 +106,57 @@ void main() {
     },
   );
 
+  test('table migration snapshot backs up both databases and settings idempotently', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'inbox-table-migration-snapshot',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final indexPath = '${directory.path}/index.sqlite3';
+    final conversationPath = '${directory.path}/conversations.sqlite3';
+    _createLegacyDatabase(indexPath, 'index_payload');
+    _createLegacyDatabase(conversationPath, 'conversation_payload');
+    _markMigrated(indexPath, version: 9);
+    _markMigrated(conversationPath, version: 5);
+    final settings = _MigrationSettings({'device_id': 'snapshot-device'});
+    final migration = SqliteMigrationCoordinator(
+      supportPath: directory.path,
+      settings: settings,
+    );
+    const migrationId = 'tm_0123456789abcdef01234567';
+
+    expect(
+      await migration.estimateTableMigrationSnapshotBytes(),
+      greaterThan(0),
+    );
+    final manifestPath = await migration.createTableMigrationSnapshot(
+      migrationId,
+    );
+    final manifest = jsonDecode(
+      await File(manifestPath).readAsString(),
+    ) as Map<String, dynamic>;
+    expect(manifest['migration_id'], migrationId);
+    expect(manifest['databases'], hasLength(2));
+    for (final raw in manifest['databases'] as List<dynamic>) {
+      final row = raw as Map<String, dynamic>;
+      expect(row['user_version'], row['name'] == 'index.sqlite3' ? 9 : 5);
+      final snapshot = sqlite3.open(row['backup'] as String);
+      expect(snapshot.select('PRAGMA quick_check').single.values.single, 'ok');
+      expect(
+        snapshot.select("SELECT name FROM sqlite_master WHERE type = 'table'"),
+        hasLength(2),
+      );
+      snapshot.close();
+    }
+    final settingsSnapshot = jsonDecode(
+      await File(manifest['settings_backup'] as String).readAsString(),
+    ) as Map<String, dynamic>;
+    expect(settingsSnapshot['device_id'], 'snapshot-device');
+    expect(
+      await migration.createTableMigrationSnapshot(migrationId),
+      manifestPath,
+    );
+  });
+
   test(
     'schema upgrade preserves legacy result, capture and conversation rows',
     () async {

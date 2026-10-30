@@ -20,7 +20,12 @@ void main() {
       final vault = MemoryVaultStore();
       final index = MemoryIndexDatabase();
       final legacyCodec = const MarkdownCodec();
-      final migration = TableMigrationService(vault: vault, index: index);
+      final migration = TableMigrationService(
+        vault: vault,
+        index: index,
+        createDatabaseSnapshot: (id) async => 'database-backups/$id.json',
+        estimateDatabaseSnapshotBytes: () async => 128,
+      );
       final matter = _legacy(
         id: 'matter_course',
         type: ResultType.matter,
@@ -117,6 +122,14 @@ void main() {
       final receipt = await migration.apply(plan);
       expect(receipt.status, 'complete');
       expect(receipt.targets, hasLength(5));
+      expect(
+        receipt.databaseBackupManifestPath,
+        'database-backups/${plan.migrationId}.json',
+      );
+      expect(
+        receipt.databaseBackupManifestPath,
+        'database-backups/${plan.migrationId}.json',
+      );
       expect(await vault.read(matter.markdownPath), isNotNull);
       expect(await vault.read(global.markdownPath), isNotNull);
       final backupManifest = await vault.read(receipt.backupManifestPath);
@@ -152,7 +165,12 @@ void main() {
       final vault = MemoryVaultStore();
       final index = MemoryIndexDatabase();
       final codec = const MarkdownCodec();
-      final migration = TableMigrationService(vault: vault, index: index);
+      final migration = TableMigrationService(
+        vault: vault,
+        index: index,
+        createDatabaseSnapshot: (id) async => 'database-backups/$id.json',
+        estimateDatabaseSnapshotBytes: () async => 128,
+      );
       final missingMatter = _legacy(
         id: 'todo_orphan',
         type: ResultType.todo,
@@ -246,7 +264,12 @@ void main() {
     final vault = _FailingMigrationVault(MemoryVaultStore());
     final index = MemoryIndexDatabase();
     final codec = const MarkdownCodec();
-    final migration = TableMigrationService(vault: vault, index: index);
+    final migration = TableMigrationService(
+      vault: vault,
+      index: index,
+      createDatabaseSnapshot: (id) async => 'database-backups/$id.json',
+      estimateDatabaseSnapshotBytes: () async => 128,
+    );
     final matter = _legacy(
       id: 'matter_replay',
       type: ResultType.matter,
@@ -289,7 +312,12 @@ void main() {
     final index = MemoryIndexDatabase();
     final legacyCodec = const MarkdownCodec();
     const tableCodec = TableMarkdownCodec();
-    final migration = TableMigrationService(vault: vault, index: index);
+    final migration = TableMigrationService(
+      vault: vault,
+      index: index,
+      createDatabaseSnapshot: (id) async => 'database-backups/$id.json',
+      estimateDatabaseSnapshotBytes: () async => 128,
+    );
     final matter = _legacy(
       id: 'matter_existing_target',
       type: ResultType.matter,
@@ -327,7 +355,12 @@ void main() {
       final vault = MemoryVaultStore();
       final index = MemoryIndexDatabase();
       final codec = const MarkdownCodec();
-      final migration = TableMigrationService(vault: vault, index: index);
+      final migration = TableMigrationService(
+        vault: vault,
+        index: index,
+        createDatabaseSnapshot: (id) async => 'database-backups/$id.json',
+        estimateDatabaseSnapshotBytes: () async => 128,
+      );
       final matter = _legacy(
         id: 'matter_low_space',
         type: ResultType.matter,
@@ -347,6 +380,24 @@ void main() {
       expect(plan.estimatedRequiredBytes, greaterThan(0));
       expect(plan.issues.single.message, contains('可用空间不足'));
       await expectLater(migration.apply(plan), throwsStateError);
+
+      final withoutDatabaseBackup = TableMigrationService(
+        vault: vault,
+        index: index,
+      );
+      final noBackupPlan = await withoutDatabaseBackup.preview(
+        now: now,
+        availableBytes: availableBytes,
+      );
+      expect(noBackupPlan.canApply, isFalse);
+      expect(
+        noBackupPlan.issues.any((issue) => issue.path == 'databases'),
+        isTrue,
+      );
+      await expectLater(
+        withoutDatabaseBackup.apply(noBackupPlan),
+        throwsStateError,
+      );
     },
   );
 }

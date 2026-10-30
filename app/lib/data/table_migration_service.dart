@@ -22,17 +22,23 @@ class TableMigrationService {
     MarkdownCodec legacyCodec = const MarkdownCodec(),
     TableMarkdownCodec tableCodec = const TableMarkdownCodec(),
     DateTime Function()? clock,
+    Future<String> Function(String migrationId)? createDatabaseSnapshot,
+    Future<int> Function()? estimateDatabaseSnapshotBytes,
   }) : _vault = vault,
        _index = index,
        _legacyCodec = legacyCodec,
        _tableCodec = tableCodec,
-       _clock = clock ?? DateTime.now;
+       _clock = clock ?? DateTime.now,
+       _createDatabaseSnapshot = createDatabaseSnapshot,
+       _estimateDatabaseSnapshotBytes = estimateDatabaseSnapshotBytes;
 
   final VaultStore _vault;
   final IndexDatabase _index;
   final MarkdownCodec _legacyCodec;
   final TableMarkdownCodec _tableCodec;
   final DateTime Function() _clock;
+  final Future<String> Function(String migrationId)? _createDatabaseSnapshot;
+  final Future<int> Function()? _estimateDatabaseSnapshotBytes;
 
   Future<TableMigrationPreview> preview({
     DateTime? now,
@@ -245,8 +251,27 @@ class TableMigrationService {
       0,
       (sum, markdown) => sum + utf8.encode(markdown).length,
     );
+    int? estimatedDatabaseBackupBytes;
+    final estimateDatabaseSnapshotBytes = _estimateDatabaseSnapshotBytes;
+    if (estimateDatabaseSnapshotBytes == null) {
+      issues.add(
+        const TableMigrationIssue('databases', '数据库快照空间估算未接入，拒绝执行迁移。'),
+      );
+    } else {
+      try {
+        estimatedDatabaseBackupBytes = await estimateDatabaseSnapshotBytes();
+        if (estimatedDatabaseBackupBytes < 0) {
+          throw StateError('数据库快照空间估算为负数。');
+        }
+      } on Object catch (error) {
+        issues.add(TableMigrationIssue('databases', '数据库快照空间估算失败：$error'));
+      }
+    }
     final estimatedRequiredBytes =
-        estimatedBackupBytes + estimatedOutputBytes * 2 + 4096;
+        estimatedBackupBytes +
+        estimatedOutputBytes * 2 +
+        (estimatedDatabaseBackupBytes ?? 0) +
+        4096;
     if (availableBytes == null) {
       issues.add(
         const TableMigrationIssue('vault', '未提供 vault 可用磁盘空间读数，拒绝执行迁移。'),
@@ -257,6 +282,11 @@ class TableMigrationService {
           'vault',
           '可用空间不足：预计需要 $estimatedRequiredBytes bytes，当前 $availableBytes bytes。',
         ),
+      );
+    }
+    if (_createDatabaseSnapshot == null) {
+      issues.add(
+        const TableMigrationIssue('databases', '数据库、会话与设置备份回调未接入，拒绝执行迁移。'),
       );
     }
     return TableMigrationPreview._(
@@ -274,6 +304,7 @@ class TableMigrationService {
       skippedIds: List.unmodifiable(skipped.toSet()),
       estimatedBackupBytes: estimatedBackupBytes,
       estimatedOutputBytes: estimatedOutputBytes,
+      estimatedDatabaseBackupBytes: estimatedDatabaseBackupBytes,
       estimatedRequiredBytes: estimatedRequiredBytes,
       availableBytes: availableBytes,
     );
@@ -282,6 +313,10 @@ class TableMigrationService {
   Future<TableMigrationReceipt> apply(TableMigrationPreview plan) =>
       _vault.exclusive(() async {
         if (!plan.canApply) throw StateError('迁移预检存在阻断项，拒绝写入。');
+        final createDatabaseSnapshot = _createDatabaseSnapshot;
+        if (createDatabaseSnapshot == null) {
+          throw StateError('数据库、会话与设置备份未接入，拒绝迁移。');
+        }
         final journalPath = _journalPath(plan.migrationId);
         final journalSource = await _vault.read(journalPath);
         if (journalSource != null) {
@@ -306,11 +341,13 @@ class TableMigrationService {
           (path, markdown) => MapEntry(path, _hash(markdown)),
         );
         final backup = await _createBackupUnlocked(plan.migrationId);
+        final databaseBackup = await createDatabaseSnapshot(plan.migrationId);
         final journal = <String, Object?>{
           'schema_version': 1,
           'migration_id': plan.migrationId,
           'status': 'prepared',
           'backup_manifest': backup,
+          'database_backup_manifest': databaseBackup,
           'targets': expected,
         };
         await _vault.write(journalPath, jsonEncode(journal));
@@ -540,6 +577,7 @@ class TableMigrationPreview {
     required this.skippedIds,
     required this.estimatedBackupBytes,
     required this.estimatedOutputBytes,
+    required this.estimatedDatabaseBackupBytes,
     required this.estimatedRequiredBytes,
     required this.availableBytes,
   });
@@ -554,6 +592,7 @@ class TableMigrationPreview {
   final List<String> skippedIds;
   final int estimatedBackupBytes;
   final int estimatedOutputBytes;
+  final int? estimatedDatabaseBackupBytes;
   final int estimatedRequiredBytes;
   final int? availableBytes;
 
@@ -566,17 +605,22 @@ class TableMigrationReceipt {
     required this.status,
     required this.targets,
     required this.backupManifestPath,
+    required this.databaseBackupManifestPath,
   });
 
   final String migrationId;
   final String status;
   final Map<String, dynamic> targets;
   final String backupManifestPath;
+  final String databaseBackupManifestPath;
 
   factory TableMigrationReceipt.fromJournal(Map<String, dynamic> journal) {
     final targets = journal['targets'];
     final backup = journal['backup_manifest'];
-    if (targets is! Map<String, dynamic> || backup is! String) {
+    final databaseBackup = journal['database_backup_manifest'];
+    if (targets is! Map<String, dynamic> ||
+        backup is! String ||
+        databaseBackup is! String) {
       throw StateError('迁移完成记录缺少校验材料。');
     }
     return TableMigrationReceipt(
@@ -584,6 +628,7 @@ class TableMigrationReceipt {
       status: journal['status'] as String,
       targets: Map.unmodifiable(targets),
       backupManifestPath: backup,
+      databaseBackupManifestPath: databaseBackup,
     );
   }
 }
