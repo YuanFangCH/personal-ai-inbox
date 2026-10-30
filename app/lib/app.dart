@@ -29,6 +29,7 @@ class _PersonalAiInboxAppState extends State<PersonalAiInboxApp>
     _modules = AppModules(
       results: runtime.results,
       tables: runtime.tables,
+      migrationGate: runtime.migrationGate,
       capture: runtime.capture,
       conversations: runtime.conversations,
       preferences: runtime.preferences,

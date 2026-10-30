@@ -4,6 +4,7 @@ import '../data/attachment_store_factory.dart';
 import '../data/chat_repository.dart';
 import '../data/conversation_store.dart';
 import '../data/conversation_store_factory.dart';
+import '../data/disk_space_probe.dart';
 import '../data/device_paths.dart';
 import '../data/index_database.dart';
 import '../data/index_database_factory.dart';
@@ -14,6 +15,7 @@ import '../data/settings_service.dart';
 import '../data/migration_coordinator_factory.dart';
 import '../data/sync_engine.dart';
 import '../data/sync_provider.dart';
+import '../data/table_migration_service.dart';
 import '../data/vault_store.dart';
 import '../data/vault_store_factory.dart';
 import '../modules/capture/capture_workflow.dart';
@@ -21,6 +23,7 @@ import '../modules/conversation/conversation_workspace.dart';
 import '../modules/conversation/auto_record_processor.dart';
 import '../modules/results/result_library.dart';
 import '../modules/tables/table_library.dart';
+import '../modules/tables/table_migration_gate.dart';
 import '../modules/settings/device_preferences.dart';
 import '../modules/sync/sync_workspace.dart';
 import '../services/capture_service.dart';
@@ -69,6 +72,18 @@ final class AppRuntime {
     AppRuntime? runtime;
     try {
       index = indexOverride ?? await createPlatformIndexDatabase(supportPath);
+      late final TableMigrationGate migrationGate;
+      final tableMigrationService = TableMigrationService(
+        vault: vault,
+        index: index,
+        createDatabaseSnapshot: migration?.createTableMigrationSnapshot,
+        estimateDatabaseSnapshotBytes:
+            migration?.estimateTableMigrationSnapshotBytes,
+        availableSpaceProbe: availableBytesForPath,
+        runWithWriteBarrier: (operation) =>
+            migrationGate.runStartupMigrationBarrier(operation),
+      );
+      migrationGate = TableMigrationGate(service: tableMigrationService);
       final settings = await settingsService.load();
       final repository = ResultRepository(
         vault: vault,
@@ -138,6 +153,8 @@ final class AppRuntime {
         preferences: preferences,
         results: results,
         tables: tables,
+        migrationGate: migrationGate,
+        initializeConversationStore: chatRepository.initialize,
         capture: capture,
         conversations: conversations,
         sync: sync,
@@ -167,17 +184,22 @@ final class AppRuntime {
     required this.preferences,
     required this.results,
     required this.tables,
+    TableMigrationGate? migrationGate,
+    this.initializeConversationStore,
     required this.capture,
     required this.conversations,
     required this.sync,
     this.fileInputService = const FileInputService(),
     VoiceService? voiceService,
     this.closeAdapters,
-  }) : voiceService = voiceService ?? SystemVoiceService();
+  }) : migrationGate = migrationGate ?? TableMigrationGate.disabled(),
+       voiceService = voiceService ?? SystemVoiceService();
 
   final DevicePreferences preferences;
   final ResultLibrary results;
   final TableLibrary tables;
+  final TableMigrationGate migrationGate;
+  final Future<void> Function()? initializeConversationStore;
   final CaptureWorkflow capture;
   final ConversationWorkspace conversations;
   final SyncWorkspace sync;
@@ -185,19 +207,38 @@ final class AppRuntime {
   final VoiceService voiceService;
   final Future<void> Function()? closeAdapters;
   bool _disposed = false;
+  bool _modulesInitialized = false;
   Future<void>? _shutdownFuture;
 
   Future<void> initialize() async {
     await preferences.initialize();
+    if (migrationGate.isEnabled) {
+      await initializeConversationStore?.call();
+      await migrationGate.initialize();
+      if (migrationGate.requiresReadOnly) return;
+    }
+    await _initializeModules();
+  }
+
+  Future<void> _initializeModules() async {
     await results.initialize();
     await tables.initialize();
     await capture.initialize();
     await conversations.initialize();
     await sync.initialize();
+    _modulesInitialized = true;
   }
 
   Future<void> refresh() async {
     await preferences.initialize();
+    if (migrationGate.isEnabled) {
+      await migrationGate.refresh();
+      if (migrationGate.requiresReadOnly) return;
+    }
+    if (!_modulesInitialized) {
+      await _initializeModules();
+      return;
+    }
     await results.refresh();
     await tables.refresh();
     await capture.refresh();
@@ -214,6 +255,7 @@ final class AppRuntime {
     capture.dispose();
     results.dispose();
     tables.dispose();
+    migrationGate.dispose();
     preferences.dispose();
   }
 

@@ -33,7 +33,7 @@
 
 表与笔记改版已细化为 [10 个工作包、80 个执行步骤](docs/table-notebook-implementation-plan.md)。P1模型/codec与P2首轮存储、SQLite v7、按表查询和 runtime 默认表初始化已有28项定向测试、局部分析及APK构建通过。Android15 AVD安装最新 Debug APK后启动、重启成功；Flutter integration driver的VM Service连接仍待修复。详情见 `test-results/table-notebook-p2-20261030/VALIDATION.md`。
 P3本地数据层首轮已实现：SQLite v9恢复账本、单条内容撤销、整表30天恢复/到期清理，以及“通知事件与原日程同批更新/撤销”。21项 repository/index 定向用例与 analyzer通过；Android 15 AVD安装启动及三张默认表重启哈希核验通过。旧数据迁移、UI 和 AI 工具接线仍待执行。状态和范围以 `RM_HANDOFF.md` 与执行计划为准。
-P4 迁移预检/暂存首轮已实现：可判定旧成果映射、保留源件、备份 vault Markdown、独立快照 SQLite/会话/设置并把两份清单写入迁移 journal，支持重放和 hash 条件回滚。Android `StatFs` 与 Windows `GetDiskFreeSpaceExW` 可用空间探测已接入，12 项迁移/容量用例及 APK 构建通过，其中 Android AVD 通道集成用例 1/1 通过。仅合成数据，未迁移真实用户资料。全局写暂停、主界面迁移确认/只读门和真实候选包演练仍待完成。
+P4 迁移预检/暂存首轮已实现：可判定旧成果映射、保留源件、分别备份 vault Markdown 和 SQLite/会话/设置，并把清单关联到迁移 journal，支持重放和 hash 条件回滚。Android `StatFs` 与 Windows `GetDiskFreeSpaceExW` 可用空间探测已接入。应用启动发现旧资料时会进入只读迁移预检页，旧模块不初始化。主机定向测试 17/17、Android AVD 集成用例 3/3通过；所有迁移只用合成资料，未改真实用户数据。迁移确认/执行按钮、切换到新表 UI 和正式候选包演练仍待完成。
 
 2026-10-29 已启动表与笔记改版：三个默认表仅兜底且不可删除，表混合收纳内容；日历只显示表内正式内容，首页可排序展示表模块。AI 内容操作默认免逐次确认，表结构操作在对话确认；普通知识进表，全局知识独立审批。首版支持六种自定义字段；调整通知保留为事件并更新原日程，自定义表及内容可在 30 天内整表恢复。旧事项迁移保留正文和关联内容。完整需求见[改版规划](docs/table-notebook-redesign-plan.md)，执行顺序和代码状态见[执行计划](docs/table-notebook-implementation-plan.md)。
 

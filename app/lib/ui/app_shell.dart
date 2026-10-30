@@ -8,6 +8,7 @@ import 'pages/home_page.dart';
 import 'pages/inbox_page.dart';
 import 'pages/knowledge_page.dart';
 import 'pages/matters_page.dart';
+import 'pages/table_migration_read_only_page.dart';
 import 'pages/pending_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/sync_page.dart';
@@ -44,6 +45,7 @@ class _AppShellState extends State<AppShell> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (AppScope.migrationGate(context).requiresReadOnly) return;
     if (_startupChecked) {
       return;
     }
@@ -68,6 +70,16 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    final migrationGate = AppScope.migrationGate(context);
+    return AnimatedBuilder(
+      animation: migrationGate,
+      builder: (context, _) => migrationGate.requiresReadOnly
+          ? TableMigrationReadOnlyPage(gate: migrationGate)
+          : _buildMain(context),
+    );
+  }
+
+  Widget _buildMain(BuildContext context) {
     _schedulePendingConversationOpen();
     final runtime = AppScope.of(context);
     return LayoutBuilder(

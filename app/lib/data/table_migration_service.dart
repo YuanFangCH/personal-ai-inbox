@@ -258,6 +258,22 @@ class TableMigrationService {
         .join('\n');
     final migrationId =
         'tm_${_hash('$sourceDigest\n$outputDigest').substring(0, 24)}';
+    final legacyRecords = documents
+        .map(
+          (document) => LegacyMigrationRecord(
+            id: document.id,
+            type: document.type,
+            title: document.title,
+            body: document.body,
+            status: document.status,
+            deleted: document.deleted,
+            sourcePath: document.markdownPath,
+          ),
+        )
+        .toList(growable: false);
+    final hasLegacyContent =
+        documents.any((document) => !document.isGlobalKnowledge) ||
+        paths.length > documents.length;
     for (final output in outputs.entries) {
       final existing = await _vault.read(output.key);
       if (existing != null &&
@@ -315,6 +331,8 @@ class TableMigrationService {
     return TableMigrationPreview._(
       migrationId: migrationId,
       sourceHashes: Map.unmodifiable(sourceHashes),
+      legacyRecords: List.unmodifiable(legacyRecords),
+      hasLegacyContent: hasLegacyContent,
       tables: List.unmodifiable(tables),
       entries: List.unmodifiable(entries),
       outputs: Map.unmodifiable(outputs),
@@ -595,10 +613,32 @@ class TableMigrationIssue {
   final String message;
 }
 
+class LegacyMigrationRecord {
+  const LegacyMigrationRecord({
+    required this.id,
+    required this.type,
+    required this.title,
+    required this.body,
+    required this.status,
+    required this.deleted,
+    required this.sourcePath,
+  });
+
+  final String id;
+  final ResultType type;
+  final String title;
+  final String body;
+  final ResultStatus status;
+  final bool deleted;
+  final String sourcePath;
+}
+
 class TableMigrationPreview {
   const TableMigrationPreview._({
     required this.migrationId,
     required this.sourceHashes,
+    required this.legacyRecords,
+    required this.hasLegacyContent,
     required this.tables,
     required this.entries,
     required this.outputs,
@@ -614,6 +654,8 @@ class TableMigrationPreview {
 
   final String migrationId;
   final Map<String, String> sourceHashes;
+  final List<LegacyMigrationRecord> legacyRecords;
+  final bool hasLegacyContent;
   final List<TableDocument> tables;
   final List<TableEntryDocument> entries;
   final Map<String, String> outputs;
