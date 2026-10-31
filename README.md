@@ -12,7 +12,7 @@
 - Windows 11 x64：选择安装包或便携 ZIP。
 - 发布页同时提供 `SHA256SUMS.txt`，下载后应校验文件哈希。
 
-`v1.1.5` 是当前预览版，延续 Android 长期发布证书，并包含 DeepSeek 风格界面改版和交互优化。可从 [GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/v1.1.5) 下载；v1.1.3 及之前的包无法保证与本版直接覆盖安装，详见[发行说明](docs/releases/v1.1.5.md)。
+`v1.2.0` 是本地发布准备中的预览版，计划延续 Android 长期发布证书，加入笔记式表、表内 AI 操作与秘书页状态保留。发布资产将在 [GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/v1.2.0) 提供。升级前请完整备份旧版应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.2.0.md)；真实资料迁移需要在应用内确认，不能把迁移演练当作真实资料升级验证。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
 
 ## 核心能力
 
@@ -45,7 +45,7 @@ P7已接通 AI 按表检索和表内内容操作；表结构变更在聊天卡�
 
 2026-10-29 已启动表与笔记改版：三个默认表仅兜底且不可删除，表混合收纳内容；日历只显示表内正式内容，首页可排序展示表模块。AI 内容操作默认免逐次确认，表结构操作在对话确认；普通知识进表，全局知识独立审批。首版支持六种自定义字段；调整通知保留为事件并更新原日程，自定义表及内容可在 30 天内整表恢复。旧事项迁移保留正文和关联内容。完整需求见[改版规划](docs/table-notebook-redesign-plan.md)，执行顺序和代码状态见[执行计划](docs/table-notebook-implementation-plan.md)。
 
-`v1.1.5` 是当前预览版，包含 DeepSeek 风格的 AI 对话与首页改版、跨宽度输入状态保持、窄屏工作区捕获入口和其他布局反馈。发布资产见 [GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/v1.1.5)。
+`v1.2.0` 发布准备涵盖表/笔记改版、AI 表内读写与确认卡、旧事项迁移和秘书页内嵌对话。最终构建、签名、资产哈希与模拟器交互验收状态以[发行说明](docs/releases/v1.2.0.md)、[验证记录](test-results/v1.2.0-release-prep/VALIDATION.md)及 GitHub Actions 为准。
 
 后续产品工作包括补齐前端高保真状态稿和剩余页面视觉细节，以及接入 OneDrive 双向同步、百度网盘归档和跨端同步。真实云盘与通知能力目前尚未接入。
 
