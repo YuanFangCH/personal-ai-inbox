@@ -1,9 +1,10 @@
+import 'dart:collection';
+
 import 'package:flutter/material.dart';
 
 import '../modules/tables/table_migration_gate.dart';
 import 'app_scope.dart';
 import 'pages/calendar_page.dart';
-import 'pages/conversation_page.dart';
 import 'pages/global_knowledge_page.dart';
 import 'pages/home_page.dart';
 import 'pages/inbox_page.dart';
@@ -39,32 +40,65 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   AppPage _page = AppPage.home;
   bool _startupChecked = false;
-  String? _lastOpenedConversationId;
+  bool _secretaryCreated = false;
+  String? _pendingSecretaryConversationId;
+  final Queue<String> _queuedSecretaryConversationIds = Queue<String>();
+  Listenable? _observedConversations;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final conversations = AppScope.conversations(context);
+    if (_observedConversations != conversations) {
+      _observedConversations?.removeListener(_handlePendingConversationOpen);
+      _observedConversations = conversations;
+      conversations.addListener(_handlePendingConversationOpen);
+    }
     if (AppScope.migrationGate(context).requiresReadOnly) return;
     if (_startupChecked) {
       return;
     }
     _startupChecked = true;
-    _schedulePendingConversationOpen();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _handlePendingConversationOpen();
+    });
   }
 
-  void _schedulePendingConversationOpen() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
-      final conversationId = AppScope.conversations(context)
-          .consumePendingConversationId();
-      if (conversationId != null &&
-          conversationId != _lastOpenedConversationId) {
-        _lastOpenedConversationId = conversationId;
-        openConversationPage(context, conversationId);
-      }
+  void _handlePendingConversationOpen() {
+    if (!mounted) return;
+    final conversations = AppScope.conversations(context);
+    final pending = <String>[];
+    String? id;
+    while ((id = conversations.consumePendingConversationId()) != null) {
+      pending.add(id!);
+    }
+    if (pending.isEmpty) return;
+    setState(() {
+      _queuedSecretaryConversationIds.addAll(pending);
+      _secretaryCreated = true;
+      _page = AppPage.inbox;
+      _advanceSecretaryConversationRequest();
     });
+  }
+
+  void _advanceSecretaryConversationRequest() {
+    _pendingSecretaryConversationId ??= _queuedSecretaryConversationIds.isEmpty
+        ? null
+        : _queuedSecretaryConversationIds.removeFirst();
+  }
+
+  void _onSecretaryConversationRequestHandled() {
+    if (!mounted) return;
+    setState(() {
+      _pendingSecretaryConversationId = null;
+      _advanceSecretaryConversationRequest();
+    });
+  }
+
+  @override
+  void dispose() {
+    _observedConversations?.removeListener(_handlePendingConversationOpen);
+    super.dispose();
   }
 
   @override
@@ -82,7 +116,7 @@ class _AppShellState extends State<AppShell> {
   }
 
   Widget _buildMain(BuildContext context) {
-    _schedulePendingConversationOpen();
+    if (_page == AppPage.inbox) _secretaryCreated = true;
     final runtime = AppScope.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -126,11 +160,9 @@ class _AppShellState extends State<AppShell> {
             },
             child: KeyedSubtree(
               key: ValueKey('page_${_page.name}'),
-              child: _pageFor(
-                _page,
-                wide: wide,
-                secretaryNavigation: constraints.maxWidth >= 600,
-              ),
+              child: _page == AppPage.inbox
+                  ? const SizedBox.shrink()
+                  : _pageFor(_page),
             ),
           ),
         );
@@ -146,20 +178,30 @@ class _AppShellState extends State<AppShell> {
                     Positioned.fill(
                       child: SafeArea(
                         bottom: false,
-                        child: wide && _page != AppPage.inbox
-                            ? Row(
-                                children: [
-                                  _WideNavigation(
-                                    selected: _page,
-                                    onSelected: (page) =>
-                                        setState(() => _page = page),
-                                    extended: constraints.maxWidth >= 1220,
-                                  ),
-                                  const VerticalDivider(width: 1),
-                                  Expanded(child: content),
-                                ],
-                              )
-                            : content,
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: wide
+                                  ? (constraints.maxWidth >= 1220 ? 197 : 73)
+                                  : 0,
+                              child: wide
+                                  ? _WideNavigation(
+                                      selected: _page,
+                                      onSelected: (page) =>
+                                          setState(() => _page = page),
+                                      extended: constraints.maxWidth >= 1220,
+                                    )
+                                  : null,
+                            ),
+                            SizedBox(
+                              width: wide ? 1 : 0,
+                              child: wide
+                                  ? const VerticalDivider(width: 1)
+                                  : null,
+                            ),
+                            Expanded(child: _buildPageStack(content, wide)),
+                          ],
+                        ),
                       ),
                     ),
                     Positioned(
@@ -192,7 +234,7 @@ class _AppShellState extends State<AppShell> {
                   label: const Text('收下'),
                   tooltip: '捕获',
                 ),
-          bottomNavigationBar: wide || _page == AppPage.inbox
+          bottomNavigationBar: wide
               ? null
               : NavigationBar(
                   selectedIndex: _compactIndex(_page),
@@ -246,18 +288,39 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  Widget _pageFor(
-    AppPage page, {
-    required bool wide,
-    required bool secretaryNavigation,
-  }) {
+  Widget _buildPageStack(Widget content, bool wide) => Stack(
+    fit: StackFit.expand,
+    children: [
+      if (_secretaryCreated)
+        Offstage(
+          offstage: _page != AppPage.inbox,
+          child: TickerMode(
+            enabled: _page == AppPage.inbox,
+            child: ExcludeFocus(
+              excluding: _page != AppPage.inbox,
+              child: ExcludeSemantics(
+                excluding: _page != AppPage.inbox,
+                child: InboxPage(
+                  key: const ValueKey('persistent_secretary'),
+                  isWide: wide,
+                  visible: _page == AppPage.inbox,
+                  requestedConversationId: _pendingSecretaryConversationId,
+                  onRequestHandled: _onSecretaryConversationRequestHandled,
+                  onReturnHome: () => setState(() => _page = AppPage.home),
+                  onNavigate: _navigateFromSecretary,
+                ),
+              ),
+            ),
+          ),
+        ),
+      if (_page != AppPage.inbox) content,
+    ],
+  );
+
+  Widget _pageFor(AppPage page) {
     return switch (page) {
       AppPage.home => const HomePage(),
-      AppPage.inbox => InboxPage(
-        isWide: secretaryNavigation,
-        onReturnHome: () => setState(() => _page = AppPage.home),
-        onNavigate: _navigateFromSecretary,
-      ),
+      AppPage.inbox => const SizedBox.shrink(),
       AppPage.calendar => const CalendarPage(),
       AppPage.matters => const TablesPage(),
       AppPage.knowledge => const GlobalKnowledgePage(),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
 
@@ -47,7 +48,7 @@ class ConversationWorkspace extends ChangeNotifier {
   List<Conversation> _conversations = const [];
   final Map<String, List<ChatMessage>> _messagesByConversation = {};
   String? _activeConversationId;
-  String? _pendingOpenConversationId;
+  final Queue<String> _pendingOpenConversationIds = Queue<String>();
   StreamSubscription<ChatStreamDelta>? _chatSubscription;
   Completer<void>? _chatStreamDone;
   Completer<void>? _chatGenerationFinished;
@@ -242,9 +243,9 @@ class ConversationWorkspace extends ChangeNotifier {
       _imageInputService.pickFromCamera();
 
   String? consumePendingConversationId() {
-    final value = _pendingOpenConversationId;
-    _pendingOpenConversationId = null;
-    return value;
+    return _pendingOpenConversationIds.isEmpty
+        ? null
+        : _pendingOpenConversationIds.removeFirst();
   }
 
   Future<void> openConversation(String id) async {
@@ -285,7 +286,7 @@ class ConversationWorkspace extends ChangeNotifier {
     final rawImages = await payload.readImages();
     final images = await _imageInputService.fromBytes(rawImages);
     final conversation = await createConversation();
-    _pendingOpenConversationId = conversation.id;
+    _pendingOpenConversationIds.addLast(conversation.id);
     unawaited(
       sendChatMessage(conversation.id, text: payload.text, attachments: images),
     );

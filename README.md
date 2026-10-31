@@ -33,6 +33,8 @@
 
 ## 当前进展
 
+秘书已改为 AppShell 内的常驻页面：手机/宽屏保留全局导航，新建、历史会话和系统分享均在秘书页内切换；主页面往返保留当前会话草稿和阅读状态，回复生成不中断。主机定向 UI 与跨宽度用例通过；当前 Android 集成测试构建受本机 Gradle/Java 环境阻塞，详见 [本轮验证记录](test-results/secretary-embedded-20261031/VALIDATION.md)。架构约定见 [ADR 0022](docs/adr/0022-persistent-embedded-secretary-page.md)。
+
 表与笔记改版已细化为 [10 个工作包、80 个执行步骤](docs/table-notebook-implementation-plan.md)。
 P3本地数据层首轮已实现：SQLite v10恢复账本、单条内容撤销、整表30天恢复/到期清理，以及“通知事件与原日程同批更新/撤销”。P5b新增的字段删除恢复账本从schema v9升级到v10。21项P3 repository/index用例及相关 analyzer 通过；Android 15 AVD默认表重启核验通过。完整状态以 `RM_HANDOFF.md` 与执行计划为准。
 P4 迁移预检/暂存首轮已实现：可判定旧成果映射、备份 vault 与 SQLite/会话/设置并关联 journal，支持重放和 hash 回滚。Android/Windows 容量探测已接入。发现旧资料时应用启动进入只读预检；用户确认后可在本地生成新格式副本，源件保留。完成后主应用可继续使用表、首页、日历、秘书、全局知识和设置；非全局旧源保持只读，旧同步入口关闭。主机和 AVD 的迁移验证只用合成资料。

@@ -131,6 +131,28 @@ void main() {
       harness.controller.dispose();
     },
   );
+
+  testWidgets('queued shared conversations open in arrival order', (
+    tester,
+  ) async {
+    final harness = await _LifecycleHarness.create();
+    await harness.controller.handleSharedPayload(
+      const SharedCapturePayload(text: '先分享的内容'),
+    );
+    await harness.controller.handleSharedPayload(
+      const SharedCapturePayload(text: '后分享的内容'),
+    );
+    await tester.pumpWidget(
+      PersonalAiInboxApp(runtime: harness.controller.runtime),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('nav_inbox')), findsOneWidget);
+    expect(find.byKey(const Key('chat_input')), findsOneWidget);
+    expect(find.text('后分享的内容'), findsOneWidget);
+    expect(harness.controller.conversations, hasLength(2));
+    harness.controller.dispose();
+  });
 }
 
 Future<void> _waitFor(bool Function() condition) async {

@@ -1,6 +1,7 @@
 part of '../conversation_page.dart';
 
 mixin _ConversationPageActions on State<ConversationPage> {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _textController = TextEditingController();
   final _composerFocusNode = FocusNode();
   final _composerLayoutKey = GlobalKey();
@@ -128,39 +129,9 @@ mixin _ConversationPageActions on State<ConversationPage> {
     return discard == true;
   }
 
-  Future<void> _returnToHome({BuildContext? drawerContext}) async {
-    if (!await _confirmDiscardComposerContent() || !mounted) return;
-    if (drawerContext != null && drawerContext.mounted) {
-      Navigator.pop(drawerContext);
-    }
-    final voice = AppScope.voice(context);
-    if (voice.isListening) await voice.stopListening();
-    if (mounted) widget.onReturnHome?.call();
-  }
-
-  Future<void> _handleAssistantNavigation(String destination) async {
-    if (destination == 'home') {
-      await _returnToHome();
-      return;
-    }
-    if (destination == 'pending' ||
-        destination == 'matters' ||
-        destination == 'global_knowledge') {
-      _composerFocusNode.unfocus();
-      _closeAttachmentTray();
-      widget.onNavigate?.call(destination);
-      return;
-    }
-    if (!await _confirmDiscardComposerContent() || !mounted) return;
-    _composerFocusNode.unfocus();
-    _closeAttachmentTray();
-    final voice = AppScope.voice(context);
-    if (voice.isListening) await voice.stopListening();
-    if (mounted) widget.onNavigate?.call(destination);
-  }
-
   void _handleAssistantBack() {
     if (_sessionDrawerOpen || _drawerWasOpen) {
+      _scaffoldKey.currentState?.closeDrawer();
       _drawerWasOpen = false;
       return;
     }
@@ -177,7 +148,12 @@ mixin _ConversationPageActions on State<ConversationPage> {
       _composerFocusNode.unfocus();
       return;
     }
-    unawaited(_returnToHome());
+    _composerFocusNode.unfocus();
+    _closeAttachmentTray();
+    if (AppScope.voice(context).isListening) {
+      unawaited(AppScope.voice(context).stopListening());
+    }
+    widget.onReturnHome?.call();
   }
 
   void _initializeConversationPage() {
@@ -487,15 +463,6 @@ mixin _ConversationPageActions on State<ConversationPage> {
           ],
         ),
       ),
-      if (inDrawer && widget.isRoot && widget.onReturnHome != null)
-        ListTile(
-          key: const Key('conversation_return_home'),
-          leading: const Icon(Icons.home_outlined),
-          title: const Text('返回首页'),
-          onTap: () => _returnToHome(drawerContext: context),
-        ),
-      if (widget.isRoot && widget.isWide)
-        _SecretaryDesktopNavigation(onSelect: _handleAssistantNavigation),
       if (inDrawer && widget.isRoot)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),

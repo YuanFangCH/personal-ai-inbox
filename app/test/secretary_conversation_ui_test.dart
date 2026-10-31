@@ -36,11 +36,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('nav_inbox')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('nav_home')), findsNothing);
+    expect(find.byKey(const Key('nav_home')), findsOneWidget);
     await tester.enterText(find.byKey(const Key('chat_input')), '未发送的草稿');
     await tester.tap(find.byKey(const Key('conversation_manage')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('conversation_return_home')), findsOneWidget);
+    expect(find.byKey(const Key('conversation_return_home')), findsNothing);
+    expect(find.byKey(const Key('nav_calendar')), findsOneWidget);
+    expect(find.byKey(const Key('secretary_nav_home')), findsNothing);
     expect(
       tester
           .widget<AnimatedSlide>(
@@ -50,24 +52,20 @@ void main() {
           .dx,
       greaterThan(0),
     );
-    await tester.tap(find.byKey(const Key('conversation_return_home')));
+    await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    expect(find.text('丢弃未发送内容？'), findsOneWidget);
-    await tester.tap(find.text('继续编辑'));
+    await tester.tap(find.byKey(const Key('nav_home')));
     await tester.pumpAndSettle();
-    expect(find.text('未发送的草稿'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('conversation_return_home')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('丢弃并离开'));
-    await tester.pumpAndSettle();
+    expect(find.text('丢弃未发送内容？'), findsNothing);
     expect(find.byKey(const Key('nav_home')), findsOneWidget);
     await tester.tap(find.byKey(const Key('nav_inbox')));
     await tester.pumpAndSettle();
+    expect(find.text('未发送的草稿'), findsOneWidget);
     await tester.tap(find.byKey(const Key('conversation_manage')));
     await tester.pumpAndSettle();
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('nav_home')), findsNothing);
+    expect(find.byKey(const Key('nav_home')), findsOneWidget);
     expect(find.byKey(const Key('conversation_search')), findsNothing);
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
@@ -80,7 +78,7 @@ void main() {
           .widget<TextField>(find.byKey(const Key('chat_input')))
           .controller!
           .text,
-      isEmpty,
+      '未发送的草稿',
     );
     final thinkingChip = tester.widget<FilterChip>(
       find.widgetWithText(FilterChip, '深度思考'),
@@ -103,6 +101,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('conversation_search')), findsOneWidget);
     await tester.tap(find.byKey(Key('conversation_${existing.id}')));
+    await tester.pumpAndSettle();
+    expect(find.text('丢弃未发送内容？'), findsOneWidget);
+    await tester.tap(find.text('丢弃并离开'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('conversation_permissions')));
     await tester.pumpAndSettle();
@@ -171,16 +172,15 @@ void main() {
     await tester.tap(find.byKey(const Key('nav_inbox')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('nav_home')), findsNothing);
-    expect(find.byKey(const Key('secretary_nav_home')), findsOneWidget);
-    expect(find.byKey(const Key('secretary_nav_more')), findsOneWidget);
+    expect(find.byKey(const Key('nav_home')), findsOneWidget);
+    expect(find.byKey(const Key('secretary_nav_home')), findsNothing);
+    expect(find.byKey(const Key('secretary_nav_more')), findsNothing);
     expect(find.byKey(const Key('conversation_search')), findsOneWidget);
     expect(find.byKey(const Key('conversation_tables_page')), findsNothing);
     expect(
       find.byKey(const Key('conversation_global_knowledge')),
       findsNothing,
     );
-    expect(find.byKey(const Key('conversation_history_list')), findsNothing);
     await tester.tap(find.byKey(const Key('secretary_history_open')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('conversation_history_list')), findsOneWidget);
@@ -207,14 +207,9 @@ void main() {
       greaterThan(transitioningComposerY),
     );
 
-    await tester.ensureVisible(find.byKey(const Key('secretary_nav_more')));
+    await tester.tap(find.byKey(const Key('nav_settings')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('secretary_nav_more')));
-    await tester.pumpAndSettle();
-    expect(find.text('全局知识库'), findsOneWidget);
-    expect(find.text('表与笔记'), findsWidgets);
-    expect(find.text('设置'), findsOneWidget);
-    expect(find.text('同步'), findsOneWidget);
+    expect(find.text('设置'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
@@ -239,17 +234,64 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('nav_inbox')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('nav_home')), findsNothing);
+    expect(find.byKey(const Key('nav_home')), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key('conversation_manage')));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('conversation_return_home')), findsOneWidget);
-    expect(find.byKey(const Key('secretary_nav_calendar')), findsOneWidget);
-    expect(find.byKey(const Key('secretary_nav_matters')), findsOneWidget);
-    expect(find.byKey(const Key('secretary_nav_knowledge')), findsOneWidget);
-    await tester.tap(find.byKey(const Key('secretary_nav_calendar')));
+    await tester.tap(find.byKey(const Key('nav_calendar')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('nav_calendar')), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('secretary state survives compact, tablet and desktop widths', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final runtime = await AppRuntime.bootstrap(
+      vaultOverride: MemoryVaultStore(),
+      indexOverride: MemoryIndexDatabase(),
+      settingsOverride: FakeSettingsService(
+        deviceId: 'secretary-responsive-lifecycle-ui',
+        modelKey: 'test-key',
+      ),
+    );
+    addTearDown(runtime.dispose);
+
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav_inbox')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('chat_input')), '跨宽度保留草稿');
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('chat_input')))
+          .controller!
+          .text,
+      '跨宽度保留草稿',
+    );
+    tester.binding.focusManager.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+
+    for (final size in const [
+      Size(800, 900),
+      Size(1280, 900),
+      Size(320, 844),
+    ]) {
+      tester.view.physicalSize = size;
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('chat_input')), findsOneWidget);
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const Key('chat_input')))
+            .controller!
+            .text,
+        '跨宽度保留草稿',
+        reason: 'draft should survive resize to $size',
+      );
+      expect(tester.takeException(), isNull);
+    }
   });
 }

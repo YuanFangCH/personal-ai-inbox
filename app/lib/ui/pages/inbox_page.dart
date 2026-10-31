@@ -9,11 +9,17 @@ class InboxPage extends StatelessWidget {
     this.isWide = false,
     this.onReturnHome,
     this.onNavigate,
+    this.visible = true,
+    this.requestedConversationId,
+    this.onRequestHandled,
   });
 
   final bool isWide;
   final VoidCallback? onReturnHome;
   final ValueChanged<String>? onNavigate;
+  final bool visible;
+  final String? requestedConversationId;
+  final VoidCallback? onRequestHandled;
 
   @override
   Widget build(BuildContext context) => ConversationPage(
@@ -21,5 +27,8 @@ class InboxPage extends StatelessWidget {
     isWide: isWide,
     onReturnHome: onReturnHome,
     onNavigate: onNavigate,
+    visible: visible,
+    requestedConversationId: requestedConversationId,
+    onRequestHandled: onRequestHandled,
   );
 }

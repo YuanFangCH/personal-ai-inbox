@@ -30,19 +30,6 @@ part 'conversation/composer.dart';
 part 'conversation/message_bubble.dart';
 part 'conversation/page_actions.dart';
 
-Future<void> openConversationPage(BuildContext context, String conversationId) {
-  return Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => ConversationPage(conversationId: conversationId),
-    ),
-  );
-}
-
-Future<void> openNewConversationPage(BuildContext context) {
-  return Navigator.of(context)
-      .push(MaterialPageRoute<void>(builder: (_) => const ConversationPage()));
-}
-
 class ConversationPage extends StatefulWidget {
   const ConversationPage({
     super.key,
@@ -51,6 +38,9 @@ class ConversationPage extends StatefulWidget {
     this.isWide = false,
     this.onReturnHome,
     this.onNavigate,
+    this.visible = true,
+    this.requestedConversationId,
+    this.onRequestHandled,
   });
 
   final String? conversationId;
@@ -58,6 +48,9 @@ class ConversationPage extends StatefulWidget {
   final bool isWide;
   final VoidCallback? onReturnHome;
   final ValueChanged<String>? onNavigate;
+  final bool visible;
+  final String? requestedConversationId;
+  final VoidCallback? onRequestHandled;
 
   @override
   State<ConversationPage> createState() => _ConversationPageState();
@@ -81,6 +74,47 @@ class _ConversationPageState extends State<ConversationPage>
   void initState() {
     super.initState();
     _initializeConversationPage();
+    _scheduleRequestedConversationOpen(widget.requestedConversationId);
+  }
+
+  @override
+  void didUpdateWidget(covariant ConversationPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.visible && !widget.visible) {
+      _composerFocusNode.unfocus();
+      _closeAttachmentTray();
+      if (_sessionDrawerOpen) {
+        _scaffoldKey.currentState?.closeDrawer();
+        _sessionDrawerOpen = false;
+        _drawerWasOpen = false;
+      }
+      if (AppScope.voice(context).isListening) {
+        AppScope.voice(context).stopListening();
+      }
+    }
+    if (widget.requestedConversationId != oldWidget.requestedConversationId) {
+      _scheduleRequestedConversationOpen(widget.requestedConversationId);
+    }
+  }
+
+  void _scheduleRequestedConversationOpen(String? requested) {
+    if (requested == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          !widget.visible ||
+          widget.requestedConversationId != requested) {
+        return;
+      }
+      unawaited(_openRequestedConversation(requested));
+    });
+  }
+
+  Future<void> _openRequestedConversation(String id) async {
+    if (!mounted) return;
+    await _openManagedConversation(id);
+    // A canceled share remains available in history; consume the request so
+    // rebuilds do not show the same discard prompt again.
+    widget.onRequestHandled?.call();
   }
 
   @override
@@ -286,11 +320,13 @@ class _ConversationPageState extends State<ConversationPage>
       ],
     );
     return PopScope<Object?>(
-      canPop: !widget.isRoot || _sessionDrawerOpen,
+      canPop: !widget.isRoot,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop && widget.isRoot) _handleAssistantBack();
       },
       child: Scaffold(
+        key: _scaffoldKey,
+        resizeToAvoidBottomInset: !widget.isRoot,
         onDrawerChanged: (open) {
           if (open) _drawerWasOpen = true;
           setState(() => _sessionDrawerOpen = open);
@@ -553,89 +589,6 @@ class _SecretaryWelcome extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _SecretaryDesktopNavigation extends StatelessWidget {
-  const _SecretaryDesktopNavigation({required this.onSelect});
-
-  final ValueChanged<String> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    const destinations = [
-      ('home', '首页', Icons.space_dashboard_outlined),
-      ('calendar', '日历', Icons.calendar_month_outlined),
-      ('matters', '表与笔记', Icons.table_chart_outlined),
-      ('knowledge', '知识', Icons.menu_book_outlined),
-    ];
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final itemWidth = (constraints.maxWidth - 8) / 2;
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  for (final (destination, label, icon) in destinations)
-                    SizedBox(
-                      width: itemWidth,
-                      height: 44,
-                      child: TextButton.icon(
-                        key: Key('secretary_nav_$destination'),
-                        onPressed: () => onSelect(destination),
-                        icon: Icon(icon, size: 18),
-                        label: Text(label, maxLines: 1),
-                        style: TextButton.styleFrom(
-                          alignment: Alignment.centerLeft,
-                          foregroundColor: theme.colorScheme.onSurface,
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: PopupMenuButton<String>(
-                  key: const Key('secretary_nav_more'),
-                  tooltip: '更多页面',
-                  onSelected: onSelect,
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(
-                      value: 'global_knowledge',
-                      child: Text('全局知识库'),
-                    ),
-                    PopupMenuItem(value: 'matters', child: Text('表与笔记')),
-                    PopupMenuItem(value: 'settings', child: Text('设置')),
-                    PopupMenuItem(value: 'sync', child: Text('同步')),
-                  ],
-                  child: const SizedBox(
-                    height: 44,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.more_horiz),
-                          SizedBox(width: 8),
-                          Text('更多'),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
       ),
     );
   }
