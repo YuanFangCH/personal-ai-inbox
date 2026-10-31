@@ -1,0 +1,20 @@
+time: 2026-11-01 00:54:35 +08:00
+java: java version "17.0.2" 2022-01-18 LTS
+--- aapt2 dump badging (selected) ---
+package: name='com.yuanfang.aitext.personal_ai_inbox' versionCode='8' versionName='1.2.0' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'
+minSdkVersion:'24'
+targetSdkVersion:'36'
+uses-permission: name='android.permission.INTERNET'
+application-label:'懒狗秘书'
+--- apksigner verify --print-certs ---
+Signer #1 certificate DN: CN=Lazy Secretary Android Release, OU=Release, O=YuanFangCH, C=SG
+Signer #1 certificate SHA-256 digest: 51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816
+Signer #1 certificate SHA-1 digest: c67d7d185a2cf5047a81a501aac288368ea37f46
+Signer #1 certificate MD5 digest: b95d84893460b8daacb30cefa6fd87a7
+--- apksigner verify -v (schemes) ---
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): false
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false

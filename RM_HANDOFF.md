@@ -9,13 +9,13 @@
 | 项目名称 | 懒狗秘书 |
 | 最后更新时间 | 2026-11-01 |
 | 时区 | Asia/Singapore |
-| 最后修改 Agent | Codex |
-| 当前阶段 | v1.2.0 Release 工作流已通过格式、分析、全量测试，正在构建 Android/Windows 包；main CI 发现两条迁移 I/O 测试依赖平台磁盘探测器，已将测试改为模拟容量并在本地通过，待提交后重跑 main CI。当前 GitHub Release 仍在构建中；秘书页 Android 交互验收仍缺失；真实旧事项尚未迁移 |
+| 最后修改 Agent | DeepSeek Harness / Codex 验收与提交 |
+| 当前阶段 | v1.2.0 已作为预发布版本发布（Release `41218586972` success，head `7b42167`；main CI `41219403100` success，head `34b8543`）。四个资产已与 GitHub digest/SHA256SUMS 核对一致，APK 已核验版本与长期证书指纹，Windows 便携包已解压核对；Android 秘书页 AVD 交互与 Windows 启动验收仍缺失；真实旧事项尚未迁移 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。OneDrive 双向同步、百度网盘归档和通知尚未接入 |
 
 ## 2. 一句话交接
 
-发布目标为 `v1.2.0` 预览版，应用版本 `1.2.0+8`。首轮格式门禁已修复；发布相关 328 项本地回归通过；本次 Release 工作流已通过格式、分析与全量测试，正在构建发行包。同期 main CI 发现两条迁移 I/O 测试使用真实平台磁盘探测而在 Linux 无法读取容量；测试现改为确定性模拟充足空间，本地 2/2 通过，修复待提交并推送以重跑 main CI。GitHub Release 目前仍在构建；真实资料未迁移，秘书页 Android 往返交互未通过 AVD 验收。详见[发行说明](docs/releases/v1.2.0.md)、[发布准备验证记录](test-results/v1.2.0-release-prep/VALIDATION.md)、[改版规划](docs/table-notebook-redesign-plan.md)和[逐步计划](docs/table-notebook-implementation-plan.md)。
+`v1.2.0` 预览版已发布（pre-release，2026-11-01 00:31 Asia/Singapore）。Release `41218586972` 成功（head `7b42167`），main CI `41219403100` 成功（head `34b8543`）。四个发布资产的本地 SHA-256 与 GitHub API digest、`SHA256SUMS.txt` 全部一致；APK 已核验 `versionName=1.2.0`、`versionCode=8`、长期证书指纹 `51b5e2f3…`（v2 签名方案）；Windows 便携包解压核对 23/23 条目，EXE 版本 `1.2.0+8`。Android 秘书页 AVD 交互与 Windows 启动验收仍未完成（本机无可用模拟器/系统镜像；Windows 存在真实数据目录且无法证明隔离，未启动）；真实资料未迁移。详见[发行说明](docs/releases/v1.2.0.md)、[发布准备验证记录](test-results/v1.2.0-release-prep/VALIDATION.md)、[发布验收记录](test-results/v1.2.0-release-acceptance-20261101/VALIDATION.md)和[逐步计划](docs/table-notebook-implementation-plan.md)。
 
 ## 3. 当前目标与范围
 
@@ -59,6 +59,8 @@
 
 ## 6. 当前进度与验证
 
+- 2026-11-01 发布收尾核验：Release `41218586972` success（head `7b42167`），main CI `41219403100` success（head `34b8543`）。资产 4/4 完整，APK/setup/portable 的本地 SHA-256 与 GitHub API digest、`SHA256SUMS.txt` 一致；APK 经 `aapt2` 核验 `versionName=1.2.0`、`versionCode=8`、minSdk 24、targetSdk 36，经 `apksigner` 核验证书 SHA-256 `51b5e2f3…`（v2 方案）；Windows 便携包 23/23 条目与 zip 一致，EXE `FileVersion/ProductVersion=1.2.0+8`。证据见 `test-results/v1.2.0-release-acceptance-20261101/`。
+- 未验收项：Android 秘书页 AVD 定向集成测试未执行（`adb devices` 为空，有界搜索无 `emulator.exe`，本机 SDK 无 system-images）；Windows 启动未执行（`%APPDATA%\com.yuanfang.aitext` 存在真实数据，无法证明隔离）。二者不得写成已通过。
 - 已将改版细化为 10 个工作包、80 个执行步骤，并映射 13 类需求。P0/P1和P2首轮本地存储/repository/runtime接线通过 28 项定向测试和 analyzer。P2记录的 Flutter integration driver VM Service掉线为历史失败；之后 `flutter test -d emulator-5554 integration_test/...` 的相关AVD场景已通过。详情见 `test-results/table-notebook-p2-20261030/VALIDATION.md` 和 P8/P9最新验证记录。
 - P3数据层首轮已实现：SQLite v10恢复账本、单条10分钟撤销、整表30天恢复/到期硬化、跨表日程引用清理/复原，以及通知事件与原日程同批更新/撤销。P5b增加v9→v10字段恢复scope迁移；P3原21项用例及Android默认表重启核验通过。
 - P4 迁移工具只扫描旧 Markdown，不改旧源：预检/阻断、确定性映射、vault与SQLite/会话/设置备份清单、journal重放/hash回滚和 Android/Windows容量探测已实现。发现旧资料时AppRuntime启动进入只读门；用户确认后生成新格式副本并保留源件。迁移完成后主应用的表、首页、日历、秘书、全局知识与设置可用；普通旧条目不再编辑，已迁移身份跳转至表格式，全局知识仍确认后改动，旧同步入口关闭。Android15 AVD用合成资料验证，真实旧事项未迁移。
@@ -88,12 +90,22 @@
 
 ### 下一步
 
-1. 提交并推送 Linux 迁移 I/O 测试夹具修复，确认 main CI 成功。
-2. 等待 Release `41218586972` 完成；核验 APK 长期证书、版本号/versionCode、资产哈希和 Windows 安装/便携包。
-3. 发布后追加实际工作流、资产和交互验收结果；真实资料迁移仅在可校验备份副本上经应用迁移门确认后执行。
+1. Android 秘书页 AVD 交互：在具备模拟器与系统镜像的环境运行 `flutter test -d <device> integration_test/android_smoke_test.dart --plain-name 'secretary draft and reply survive switching to calendar and back'`；当前本机无 `emulator.exe`/system image 且 `adb devices` 为空。
+2. Windows 启动验收：需独立 Windows 用户/VM 或可证明的用户数据隔离；当前 `%APPDATA%\com.yuanfang.aitext` 存在真实数据，未启动。
+3. 真实资料迁移仅在可校验备份副本上经应用迁移门确认后执行。
 4. 真实云盘同步、通知和跨设备恢复继续单独规划。
 
 ## 8. 变更记录
+
+### 2026-11-01 / 核验 v1.2.0 发布资产与验收边界
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 核验 v1.2.0 发布结果，复核发布资产/签名/版本，并在可隔离范围内执行剩余验收 |
+| 变更文件 | `README.md`、`RM_HANDOFF.md`、`docs/releases/v1.2.0.md`、`test-results/v1.2.0-release-prep/VALIDATION.md`；新增 `test-results/v1.2.0-release-acceptance-20261101/`（`VALIDATION.md` 与证据文件） |
+| 状态 | Release `41218586972` success（head `7b42167`）；GitHub Release v1.2.0 已作为预发布版本发布（2026-10-31T16:31:22Z），4/4 资产齐全；main CI `41219403100` success（head `34b8543`）。资产本地 SHA-256 与 GitHub API digest、`SHA256SUMS.txt` 全部一致；APK 核验 `versionName=1.2.0`、`versionCode=8`、minSdk 24、targetSdk 36、证书 SHA-256 `51b5e2f3…`（v2 方案）；Windows 便携包解压 23/23 条目一致，EXE `1.2.0+8`、安装包 `1.2.0`。Android 秘书 AVD 用例与 Windows 启动**未验收**（环境/隔离限制）。执行中曾遇 sandbox 下授权目录写入被拒；用户随后授权完整运行权限后恢复执行，未修改 ACL、系统设置或网络配置 |
+| 验证 | 见 `test-results/v1.2.0-release-acceptance-20261101/VALIDATION.md`；关键命令：`Get-FileHash`、`aapt2 dump badging`、`apksigner verify --print-certs`、ZIP 条目对比、`(Get-Item).VersionInfo`、`adb devices`、有界 `emulator.exe`/system-image 搜索 |
+| 风险与下一步 | 本机无可用 Android 模拟器/系统镜像；存在真实数据目录 `C:\Users\18377\AppData\Roaming\com.yuanfang.aitext`，Windows 启动无法证明隔离故未执行。二者保持“未验收”，待具备隔离环境后补充 |
 
 ### 2026-11-01 / 修正 Linux 迁移测试的磁盘容量夹具
 

@@ -1,0 +1,15 @@
+
+Algorithm Hash                                                             Path
+--------- ----                                                             ----
+SHA256    25BE323556DAD377ABB57FE7EC8C4B99A6527F488DDA28D0C9B686528659C909 D:\Dsk\aitext\tests\agent-temp\v1.2.0-release-acceptance-20261101\.probe
+SHA256    F2D6B6154DBEFE972437AFEA3B144EBF1EF8DBEEFBCFE4493700F9F246F98FE9 D:\Dsk\aitext\tests\agent-temp\v1.2.0-release-acceptance-20261101\personal-ai-inbox-v1.2.0-android.apk
+SHA256    CC5C5C9F584313FADF224D629478FEB194402F8DF3F6DAB6EC0E801652E1B766 D:\Dsk\aitext\tests\agent-temp\v1.2.0-release-acceptance-20261101\personal-ai-inbox-v1.2.0-windows-x64-portable.zip
+SHA256    8E8B5BFBD8F668FCD86E86F609CEE6FD17C055717CAABD027DD57C71F3EC8938 D:\Dsk\aitext\tests\agent-temp\v1.2.0-release-acceptance-20261101\personal-ai-inbox-v1.2.0-windows-x64-setup.exe
+SHA256    CF82A38D9236292698B29EAEC4D686B1EBE918E87109A23F3AE177932CE02505 D:\Dsk\aitext\tests\agent-temp\v1.2.0-release-acceptance-20261101\SHA256SUMS.txt
+
+
+
+=== 2026-11-01 00:54 复核：APK 完整重下载后哈希 ===
+SHA256 896F8CF1DF375848B24DC9EF63CEA8B8AE8071286DED100D526206AE81A8C485 personal-ai-inbox-v1.2.0-android.apk (88781399 bytes)
+说明：上方 00:49 记录的 APK 哈希 F2D6... 属于 28,555,771 字节的部分下载，已被覆盖为完整文件。
+完整 APK 与 GitHub API digest sha256:896f8cf1... 及 SHA256SUMS.txt 一致。

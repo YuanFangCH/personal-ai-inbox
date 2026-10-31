@@ -1,0 +1,18 @@
+time: 2026-11-01 00:55:14 +08:00
+EXE: D:\Dsk\aitext\tests\agent-temp\v1.2.0-release-acceptance-20261101\portable\personal_ai_inbox.exe
+FileVersion=1.2.0+8 ProductVersion=1.2.0+8 FileDescription=懒狗秘书 ProductName=懒狗秘书
+SETUP: FileVersion=1.2.0.0              ProductVersion=1.2.0                                              ProductName=懒狗秘书
+--- extracted required files ---
+personal_ai_inbox.exe exists=True size=92672
+flutter_windows.dll exists=True size=21274112
+sqlite3.dll exists=True size=1709056
+data\app.so exists=True size=11568008
+LICENSE exists=True size=1067
+README-Windows.txt exists=True size=465
+--- app data locations (read-only probe) ---
+existing-candidate: C:\Users\18377\AppData\Roaming\com.yuanfang.aitext
+candidate count=1
+isolation: app uses path_provider getApplicationSupportDirectory (app/lib/data/device_paths_io.dart:4, io_vault_store.dart:22); no env override found in lib
+launch decision: NOT LAUNCHED (cannot prove user-data isolation; no separate Windows profile/VM used)
+--- main-ci.json ---
+{"conclusion":"success","headSha":"34b8543eb6071a4f2132b00064e1fcec7db701af","status":"completed"}

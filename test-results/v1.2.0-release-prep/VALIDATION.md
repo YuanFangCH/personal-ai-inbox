@@ -2,6 +2,13 @@
 
 日期：2026-11-01（Asia/Singapore）
 
+## 2026-11-01 00:55 复核补充（下方“构建中/待推送”状态已被取代）
+
+- Release `41218586972` 已 `completed`/`success`（head `7b42167`）；GitHub Release `v1.2.0` 已作为预发布版本发布（`published_at=2026-10-31T16:31:22Z`），四个资产齐全。
+- main CI `41219403100` 已 `completed`/`success`（head `34b8543`）；Linux 迁移 I/O 夹具修复已在 main 生效，下方“待推送/尚未执行”的表述已过时。
+- 资产本地哈希与 GitHub API digest、`SHA256SUMS.txt` 一致；APK 已用 `aapt2`/`apksigner` 核验 `versionName=1.2.0`、`versionCode=8`、长期证书指纹 `51b5e2f3…`；Windows 便携包已解压核对（23/23 条目）且 EXE 版本为 `1.2.0+8`。
+- 仍未完成：Android 秘书页 AVD 交互（本机无可用模拟器/系统镜像/设备）、Windows 启动验收（存在真实数据目录，无法证明隔离，未启动）、真实资料迁移。证据见 `test-results/v1.2.0-release-acceptance-20261101/`。
+
 ## 已执行
 
 | 检查 | 结果 |
