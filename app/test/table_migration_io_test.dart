@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_ai_inbox/core/markdown_codec.dart';
 import 'package:personal_ai_inbox/core/models.dart';
-import 'package:personal_ai_inbox/data/disk_space_probe.dart';
 import 'package:personal_ai_inbox/data/io_vault_store.dart';
 import 'package:personal_ai_inbox/data/memory_index_database.dart';
 import 'package:personal_ai_inbox/data/settings_service.dart';
@@ -65,7 +64,7 @@ void main() {
             migrationCoordinator.createTableMigrationSnapshot,
         estimateDatabaseSnapshotBytes:
             migrationCoordinator.estimateTableMigrationSnapshotBytes,
-        availableSpaceProbe: availableBytesForPath,
+        availableSpaceProbe: (_) async => 1 << 30,
         runWithWriteBarrier: (operation) => operation(),
         clock: () => _now,
       );
@@ -157,7 +156,7 @@ void main() {
         createDatabaseSnapshot: coordinator.createTableMigrationSnapshot,
         estimateDatabaseSnapshotBytes:
             coordinator.estimateTableMigrationSnapshotBytes,
-        availableSpaceProbe: availableBytesForPath,
+        availableSpaceProbe: (_) async => 1 << 30,
         runWithWriteBarrier: (operation) => operation(),
         clock: () => _now,
       );

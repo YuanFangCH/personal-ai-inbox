@@ -10,12 +10,12 @@
 | 最后更新时间 | 2026-11-01 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | 正在准备 v1.2.0 预览发布；版本号为 1.2.0+8，发布准备提交和标签已推送。首轮格式门禁已修复；第二轮 Actions 在全量测试中发现并修正过时回归断言，当前本地 328 项相关测试、格式、分析和公开发布扫描通过，待提交并重跑发布门禁。GitHub 尚无 Release；秘书页 Android 交互验收仍缺失；真实旧事项尚未迁移 |
+| 当前阶段 | v1.2.0 Release 工作流已通过格式、分析、全量测试，正在构建 Android/Windows 包；main CI 发现两条迁移 I/O 测试依赖平台磁盘探测器，已将测试改为模拟容量并在本地通过，待提交后重跑 main CI。当前 GitHub Release 仍在构建中；秘书页 Android 交互验收仍缺失；真实旧事项尚未迁移 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。OneDrive 双向同步、百度网盘归档和通知尚未接入 |
 
 ## 2. 一句话交接
 
-发布目标为 `v1.2.0` 预览版，应用版本 `1.2.0+8`。首轮格式门禁已修复；第二轮 GitHub Actions 在测试阶段失败，查明旧事项/导航断言与新表模型、秘书常驻行为不一致后已本地修正，发布相关 328 项测试、格式、分析及公开发布扫描通过。待提交并推送修复、重指向未发布标签、重跑完整 Release 工作流。GitHub 尚无 v1.2.0 Release 或发行资产。真实资料未迁移；秘书页 Android 往返交互未通过 AVD 验收。详见[发行说明](docs/releases/v1.2.0.md)、[发布准备验证记录](test-results/v1.2.0-release-prep/VALIDATION.md)、[改版规划](docs/table-notebook-redesign-plan.md)和[逐步计划](docs/table-notebook-implementation-plan.md)。
+发布目标为 `v1.2.0` 预览版，应用版本 `1.2.0+8`。首轮格式门禁已修复；发布相关 328 项本地回归通过；本次 Release 工作流已通过格式、分析与全量测试，正在构建发行包。同期 main CI 发现两条迁移 I/O 测试使用真实平台磁盘探测而在 Linux 无法读取容量；测试现改为确定性模拟充足空间，本地 2/2 通过，修复待提交并推送以重跑 main CI。GitHub Release 目前仍在构建；真实资料未迁移，秘书页 Android 往返交互未通过 AVD 验收。详见[发行说明](docs/releases/v1.2.0.md)、[发布准备验证记录](test-results/v1.2.0-release-prep/VALIDATION.md)、[改版规划](docs/table-notebook-redesign-plan.md)和[逐步计划](docs/table-notebook-implementation-plan.md)。
 
 ## 3. 当前目标与范围
 
@@ -88,12 +88,22 @@
 
 ### 下一步
 
-1. 提交并推送回归兼容修复；确认 GitHub 尚无 v1.2.0 Release 后，将标签更新到修复提交并重跑完整工作流。
-2. 核验 APK 长期证书、版本号/versionCode、资产哈希和 Windows 安装/便携包；CI 通过不能替代秘书页 Android 交互验收。
+1. 提交并推送 Linux 迁移 I/O 测试夹具修复，确认 main CI 成功。
+2. 等待 Release `41218586972` 完成；核验 APK 长期证书、版本号/versionCode、资产哈希和 Windows 安装/便携包。
 3. 发布后追加实际工作流、资产和交互验收结果；真实资料迁移仅在可校验备份副本上经应用迁移门确认后执行。
 4. 真实云盘同步、通知和跨设备恢复继续单独规划。
 
 ## 8. 变更记录
+
+### 2026-11-01 / 修正 Linux 迁移测试的磁盘容量夹具
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 让迁移 I/O 测试在 Linux CI 使用确定性磁盘空间输入，避免调用仅支持 Android/Windows 的平台探测器 |
+| 变更文件 | `app/test/table_migration_io_test.dart`、发布验证记录 |
+| 状态 | GitHub main CI `41218574288` 中除迁移 I/O 用例外的 617 项通过；两项失败均因 Linux 磁盘探测按设计返回 null。测试已改为注入 1 GiB 可用空间，本地相关用例 2/2 通过。此修复不会改变应用代码；Release `41218586972` 基于 `7b42167` 已通过全量测试，正在构建 |
+| 验证 | Flutter 3.47.6 `flutter test test/table_migration_io_test.dart` 2/2 通过；该文件 `dart format --output=none --set-exit-if-changed` 通过。GitHub main CI 尚待重跑 |
+| 风险与下一步 | 提交并推送测试夹具，确认 main CI；等待 Release 工作流完成后核验发布页资产、长期签名与哈希。AVD 秘书交互和真实资料迁移仍未验收 |
 
 ### 2026-11-01 / 修复 v1.2.0 发布测试门禁
 
