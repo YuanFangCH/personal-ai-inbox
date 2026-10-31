@@ -1100,12 +1100,12 @@ class _Harness {
         if (id == 'SEC-054') {
           await _newChat(tester, title);
           expect(
-            results.todos.where((item) => item.title == 'SEC-054 重放待办'),
+            tables.entries.where((item) => item.title == 'SEC-054 重放待办'),
             hasLength(1),
           );
           await _restart(tester);
           expect(
-            results.todos.where((item) => item.title == 'SEC-054 重放待办'),
+            tables.entries.where((item) => item.title == 'SEC-054 重放待办'),
             hasLength(1),
           );
         }
@@ -1423,11 +1423,11 @@ class _Harness {
           await _waitFor(
             tester,
             () => !conversations.isChatGenerating,
-            reason: 'page disposal cancels the pending response',
+            reason: 'persistent secretary response finishes after leaving',
           );
           expect(
             conversations.messagesFor(activeId).last.status,
-            ChatMessageStatus.interrupted,
+            ChatMessageStatus.complete,
           );
           expect(requestBodies, hasLength(1));
           expect(results.documents.length, before);
@@ -1460,14 +1460,14 @@ class _Harness {
           );
           await _waitFor(
             tester,
-            () => results.todos.any((item) => item.title == 'SEC-085 组合工具待办'),
+            () => tables.entries.any((item) => item.title == 'SEC-085 组合工具待办'),
             reason: 'tool-created todo',
           );
           final request = requestBodies.single;
           expect(request['thinking'], {'type': 'enabled'});
           expect(request['reasoning_effort'], 'high');
           expect(request['tools'], isNotEmpty);
-          expect(results.todos.single.title, 'SEC-085 组合工具待办');
+          expect(tables.entries.single.title, 'SEC-085 组合工具待办');
           _caseMetrics = {
             'model_requests': requestBodies.length,
             'tool_count': (request['tools'] as List).length,
@@ -2037,7 +2037,7 @@ class _Harness {
       await _settle(tester);
     }
     expect(
-      find.byKey(Key('page_$page')),
+      find.byKey(Key(page == 'inbox' ? 'persistent_secretary' : 'page_$page')),
       findsOneWidget,
       reason: 'navigation to $page',
     );

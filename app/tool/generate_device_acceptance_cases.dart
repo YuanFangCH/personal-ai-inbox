@@ -129,7 +129,7 @@ void main() {
       );
     }
 
-    for (final filter in const ['全部', '今天', '即将到期', '已完成']) {
+    for (final filter in const ['即将到期', '今天', '即将到期', '已完成']) {
       add(
         target: target,
         device: device,

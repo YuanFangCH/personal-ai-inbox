@@ -169,10 +169,17 @@ Future<void> _goToPage(WidgetTester tester, AndroidUiCase item) async {
     await tester.tap(find.byKey(Key('nav_${item.page.name}')));
   }
   await tester.pumpAndSettle();
+  if (item.page == AndroidUiPage.matters &&
+      find.byKey(const Key('notebook_show_tables')).evaluate().isNotEmpty) {
+    await tester.tap(find.byKey(const Key('notebook_show_tables')));
+    await tester.pumpAndSettle();
+  }
   expect(
     find.byKey(
       item.page == AndroidUiPage.todos
           ? const Key('calendar_section_todos')
+          : item.page == AndroidUiPage.inbox
+          ? const Key('persistent_secretary')
           : Key('page_${item.page.name}'),
     ),
     findsOneWidget,
@@ -327,8 +334,8 @@ Future<void> _tapPrimaryButton(WidgetTester tester, AndroidUiPage page) async {
   final labels = switch (page) {
     AndroidUiPage.home => '查看全部',
     AndroidUiPage.inbox => null,
-    AndroidUiPage.matters => '新建事项',
-    AndroidUiPage.knowledge => '新建知识',
+    AndroidUiPage.matters => '新建表',
+    AndroidUiPage.knowledge => '新增事实',
     _ => null,
   };
   if (labels == null) {

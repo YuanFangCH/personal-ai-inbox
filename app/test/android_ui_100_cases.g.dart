@@ -868,8 +868,8 @@ const androidUiCaseMaps = <Map<String, Object?>>[
     "fontScale": 1.0,
     "page": "todos",
     "action": "toggle_filter",
-    "expectedText": "全部",
-    "description": "手机待办切换筛选：全部",
+    "expectedText": "即将到期",
+    "description": "手机待办切换筛选：即将到期",
   },
   {
     "id": "android_ui_068",

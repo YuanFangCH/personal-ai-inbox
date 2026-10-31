@@ -94,7 +94,7 @@ void main() {
     await _open(tester, runtime);
     await tester.tap(find.byKey(const Key('conversation_manage')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('conversation_return_home')), findsOneWidget);
+    expect(find.byKey(const Key('nav_home')), findsOneWidget);
     expect(find.byKey(const Key('secretary_history_open')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

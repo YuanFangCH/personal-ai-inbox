@@ -7,15 +7,15 @@
 | 字段 | 当前值 |
 |---|---|
 | 项目名称 | 懒狗秘书 |
-| 最后更新时间 | 2026-10-31 |
+| 最后更新时间 | 2026-11-01 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | 正在准备 v1.2.0 预览发布；版本号为 1.2.0+8，发布准备提交和标签已推送。GitHub Actions 首轮格式检查失败，已定位并修复，待提交修复、更新尚未对应任何 GitHub Release 的标签并重跑工作流。秘书页 Android 交互验收仍缺失；真实旧事项尚未迁移 |
+| 当前阶段 | 正在准备 v1.2.0 预览发布；版本号为 1.2.0+8，发布准备提交和标签已推送。首轮格式门禁已修复；第二轮 Actions 在全量测试中发现并修正过时回归断言，当前本地 328 项相关测试、格式、分析和公开发布扫描通过，待提交并重跑发布门禁。GitHub 尚无 Release；秘书页 Android 交互验收仍缺失；真实旧事项尚未迁移 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。OneDrive 双向同步、百度网盘归档和通知尚未接入 |
 
 ## 2. 一句话交接
 
-发布目标为 `v1.2.0` 预览版，应用版本 `1.2.0+8`。发布准备提交及标签已推送；首轮 Actions 在格式检查发现一个未格式化 Dart 文件后停止，已本地修复并全量复核格式，GitHub 尚无 v1.2.0 Release 或发行资产。待提交修复并重跑工作流。真实资料未迁移；秘书页 Android 往返交互未通过 AVD 验收。详见[发行说明](docs/releases/v1.2.0.md)、[发布准备验证记录](test-results/v1.2.0-release-prep/VALIDATION.md)、[改版规划](docs/table-notebook-redesign-plan.md)和[逐步计划](docs/table-notebook-implementation-plan.md)。
+发布目标为 `v1.2.0` 预览版，应用版本 `1.2.0+8`。首轮格式门禁已修复；第二轮 GitHub Actions 在测试阶段失败，查明旧事项/导航断言与新表模型、秘书常驻行为不一致后已本地修正，发布相关 328 项测试、格式、分析及公开发布扫描通过。待提交并推送修复、重指向未发布标签、重跑完整 Release 工作流。GitHub 尚无 v1.2.0 Release 或发行资产。真实资料未迁移；秘书页 Android 往返交互未通过 AVD 验收。详见[发行说明](docs/releases/v1.2.0.md)、[发布准备验证记录](test-results/v1.2.0-release-prep/VALIDATION.md)、[改版规划](docs/table-notebook-redesign-plan.md)和[逐步计划](docs/table-notebook-implementation-plan.md)。
 
 ## 3. 当前目标与范围
 
@@ -88,12 +88,22 @@
 
 ### 下一步
 
-1. 提交并推送格式修复；确认 GitHub 尚无 v1.2.0 Release 后，将标签更新到修复提交并重跑发布工作流。
+1. 提交并推送回归兼容修复；确认 GitHub 尚无 v1.2.0 Release 后，将标签更新到修复提交并重跑完整工作流。
 2. 核验 APK 长期证书、版本号/versionCode、资产哈希和 Windows 安装/便携包；CI 通过不能替代秘书页 Android 交互验收。
 3. 发布后追加实际工作流、资产和交互验收结果；真实资料迁移仅在可校验备份副本上经应用迁移门确认后执行。
 4. 真实云盘同步、通知和跨设备恢复继续单独规划。
 
 ## 8. 变更记录
+
+### 2026-11-01 / 修复 v1.2.0 发布测试门禁
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 修正与表/笔记模型及秘书页常驻导航不一致的旧验收用例，恢复 v1.2.0 发布门禁 |
+| 变更文件 | Android/设备矩阵生成器与快照、秘书/真实流程回归、迁移只读页面 DTO 边界、README、验证记录 |
+| 状态 | 首轮 CI 格式失败已修复；第二轮 Release 与 main CI 的全量测试失败已定位。旧用例曾在 `results.todos` 查询已迁入默认表的 AI 内容、期望离开页面取消仍应继续生成，以及使用已移除筛选项/导航写断言；均已按当前实现和已确认产品行为修正。GitHub 当前仍无 Release |
+| 验证 | Flutter 3.47.6：Android UI 100、设备验收 100、秘书 100、秘书 smoke 与现实流程 smoke 合计 328 项通过；`dart format --output=none --set-exit-if-changed lib test integration_test tool` 通过；`flutter analyze` 无诊断；`scripts/scan-public-release.ps1 -AllRefs` 通过。此前失败工作流：Release `41215486744`、main CI `41215475349`。详见 `test-results/v1.2.0-release-prep/VALIDATION.md` |
+| 风险与下一步 | 提交并推送本修复，确认没有已发布 Release 后更新 v1.2.0 标签并重跑完整工作流；通过后验证签名、资产哈希及 Windows 包。Android 秘书页 AVD 交互和真实资料迁移仍未验收 |
 
 ### 2026-10-31 / 修复 v1.2.0 发布格式门禁
 

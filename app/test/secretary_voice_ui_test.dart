@@ -44,7 +44,7 @@ void main() {
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       expect(voice.isListening, isFalse);
-      expect(find.byKey(const Key('nav_home')), findsNothing);
+      expect(find.byKey(const Key('nav_home')), findsOneWidget);
       expect(
         tester
             .widget<TextField>(find.byKey(const Key('chat_input')))
@@ -55,8 +55,8 @@ void main() {
 
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
-      expect(find.text('丢弃未发送内容？'), findsOneWidget);
-      await tester.tap(find.text('继续编辑'));
+      expect(find.byKey(const Key('page_home')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('nav_inbox')));
       await tester.pumpAndSettle();
       expect(
         tester

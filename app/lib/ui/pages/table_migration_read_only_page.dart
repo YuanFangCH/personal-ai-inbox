@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/models.dart';
-import '../../data/table_migration_service.dart';
 import '../../modules/tables/table_migration_gate.dart';
 
 class TableMigrationReadOnlyPage extends StatelessWidget {
@@ -50,7 +48,7 @@ class TableMigrationReadOnlyPage extends StatelessWidget {
       body: AnimatedBuilder(
         animation: gate,
         builder: (context, _) {
-          final preview = gate.preview;
+          final preview = gate.previewPresentation;
           return Column(
             children: [
               Material(
@@ -141,7 +139,7 @@ class _PreviewContent extends StatelessWidget {
     required this.migrationComplete,
   });
 
-  final TableMigrationPreview preview;
+  final TableMigrationPreviewPresentation preview;
   final bool migrationComplete;
 
   @override
@@ -152,7 +150,7 @@ class _PreviewContent extends StatelessWidget {
         Text('迁移预检', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 8),
         Text(
-          '发现 ${preview.legacyRecords.length} 条可读取旧资料；拟建立 ${preview.tables.length} 张表和 ${preview.entries.length} 条内容。全局知识保留在原独立管理中。',
+          '发现 ${preview.legacyRecordCount} 条可读取旧资料；拟建立 ${preview.tablesCount} 张表和 ${preview.entryCount} 条内容。全局知识保留在原独立管理中。',
         ),
         if (migrationComplete) ...[
           const SizedBox(height: 12),
@@ -193,13 +191,13 @@ class _PreviewContent extends StatelessWidget {
         const SizedBox(height: 24),
         Text('旧资料（只读）', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
-        for (final record in preview.legacyRecords)
+        for (final record in preview.records)
           Card(
             child: ExpansionTile(
               leading: Icon(_typeIcon(record.type)),
               title: Text(record.title),
               subtitle: Text(
-                '${record.type.wireName} · ${record.status.wireName}${record.deleted ? ' · 已删除' : ''}\n${record.sourcePath}',
+                '${record.type} · ${record.status}${record.deleted ? ' · 已删除' : ''}\n${record.sourcePath}',
               ),
               childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               children: [
@@ -212,7 +210,7 @@ class _PreviewContent extends StatelessWidget {
               ],
             ),
           ),
-        if (preview.legacyRecords.isEmpty)
+        if (preview.records.isEmpty)
           const Card(child: ListTile(title: Text('没有可读取的旧资料'))),
       ],
     );
@@ -242,11 +240,12 @@ class _ErrorState extends StatelessWidget {
   );
 }
 
-IconData _typeIcon(ResultType type) => switch (type) {
-  ResultType.matter => Icons.folder_outlined,
-  ResultType.todo => Icons.check_box_outlined,
-  ResultType.event => Icons.event_outlined,
-  ResultType.knowledge => Icons.notes_outlined,
+IconData _typeIcon(String type) => switch (type) {
+  'matter' => Icons.folder_outlined,
+  'todo' => Icons.check_box_outlined,
+  'event' => Icons.event_outlined,
+  'knowledge' => Icons.notes_outlined,
+  _ => Icons.notes_outlined,
 };
 
 String _formatBytes(int bytes) {

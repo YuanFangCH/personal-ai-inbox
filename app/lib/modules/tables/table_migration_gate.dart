@@ -29,6 +29,38 @@ class TableMigrationGate extends ChangeNotifier {
   bool _barrierActive = false;
 
   TableMigrationPreview? get preview => _preview;
+  TableMigrationPreviewPresentation? get previewPresentation {
+    final current = _preview;
+    if (current == null) return null;
+    return TableMigrationPreviewPresentation(
+      legacyRecordCount: current.legacyRecords.length,
+      tablesCount: current.tables.length,
+      entryCount: current.entries.length,
+      estimatedBackupBytes: current.estimatedBackupBytes,
+      estimatedOutputBytes: current.estimatedOutputBytes,
+      estimatedRequiredBytes: current.estimatedRequiredBytes,
+      availableBytes: current.availableBytes,
+      issues: [
+        for (final issue in current.issues)
+          TableMigrationIssuePresentation(
+            path: issue.path,
+            message: issue.message,
+          ),
+      ],
+      records: [
+        for (final record in current.legacyRecords)
+          LegacyMigrationRecordPresentation(
+            type: record.type.wireName,
+            title: record.title,
+            body: record.body,
+            status: record.status.wireName,
+            deleted: record.deleted,
+            sourcePath: record.sourcePath,
+          ),
+      ],
+    );
+  }
+
   TableMigrationReceipt? get receipt => _receipt;
   String? get error => _error;
   bool get isChecking => _isChecking;
@@ -102,4 +134,56 @@ class TableMigrationGate extends ChangeNotifier {
       _barrierActive = false;
     }
   }
+}
+
+class TableMigrationPreviewPresentation {
+  const TableMigrationPreviewPresentation({
+    required this.legacyRecordCount,
+    required this.tablesCount,
+    required this.entryCount,
+    required this.estimatedBackupBytes,
+    required this.estimatedOutputBytes,
+    required this.estimatedRequiredBytes,
+    required this.availableBytes,
+    required this.issues,
+    required this.records,
+  });
+
+  final int legacyRecordCount;
+  final int tablesCount;
+  final int entryCount;
+  final int estimatedBackupBytes;
+  final int estimatedOutputBytes;
+  final int estimatedRequiredBytes;
+  final int? availableBytes;
+  final List<TableMigrationIssuePresentation> issues;
+  final List<LegacyMigrationRecordPresentation> records;
+}
+
+class TableMigrationIssuePresentation {
+  const TableMigrationIssuePresentation({
+    required this.path,
+    required this.message,
+  });
+
+  final String path;
+  final String message;
+}
+
+class LegacyMigrationRecordPresentation {
+  const LegacyMigrationRecordPresentation({
+    required this.type,
+    required this.title,
+    required this.body,
+    required this.status,
+    required this.deleted,
+    required this.sourcePath,
+  });
+
+  final String type;
+  final String title;
+  final String body;
+  final String status;
+  final bool deleted;
+  final String sourcePath;
 }

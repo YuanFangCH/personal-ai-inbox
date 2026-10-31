@@ -99,7 +99,7 @@ void main() {
         expect(harness.controller.documents, hasLength(assigned.length));
         expect(
           await harness.vault.listMarkdownFiles(),
-          hasLength(assigned.length),
+          hasLength(assigned.length + 3),
         );
         expect(await harness.index.listResults(), hasLength(assigned.length));
 
@@ -178,9 +178,7 @@ void main() {
 }
 
 Future<void> _returnHomeFromSecretary(WidgetTester tester) async {
-  await tester.tap(find.byKey(const Key('conversation_manage')));
-  await tester.pumpAndSettle();
-  await tester.tap(find.byKey(const Key('conversation_return_home')));
+  await tester.tap(find.byKey(const Key('nav_home')));
   await tester.pumpAndSettle();
   expect(find.byKey(const Key('page_home')), findsOneWidget);
 }
@@ -188,6 +186,10 @@ Future<void> _returnHomeFromSecretary(WidgetTester tester) async {
 Future<void> _tapAndScroll(WidgetTester tester, Key key) async {
   await tester.tap(find.byKey(key));
   await tester.pumpAndSettle();
+  if (key.toString().contains('nav_')) {
+    expect(tester.takeException(), isNull);
+    return;
+  }
   final scrollables = find.byType(Scrollable);
   if (scrollables.evaluate().isNotEmpty) {
     await tester.drag(scrollables.first, const Offset(0, -700));

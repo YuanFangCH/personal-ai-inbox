@@ -25,6 +25,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('sheet_nav_matters')));
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('notebook_show_tables')));
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('课程表'),
       300,
@@ -156,6 +158,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('sheet_nav_matters')));
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('notebook_show_tables')));
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('考试资料'),
       250,
@@ -229,6 +233,8 @@ void main() {
     await tester.tap(find.byKey(const Key('nav_more')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('sheet_nav_matters')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('notebook_show_tables')));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text(table.title),

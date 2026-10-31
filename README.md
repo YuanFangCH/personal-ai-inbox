@@ -12,7 +12,7 @@
 - Windows 11 x64：选择安装包或便携 ZIP。
 - 发布页同时提供 `SHA256SUMS.txt`，下载后应校验文件哈希。
 
-`v1.2.0` 是本地发布准备中的预览版，计划延续 Android 长期发布证书，加入笔记式表、表内 AI 操作与秘书页状态保留。发布资产将在 [GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/v1.2.0) 提供。升级前请完整备份旧版应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.2.0.md)；真实资料迁移需要在应用内确认，不能把迁移演练当作真实资料升级验证。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
+`v1.2.0` 是正在准备的预览版，Android/Windows 发布工作流尚未通过，GitHub 目前没有该版本的 Release 或资产。发布后资产将在 [GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/v1.2.0) 提供。升级前请完整备份旧版应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.2.0.md)；真实资料迁移需要在应用内确认，不能把迁移演练当作真实资料升级验证。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
 
 ## 核心能力
 

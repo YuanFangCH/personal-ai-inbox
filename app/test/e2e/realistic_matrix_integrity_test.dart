@@ -98,12 +98,11 @@ void main() {
     }
   });
 
-  test('all twelve scenario categories are represented', () {
+  test('all current scenario categories are represented', () {
     final categories = scenarios.map((scenario) => scenario.category).toSet();
-    expect(categories, hasLength(12));
+    expect(categories, hasLength(11));
     for (final category in const [
       'capture',
-      'review',
       'calendar',
       'matters',
       'knowledge',

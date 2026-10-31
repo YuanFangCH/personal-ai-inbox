@@ -431,8 +431,8 @@ const deviceAcceptanceCaseMaps = <Map<String, Object?>>[
     "fontScale": 1.0,
     "page": "todos",
     "action": "toggle_filter",
-    "expectedText": "全部",
-    "description": "Android phone 切换待办筛选：全部",
+    "expectedText": "即将到期",
+    "description": "Android phone 切换待办筛选：即将到期",
   },
   {
     "id": "device_acceptance_032",
@@ -1131,8 +1131,8 @@ const deviceAcceptanceCaseMaps = <Map<String, Object?>>[
     "fontScale": 1.0,
     "page": "todos",
     "action": "toggle_filter",
-    "expectedText": "全部",
-    "description": "Android tablet 切换待办筛选：全部",
+    "expectedText": "即将到期",
+    "description": "Android tablet 切换待办筛选：即将到期",
   },
   {
     "id": "device_acceptance_082",

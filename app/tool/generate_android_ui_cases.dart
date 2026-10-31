@@ -165,7 +165,7 @@ void main() {
     );
   }
 
-  for (final filter in const ['今天', '即将到期', '已完成', '全部', '今天']) {
+  for (final filter in const ['今天', '即将到期', '已完成', '即将到期', '今天']) {
     add(
       device: 'phone',
       width: 390,

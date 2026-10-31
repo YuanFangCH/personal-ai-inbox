@@ -150,6 +150,9 @@ const supportedOps = <String, int>{
 
 /// Assertion kinds the runner understands.
 const supportedAsserts = <String>{
+  'baselineState',
+  'tableEntryCount',
+  'tableEntryTitleExists',
   'resultCount',
   'typeCount',
   'titleExists',
