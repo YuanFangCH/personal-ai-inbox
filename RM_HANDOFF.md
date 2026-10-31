@@ -10,12 +10,12 @@
 | 最后更新时间 | 2026-10-31 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | 正在准备 v1.2.0 预览发布；版本号已更新为 1.2.0+8，发布提交尚未创建；待推送 main、创建标签、等待 GitHub Release 工作流并核验资产。秘书页 Android 交互验收仍缺失；真实旧事项尚未迁移 |
+| 当前阶段 | 正在准备 v1.2.0 预览发布；版本号为 1.2.0+8，发布准备提交和标签已推送。GitHub Actions 首轮格式检查失败，已定位并修复，待提交修复、更新尚未对应任何 GitHub Release 的标签并重跑工作流。秘书页 Android 交互验收仍缺失；真实旧事项尚未迁移 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。OneDrive 双向同步、百度网盘归档和通知尚未接入 |
 
 ## 2. 一句话交接
 
-发布目标为 `v1.2.0` 预览版，应用版本 `1.2.0+8`。本地相对远端 main 领先 25 个提交，逐项核对均属于表/笔记改版、AI 表内操作、旧事项迁移和秘书页内嵌范围；发布扫描已通过。发布准备文件已更新，提交、推送、标签、CI 和 Release 资产核验待完成。真实资料未迁移；秘书页 Android 往返交互未通过 AVD 验收。详见[发行说明](docs/releases/v1.2.0.md)、[发布准备验证记录](test-results/v1.2.0-release-prep/VALIDATION.md)、[改版规划](docs/table-notebook-redesign-plan.md)和[逐步计划](docs/table-notebook-implementation-plan.md)。
+发布目标为 `v1.2.0` 预览版，应用版本 `1.2.0+8`。发布准备提交及标签已推送；首轮 Actions 在格式检查发现一个未格式化 Dart 文件后停止，已本地修复并全量复核格式，GitHub 尚无 v1.2.0 Release 或发行资产。待提交修复并重跑工作流。真实资料未迁移；秘书页 Android 往返交互未通过 AVD 验收。详见[发行说明](docs/releases/v1.2.0.md)、[发布准备验证记录](test-results/v1.2.0-release-prep/VALIDATION.md)、[改版规划](docs/table-notebook-redesign-plan.md)和[逐步计划](docs/table-notebook-implementation-plan.md)。
 
 ## 3. 当前目标与范围
 
@@ -88,12 +88,22 @@
 
 ### 下一步
 
-1. 完成 v1.2.0 发布准备提交并推送 main，创建 `v1.2.0` 标签；跟踪 GitHub Actions 发布工作流及 Pre-release 资产。
+1. 提交并推送格式修复；确认 GitHub 尚无 v1.2.0 Release 后，将标签更新到修复提交并重跑发布工作流。
 2. 核验 APK 长期证书、版本号/versionCode、资产哈希和 Windows 安装/便携包；CI 通过不能替代秘书页 Android 交互验收。
 3. 发布后追加实际工作流、资产和交互验收结果；真实资料迁移仅在可校验备份副本上经应用迁移门确认后执行。
 4. 真实云盘同步、通知和跨设备恢复继续单独规划。
 
 ## 8. 变更记录
+
+### 2026-10-31 / 修复 v1.2.0 发布格式门禁
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 修复首轮 GitHub Release 工作流在 Dart 全量格式检查中发现的格式问题 |
+| 变更文件 | `app/lib/ui/pages/global_knowledge_page.dart`、RM_HANDOFF 和发布准备验证记录 |
+| 状态 | 已按 Dart formatter 修复唯一未格式化文件；本地全量格式检查通过。首轮 Actions 因该项失败并未运行后续分析/测试/构建；GitHub 尚无已发布 Release，资产未生成 |
+| 验证 | Flutter 3.47.6 `dart format --output=none --set-exit-if-changed lib test integration_test tool` 通过；首轮工作流 `41215153819` 格式门禁失败。详见 `test-results/v1.2.0-release-prep/VALIDATION.md` |
+| 风险与下一步 | 提交并推送修复，确认仍无 Release 后更新标签目标并重跑工作流；不覆盖已发布的 Release |
 
 ### 2026-10-31 / 准备 v1.2.0 预览版 GitHub 发布
 
@@ -101,9 +111,9 @@
 |---|---|
 | 任务 | 将本地领先远端的 25 个表/笔记改版、AI 表内操作、迁移及秘书页嵌入提交纳入 v1.2.0 预览发布准备 |
 | 变更文件 | `app/pubspec.yaml`、`docs/releases/v1.2.0.md`、README、RM_HANDOFF 和发布准备验证记录 |
-| 状态 | 版本改为 1.2.0+8；发行说明记录数据备份要求、跨设备同步/通知未接入、真实资料迁移未验证及秘书页 Android AVD 交互缺口。提交、推送和 GitHub Release 尚待完成 |
-| 验证 | 发布范围核对 25/25 提交；`scripts/scan-public-release.ps1 -AllRefs` 通过；远端 main 尚未包含目标提交，v1.2.0 标签/Release 尚不存在。详见 `test-results/v1.2.0-release-prep/VALIDATION.md` |
-| 风险与下一步 | 按发行说明备份旧版应用数据与 Markdown 主库；完成定向静态核对及提交后推送 main、创建标签并监控工作流。Android 秘书交互缺口继续明确保留 |
+| 状态 | 版本改为 1.2.0+8；发行说明记录数据备份要求、跨设备同步/通知未接入、真实资料迁移未验证及秘书页 Android AVD 交互缺口。发布准备提交与标签已推送；首轮格式门禁失败待修复后重跑 |
+| 验证 | 发布范围核对 25/25 提交；`scripts/scan-public-release.ps1 -AllRefs` 通过；远端 main 已包含发布准备提交，首轮 Actions 在全量格式检查停止；无 GitHub Release/资产。详见 `test-results/v1.2.0-release-prep/VALIDATION.md` |
+| 风险与下一步 | 按发行说明备份旧版应用数据与 Markdown 主库；推送格式修复并重跑工作流。Android 秘书交互缺口继续明确保留 |
 
 ### 2026-10-31 / 秘书页常驻与主导航集成
 

@@ -67,15 +67,17 @@ class _GlobalKnowledgePageState extends State<GlobalKnowledgePage> {
   @override
   Widget build(BuildContext context) {
     final results = _results;
-    final candidates = results?.globalKnowledgeCandidates
-        .where(
-          (candidate) =>
-              candidate.status == GlobalKnowledgeCandidateStatus.pending ||
-              candidate.status == GlobalKnowledgeCandidateStatus.approved ||
-              candidate.status == GlobalKnowledgeCandidateStatus.stale ||
-              candidate.status == GlobalKnowledgeCandidateStatus.failed,
-        )
-        .toList(growable: false) ?? const <GlobalKnowledgeCandidate>[];
+    final candidates =
+        results?.globalKnowledgeCandidates
+            .where(
+              (candidate) =>
+                  candidate.status == GlobalKnowledgeCandidateStatus.pending ||
+                  candidate.status == GlobalKnowledgeCandidateStatus.approved ||
+                  candidate.status == GlobalKnowledgeCandidateStatus.stale ||
+                  candidate.status == GlobalKnowledgeCandidateStatus.failed,
+            )
+            .toList(growable: false) ??
+        const <GlobalKnowledgeCandidate>[];
     return PageFrame(
       title: '全局知识库',
       subtitle: '候选在此确认；已确认知识随成果同步到手机、平板和 Windows',
@@ -125,7 +127,8 @@ class _GlobalKnowledgePageState extends State<GlobalKnowledgePage> {
                       candidate: candidate,
                       results: results!,
                       showActions:
-                          candidate.status == GlobalKnowledgeCandidateStatus.pending,
+                          candidate.status ==
+                          GlobalKnowledgeCandidateStatus.pending,
                     ),
                     const SizedBox(height: 10),
                   ],
