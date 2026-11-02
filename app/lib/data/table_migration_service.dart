@@ -130,13 +130,15 @@ class TableMigrationService {
         skipped.add(document.id);
         continue;
       }
-      if (document.deleted || document.status != ResultStatus.canonical) {
+      if (document.deleted) {
+        // Retain legacy tombstones without resurrecting them in the new tables.
+        skipped.add(document.id);
+        continue;
+      }
+      if (document.status != ResultStatus.canonical) {
         skipped.add(document.id);
         issues.add(
-          TableMigrationIssue(
-            document.markdownPath,
-            document.deleted ? '已删除成果保留旧格式，不自动恢复或清除。' : '非 canonical 状态保留旧格式。',
-          ),
+          TableMigrationIssue(document.markdownPath, '非 canonical 状态保留旧格式。'),
         );
         continue;
       }

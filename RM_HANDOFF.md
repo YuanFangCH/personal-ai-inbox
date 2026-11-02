@@ -10,12 +10,12 @@
 | 最后更新时间 | 2026-11-02 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | v1.2.0 已作为预发布版本发布（Release `41218586972` success，head `7b42167`；main CI `41219403100` success，head `34b8543`）。四个资产已与 GitHub digest/SHA256SUMS 核对一致，APK 已核验版本与长期证书指纹，Windows 便携包已解压核对；Android 秘书页 AVD 交互与 Windows 启动验收仍缺失；真实旧事项尚未迁移 |
+| 当前阶段 | v1.2.0 已作为预发布版本发布（Release `41218586972` success，head `7b42167`；main CI `41219403100` success，head `34b8543`）。四个资产已与 GitHub digest/SHA256SUMS 核对一致，APK 已核验版本与长期证书指纹，Windows 便携包已解压核对；Android 秘书页 AVD 交互与 Windows 启动验收仍缺失；H90y 已用本地修复包完成真实旧资料迁移（4 张表/66 条内容），首页/日历及重启通过 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。OneDrive 双向同步、百度网盘归档和通知尚未接入 |
 
 ## 2. 一句话交接
 
-`v1.2.0` 预览版已发布（pre-release，2026-11-01 00:31 Asia/Singapore）。Release `41218586972` 成功（head `7b42167`），main CI `41219403100` 成功（head `34b8543`）。四个发布资产的本地 SHA-256 与 GitHub API digest、`SHA256SUMS.txt` 全部一致；APK 已核验 `versionName=1.2.0`、`versionCode=8`、长期证书指纹 `51b5e2f3…`（v2 签名方案）；Windows 便携包解压核对 23/23 条目，EXE 版本 `1.2.0+8`。Android 秘书页 AVD 交互与 Windows 启动验收仍未完成（本机无可用模拟器/系统镜像；Windows 存在真实数据目录且无法证明隔离，未启动）；真实资料未迁移。详见[发行说明](docs/releases/v1.2.0.md)、[发布准备验证记录](test-results/v1.2.0-release-prep/VALIDATION.md)、[发布验收记录](test-results/v1.2.0-release-acceptance-20261101/VALIDATION.md)和[逐步计划](docs/table-notebook-implementation-plan.md)。
+`v1.2.0` 预览版已发布（pre-release，2026-11-01 00:31 Asia/Singapore）。Release `41218586972` 成功（head `7b42167`），main CI `41219403100` 成功（head `34b8543`）。四个发布资产的本地 SHA-256 与 GitHub API digest、`SHA256SUMS.txt` 全部一致；APK 已核验 `versionName=1.2.0`、`versionCode=8`、长期证书指纹 `51b5e2f3…`（v2 签名方案）；Windows 便携包解压核对 23/23 条目，EXE 版本 `1.2.0+8`。Android 秘书页 AVD 交互与 Windows 启动验收仍未完成（本机无可用模拟器/系统镜像；Windows 存在真实数据目录且无法证明隔离，未启动）；H90y 已于 2026-11-02 用本地修复包完成真实资料迁移（69 条旧记录保留，4 张表/66 条内容），此修复尚未发布到 GitHub。详见[本轮验证](test-results/h90y-upgrade-20261102/VALIDATION.md)、[发行说明](docs/releases/v1.2.0.md)、[发布准备验证记录](test-results/v1.2.0-release-prep/VALIDATION.md)、[发布验收记录](test-results/v1.2.0-release-acceptance-20261101/VALIDATION.md)和[逐步计划](docs/table-notebook-implementation-plan.md)。
 
 ## 3. 当前目标与范围
 
@@ -59,7 +59,7 @@
 
 ## 6. 当前进度与验证
 
-- 2026-11-02 H90y 升级阻断已复现并完成最小代码修复，定向迁移测试 10/10、analyzer、格式与签名 release 构建通过。修复 APK 已就绪；无线设备离线，未安装、未迁移，等待用户提供当前调试地址。详见 test-results/h90y-upgrade-20261102/VALIDATION.md。
+- 2026-11-02 H90y 升级阻断已复现并完成最小代码修复，定向迁移测试 10/10、analyzer、格式与签名 release 构建通过。已保留数据安装第二版同签名修复包，经应用确认流程完成真实迁移；4 张表/66 条内容、旧源 69 条仍可读、首页/日历/强制停止重启通过。详见 test-results/h90y-upgrade-20261102/VALIDATION.md。
 
 - 2026-11-01 发布收尾核验：Release `41218586972` success（head `7b42167`），main CI `41219403100` success（head `34b8543`）。资产 4/4 完整，APK/setup/portable 的本地 SHA-256 与 GitHub API digest、`SHA256SUMS.txt` 一致；APK 经 `aapt2` 核验 `versionName=1.2.0`、`versionCode=8`、minSdk 24、targetSdk 36，经 `apksigner` 核验证书 SHA-256 `51b5e2f3…`（v2 方案）；Windows 便携包 23/23 条目与 zip 一致，EXE `FileVersion/ProductVersion=1.2.0+8`。证据见 `test-results/v1.2.0-release-acceptance-20261101/`。
 - 未验收项：Android 秘书页 AVD 定向集成测试未执行（`adb devices` 为空，有界搜索无 `emulator.exe`，本机 SDK 无 system-images）；Windows 启动未执行（`%APPDATA%\com.yuanfang.aitext` 存在真实数据，无法证明隔离）。二者不得写成已通过。
@@ -94,12 +94,22 @@
 
 ### 下一步
 
-1. Android 秘书页 AVD 交互：在具备模拟器与系统镜像的环境运行 `flutter test -d <device> integration_test/android_smoke_test.dart --plain-name 'secretary draft and reply survive switching to calendar and back'`；当前本机无 `emulator.exe`/system image 且 `adb devices` 为空。
+1. Android 秘书页 AVD 交互：在具备模拟器与系统镜像的环境运行 `flutter test -d <device> integration_test/android_smoke_test.dart --plain-name 'secretary draft and reply survive switching to calendar and back'`；当前本机无 `emulator.exe`/system image；H90y 已通过无线 ADB 完成本次升级验证，但未执行秘书页专项交互。
 2. Windows 启动验收：需独立 Windows 用户/VM 或可证明的用户数据隔离；当前 `%APPDATA%\com.yuanfang.aitext` 存在真实数据，未启动。
-3. 真实资料迁移仅在可校验备份副本上经应用迁移门确认后执行。
+3. H90y 本次真实资料迁移已完成；后续正式发布须包含本次两项迁移修复，其他设备升级继续先备份并走应用确认门。
 4. 真实云盘同步、通知和跨设备恢复继续单独规划。
 
 ## 8. 变更记录
+
+### 2026-11-02 / H90y 重连安装与删除记录迁移阻断修复
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 在真机完成保留数据覆盖安装，继续解决升级无法进入应用 |
+| 变更文件 | 迁移服务/回归、数据契约、README、验证记录与交接 |
+| 状态 | 首版同证书修复包安装成功，69 条旧资料预检变为 1 张表及 66 条内容；过去日期阻断全部消失。剩余两条已删除记录误阻断，现改为保留旧源、备份并校验，但不恢复、不生成新内容、不阻断。未解决冲突仍阻断 |
+| 验证 | 删除记录断言修复前失败，修复后迁移服务/门控/I/O 10/10 通过，相关 analyzer 无诊断；第二版签名包构建/验签/保留数据安装成功；应用内迁移完成，4 张表（3 默认+1 自定义）及 66 条内容（26 日程+40 待办），强制停止重启及日历入口通过。见 test-results/h90y-upgrade-20261102/VALIDATION.md |
+| 风险与下一步 | 真机只读旧资料仍显示 69 条，未恢复两条删除记录。发布包不允许 run-as，未独立导出私有数据库/备份清单或逐文件核验源 hash；数据保护依赖应用备份/hash 校验及定向回归。未发布/推送此修复；本条取代上一条设备离线的当前状态 |
 
 ### 2026-11-02 / 修复旧日历安排随时间推移阻断升级
 

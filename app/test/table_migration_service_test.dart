@@ -36,6 +36,16 @@ void main() {
       );
       final source = const MarkdownCodec().encode(legacy);
       await vault.write(legacy.markdownPath, source);
+      final tombstone = _legacy(
+        id: 'deleted_old_calendar',
+        type: ResultType.event,
+        title: '已删除安排',
+        body: '',
+        deleted: true,
+        now: now,
+      );
+      final tombstoneSource = const MarkdownCodec().encode(tombstone);
+      await vault.write(tombstone.markdownPath, tombstoneSource);
       final plan = await migration.preview(
         now: now,
         availableBytes: availableBytes,
@@ -52,6 +62,8 @@ void main() {
       expect(entry.body, legacy.body);
       await migration.apply(plan);
       expect(await vault.read(legacy.markdownPath), source);
+      expect(await vault.read(tombstone.markdownPath), tombstoneSource);
+      expect(await vault.read(TableRepository.entryPath(tombstone.id)), isNull);
       expect(
         await migration.completedReceipt(
           await migration.preview(
@@ -263,109 +275,103 @@ void main() {
     expect(await vault.read(global.markdownPath), updatedGlobalSource);
   });
 
-  test(
-    'preflight blocks undated, deleted, draft and conflicted legacy records',
-    () async {
-      final vault = MemoryVaultStore();
-      final index = MemoryIndexDatabase();
-      final codec = const MarkdownCodec();
-      final migration = TableMigrationService(
-        vault: vault,
-        index: index,
-        createDatabaseSnapshot: (id) async => 'database-backups/$id.json',
-        estimateDatabaseSnapshotBytes: () async => 128,
-        runWithWriteBarrier: (operation) => operation(),
-      );
-      final missingMatter = _legacy(
-        id: 'todo_orphan',
-        type: ResultType.todo,
-        title: '孤立待办',
-        body: '正文',
-        matterId: 'matter_missing',
-        now: now,
-      );
-      final draft = _legacy(
-        id: 'knowledge_draft',
-        type: ResultType.knowledge,
-        title: '草稿',
-        body: '草稿正文',
-        status: ResultStatus.draft,
-        now: now,
-      );
-      final deleted = _legacy(
-        id: 'todo_deleted',
-        type: ResultType.todo,
-        title: '已删除',
-        body: '保留旧格式',
-        deleted: true,
-        now: now,
-      );
-      final conflict = _legacy(
-        id: 'knowledge_conflict',
-        type: ResultType.knowledge,
-        title: '冲突',
-        body: '保留冲突状态',
-        now: now,
-      );
-      final pastCalendarItem = _legacy(
-        id: 'event_past_unknown',
-        type: ResultType.event,
-        title: '过去的安排',
-        body: '是否发生未知',
-        start: now.subtract(const Duration(days: 1)),
-        now: now,
-      );
-      final undatedCalendarItem = _legacy(
-        id: 'event_undated_unknown',
-        type: ResultType.event,
-        title: '无日期安排',
-        body: '是否事实未知',
-        now: now,
-      );
-      for (final document in [
-        missingMatter,
-        draft,
-        deleted,
-        conflict,
-        pastCalendarItem,
-        undatedCalendarItem,
-      ]) {
-        await vault.write(document.markdownPath, codec.encode(document));
-      }
-      await index.upsertConflict(
-        SyncConflictRecord(
-          resultId: conflict.id,
-          remoteHash: 'remote',
-          remoteEtag: 'etag',
-          localHash: 'local',
-          copyPath: 'conflicts/${conflict.id}.md',
-          createdAt: now,
-        ),
-      );
+  test('preflight retains tombstones and blocks undated, draft and conflicted records', () async {
+    final vault = MemoryVaultStore();
+    final index = MemoryIndexDatabase();
+    final codec = const MarkdownCodec();
+    final migration = TableMigrationService(
+      vault: vault,
+      index: index,
+      createDatabaseSnapshot: (id) async => 'database-backups/$id.json',
+      estimateDatabaseSnapshotBytes: () async => 128,
+      runWithWriteBarrier: (operation) => operation(),
+    );
+    final missingMatter = _legacy(
+      id: 'todo_orphan',
+      type: ResultType.todo,
+      title: '孤立待办',
+      body: '正文',
+      matterId: 'matter_missing',
+      now: now,
+    );
+    final draft = _legacy(
+      id: 'knowledge_draft',
+      type: ResultType.knowledge,
+      title: '草稿',
+      body: '草稿正文',
+      status: ResultStatus.draft,
+      now: now,
+    );
+    final deleted = _legacy(
+      id: 'todo_deleted',
+      type: ResultType.todo,
+      title: '已删除',
+      body: '保留旧格式',
+      deleted: true,
+      now: now,
+    );
+    final conflict = _legacy(
+      id: 'knowledge_conflict',
+      type: ResultType.knowledge,
+      title: '冲突',
+      body: '保留冲突状态',
+      now: now,
+    );
+    final pastCalendarItem = _legacy(
+      id: 'event_past_unknown',
+      type: ResultType.event,
+      title: '过去的安排',
+      body: '是否发生未知',
+      start: now.subtract(const Duration(days: 1)),
+      now: now,
+    );
+    final undatedCalendarItem = _legacy(
+      id: 'event_undated_unknown',
+      type: ResultType.event,
+      title: '无日期安排',
+      body: '是否事实未知',
+      now: now,
+    );
+    for (final document in [
+      missingMatter,
+      draft,
+      deleted,
+      conflict,
+      pastCalendarItem,
+      undatedCalendarItem,
+    ]) {
+      await vault.write(document.markdownPath, codec.encode(document));
+    }
+    await index.upsertConflict(
+      SyncConflictRecord(
+        resultId: conflict.id,
+        remoteHash: 'remote',
+        remoteEtag: 'etag',
+        localHash: 'local',
+        copyPath: 'conflicts/${conflict.id}.md',
+        createdAt: now,
+      ),
+    );
 
-      final plan = await migration.preview(
-        now: now,
-        availableBytes: availableBytes,
-      );
-      expect(plan.canApply, isFalse);
-      expect(plan.outputs.keys, [
-        TableRepository.entryPath(pastCalendarItem.id),
-      ]);
-      expect(
-        plan.skippedIds,
-        containsAll([
-          draft.id,
-          deleted.id,
-          conflict.id,
-          undatedCalendarItem.id,
-        ]),
-      );
-      expect(plan.skippedIds, isNot(contains(pastCalendarItem.id)));
-      expect(plan.issues, hasLength(5));
-      expect(await vault.read(missingMatter.markdownPath), isNotNull);
-      await expectLater(migration.apply(plan), throwsStateError);
-    },
-  );
+    final plan = await migration.preview(
+      now: now,
+      availableBytes: availableBytes,
+    );
+    expect(plan.canApply, isFalse);
+    expect(plan.outputs.keys, [TableRepository.entryPath(pastCalendarItem.id)]);
+    expect(
+      plan.skippedIds,
+      containsAll([draft.id, deleted.id, conflict.id, undatedCalendarItem.id]),
+    );
+    expect(plan.skippedIds, isNot(contains(pastCalendarItem.id)));
+    expect(
+      plan.issues.map((issue) => issue.path),
+      isNot(contains(deleted.markdownPath)),
+    );
+    expect(plan.issues, hasLength(4));
+    expect(await vault.read(missingMatter.markdownPath), isNotNull);
+    await expectLater(migration.apply(plan), throwsStateError);
+  });
 
   test('replays an interrupted table migration and rolls back only matching targets', () async {
     final vault = _FailingMigrationVault(MemoryVaultStore());
