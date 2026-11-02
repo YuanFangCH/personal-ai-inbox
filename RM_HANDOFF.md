@@ -7,9 +7,9 @@
 | 字段 | 当前值 |
 |---|---|
 | 项目名称 | 懒狗秘书 |
-| 最后更新时间 | 2026-11-01 |
+| 最后更新时间 | 2026-11-02 |
 | 时区 | Asia/Singapore |
-| 最后修改 Agent | DeepSeek Harness / Codex 验收与提交 |
+| 最后修改 Agent | Codex |
 | 当前阶段 | v1.2.0 已作为预发布版本发布（Release `41218586972` success，head `7b42167`；main CI `41219403100` success，head `34b8543`）。四个资产已与 GitHub digest/SHA256SUMS 核对一致，APK 已核验版本与长期证书指纹，Windows 便携包已解压核对；Android 秘书页 AVD 交互与 Windows 启动验收仍缺失；真实旧事项尚未迁移 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。OneDrive 双向同步、百度网盘归档和通知尚未接入 |
 
@@ -59,6 +59,8 @@
 
 ## 6. 当前进度与验证
 
+- 2026-11-02 H90y 升级阻断已复现并完成最小代码修复，定向迁移测试 10/10、analyzer、格式与签名 release 构建通过。修复 APK 已就绪；无线设备离线，未安装、未迁移，等待用户提供当前调试地址。详见 test-results/h90y-upgrade-20261102/VALIDATION.md。
+
 - 2026-11-01 发布收尾核验：Release `41218586972` success（head `7b42167`），main CI `41219403100` success（head `34b8543`）。资产 4/4 完整，APK/setup/portable 的本地 SHA-256 与 GitHub API digest、`SHA256SUMS.txt` 一致；APK 经 `aapt2` 核验 `versionName=1.2.0`、`versionCode=8`、minSdk 24、targetSdk 36，经 `apksigner` 核验证书 SHA-256 `51b5e2f3…`（v2 方案）；Windows 便携包 23/23 条目与 zip 一致，EXE `FileVersion/ProductVersion=1.2.0+8`。证据见 `test-results/v1.2.0-release-acceptance-20261101/`。
 - 未验收项：Android 秘书页 AVD 定向集成测试未执行（`adb devices` 为空，有界搜索无 `emulator.exe`，本机 SDK 无 system-images）；Windows 启动未执行（`%APPDATA%\com.yuanfang.aitext` 存在真实数据，无法证明隔离）。二者不得写成已通过。
 - 已将改版细化为 10 个工作包、80 个执行步骤，并映射 13 类需求。P0/P1和P2首轮本地存储/repository/runtime接线通过 28 项定向测试和 analyzer。P2记录的 Flutter integration driver VM Service掉线为历史失败；之后 `flutter test -d emulator-5554 integration_test/...` 的相关AVD场景已通过。详情见 `test-results/table-notebook-p2-20261030/VALIDATION.md` 和 P8/P9最新验证记录。
@@ -81,6 +83,8 @@
 
 ### 风险与边界
 
+- 2026-11-02 真机发现旧规划把“过去有日期的安排”也列为阻断项，与保留原安排且不推断发生状态的升级目标冲突，造成 H90y 升级停在只读门。本轮修正为有开始时间即保留为日程；无开始时间仍阻断。此前“过去/无日期均阻断”的记录描述历史实现，由本条取代。
+
 - 新目标替代旧文档中的事项聚合、固定四类成果和独立待处理页设计；这是有意的产品改版。旧方案/现行同步协议保留已发布 v1.1.5 的格式与历史规则；本地新 schema 和迁移契约已首轮实现，跨端表同步和协议切换仍待设计。
 - P3 的本地恢复与事件联动事务已实现首轮，并由表页/AI 表工具接入；尚未纳入真实同步协议。整表删除的跨端墓碑/恢复前像同步策略仍需专门同步 ADR；现阶段只能承诺本机 30 天恢复。
 - P4 已接只读启动门和确认迁移副本入口；候选已在空 AVD 的合成旧文件目录上通过迁移确认、主应用导航、重启及源哈希检查。旧数据源和新格式副本可同时读回；普通旧格式编辑和旧同步入口关闭，全局知识独立确认仍可用。vault与数据库快照在迁移 journal 中关联；跨进程或外部同步同时写入不能由当前进程 barrier 阻止，真实生产资料的备份恢复仍须单独完成。
@@ -96,6 +100,16 @@
 4. 真实云盘同步、通知和跨设备恢复继续单独规划。
 
 ## 8. 变更记录
+
+### 2026-11-02 / 修复旧日历安排随时间推移阻断升级
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 无线连接 H90y，排查 v1.2.0 升级后无法进入主应用 |
+| 变更文件 | 迁移服务、定向回归、当前迁移契约/执行计划、README 与交接 |
+| 状态 | 真机停在旧资料只读预检（69 条可读取旧资料）；过去有开始时间的旧安排被错误阻断。改为保留原时间的日程，不推断已发生；不增加处理界面、不改旧源文件 |
+| 验证 | 新增回归修复前失败；修复后迁移服务/门控/I/O 定向 10/10 通过，相关 analyzer 无诊断；同签名修复包构建及 apksigner 校验通过；安装时设备离线，真机验证待重连，详见 test-results/h90y-upgrade-20261102/VALIDATION.md |
+| 风险与下一步 | 发布版不允许 run-as；尚未读取私有源文件、未执行真实迁移。修复 APK 已就绪但设备离线，需重连后保留数据覆盖安装，确认预检是否仍有其他阻断项；迁移保持应用内确认 |
 
 ### 2026-11-01 / 核验 v1.2.0 发布资产与验收边界
 

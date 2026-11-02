@@ -54,7 +54,6 @@ class TableMigrationService {
     DateTime? now,
     int? availableBytes,
   }) => _vault.exclusive(() async {
-    final migrationTime = (now ?? _clock()).toLocal();
     final issues = <TableMigrationIssue>[];
     var measuredAvailableBytes = availableBytes;
     if (measuredAvailableBytes == null && _availableSpaceProbe != null) {
@@ -141,14 +140,12 @@ class TableMigrationService {
         );
         continue;
       }
-      if (document.type == ResultType.event &&
-          (document.start == null || !document.start!.isAfter(migrationTime))) {
+      // Elapsed arrangements remain schedules, not evidence of occurrence.
+      // Migration must not depend on the day the upgrade is installed.
+      if (document.type == ResultType.event && document.start == null) {
         skipped.add(document.id);
         issues.add(
-          TableMigrationIssue(
-            document.markdownPath,
-            '旧日历项缺少未来开始时间，不能推断它已发生；需人工判定后再迁移。',
-          ),
+          TableMigrationIssue(document.markdownPath, '旧日历项缺少开始时间，需人工判定后再迁移。'),
         );
         continue;
       }
@@ -424,7 +421,7 @@ class TableMigrationService {
           }
         }
         journal['status'] = 'complete';
-        journal['completed_at'] = DateTime.now().toIso8601String();
+        journal['completed_at'] = _clock().toIso8601String();
         await _vault.write(journalPath, jsonEncode(journal));
         return TableMigrationReceipt.fromJournal(journal);
       }),
@@ -465,7 +462,7 @@ class TableMigrationService {
       await _vault.delete(_stagedPath(migrationId, target));
     }
     journal['status'] = 'rolled_back';
-    journal['rolled_back_at'] = DateTime.now().toIso8601String();
+    journal['rolled_back_at'] = _clock().toIso8601String();
     await _vault.write(path, jsonEncode(journal));
   });
 

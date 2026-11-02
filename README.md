@@ -33,6 +33,8 @@
 
 ## 当前进展
 
+2026-11-02 H90y 真机升级排查发现：旧日历安排仅因日期已过去就阻断整个迁移。已修正为有开始时间的旧安排保持日程及原时间，不推断已发生；无日期等其他阻断检查保留。定向迁移测试 10/10 通过，同签名修复包与真机验证状态见[本轮记录](test-results/h90y-upgrade-20261102/VALIDATION.md)。
+
 秘书已改为 AppShell 内的常驻页面：手机/宽屏保留全局导航，新建、历史会话和系统分享均在秘书页内切换；主页面往返保留当前会话草稿和阅读状态，回复生成不中断。主机定向 UI 与跨宽度用例通过；当前本机 Android 集成测试受 Gradle/Java 与模拟器环境阻塞，详见 [本轮验证记录](test-results/secretary-embedded-20261031/VALIDATION.md)。架构约定见 [ADR 0022](docs/adr/0022-persistent-embedded-secretary-page.md)。
 
 表与笔记改版已细化为 [10 个工作包、80 个执行步骤](docs/table-notebook-implementation-plan.md)。

@@ -15,6 +15,56 @@ void main() {
   const availableBytes = 1 << 30;
 
   test(
+    'dated legacy schedules remain migratable after their start time',
+    () async {
+      final vault = MemoryVaultStore();
+      final index = MemoryIndexDatabase();
+      final migration = TableMigrationService(
+        vault: vault,
+        index: index,
+        createDatabaseSnapshot: (id) async => 'database-backups/$id.json',
+        estimateDatabaseSnapshotBytes: () async => 128,
+        runWithWriteBarrier: (operation) => operation(),
+      );
+      final legacy = _legacy(
+        id: 'event_elapsed_schedule',
+        type: ResultType.event,
+        title: '原有考试安排',
+        body: '是否实际参加未知，保留原安排',
+        start: now.subtract(const Duration(days: 1)),
+        now: now,
+      );
+      final source = const MarkdownCodec().encode(legacy);
+      await vault.write(legacy.markdownPath, source);
+      final plan = await migration.preview(
+        now: now,
+        availableBytes: availableBytes,
+      );
+      expect(
+        plan.canApply,
+        isTrue,
+        reason: plan.issues.map((e) => e.message).join('\n'),
+      );
+      final entry = plan.entries.single;
+      expect(entry.type, TableContentType.schedule);
+      expect(entry.start!.isAtSameMomentAs(legacy.start!), isTrue);
+      expect(entry.occurredAt, isNull);
+      expect(entry.body, legacy.body);
+      await migration.apply(plan);
+      expect(await vault.read(legacy.markdownPath), source);
+      expect(
+        await migration.completedReceipt(
+          await migration.preview(
+            now: now.add(const Duration(days: 10)),
+            availableBytes: availableBytes,
+          ),
+        ),
+        isNotNull,
+      );
+    },
+  );
+
+  test(
     'previews and copies legacy records with deterministic table mapping',
     () async {
       final vault = MemoryVaultStore();
@@ -214,7 +264,7 @@ void main() {
   });
 
   test(
-    'preflight blocks ambiguous, deleted, draft and conflicted legacy records',
+    'preflight blocks undated, deleted, draft and conflicted legacy records',
     () async {
       final vault = MemoryVaultStore();
       final index = MemoryIndexDatabase();
@@ -298,18 +348,20 @@ void main() {
         availableBytes: availableBytes,
       );
       expect(plan.canApply, isFalse);
-      expect(plan.outputs, isEmpty);
+      expect(plan.outputs.keys, [
+        TableRepository.entryPath(pastCalendarItem.id),
+      ]);
       expect(
         plan.skippedIds,
         containsAll([
           draft.id,
           deleted.id,
           conflict.id,
-          pastCalendarItem.id,
           undatedCalendarItem.id,
         ]),
       );
-      expect(plan.issues, hasLength(6));
+      expect(plan.skippedIds, isNot(contains(pastCalendarItem.id)));
+      expect(plan.issues, hasLength(5));
       expect(await vault.read(missingMatter.markdownPath), isNotNull);
       await expectLater(migration.apply(plan), throwsStateError);
     },
