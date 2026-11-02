@@ -170,7 +170,8 @@ class _AppShellState extends State<AppShell> {
           resizeToAvoidBottomInset: true,
           body: Column(
             children: [
-              if (runtime.migrationGate.migrationComplete)
+              if (runtime.migrationGate.migrationComplete &&
+                  (runtime.migrationGate.preview?.hasLegacyContent ?? false))
                 _MigratedSourceBanner(gate: runtime.migrationGate),
               Expanded(
                 child: Stack(

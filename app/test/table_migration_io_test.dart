@@ -108,80 +108,92 @@ void main() {
     },
   );
 
-  test(
-    'file-backed partial promotion replays after a new service instance',
-    () async {
-      final root = await Directory.systemTemp.createTemp(
-        'table-migration-io-replay',
-      );
-      addTearDown(() => root.delete(recursive: true));
-      final vaultRoot = Directory('${root.path}/vault');
-      final supportRoot = Directory('${root.path}/support');
-      await vaultRoot.create();
-      await supportRoot.create();
-      _createDatabase('${supportRoot.path}/index.sqlite3', 10, 'result_rows');
-      _createDatabase(
-        '${supportRoot.path}/conversations.sqlite3',
-        5,
-        'chat_rows',
-      );
-      final coordinator = SqliteMigrationCoordinator(
-        supportPath: supportRoot.path,
-        settings: _MigrationSettings({'device_id': 'io-replay'}),
-      );
-      final inner = IoVaultStore.at(vaultRoot);
-      await inner.initialize();
-      final matter = _legacy(
-        id: 'matter_io_replay',
-        type: ResultType.matter,
-        title: '中断后恢复',
-        body: '旧源保留',
-      );
-      final todo = _legacy(
-        id: 'todo_io_replay',
-        type: ResultType.todo,
-        title: '恢复待办',
-        body: '稳定正文',
-        matterId: matter.id,
-      );
-      const codec = MarkdownCodec();
-      final matterSource = codec.encode(matter);
-      final todoSource = codec.encode(todo);
-      await inner.write(matter.markdownPath, matterSource);
-      await inner.write(todo.markdownPath, todoSource);
+  test('file-backed partial promotion replays after a new service instance', () async {
+    final root = await Directory.systemTemp.createTemp(
+      'table-migration-io-replay',
+    );
+    addTearDown(() => root.delete(recursive: true));
+    final vaultRoot = Directory('${root.path}/vault');
+    final supportRoot = Directory('${root.path}/support');
+    await vaultRoot.create();
+    await supportRoot.create();
+    _createDatabase('${supportRoot.path}/index.sqlite3', 10, 'result_rows');
+    _createDatabase(
+      '${supportRoot.path}/conversations.sqlite3',
+      5,
+      'chat_rows',
+    );
+    final coordinator = SqliteMigrationCoordinator(
+      supportPath: supportRoot.path,
+      settings: _MigrationSettings({'device_id': 'io-replay'}),
+    );
+    final inner = IoVaultStore.at(vaultRoot);
+    await inner.initialize();
+    final matter = _legacy(
+      id: 'matter_io_replay',
+      type: ResultType.matter,
+      title: '中断后恢复',
+      body: '旧源保留',
+    );
+    final todo = _legacy(
+      id: 'todo_io_replay',
+      type: ResultType.todo,
+      title: '恢复待办',
+      body: '稳定正文',
+      matterId: matter.id,
+    );
+    const codec = MarkdownCodec();
+    final matterSource = codec.encode(matter);
+    final todoSource = codec.encode(todo);
+    await inner.write(matter.markdownPath, matterSource);
+    await inner.write(todo.markdownPath, todoSource);
 
-      TableMigrationService service(VaultStore vault) => TableMigrationService(
-        vault: vault,
-        index: MemoryIndexDatabase(),
-        createDatabaseSnapshot: coordinator.createTableMigrationSnapshot,
-        estimateDatabaseSnapshotBytes:
-            coordinator.estimateTableMigrationSnapshotBytes,
-        availableSpaceProbe: (_) async => 1 << 30,
-        runWithWriteBarrier: (operation) => operation(),
-        clock: () => _now,
-      );
+    TableMigrationService service(VaultStore vault) => TableMigrationService(
+      vault: vault,
+      index: MemoryIndexDatabase(),
+      createDatabaseSnapshot: coordinator.createTableMigrationSnapshot,
+      estimateDatabaseSnapshotBytes:
+          coordinator.estimateTableMigrationSnapshotBytes,
+      availableSpaceProbe: (_) async => 1 << 30,
+      runWithWriteBarrier: (operation) => operation(),
+      clock: () => _now,
+    );
 
-      final failing = _FailingIoVault(
-        inner,
-        TableRepository.entryPath(todo.id),
-      );
-      final first = service(failing);
-      final plan = await first.preview();
-      expect(plan.canApply, isTrue, reason: _issues(plan.issues));
-      await expectLater(first.apply(plan), throwsStateError);
-      expect(await inner.read(TableRepository.tablePath(matter.id)), isNotNull);
-      expect(await inner.read(TableRepository.entryPath(todo.id)), isNull);
+    final failing = _FailingIoVault(inner, TableRepository.entryPath(todo.id));
+    final first = service(failing);
+    final plan = await first.preview();
+    expect(plan.canApply, isTrue, reason: _issues(plan.issues));
+    await expectLater(first.apply(plan), throwsStateError);
+    expect(await inner.read(TableRepository.tablePath(matter.id)), isNotNull);
+    expect(await inner.read(TableRepository.entryPath(todo.id)), isNull);
 
-      final restarted = service(IoVaultStore.at(vaultRoot));
-      final retryPlan = await restarted.preview();
-      expect(retryPlan.canApply, isTrue, reason: _issues(retryPlan.issues));
-      final receipt = await restarted.apply(retryPlan);
-      expect(receipt.status, 'complete');
-      expect(await inner.read(TableRepository.entryPath(todo.id)), isNotNull);
-      expect(await inner.read(matter.markdownPath), matterSource);
-      expect(await inner.read(todo.markdownPath), todoSource);
-    },
-  );
+    final restarted = service(IoVaultStore.at(vaultRoot));
+    final retryPlan = await restarted.preview();
+    expect(retryPlan.canApply, isTrue, reason: _issues(retryPlan.issues));
+    final receipt = await restarted.apply(retryPlan);
+    expect(receipt.status, 'complete');
+    expect(await inner.read(TableRepository.entryPath(todo.id)), isNotNull);
+    expect(await inner.read(matter.markdownPath), matterSource);
+    expect(await inner.read(todo.markdownPath), todoSource);
+    await restarted.cleanupLegacySources(retryPlan);
+    expect(await inner.read(matter.markdownPath), isNull);
+    expect(await inner.read(todo.markdownPath), isNull);
+    expect(
+      await inner.read(
+        'vault/.table-migrations/backups/${receipt.migrationId}/${todo.markdownPath}',
+      ),
+      todoSource,
+    );
+    final afterCleanup = service(IoVaultStore.at(vaultRoot));
+    await afterCleanup.resumeSourceCleanup();
+    final cleanedPlan = await afterCleanup.preview();
+    expect(cleanedPlan.hasLegacyContent, isFalse);
+    expect(
+      (await afterCleanup.completedReceipt(cleanedPlan))!.migrationId,
+      receipt.migrationId,
+    );
+    expect(await inner.read(TableRepository.entryPath(todo.id)), isNotNull);
+  });
 }
 
 String _issues(List<TableMigrationIssue> issues) =>

@@ -7,10 +7,72 @@ import 'package:personal_ai_inbox/core/markdown_codec.dart';
 import 'package:personal_ai_inbox/data/memory_index_database.dart';
 import 'package:personal_ai_inbox/data/memory_vault_store.dart';
 import 'package:personal_ai_inbox/data/sync_provider.dart';
+import 'package:personal_ai_inbox/data/table_migration_service.dart';
+import 'package:personal_ai_inbox/ui/app_shell.dart';
+import 'package:personal_ai_inbox/ui/pages/document_detail_page.dart';
+import 'package:personal_ai_inbox/ui/pages/table_detail_page.dart';
+import 'package:personal_ai_inbox/ui/pages/sync_page.dart';
 
 import 'test_support.dart';
 
 void main() {
+  testWidgets('cleaned migration keeps legacy links and sync gate', (
+    tester,
+  ) async {
+    final vault = MemoryVaultStore();
+    final index = MemoryIndexDatabase();
+    final now = DateTime(2026, 11, 2);
+    final matter = ResultDocument(
+      id: 'matter_cleanup_link',
+      type: ResultType.matter,
+      title: '迁移后的表',
+      status: ResultStatus.canonical,
+      originDevice: 'test',
+      revision: 1,
+      createdAt: now,
+      updatedAt: now,
+      body: '保留正文',
+    );
+    await vault.write(
+      matter.markdownPath,
+      const MarkdownCodec().encode(matter),
+    );
+    final service = TableMigrationService(
+      vault: vault,
+      index: index,
+      createDatabaseSnapshot: (id) async => 'db/$id.json',
+      estimateDatabaseSnapshotBytes: () async => 128,
+      availableSpaceProbe: (_) async => 1 << 30,
+      runWithWriteBarrier: (operation) => operation(),
+    );
+    final plan = await service.preview();
+    await service.apply(plan);
+    await service.cleanupLegacySources(plan);
+    final runtime = await AppRuntime.bootstrap(
+      vaultOverride: vault,
+      indexOverride: index,
+      settingsOverride: FakeSettingsService(),
+    );
+    expect(runtime.migrationGate.migrationComplete, isTrue);
+    expect(runtime.results.documents, isEmpty);
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+    await tester.pumpAndSettle();
+    expect(find.text('查看旧资料'), findsNothing);
+    Navigator.of(tester.element(find.byType(AppShell))).push(
+      MaterialPageRoute<void>(
+        builder: (_) => DocumentDetailPage(documentId: matter.id),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(TableDetailPage), findsOneWidget);
+    expect(find.text('成果不存在或已删除'), findsNothing);
+    Navigator.of(tester.element(find.byType(TableDetailPage)))
+        .push(MaterialPageRoute<void>(builder: (_) => const SyncPage()));
+    await tester.pumpAndSettle();
+    expect(find.text('表格式跨端同步尚未接入'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await runtime.shutdown();
+  });
   testWidgets(
     'renders the legacy migration gate instead of writable app pages',
     (tester) async {

@@ -24,21 +24,13 @@ class DocumentDetailPage extends StatelessWidget {
   );
 
   Widget _buildDetail(BuildContext context, ResultLibrary app) {
-    final document = app.findDocument(documentId);
-    if (document == null) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: const Center(child: Text('成果不存在或已删除')),
-      );
-    }
-
     final migrationComplete = AppScope.migrationGate(context).migrationComplete;
-    if (migrationComplete && !document.isGlobalKnowledge) {
+    if (migrationComplete) {
       final tables = AppScope.tables(context);
-      final table = tables.findTable(document.id);
+      final table = tables.findTable(documentId);
       if (table != null) return TableDetailPage(tableId: table.id);
       for (final entry in tables.entries) {
-        if (entry.id == document.id) {
+        if (entry.id == documentId) {
           return TableEntryEditorPage(
             tableId: entry.tableId,
             type: entry.type,
@@ -46,6 +38,13 @@ class DocumentDetailPage extends StatelessWidget {
           );
         }
       }
+    }
+    final document = app.findDocument(documentId);
+    if (document == null) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: const Center(child: Text('成果不存在或已删除')),
+      );
     }
     final legacyReadOnly = migrationComplete && !document.isGlobalKnowledge;
 

@@ -10,12 +10,12 @@
 | 最后更新时间 | 2026-11-02 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | v1.2.0 已作为预发布版本发布（Release `41218586972` success，head `7b42167`；main CI `41219403100` success，head `34b8543`）。四个资产已与 GitHub digest/SHA256SUMS 核对一致，APK 已核验版本与长期证书指纹，Windows 便携包已解压核对；Android 秘书页 AVD 交互与 Windows 启动验收仍缺失；H90y 已用本地修复包完成真实旧资料迁移（4 张表/66 条内容），首页/日历及重启通过 |
+| 当前阶段 | v1.2.0 已作为预发布版本发布（Release `41218586972` success，head `7b42167`；main CI `41219403100` success，head `34b8543`）。四个资产已与 GitHub digest/SHA256SUMS 核对一致，APK 已核验版本与长期证书指纹，Windows 便携包已解压核对；Android 秘书页 AVD 交互与 Windows 启动验收仍缺失；H90y 已完成迁移及非全局旧源清理（4 张表/66 条内容，备份保留），首页及清理后两次冷启动通过 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。OneDrive 双向同步、百度网盘归档和通知尚未接入 |
 
 ## 2. 一句话交接
 
-`v1.2.0` 预览版已发布（pre-release，2026-11-01 00:31 Asia/Singapore）。Release `41218586972` 成功（head `7b42167`），main CI `41219403100` 成功（head `34b8543`）。四个发布资产的本地 SHA-256 与 GitHub API digest、`SHA256SUMS.txt` 全部一致；APK 已核验 `versionName=1.2.0`、`versionCode=8`、长期证书指纹 `51b5e2f3…`（v2 签名方案）；Windows 便携包解压核对 23/23 条目，EXE 版本 `1.2.0+8`。Android 秘书页 AVD 交互与 Windows 启动验收仍未完成（本机无可用模拟器/系统镜像；Windows 存在真实数据目录且无法证明隔离，未启动）；H90y 已于 2026-11-02 用本地修复包完成真实资料迁移（69 条旧记录保留，4 张表/66 条内容），此修复尚未发布到 GitHub。详见[本轮验证](test-results/h90y-upgrade-20261102/VALIDATION.md)、[发行说明](docs/releases/v1.2.0.md)、[发布准备验证记录](test-results/v1.2.0-release-prep/VALIDATION.md)、[发布验收记录](test-results/v1.2.0-release-acceptance-20261101/VALIDATION.md)和[逐步计划](docs/table-notebook-implementation-plan.md)。
+`v1.2.0` 预览版已发布（pre-release，2026-11-01 00:31 Asia/Singapore）。Release `41218586972` 成功（head `7b42167`），main CI `41219403100` 成功（head `34b8543`）。四个发布资产的本地 SHA-256 与 GitHub API digest、`SHA256SUMS.txt` 全部一致；APK 已核验 `versionName=1.2.0`、`versionCode=8`、长期证书指纹 `51b5e2f3…`（v2 签名方案）；Windows 便携包解压核对 23/23 条目，EXE 版本 `1.2.0+8`。Android 秘书页 AVD 交互与 Windows 启动验收仍未完成（本机无可用模拟器/系统镜像；Windows 存在真实数据目录且无法证明隔离，未启动）；H90y 已于 2026-11-02 用本地修复包完成真实资料迁移（非全局活动旧源已清理、备份保留，4 张表/66 条内容），此修复尚未发布到 GitHub。详见[本轮验证](test-results/h90y-upgrade-20261102/VALIDATION.md)、[发行说明](docs/releases/v1.2.0.md)、[发布准备验证记录](test-results/v1.2.0-release-prep/VALIDATION.md)、[发布验收记录](test-results/v1.2.0-release-acceptance-20261101/VALIDATION.md)和[逐步计划](docs/table-notebook-implementation-plan.md)。
 
 ## 3. 当前目标与范围
 
@@ -59,7 +59,7 @@
 
 ## 6. 当前进度与验证
 
-- 2026-11-02 H90y 升级阻断已复现并完成最小代码修复，定向迁移测试 10/10、analyzer、格式与签名 release 构建通过。已完成初次迁移（4 张表/66 条内容、69 条旧源仍可读）及后续正常修改引起的重启阻断修复；最新同签名包保留数据安装成功，在用户现有已修改资料上连续两次冷启动进入首页。详见 test-results/h90y-upgrade-20261102/VALIDATION.md。
+- 2026-11-02 H90y 升级阻断已复现并完成最小代码修复，定向迁移测试 10/10、analyzer、格式与签名 release 构建通过。已完成 H90y 初次迁移及后续正常修改引起的重启阻断修复，并按用户要求清理非全局旧源、保留备份/全局知识/完成凭据；最新同签名包安装成功，4 张表/66 条内容保持，旧源横幅消失，清理后两次冷启动通过。详见 test-results/h90y-upgrade-20261102/VALIDATION.md。
 
 - 2026-11-01 发布收尾核验：Release `41218586972` success（head `7b42167`），main CI `41219403100` success（head `34b8543`）。资产 4/4 完整，APK/setup/portable 的本地 SHA-256 与 GitHub API digest、`SHA256SUMS.txt` 一致；APK 经 `aapt2` 核验 `versionName=1.2.0`、`versionCode=8`、minSdk 24、targetSdk 36，经 `apksigner` 核验证书 SHA-256 `51b5e2f3…`（v2 方案）；Windows 便携包 23/23 条目与 zip 一致，EXE `FileVersion/ProductVersion=1.2.0+8`。证据见 `test-results/v1.2.0-release-acceptance-20261101/`。
 - 未验收项：Android 秘书页 AVD 定向集成测试未执行（`adb devices` 为空，有界搜索无 `emulator.exe`，本机 SDK 无 system-images）；Windows 启动未执行（`%APPDATA%\com.yuanfang.aitext` 存在真实数据，无法证明隔离）。二者不得写成已通过。
@@ -83,6 +83,8 @@
 
 ### 风险与边界
 
+- 用户于 2026-11-02 要求迁移后清理老数据。ADR 0023 取代旧文档活动目录保留源件的规则：核验备份后清理非全局旧源，保留备份/完成凭据，清理可续跑；历史验证记录不改写。
+
 - 2026-11-02 后续真机复现迁移完成后正常修改内容引起的启动阻断；此前立即重启通过不覆盖此场景。已修正完成凭据读取，不把当前内容要求恢复成旧快照；真机现有已修改数据上两次冷启动通过，状态见最新记录。
 
 - 2026-11-02 真机发现旧规划把“过去有日期的安排”也列为阻断项，与保留原安排且不推断发生状态的升级目标冲突，造成 H90y 升级停在只读门。本轮修正为有开始时间即保留为日程；无开始时间仍阻断。此前“过去/无日期均阻断”的记录描述历史实现，由本条取代。
@@ -102,6 +104,16 @@
 4. 真实云盘同步、通知和跨设备恢复继续单独规划。
 
 ## 8. 变更记录
+
+### 2026-11-02 / 按用户要求清理已迁移旧源并保留备份
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 迁移成功后清理活动旧数据，减少反复预检 |
+| 变更文件 | ADR 0023/索引、迁移服务/gate、旧源横幅/确认文案/旧链接跳转、相关测试、数据契约/执行计划、README 与交接 |
+| 状态 | 新增整批备份与源 hash 核验、prepared→complete 可续跑清理清单，删除非全局旧源及旧删除记录；新内容/后续修改/全局知识保留。完成凭据独立于旧源，保持旧同步关闭；清理后旧会话链接按稳定 ID 打开新表/条目 |
+| 验证 | 清理 gate 及旧链接回归均先失败；相关迁移 14 项与 runtime 5 项通过，已完成范围 analyzer/格式通过；最终同签名清理包构建/验签/保留数据安装通过，真机旧源横幅消失、4 张表/66 条内容不变、两次清理后冷启动通过，详见 test-results/h90y-legacy-cleanup-20261102/VALIDATION.md |
+| 风险与下一步 | 用户本轮指令取代旧规范“永久保留活动旧源”；备份/journal/清理清单继续保留，清理开始后回旧版须显式还原备份。真机已清理且重启/数量核对通过；发布包禁止 run-as，未独立导出私有备份/清单，清理凭据与备份 hash 校验由应用执行。后续正式版本需包含修复与清理规则 |
 
 ### 2026-11-02 / 修复迁移后正常编辑引起的再次启动阻断
 

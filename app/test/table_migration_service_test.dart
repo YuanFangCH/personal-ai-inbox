@@ -15,6 +15,123 @@ void main() {
   final now = DateTime.parse('2026-10-30T09:00:00+08:00');
   const availableBytes = 1 << 30;
 
+  for (final failure in [
+    'none',
+    'interrupted',
+    'bad-backup',
+    'changed-source',
+  ]) {
+    test('source cleanup protects data: $failure', () async {
+      final memory = MemoryVaultStore();
+      final vault = _FailingMigrationVault(memory);
+      final index = MemoryIndexDatabase();
+      TableMigrationService service() => TableMigrationService(
+        vault: vault,
+        index: index,
+        createDatabaseSnapshot: (id) async => 'db/$id.json',
+        estimateDatabaseSnapshotBytes: () async => 128,
+        availableSpaceProbe: (_) async => availableBytes,
+        runWithWriteBarrier: (operation) => operation(),
+      );
+      final matter = _legacy(
+        id: 'cleanup_matter',
+        type: ResultType.matter,
+        title: '旧表',
+        body: '表正文',
+        now: now,
+      );
+      final todo = _legacy(
+        id: 'cleanup_todo',
+        type: ResultType.todo,
+        title: '旧待办',
+        body: '旧正文',
+        now: now,
+      );
+      final deleted = _legacy(
+        id: 'cleanup_deleted',
+        type: ResultType.event,
+        title: '已删除',
+        body: '',
+        deleted: true,
+        now: now,
+      );
+      final global = _legacy(
+        id: 'cleanup_global',
+        type: ResultType.knowledge,
+        title: '全局知识',
+        body: '保留活动源',
+        now: now,
+        extensionFields: const {
+          globalKnowledgeScopeKey: globalKnowledgeScopeValue,
+        },
+      );
+      const codec = MarkdownCodec();
+      for (final doc in [matter, todo, deleted, global]) {
+        await vault.write(doc.markdownPath, codec.encode(doc));
+      }
+      final migration = service();
+      final plan = await migration.preview();
+      await expectLater(migration.cleanupLegacySources(plan), throwsStateError);
+      await migration.apply(plan);
+      final repository = TableRepository(vault: vault, index: index);
+      await repository.initialize();
+      final migrated = (await repository.readEntry(todo.id))!;
+      await repository.updateEntry(
+        migrated.copyWith(body: '迁移后修改'),
+        expectedRevision: migrated.revision,
+      );
+      final backupPath =
+          'vault/.table-migrations/backups/${plan.migrationId}/${todo.markdownPath}';
+      if (failure == 'bad-backup') {
+        await vault.write(backupPath, '损坏备份');
+      } else if (failure == 'changed-source') {
+        await vault.write(
+          todo.markdownPath,
+          codec.encode(todo.copyWith(body: '旧源后来变化')),
+        );
+      } else if (failure == 'interrupted') {
+        vault.failOnDeletePath = todo.markdownPath;
+      }
+      if (failure == 'bad-backup' || failure == 'changed-source') {
+        await expectLater(
+          migration.cleanupLegacySources(plan),
+          throwsStateError,
+        );
+        for (final doc in [matter, todo, deleted, global]) {
+          expect(await vault.read(doc.markdownPath), isNotNull);
+        }
+        expect((await repository.readEntry(todo.id))!.body, '迁移后修改');
+        return;
+      }
+      if (failure == 'interrupted') {
+        await expectLater(
+          migration.cleanupLegacySources(plan),
+          throwsStateError,
+        );
+        expect(await vault.read(matter.markdownPath), isNull);
+        await service().resumeSourceCleanup();
+      } else {
+        await migration.cleanupLegacySources(plan);
+      }
+      for (final doc in [matter, todo, deleted]) {
+        expect(await vault.read(doc.markdownPath), isNull);
+      }
+      expect(await vault.read(backupPath), codec.encode(todo));
+      expect(await vault.read(global.markdownPath), codec.encode(global));
+      expect((await repository.readEntry(todo.id))!.body, '迁移后修改');
+      final gate = TableMigrationGate(service: service());
+      await gate.initialize();
+      expect(gate.error, isNull);
+      expect(gate.migrationComplete, isTrue);
+      expect(gate.requiresReadOnly, isFalse);
+      expect(gate.preview!.hasLegacyContent, isFalse);
+      await gate.refresh();
+      expect(gate.migrationComplete, isTrue);
+      gate.dispose();
+      await expectLater(migration.rollback(plan.migrationId), throwsStateError);
+    });
+  }
+
   test(
     'dated legacy schedules remain migratable after their start time',
     () async {
@@ -594,6 +711,7 @@ class _FailingMigrationVault implements VaultStore {
 
   final MemoryVaultStore _inner;
   String? failOnNextPath;
+  String? failOnDeletePath;
 
   @override
   Future<T> exclusive<T>(Future<T> Function() operation) =>
@@ -615,7 +733,13 @@ class _FailingMigrationVault implements VaultStore {
   }
 
   @override
-  Future<void> delete(String relativePath) => _inner.delete(relativePath);
+  Future<void> delete(String relativePath) async {
+    if (relativePath == failOnDeletePath) {
+      failOnDeletePath = null;
+      throw StateError('injected source cleanup interruption');
+    }
+    await _inner.delete(relativePath);
+  }
 
   @override
   Future<List<String>> listMarkdownFiles() => _inner.listMarkdownFiles();

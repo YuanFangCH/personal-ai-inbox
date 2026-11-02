@@ -93,7 +93,7 @@ P3a（删除恢复账本与索引 schema）、P3b（删除/恢复/到期清理�
 
 主要落点：`data/migration_coordinator.dart`、`sqlite_migration_coordinator.dart`、`bootstrap/app_runtime.dart`、repository。
 
-P4 首轮完成：迁移预检/确定性映射/vault Markdown备份/SQLite、会话与设置独立快照/关联 journal、重放和 hash 回滚已实现；Android StatFs与Windows GetDiskFreeSpaceExW通过定向验证。AppRuntime 检出旧资料后进入只读门；预检通过后经用户确认生成新格式副本，旧源保留。完成后主应用的表、首页、日历、秘书、全局知识和设置入口开放；普通旧格式条目只读，已迁移身份跳转到新表/条目，全局知识仍按确认流程管理，旧同步入口关闭。旧事项→表；有开始时间的旧日历项→日程并保留原时间（包括过去的安排，不推断实际发生），无开始时间项要求人工判定。P9候选已在空AVD通过合成旧资料应用内迁移和重启读回；真实用户资料未迁移。
+P4 首轮完成：迁移预检/确定性映射/vault Markdown备份/SQLite、会话与设置独立快照/关联 journal、重放和 hash 回滚已实现；Android StatFs与Windows GetDiskFreeSpaceExW通过定向验证。AppRuntime 检出旧资料后进入只读门；预检通过后经用户确认生成新格式副本，逐文件核验备份后按 ADR 0023 清理非全局旧源，保留可恢复备份与独立完成凭据。完成后主应用的表、首页、日历、秘书、全局知识和设置入口开放；普通旧格式条目只读，已迁移身份跳转到新表/条目，全局知识仍按确认流程管理，旧同步入口关闭。旧事项→表；有开始时间的旧日历项→日程并保留原时间（包括过去的安排，不推断实际发生），无开始时间项要求人工判定。P9候选已在空AVD通过合成旧资料应用内迁移和重启读回；真实用户资料未迁移。
 
 | 步骤 | 执行动作 | 完成条件 |
 |---|---|---|

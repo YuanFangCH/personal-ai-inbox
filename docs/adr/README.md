@@ -26,6 +26,7 @@
 | [0020](0020-notebook-tables-and-content-permissions.md) | 以笔记式表组织内容，AI 表内内容操作免逐次确认、表结构在对话确认；取代事项与独立待处理页方向 | accepted（本地首轮实现；真实资料未迁移） |
 | [0021](0021-table-storage-and-calendar-projection.md) | 表与条目是分离的稳定 Markdown 对象；首页和日历仅投影内容 | accepted（本地实现；跨端同步未接入） |
 | [0022](0022-persistent-embedded-secretary-page.md) | 秘书作为应用内常驻页面，跨主页面切换保留会话界面状态 | accepted |
+| [0023](0023-clean-migrated-legacy-sources.md) | 迁移后清理非全局旧源，保留校验备份及可续跑的完成凭据 | accepted |
 
 相关文档：
 

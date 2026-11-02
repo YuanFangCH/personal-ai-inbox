@@ -83,8 +83,13 @@ class TableMigrationGate extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
+      await service.resumeSourceCleanup();
       _preview = await service.preview();
       _receipt = await service.completedReceipt(_preview!);
+      if (_receipt != null && _preview!.hasLegacyContent) {
+        await service.cleanupLegacySources(_preview!);
+        _preview = await service.preview();
+      }
     } on Object catch (error) {
       _preview = null;
       _receipt = null;
@@ -109,7 +114,9 @@ class TableMigrationGate extends ChangeNotifier {
     notifyListeners();
     try {
       final receipt = await service.apply(current);
+      await service.cleanupLegacySources(current);
       await onMigrationComplete?.call();
+      _preview = await service.preview();
       _receipt = receipt;
       return receipt;
     } on Object catch (error) {

@@ -15,7 +15,7 @@ class TableMigrationReadOnlyPage extends StatelessWidget {
       builder: (context) => AlertDialog(
         title: const Text('确认迁移旧资料'),
         content: Text(
-          '将创建 ${preview.tables.length} 张表和 ${preview.entries.length} 条内容。应用会先备份 vault、数据库、会话和设置并校验空间；旧 Markdown 源件保留。迁移后仍保持只读，直到新表页面接管。',
+          '将创建 ${preview.tables.length} 张表和 ${preview.entries.length} 条内容。应用会先备份 vault、数据库、会话和设置并校验空间；完成后清理已校验备份的旧格式源件，保留全局知识及迁移备份。',
         ),
         actions: [
           TextButton(

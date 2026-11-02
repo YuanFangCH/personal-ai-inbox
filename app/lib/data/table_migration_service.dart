@@ -432,9 +432,25 @@ class TableMigrationService {
 
   Future<TableMigrationReceipt?> completedReceipt(TableMigrationPreview plan) =>
       _vault.exclusive(() async {
-        final source = await _vault.read(_journalPath(plan.migrationId));
+        var id = plan.migrationId;
+        final cleanup = await _readSourceCleanup();
+        if (cleanup != null) {
+          final sources = (cleanup['sources'] as Map<String, dynamic>);
+          final globalPaths = plan.legacyRecords
+              .where(
+                (record) => plan.retainedGlobalKnowledgeIds.contains(record.id),
+              )
+              .map((record) => record.sourcePath)
+              .toSet();
+          if (plan.sourceHashes.entries
+              .where((entry) => !globalPaths.contains(entry.key))
+              .every((entry) => sources[entry.key] == entry.value)) {
+            id = cleanup['migration_id'] as String;
+          }
+        }
+        final source = await _vault.read(_journalPath(id));
         if (source == null) return null;
-        final journal = _decodeJournal(source, plan.migrationId);
+        final journal = _decodeJournal(source, id);
         if (journal['status'] != 'complete') return null;
         // Completion records the one-time copy, not the current contents.
         // Normal edits, moves and deletions after migration belong to the table
@@ -443,7 +459,117 @@ class TableMigrationService {
         return TableMigrationReceipt.fromJournal(journal);
       });
 
+  static const _sourceCleanupPath =
+      'vault/.table-migrations/source-cleanup.json';
+
+  /// Deletes only backed-up, unchanged non-global legacy sources.
+  Future<void> cleanupLegacySources(TableMigrationPreview plan) =>
+      _vault.exclusive(() async {
+        final prior = await _readSourceCleanup();
+        if (prior != null && prior['status'] == 'prepared') {
+          await _resumeSourceCleanup(prior);
+        }
+        if (prior?['migration_id'] == plan.migrationId) return;
+        final source = await _vault.read(_journalPath(plan.migrationId));
+        if (source == null ||
+            _decodeJournal(source, plan.migrationId)['status'] != 'complete') {
+          throw StateError('仅完成迁移后才能清理旧源。');
+        }
+        final globalPaths = plan.legacyRecords
+            .where(
+              (record) => plan.retainedGlobalKnowledgeIds.contains(record.id),
+            )
+            .map((record) => record.sourcePath)
+            .toSet();
+        final cleanup = <String, dynamic>{
+          'schema_version': 1,
+          'migration_id': plan.migrationId,
+          'status': 'prepared',
+          'sources': {
+            for (final entry in plan.sourceHashes.entries)
+              if (!globalPaths.contains(entry.key)) entry.key: entry.value,
+          },
+        };
+        await _verifyCleanupSources(cleanup);
+        await _vault.write(_sourceCleanupPath, jsonEncode(cleanup));
+        await _resumeSourceCleanup(cleanup);
+      });
+
+  Future<void> resumeSourceCleanup() => _vault.exclusive(() async {
+    final cleanup = await _readSourceCleanup();
+    if (cleanup != null && cleanup['status'] == 'prepared') {
+      await _resumeSourceCleanup(cleanup);
+    }
+  });
+
+  Future<Map<String, dynamic>?> _readSourceCleanup() async {
+    final source = await _vault.read(_sourceCleanupPath);
+    if (source == null) return null;
+    final cleanup = jsonDecode(source);
+    if (cleanup is! Map<String, dynamic> ||
+        cleanup['schema_version'] != 1 ||
+        cleanup['migration_id'] is! String ||
+        cleanup['sources'] is! Map<String, dynamic> ||
+        !const {'prepared', 'complete'}.contains(cleanup['status'])) {
+      throw StateError('旧源清理清单损坏。');
+    }
+    _journalPath(cleanup['migration_id'] as String);
+    return cleanup;
+  }
+
+  Future<void> _verifyCleanupSources(Map<String, dynamic> cleanup) async {
+    final id = cleanup['migration_id'] as String;
+    final journalSource = await _vault.read(_journalPath(id));
+    if (journalSource == null) throw StateError('旧源清理缺少迁移凭据。');
+    final journal = _decodeJournal(journalSource, id);
+    if (journal['status'] != 'complete') throw StateError('迁移尚未完成，拒绝清理。');
+    final receipt = TableMigrationReceipt.fromJournal(journal);
+    final manifestSource = await _vault.read(receipt.backupManifestPath);
+    if (manifestSource == null) throw StateError('旧源清理缺少备份清单。');
+    final manifest = jsonDecode(manifestSource) as Map<String, dynamic>;
+    if (manifest['migration_id'] != id ||
+        manifest['files'] is! Map<String, dynamic>) {
+      throw StateError('旧源备份清单不匹配。');
+    }
+    for (final entry in (cleanup['sources'] as Map<String, dynamic>).entries) {
+      final path = entry.key;
+      if (!_isLegacyPath(path) ||
+          path.split('/').any((part) => part == '..' || part == '.') ||
+          entry.value is! String ||
+          (manifest['files'] as Map)[path] != entry.value) {
+        throw StateError('旧源清理路径或备份 hash 无效：$path');
+      }
+      final backup = await _vault.read(
+        'vault/.table-migrations/backups/$id/$path',
+      );
+      if (backup == null ||
+          _hash(backup) != entry.value ||
+          _legacyCodec.decode(backup).isGlobalKnowledge ||
+          _legacyCodec.decode(backup).markdownPath != path) {
+        throw StateError('旧源清理备份校验失败：$path');
+      }
+      final current = await _vault.read(path);
+      if (current != null && _hash(current) != entry.value) {
+        throw StateError('旧源在迁移后已改变，保留文件：$path');
+      }
+    }
+  }
+
+  Future<void> _resumeSourceCleanup(Map<String, dynamic> cleanup) async {
+    // Verify the entire batch before removing any remaining source.
+    await _verifyCleanupSources(cleanup);
+    for (final path in (cleanup['sources'] as Map<String, dynamic>).keys) {
+      if (await _vault.read(path) != null) await _vault.delete(path);
+    }
+    cleanup['status'] = 'complete';
+    await _vault.write(_sourceCleanupPath, jsonEncode(cleanup));
+  }
+
   Future<void> rollback(String migrationId) => _vault.exclusive(() async {
+    final cleanup = await _readSourceCleanup();
+    if (cleanup?['migration_id'] == migrationId) {
+      throw StateError('旧源清理已开始，回退旧版须先从迁移备份恢复。');
+    }
     final path = _journalPath(migrationId);
     final source = await _vault.read(path);
     if (source == null) throw StateError('迁移记录不存在：$migrationId');
