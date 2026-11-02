@@ -9,6 +9,7 @@ import 'package:personal_ai_inbox/data/index_database.dart';
 import 'package:personal_ai_inbox/data/table_migration_service.dart';
 import 'package:personal_ai_inbox/data/table_repository.dart';
 import 'package:personal_ai_inbox/data/vault_store.dart';
+import 'package:personal_ai_inbox/modules/tables/table_migration_gate.dart';
 
 void main() {
   final now = DateTime.parse('2026-10-30T09:00:00+08:00');
@@ -24,6 +25,7 @@ void main() {
         index: index,
         createDatabaseSnapshot: (id) async => 'database-backups/$id.json',
         estimateDatabaseSnapshotBytes: () async => 128,
+        availableSpaceProbe: (_) async => availableBytes,
         runWithWriteBarrier: (operation) => operation(),
       );
       final legacy = _legacy(
@@ -61,6 +63,13 @@ void main() {
       expect(entry.occurredAt, isNull);
       expect(entry.body, legacy.body);
       await migration.apply(plan);
+      final repository = TableRepository(vault: vault, index: index);
+      await repository.initialize();
+      final migrated = (await repository.readEntry(legacy.id))!;
+      await repository.updateEntry(
+        migrated.copyWith(body: '迁移后正常编辑'),
+        expectedRevision: migrated.revision,
+      );
       expect(await vault.read(legacy.markdownPath), source);
       expect(await vault.read(tombstone.markdownPath), tombstoneSource);
       expect(await vault.read(TableRepository.entryPath(tombstone.id)), isNull);
@@ -73,6 +82,17 @@ void main() {
         ),
         isNotNull,
       );
+      expect((await repository.readEntry(legacy.id))!.body, '迁移后正常编辑');
+      final restartedGate = TableMigrationGate(service: migration);
+      await restartedGate.initialize();
+      expect(restartedGate.error, isNull);
+      expect(restartedGate.requiresReadOnly, isFalse);
+      expect(restartedGate.migrationComplete, isTrue);
+      expect(restartedGate.preview!.issues, isEmpty);
+      restartedGate.dispose();
+      await expectLater(migration.apply(plan), throwsStateError);
+      await expectLater(migration.rollback(plan.migrationId), throwsStateError);
+      expect((await repository.readEntry(legacy.id))!.body, '迁移后正常编辑');
     },
   );
 

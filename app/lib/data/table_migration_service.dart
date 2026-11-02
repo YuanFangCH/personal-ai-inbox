@@ -436,12 +436,10 @@ class TableMigrationService {
         if (source == null) return null;
         final journal = _decodeJournal(source, plan.migrationId);
         if (journal['status'] != 'complete') return null;
-        for (final output in plan.outputs.entries) {
-          final current = await _vault.read(output.key);
-          if (current == null || _hash(current) != _hash(output.value)) {
-            throw StateError('迁移完成目标与预检不一致：${output.key}');
-          }
-        }
+        // Completion records the one-time copy, not the current contents.
+        // Normal edits, moves and deletions after migration belong to the table
+        // repository; comparing them with the legacy snapshot would reopen the
+        // startup gate and prevent the user from reaching their updated data.
         return TableMigrationReceipt.fromJournal(journal);
       });
 
@@ -536,7 +534,9 @@ class TableMigrationService {
       return false;
     }
     final targets = journal['targets'];
-    return targets is Map<String, dynamic> && targets[path] == _hash(contents);
+    return targets is Map<String, dynamic> &&
+        targets.containsKey(path) &&
+        (journal['status'] == 'complete' || targets[path] == _hash(contents));
   }
 
   void _verifyTarget(String path, String source) {

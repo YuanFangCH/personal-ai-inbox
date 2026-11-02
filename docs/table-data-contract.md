@@ -56,3 +56,5 @@
 
 
 旧格式已删除成果保留源文件并计入备份与源 hash 校验，不生成新表内容，不恢复、不清除，也不作为迁移阻断项；未解决冲突和非 canonical 状态检查继续适用。
+
+迁移 journal 的 complete 表示一次性复制已经完成。完成后条目可正常编辑、移动和删除，启动迁移门不再要求当前内容 hash 等于旧快照；新库读写及恢复由表 repository 管理。prepared/promoting 的 hash 校验、重复 apply 及 rollback 的防覆盖检查继续保留，不将后续修改覆写成旧内容。
