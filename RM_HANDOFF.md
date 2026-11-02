@@ -10,12 +10,12 @@
 | 最后更新时间 | 2026-11-02 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | v1.2.0 已作为预发布版本发布（Release `41218586972` success，head `7b42167`；main CI `41219403100` success，head `34b8543`）。四个资产已与 GitHub digest/SHA256SUMS 核对一致，APK 已核验版本与长期证书指纹，Windows 便携包已解压核对；Android 秘书页 AVD 交互与 Windows 启动验收仍缺失；H90y 已完成迁移及非全局旧源清理（4 张表/66 条内容，备份保留）。2026-11-02 已修复真实 DeepSeek 聊天因工具函数名含点号导致的 HTTP 400，13 项定向测试及同签名 release 构建通过；真机覆盖安装因无线调试掉线待恢复 |
+| 当前阶段 | v1.2.0 已作为预发布版本发布（Release `41218586972` success，head `7b42167`；main CI `41219403100` success，head `34b8543`）。四个资产已与 GitHub digest/SHA256SUMS 核对一致，APK 已核验版本与长期证书指纹，Windows 便携包已解压核对；H90y 已完成迁移及非全局旧源清理（4 张表/66 条内容，备份保留）。2026-11-02 修复真实 DeepSeek 工具名 HTTP 400，并在 Android 15 手机/平板模拟器完成 75/75 确定性矩阵及真实连接、普通回复、工具往返；用户真实手机仍因无线调试掉线待安装 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。OneDrive 双向同步、百度网盘归档和通知尚未接入 |
 
 ## 2. 一句话交接
 
-`v1.2.0` 预览版已发布（pre-release，2026-11-01 00:31 Asia/Singapore）。Release `41218586972` 成功（head `7b42167`），main CI `41219403100` 成功（head `34b8543`）。四个发布资产的本地 SHA-256 与 GitHub API digest、`SHA256SUMS.txt` 全部一致；APK 已核验 `versionName=1.2.0`、`versionCode=8`、长期证书指纹 `51b5e2f3…`（v2 签名方案）；Windows 便携包解压核对 23/23 条目，EXE 版本 `1.2.0+8`。Android 秘书页 AVD 交互与 Windows 启动验收仍未完成。H90y 已完成真实资料迁移与旧源清理；2026-11-02 又定位到真实 DeepSeek 表模式聊天因工具函数名点号返回 HTTP 400，已改为合法下划线出网名，13 项定向测试和同签名 release 构建通过，真机安装尚待无线调试恢复。详见[本轮验证](test-results/secretary-ai-tool-names-20261102/VALIDATION.md)、[迁移验证](test-results/h90y-upgrade-20261102/VALIDATION.md)、[发行说明](docs/releases/v1.2.0.md)、[发布准备验证记录](test-results/v1.2.0-release-prep/VALIDATION.md)、[发布验收记录](test-results/v1.2.0-release-acceptance-20261101/VALIDATION.md)和[逐步计划](docs/table-notebook-implementation-plan.md)。
+`v1.2.0` 预览版已发布（pre-release，2026-11-01 00:31 Asia/Singapore）。Release `41218586972` 成功（head `7b42167`），main CI `41219403100` 成功（head `34b8543`）。四个发布资产的本地 SHA-256 与 GitHub API digest、`SHA256SUMS.txt` 全部一致；APK 已核验 `versionName=1.2.0`、`versionCode=8`、长期证书指纹 `51b5e2f3…`（v2 签名方案）；Windows 便携包解压核对 23/23 条目，EXE 版本 `1.2.0+8`。H90y 已完成真实资料迁移与旧源清理；2026-11-02 修复真实 DeepSeek 工具名 HTTP 400，并在 Android 15 手机/平板模拟器通过 75/75 确定性矩阵、真实连接、普通回复和工具往返。用户真实手机安装仍待无线调试恢复，Windows 启动验收仍未完成。详见[模拟器验收](test-results/secretary-ai-emulator-20261102/VALIDATION.md)、[修复记录](test-results/secretary-ai-tool-names-20261102/VALIDATION.md)、[迁移验证](test-results/h90y-upgrade-20261102/VALIDATION.md)、[发行说明](docs/releases/v1.2.0.md)、[发布准备验证记录](test-results/v1.2.0-release-prep/VALIDATION.md)、[发布验收记录](test-results/v1.2.0-release-acceptance-20261101/VALIDATION.md)和[逐步计划](docs/table-notebook-implementation-plan.md)。
 
 ## 3. 当前目标与范围
 
@@ -59,6 +59,8 @@
 
 ## 6. 当前进度与验证
 
+- 2026-11-02 Android 模拟器验收：API 35 手机 AVD 411.4dp 与平板 AVD 1280dp 串行运行全部 75 个 Android 秘书场景，手机 50/50、平板 25/25 通过；真实 DeepSeek 连接测试、寒暄和 `table_list` 工具往返通过，首页往返保留回复，应用日志无 HTTP 400 或崩溃。Windows 25 场景按范围未跑。环境绕过与证据见 `test-results/secretary-ai-emulator-20261102/VALIDATION.md`。
+
 - 2026-11-02 真实 DeepSeek 秘书修复：设置页纯文本诊断成功而完整聊天请求返回 HTTP 400，服务端明确拒绝 `tools[0].function.name` 的点号。12 个表工具已改为 `table_search`、`content_create` 等下划线出网名，本地动作和持久化操作卡继续使用点号操作名；相关定向测试 13/13、目标分析目标无诊断、同长期证书 release 构建与 v2 验签通过。APK SHA-256 `8B9F21665DEEEE09065E9D46FB94E88434AEB4E9B0E42249837B1E86B2A8B26D`。真机覆盖安装未执行，因为无线调试连接在构建期间变为 `offline`；详见 `test-results/secretary-ai-tool-names-20261102/VALIDATION.md`。
 
 - 2026-11-02 H90y 升级阻断已复现并完成最小代码修复，定向迁移测试 10/10、analyzer、格式与签名 release 构建通过。已完成 H90y 初次迁移及后续正常修改引起的重启阻断修复，并按用户要求清理非全局旧源、保留备份/全局知识/完成凭据；最新同签名包安装成功，4 张表/66 条内容保持，旧源横幅消失，清理后两次冷启动通过。详见 test-results/h90y-upgrade-20261102/VALIDATION.md。
@@ -85,6 +87,10 @@
 
 ### 风险与边界
 
+- 本机 Android Emulator 需要将 `ANDROID_EMULATOR_HOME` 指向可写的隔离目录，否则 `C:\Users\18377\.android` 的异常会使其反复创建特性标志锁失败。两个模拟器同时运行时资源不足，应按手机、平板串行执行。
+
+- D 盘容量极低，当前生成的 `app/build` 已迁到 `C:\CodexBuild\app-build` 并以目录联接保留原路径；这是本机构建环境安排，不进入 Git。D 盘后续仍不宜承载大型 Flutter/Gradle 产物。
+
 - 2026-11-02 为定位 HTTP 400，真机设置页 Base URL 曾临时切到 `http://127.0.0.1:7077`，通过 ADB reverse 让电脑代理转发到 DeepSeek；诊断结束后无线调试掉线，尚未恢复手机配置。重新连上设备后的第一步必须覆盖安装当次同签名 APK，并把 Base URL 恢复为 `https://api.deepseek.com`。代理与诊断临时文件不得提交。
 
 - 用户于 2026-11-02 要求迁移后清理老数据。ADR 0023 取代旧文档活动目录保留源件的规则：核验备份后清理非全局旧源，保留备份/完成凭据，清理可续跑；历史验证记录不改写。
@@ -102,12 +108,21 @@
 
 ### 下一步
 
-1. 恢复手机无线调试（必要时重新允许调试并取得新端口），覆盖安装同签名 `tests/agent-temp/secretary-ai-wireless-20261102/secretary-ai-tool-name-fix.apk`；将 Base URL 恢复为 `https://api.deepseek.com` 后发送真实多轮消息并核对一次表内工具操作。
-2. Android 秘书页 AVD 交互：在具备模拟器与系统镜像的环境运行 `flutter test -d <device> integration_test/android_smoke_test.dart --plain-name 'secretary draft and reply survive switching to calendar and back'`；当前本机无可用系统镜像。
-3. Windows 启动验收：需独立 Windows 用户/VM 或可证明的用户数据隔离；当前 `%APPDATA%\com.yuanfang.aitext` 存在真实数据，未启动。
-4. 后续正式发布须包含迁移修复、旧源清理规则和本次工具名修复；真实云盘同步、通知与跨设备恢复继续单独规划。
+1. 恢复手机无线调试（必要时重新允许调试并取得新端口），覆盖安装同签名 `tests/agent-temp/secretary-ai-wireless-20261102/secretary-ai-tool-name-fix.apk`；将 Base URL 恢复为 `https://api.deepseek.com` 后再次核对真实工具调用。
+2. Windows 启动验收：需独立 Windows 用户/VM 或可证明的用户数据隔离；当前 `%APPDATA%\com.yuanfang.aitext` 存在真实数据，未启动。
+3. 后续正式发布须包含迁移修复、旧源清理规则和本次工具名修复；真实云盘同步、通知与跨设备恢复继续单独规划。
 
 ## 8. 变更记录
+
+### 2026-11-02 / 完成 Android 模拟器全量回归与真实模型冒烟
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 在电脑 Android 15 手机和平板模拟器验证工具名修复，并使用真实 DeepSeek Key 复验秘书 |
+| 变更文件 | README、交接和本轮模拟器验证记录；无生产代码变化 |
+| 状态 | 手机 50/50、平板 25/25 确定性场景通过；真实连接测试、普通回复、`table_list` 工具往返及首页往返状态保留通过；Windows 25 场景按确认范围未运行 |
+| 验证 | Flutter 3.47.6；`flutter drive` 目标 `integration_test/secretary_100_android_test.dart`；日志 `drive/phone.log`、`drive/tablet.log` 均包含 `All tests passed!`；release APK v2 验签、证书与 SHA-256 复核通过；应用日志无 HTTP 400、FATAL 或 Flutter 未处理异常。详见 `test-results/secretary-ai-emulator-20261102/VALIDATION.md` |
+| 风险与下一步 | 本机 `flutter test -d` 会停在 VM Service 附加，使用官方 `flutter drive` 完成；真实手机的无线调试仍离线，后续需安装并恢复 Base URL。测试 Key 仅临时输入应用安全存储，应用数据与两个临时 AVD 已清理 |
 
 ### 2026-11-02 / 修复真实 DeepSeek 聊天工具名导致的 HTTP 400
 
