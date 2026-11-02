@@ -94,7 +94,7 @@ void main() {
                           'index': 0,
                           'id': 'call_table_search',
                           'function': {
-                            'name': 'content.search',
+                            'name': 'content_search',
                             'arguments': jsonEncode({
                               'query': '期中考试',
                               'table_ids': [examTable.id],
@@ -130,11 +130,18 @@ void main() {
       expect(
         toolNames,
         containsAll([
-          'table.list',
-          'table.search',
-          'content.search',
-          'content.read',
+          'table_list',
+          'table_search',
+          'content_search',
+          'content_read',
         ]),
+      );
+      expect(
+        toolNames.every(
+          (name) =>
+              name is String && RegExp(r'^[a-zA-Z0-9_-]+$').hasMatch(name),
+        ),
+        isTrue,
       );
       expect(toolNames, isNot(contains('create_result')));
       expect(toolNames, isNot(contains('search_results')));

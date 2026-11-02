@@ -147,7 +147,7 @@ P6首轮已接通：日历筛选使用设备设置列表（`['*']` 表示默认�
 
 ## 9. P7：AI 按表读写与对话确认（步骤 59–68）
 
-P7首轮已接入表/内容检索与按需读取，按当前会话权限直接新增/修改/删除/移动表内内容；表正文也按内容权限更新。schedule.change保留通知事件并更新原日程。table.propose生成消息内持久化确认卡，确认时重查会话权限、默认表限制和表revision；stale候选不执行。旧结果写工具在表模式拒绝，独立全局知识审批路径保留。相关主机25/25、20个分析目标无诊断、AVD模拟模型写入/审批/重启读回1/1通过。完整数据与权限边界见 `test-results/table-notebook-p7-20261030/VALIDATION.md`。
+P7首轮已接入表/内容检索与按需读取，按当前会话权限直接新增/修改/删除/移动表内内容；表正文也按内容权限更新。schedule.change保留通知事件并更新原日程。table.propose生成消息内持久化确认卡，确认时重查会话权限、默认表限制和表revision；stale候选不执行。旧结果写工具在表模式拒绝，独立全局知识审批路径保留。相关主机25/25、20个分析目标无诊断、AVD模拟模型写入/审批/重启读回1/1通过。2026-11-02 修复真实 DeepSeek 请求因工具名含点号而返回 HTTP 400：出网函数名改为下划线，本地继续使用原点号操作名；定向 13/13、目标分析器和同签名 release 构建通过，真机覆盖安装待无线调试恢复。完整数据与权限边界见 `test-results/table-notebook-p7-20261030/VALIDATION.md`，本次修复证据见 `test-results/secretary-ai-tool-names-20261102/VALIDATION.md`。
 
 主要落点：`services/chat_service.dart`、`modules/conversation/local_retrieval.dart`、`auto_record_processor.dart`、`conversation_workspace.dart`、会话存储和对话页面。
 

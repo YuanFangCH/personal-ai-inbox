@@ -101,28 +101,30 @@ AI 对话中的表结构确认卡
 ### 查询
 
 ```json
-table.search({"query":"期中考试","limit":5})
-table.list({"role":"custom","limit":20,"cursor":null})
-content.search({"table_ids":["tb_exam"],"types":["todo","schedule"],
+table_search({"query":"期中考试","limit":5})
+table_list({"role":"custom","limit":20,"cursor":null})
+content_search({"table_ids":["tb_exam"],"types":["todo","schedule"],
   "time_from":"2026-10-29T00:00:00+08:00","time_to":"2026-11-05T00:00:00+08:00",
   "field_filters":[],"query":"准考证","limit":5,"cursor":null})
-content.read({"id":"sc_exam","if_revision":4,"max_chars":1200})
+content_read({"id":"sc_exam","if_revision":4,"max_chars":1200})
 ```
+
+OpenAI 兼容接口中的函数名只能使用字母、数字、下划线和短横线；表工具以 `table_search`、`content_read` 等下划线名称发送。客户端只在本地调度时映射回 `table.search`、`content.read` 等内部操作名，已持久化的操作卡继续使用点号操作名。
 
 搜索结果返回稳定 ID、表 ID/名称、类型、revision、摘要和是否截断。读取指定 ID 时还需检查 revision；关闭读取权限时连同索引摘要、结果缓存一并不可读。沿用现有每轮搜索数、返回数、正文量及详情读取预算，不因按表检索重置预算。
 
 ### 表内内容动作
 
 ```json
-content.create({"table_id":"tb_exam","type":"todo","title":"确认准考证",
+content_create({"table_id":"tb_exam","type":"todo","title":"确认准考证",
   "body":"","due":"2026-10-30T20:00:00+08:00",
   "custom_values":{"fld_term":"fall_2026"},"idempotency_key":"..."})
-content.update({"id":"sc_exam","if_revision":4,
+content_update({"id":"sc_exam","if_revision":4,
   "changes":{"start":"2026-11-02T14:00:00+08:00"},"idempotency_key":"..."})
-content.move({"id":"td_homework","if_revision":2,"to_table_id":"tb_exam",
+content_move({"id":"td_homework","if_revision":2,"to_table_id":"tb_exam",
   "field_mapping":{},"idempotency_key":"..."})
-content.delete({"id":"nt_exam_notes","if_revision":1,"idempotency_key":"..."})
-schedule.change({"event_title":"老师调整考试时间","event_body":"由周五改到周一",
+content_delete({"id":"nt_exam_notes","if_revision":1,"idempotency_key":"..."})
+schedule_change({"event_title":"老师调整考试时间","event_body":"由周五改到周一",
   "event_occurred_at":"2026-10-29T09:30:00+08:00",
   "schedule_id":"sc_exam","if_revision":4,
   "new_start":"2026-11-02T14:00:00+08:00","new_end":"2026-11-02T16:00:00+08:00",
@@ -136,7 +138,7 @@ schedule.change({"event_title":"老师调整考试时间","event_body":"由周�
 ### 需用户点击确认的表结构
 
 ```json
-table.propose({"operation":"create|rename|delete|upsert_field|delete_field",
+table_propose({"operation":"create|rename|delete|upsert_field|delete_field",
   "table_id":"tb_exam","expected_revision":4,
   "payload":{"name":"课程","type":"single_select","options":[...]},
   "idempotency_key":"..."})

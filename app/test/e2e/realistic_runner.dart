@@ -596,7 +596,7 @@ class _Harness {
                 {
                   'index': 0,
                   'id': 'call_e2e',
-                  'function': {'name': 'content.create', 'arguments': first},
+                  'function': {'name': 'content_create', 'arguments': first},
                 },
               ],
             },

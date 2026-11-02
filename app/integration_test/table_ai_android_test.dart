@@ -207,7 +207,7 @@ class _ResponsePlan {
                   'index': 0,
                   'id': 'call_android_content_create',
                   'function': {
-                    'name': 'content.create',
+                    'name': 'content_create',
                     'arguments': jsonEncode({
                       'table_id': contentTableId,
                       'type': 'note',
@@ -233,7 +233,7 @@ class _ResponsePlan {
                   'index': 0,
                   'id': 'call_android_table_propose',
                   'function': {
-                    'name': 'table.propose',
+                    'name': 'table_propose',
                     'arguments': jsonEncode({
                       'operation': 'create',
                       'payload': {'title': '考试表'},
@@ -258,7 +258,7 @@ class _ResponsePlan {
                   'index': 0,
                   'id': 'call_android_schedule_create',
                   'function': {
-                    'name': 'content.create',
+                    'name': 'content_create',
                     'arguments': jsonEncode({
                       'table_id': scheduleTableId,
                       'type': 'schedule',
@@ -289,7 +289,7 @@ class _ResponsePlan {
                   'index': 0,
                   'id': 'call_android_schedule_change',
                   'function': {
-                    'name': 'schedule.change',
+                    'name': 'schedule_change',
                     'arguments': jsonEncode({
                       'schedule_id': scheduleId,
                       'if_revision': 1,

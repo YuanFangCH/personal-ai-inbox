@@ -116,8 +116,8 @@ void main() {
             final names = (payload['tools'] as List)
                 .map((tool) => (tool as Map)['function']['name'])
                 .toSet();
-            expect(names, contains('content.create'));
-            expect(names, contains('table.propose'));
+            expect(names, contains('content_create'));
+            expect(names, contains('table_propose'));
             expect(names, isNot(contains('create_result')));
             return _stream({
               'choices': [
@@ -128,7 +128,7 @@ void main() {
                         'index': 0,
                         'id': 'call_create_table_note',
                         'function': {
-                          'name': 'content.create',
+                          'name': 'content_create',
                           'arguments': jsonEncode({
                             'table_id': runtime.tables.tables
                                 .singleWhere(
@@ -198,7 +198,7 @@ void main() {
                         'index': 0,
                         'id': 'call_propose_table',
                         'function': {
-                          'name': 'table.propose',
+                          'name': 'table_propose',
                           'arguments': jsonEncode({
                             'operation': 'create',
                             'payload': {'title': '课程安排'},
