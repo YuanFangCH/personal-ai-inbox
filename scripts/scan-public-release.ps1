@@ -77,6 +77,8 @@ try {
         throw "Public release scan failed. No matching secret values were printed.`n$($messages -join "`n")"
     }
 
+    # git grep returns 1 when no secrets match; do not leak it to CI shells.
+    $global:LASTEXITCODE = 0
     Write-Output 'Public release scan passed.'
 }
 finally {
