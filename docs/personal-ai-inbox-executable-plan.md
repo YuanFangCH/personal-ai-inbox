@@ -1,5 +1,7 @@
 # 个人 AI 收件箱与提醒系统：可执行方案
 
+> 2026-11-03 秘书升级以[专用 Agent 设计](secretary-agent-design.md)与 [ADR 0024](adr/0024-secretary-agent-permissions-and-deduplication.md) 为新目标：完全权限、可删除预置表、全局知识直接生效、统一写前查重和可恢复任务。本轮仅设计落盘，尚未执行其 A–F 工作包，现行版本继续为 v1.2.1。
+
 > 当前表/笔记进度见[执行计划](table-notebook-implementation-plan.md)。2026-10-31 秘书页生命周期另由 [ADR 0022](adr/0022-persistent-embedded-secretary-page.md) 规定：主页面往返保留会话状态，新建/历史/分享在同一页面切换。下方 v2.7 的旧导航目标已被取代；其余事项、固定成果和独立待处理描述作为历史规划保留，实施应以现行 ADR 和 RM_HANDOFF 为准。
 
 > 版本：v2.7（AI 对话改造目标待实现）

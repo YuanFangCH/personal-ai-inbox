@@ -33,6 +33,8 @@
 
 ## 当前进展
 
+2026-11-03 已完成[专用秘书 Agent 设计](docs/secretary-agent-design.md)与[DSH 参考研究](docs/research/04-dsh-agent-permissions-and-runtime.md)，目标包括可选完全权限（任意表及默认表可调整/删除、全局知识可直接生效）、写入前业务查重与自动补充、分页读取/检查及可恢复长任务。产品决定见 [ADR 0024](docs/adr/0024-secretary-agent-permissions-and-deduplication.md)。本轮仅设计落盘，业务代码仍为 v1.2.1，未实现上述新能力；文档验证见[本轮记录](test-results/secretary-agent-design-20261103/VALIDATION.md)。
+
 2026-11-03 已发布 v1.2.1+9 预览版，包含迁移/重启阻断、校验后旧源清理及真实 DeepSeek 工具名修复。Android 手机/平板 75/75 与真实模型冒烟证据沿用已验收代码；Release 与 main CI 均成功，36 项定向回归通过；四项资产哈希、APK 版本/长期签名与 408 个资产文件/条目的秘密扫描通过。见[发行说明](docs/releases/v1.2.1.md)和[发布验证](test-results/v1.2.1-release-20261103/VALIDATION.md)。
 
 2026-11-02 H90y 已修复旧日期、删除记录及迁移后编辑引起的升级/启动阻断，并按用户要求清理非全局旧格式活动源件，保留校验备份、完成凭据与现有修改。真机仍为 4 张表/66 条内容，旧源入口已消失，清理后两次冷启动通过；相关主机验证 19 项通过。修复现已随 v1.2.1 预览版公开发布。清理规则见 [ADR 0023](docs/adr/0023-clean-migrated-legacy-sources.md)，证据见[清理验证](test-results/h90y-legacy-cleanup-20261102/VALIDATION.md)。

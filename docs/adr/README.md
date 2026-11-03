@@ -27,6 +27,7 @@
 | [0021](0021-table-storage-and-calendar-projection.md) | 表与条目是分离的稳定 Markdown 对象；首页和日历仅投影内容 | accepted（本地实现；跨端同步未接入） |
 | [0022](0022-persistent-embedded-secretary-page.md) | 秘书作为应用内常驻页面，跨主页面切换保留会话界面状态 | accepted |
 | [0023](0023-clean-migrated-legacy-sources.md) | 迁移后清理非全局旧源，保留校验备份及可续跑的完成凭据 | accepted |
+| [0024](0024-secretary-agent-permissions-and-deduplication.md) | 专用秘书采用可恢复任务、可选应用内完全权限、可删除预置表与写前查重；完全权限下全局知识免逐项确认 | accepted（目标已确认，未实现） |
 
 相关文档：
 
