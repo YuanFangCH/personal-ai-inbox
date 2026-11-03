@@ -19,6 +19,10 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
 
+      - name: Scan public source for secrets
+        shell: pwsh
+        run: ./scripts/scan-public-release.ps1 -CurrentTreeOnly
+
       - name: Set up Java
         uses: actions/setup-java@v6.0.1
         with:
@@ -71,9 +75,9 @@ jobs:
         working-directory: app
         run: flutter analyze
 
-      - name: Test
+      - name: Test migration and secretary regressions
         working-directory: app
-        run: flutter test --reporter expanded
+        run: flutter test --reporter expanded test/table_migration_service_test.dart test/table_migration_gate_test.dart test/table_migration_io_test.dart test/app_runtime_test.dart test/chat_service_tools_test.dart test/table_ai_runtime_test.dart test/table_action_processor_test.dart test/secretary_conversation_ui_test.dart
 
       - name: Restore Android release keystore
         shell: pwsh

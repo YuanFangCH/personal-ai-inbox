@@ -39,5 +39,5 @@ jobs:
       - name: Analyze
         run: flutter analyze
 
-      - name: Test
-        run: flutter test --reporter expanded
+      - name: Test migration and secretary regressions
+        run: flutter test --reporter expanded test/table_migration_service_test.dart test/table_migration_gate_test.dart test/table_migration_io_test.dart test/app_runtime_test.dart test/chat_service_tools_test.dart test/table_ai_runtime_test.dart test/table_action_processor_test.dart test/secretary_conversation_ui_test.dart

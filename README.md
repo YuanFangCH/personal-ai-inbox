@@ -33,6 +33,8 @@
 
 ## 当前进展
 
+2026-11-03 正在发布 v1.2.1+9 预览版，包含迁移/重启阻断、校验后旧源清理及真实 DeepSeek 工具名修复。Android 手机/平板 75/75 与真实模型冒烟证据沿用已验收代码；新版本资产由 CI 重建。见[发行说明](docs/releases/v1.2.1.md)和[发布验证](test-results/v1.2.1-release-20261103/VALIDATION.md)。
+
 2026-11-02 H90y 已修复旧日期、删除记录及迁移后编辑引起的升级/启动阻断，并按用户要求清理非全局旧格式活动源件，保留校验备份、完成凭据与现有修改。真机仍为 4 张表/66 条内容，旧源入口已消失，清理后两次冷启动通过；相关主机验证 19 项通过。修复仅本地安装，未公开发布。清理规则见 [ADR 0023](docs/adr/0023-clean-migrated-legacy-sources.md)，证据见[清理验证](test-results/h90y-legacy-cleanup-20261102/VALIDATION.md)。
 
 秘书已改为 AppShell 内的常驻页面：手机/宽屏保留全局导航，新建、历史会话和系统分享均在秘书页内切换；主页面往返保留当前会话草稿和阅读状态，回复生成不中断。主机定向 UI 与跨宽度用例通过；当前本机 Android 集成测试受 Gradle/Java 与模拟器环境阻塞，详见 [本轮验证记录](test-results/secretary-embedded-20261031/VALIDATION.md)。架构约定见 [ADR 0022](docs/adr/0022-persistent-embedded-secretary-page.md)。

@@ -7,13 +7,15 @@
 | 字段 | 当前值 |
 |---|---|
 | 项目名称 | 懒狗秘书 |
-| 最后更新时间 | 2026-11-02 |
+| 最后更新时间 | 2026-11-03 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
 | 当前阶段 | v1.2.0 已作为预发布版本发布（Release `41218586972` success，head `7b42167`；main CI `41219403100` success，head `34b8543`）。四个资产已与 GitHub digest/SHA256SUMS 核对一致，APK 已核验版本与长期证书指纹，Windows 便携包已解压核对；H90y 已完成迁移及非全局旧源清理（4 张表/66 条内容，备份保留）。2026-11-02 修复真实 DeepSeek 工具名 HTTP 400，并在 Android 15 手机/平板模拟器完成 75/75 确定性矩阵及真实连接、普通回复、工具往返；用户真实手机仍因无线调试掉线待安装 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。OneDrive 双向同步、百度网盘归档和通知尚未接入 |
 
 ## 2. 一句话交接
+
+2026-11-03：用户授权推送全部已验收修复并发行 v1.2.1+9 预览版，正在准备发布；全部本地 Git 引用秘密扫描通过。发布工作流增加源码秘密门禁，两个 CI 的测试明确限定迁移/runtime/聊天工具/秘书 UI 回归，避免间接触发全量测试。模拟器 75/75 及真实模型证据复用；真机工具修复安装和 Windows 启动仍未验收。见 test-results/v1.2.1-release-20261103/VALIDATION.md。
 
 `v1.2.0` 预览版已发布（pre-release，2026-11-01 00:31 Asia/Singapore）。Release `41218586972` 成功（head `7b42167`），main CI `41219403100` 成功（head `34b8543`）。四个发布资产的本地 SHA-256 与 GitHub API digest、`SHA256SUMS.txt` 全部一致；APK 已核验 `versionName=1.2.0`、`versionCode=8`、长期证书指纹 `51b5e2f3…`（v2 签名方案）；Windows 便携包解压核对 23/23 条目，EXE 版本 `1.2.0+8`。H90y 已完成真实资料迁移与旧源清理；2026-11-02 修复真实 DeepSeek 工具名 HTTP 400，并在 Android 15 手机/平板模拟器通过 75/75 确定性矩阵、真实连接、普通回复和工具往返。用户真实手机安装仍待无线调试恢复，Windows 启动验收仍未完成。详见[模拟器验收](test-results/secretary-ai-emulator-20261102/VALIDATION.md)、[修复记录](test-results/secretary-ai-tool-names-20261102/VALIDATION.md)、[迁移验证](test-results/h90y-upgrade-20261102/VALIDATION.md)、[发行说明](docs/releases/v1.2.0.md)、[发布准备验证记录](test-results/v1.2.0-release-prep/VALIDATION.md)、[发布验收记录](test-results/v1.2.0-release-acceptance-20261101/VALIDATION.md)和[逐步计划](docs/table-notebook-implementation-plan.md)。
 
@@ -113,6 +115,16 @@
 3. 后续正式发布须包含迁移修复、旧源清理规则和本次工具名修复；真实云盘同步、通知与跨设备恢复继续单独规划。
 
 ## 8. 变更记录
+
+### 2026-11-03 / 发布 v1.2.1 修复预览版
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 用户授权将已修复并完成模拟器测试的最新版推送 GitHub，发行预览版并检查 API Key |
+| 变更文件 | app/pubspec.yaml、两个 CI 工作流、v1.2.1 发行说明、README、本交接及发布验证记录 |
+| 状态 | 版本升至 1.2.1+9；准备原子提交并推送 main/v1.2.1，由标签流水线构建 Android/Windows 与校验清单 |
+| 验证 | 全部本地 Git 引用秘密扫描通过；已有模拟器 75/75、真实 DeepSeek 冒烟及修复定向测试复用。新构建/发布结果见 test-results/v1.2.1-release-20261103/VALIDATION.md；未执行全量测试 |
+| 风险与下一步 | 跟踪 Release 与 main CI，核对四项资产、版本/长期签名和哈希；真实手机工具修复安装、Windows 启动仍待验收，真实同步与通知未接入 |
 
 ### 2026-11-02 / 完成 Android 模拟器全量回归与真实模型冒烟
 
