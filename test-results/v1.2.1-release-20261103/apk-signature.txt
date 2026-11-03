@@ -1,0 +1,17 @@
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): false
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1
+Signer #1 certificate DN: CN=Lazy Secretary Android Release, OU=Release, O=YuanFangCH, C=SG
+Signer #1 certificate SHA-256 digest: 51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816
+Signer #1 certificate SHA-1 digest: c67d7d185a2cf5047a81a501aac288368ea37f46
+Signer #1 certificate MD5 digest: b95d84893460b8daacb30cefa6fd87a7
+Signer #1 key algorithm: RSA
+Signer #1 key size (bits): 4096
+Signer #1 public key SHA-256 digest: dfab05f2ef60ea8e4bf06ca32d83d52b7994013ec2769148d5a0e29817c0fd16
+Signer #1 public key SHA-1 digest: b67c2530b23b4eae993b30ae870fefcb43da3e01
+Signer #1 public key MD5 digest: 1be3a62c9261468ca87ad4fc5d14bfb4

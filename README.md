@@ -12,7 +12,7 @@
 - Windows 11 x64：选择安装包或便携 ZIP。
 - 发布页同时提供 `SHA256SUMS.txt`，下载后应校验文件哈希。
 
-`v1.2.0` 预览版已发布（pre-release），资产见 [GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/v1.2.0)，并附 `SHA256SUMS.txt`。升级前请完整备份旧版应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.2.0.md)；真实资料迁移需要在应用内确认，不能把迁移演练当作真实资料升级验证。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
+`v1.2.1` 预览版已发布（pre-release），资产见 [GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/v1.2.1)，并附 `SHA256SUMS.txt`。升级前请完整备份旧版应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.2.1.md)；真实资料迁移需要在应用内确认，不能把迁移演练当作真实资料升级验证。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
 
 ## 核心能力
 
@@ -33,9 +33,9 @@
 
 ## 当前进展
 
-2026-11-03 正在发布 v1.2.1+9 预览版，包含迁移/重启阻断、校验后旧源清理及真实 DeepSeek 工具名修复。Android 手机/平板 75/75 与真实模型冒烟证据沿用已验收代码；新版本资产由 CI 重建。见[发行说明](docs/releases/v1.2.1.md)和[发布验证](test-results/v1.2.1-release-20261103/VALIDATION.md)。
+2026-11-03 已发布 v1.2.1+9 预览版，包含迁移/重启阻断、校验后旧源清理及真实 DeepSeek 工具名修复。Android 手机/平板 75/75 与真实模型冒烟证据沿用已验收代码；Release 与 main CI 均成功，36 项定向回归通过；四项资产哈希、APK 版本/长期签名与 408 个资产文件/条目的秘密扫描通过。见[发行说明](docs/releases/v1.2.1.md)和[发布验证](test-results/v1.2.1-release-20261103/VALIDATION.md)。
 
-2026-11-02 H90y 已修复旧日期、删除记录及迁移后编辑引起的升级/启动阻断，并按用户要求清理非全局旧格式活动源件，保留校验备份、完成凭据与现有修改。真机仍为 4 张表/66 条内容，旧源入口已消失，清理后两次冷启动通过；相关主机验证 19 项通过。修复仅本地安装，未公开发布。清理规则见 [ADR 0023](docs/adr/0023-clean-migrated-legacy-sources.md)，证据见[清理验证](test-results/h90y-legacy-cleanup-20261102/VALIDATION.md)。
+2026-11-02 H90y 已修复旧日期、删除记录及迁移后编辑引起的升级/启动阻断，并按用户要求清理非全局旧格式活动源件，保留校验备份、完成凭据与现有修改。真机仍为 4 张表/66 条内容，旧源入口已消失，清理后两次冷启动通过；相关主机验证 19 项通过。修复现已随 v1.2.1 预览版公开发布。清理规则见 [ADR 0023](docs/adr/0023-clean-migrated-legacy-sources.md)，证据见[清理验证](test-results/h90y-legacy-cleanup-20261102/VALIDATION.md)。
 
 秘书已改为 AppShell 内的常驻页面：手机/宽屏保留全局导航，新建、历史会话和系统分享均在秘书页内切换；主页面往返保留当前会话草稿和阅读状态，回复生成不中断。主机定向 UI 与跨宽度用例通过；当前本机 Android 集成测试受 Gradle/Java 与模拟器环境阻塞，详见 [本轮验证记录](test-results/secretary-embedded-20261031/VALIDATION.md)。架构约定见 [ADR 0022](docs/adr/0022-persistent-embedded-secretary-page.md)。
 

@@ -10,12 +10,12 @@
 | 最后更新时间 | 2026-11-03 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | v1.2.0 已作为预发布版本发布（Release `41218586972` success，head `7b42167`；main CI `41219403100` success，head `34b8543`）。四个资产已与 GitHub digest/SHA256SUMS 核对一致，APK 已核验版本与长期证书指纹，Windows 便携包已解压核对；H90y 已完成迁移及非全局旧源清理（4 张表/66 条内容，备份保留）。2026-11-02 修复真实 DeepSeek 工具名 HTTP 400，并在 Android 15 手机/平板模拟器完成 75/75 确定性矩阵及真实连接、普通回复、工具往返；用户真实手机仍因无线调试掉线待安装 |
+| 当前阶段 | v1.2.1+9 已于 2026-11-03 14:02:34 Asia/Singapore 发布为预览版；标签 cda8bc7，Release 41585883431 与 main CI 41585877060 均 success。迁移与 DeepSeek 修复已公开；36 项定向回归通过，四项资产哈希、APK 长期签名和 408 个资产文件/条目秘密扫描通过。Android 75/75 与真实模型证据复用；用户真机工具修复安装和 Windows 启动仍待验收 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。OneDrive 双向同步、百度网盘归档和通知尚未接入 |
 
 ## 2. 一句话交接
 
-2026-11-03：用户授权推送全部已验收修复并发行 v1.2.1+9 预览版，正在准备发布；全部本地 Git 引用秘密扫描通过。发布工作流增加源码秘密门禁，两个 CI 的测试明确限定迁移/runtime/聊天工具/秘书 UI 回归，避免间接触发全量测试。模拟器 75/75 及真实模型证据复用；真机工具修复安装和 Windows 启动仍未验收。见 test-results/v1.2.1-release-20261103/VALIDATION.md。
+2026-11-03：用户授权推送全部已验收修复并发行 v1.2.1+9 预览版，现已发布；全部本地 Git 引用及资产秘密扫描通过。发布工作流增加源码秘密门禁，两个 CI 的测试明确限定迁移/runtime/聊天工具/秘书 UI 回归，避免间接触发全量测试。模拟器 75/75 及真实模型证据复用；真机工具修复安装和 Windows 启动仍未验收。见 test-results/v1.2.1-release-20261103/VALIDATION.md。
 
 `v1.2.0` 预览版已发布（pre-release，2026-11-01 00:31 Asia/Singapore）。Release `41218586972` 成功（head `7b42167`），main CI `41219403100` 成功（head `34b8543`）。四个发布资产的本地 SHA-256 与 GitHub API digest、`SHA256SUMS.txt` 全部一致；APK 已核验 `versionName=1.2.0`、`versionCode=8`、长期证书指纹 `51b5e2f3…`（v2 签名方案）；Windows 便携包解压核对 23/23 条目，EXE 版本 `1.2.0+8`。H90y 已完成真实资料迁移与旧源清理；2026-11-02 修复真实 DeepSeek 工具名 HTTP 400，并在 Android 15 手机/平板模拟器通过 75/75 确定性矩阵、真实连接、普通回复和工具往返。用户真实手机安装仍待无线调试恢复，Windows 启动验收仍未完成。详见[模拟器验收](test-results/secretary-ai-emulator-20261102/VALIDATION.md)、[修复记录](test-results/secretary-ai-tool-names-20261102/VALIDATION.md)、[迁移验证](test-results/h90y-upgrade-20261102/VALIDATION.md)、[发行说明](docs/releases/v1.2.0.md)、[发布准备验证记录](test-results/v1.2.0-release-prep/VALIDATION.md)、[发布验收记录](test-results/v1.2.0-release-acceptance-20261101/VALIDATION.md)和[逐步计划](docs/table-notebook-implementation-plan.md)。
 
@@ -112,9 +112,19 @@
 
 1. 恢复手机无线调试（必要时重新允许调试并取得新端口），覆盖安装同签名 `tests/agent-temp/secretary-ai-wireless-20261102/secretary-ai-tool-name-fix.apk`；将 Base URL 恢复为 `https://api.deepseek.com` 后再次核对真实工具调用。
 2. Windows 启动验收：需独立 Windows 用户/VM 或可证明的用户数据隔离；当前 `%APPDATA%\com.yuanfang.aitext` 存在真实数据，未启动。
-3. 后续正式发布须包含迁移修复、旧源清理规则和本次工具名修复；真实云盘同步、通知与跨设备恢复继续单独规划。
+3. v1.2.1 已包含迁移修复、旧源清理规则和本次工具名修复；真实云盘同步、通知与跨设备恢复继续单独规划。
 
 ## 8. 变更记录
+
+### 2026-11-03 / 完成 v1.2.1 预览发布与资产安全核验
+
+| 字段 | 内容 |
+|---|---|
+| 任务 | 完成最新版推送、预览发行及 API Key 泄露检查 |
+| 变更文件 | README、本交接及 test-results/v1.2.1-release-20261103 验收证据 |
+| 状态 | v1.2.1 已发布，APK/Windows setup/portable/SHA256SUMS 四项完整；标签 cda8bc7；Release 41585883431 与 main CI 41585877060 均 success |
+| 验证 | 36 项定向回归通过；既有 Android 75/75 与真实模型冒烟复用。下载资产哈希全部匹配 GitHub digest 与清单；APK 1.2.1+9、v2 与长期证书匹配，Windows EXE 1.2.1+9。全部 Git 引用和 408 个资产文件/条目的模式扫描未发现秘密；详见本轮 VALIDATION.md |
+| 风险与下一步 | 安装器外层扫描、便携包内部扫描与 CI 安装检查均通过，未独立解包安装器；模式扫描有覆盖边界。真机工具修复覆盖安装/恢复 Base URL、Windows 启动仍待完成；未执行全量测试，云盘和通知未接入 |
 
 ### 2026-11-03 / 修复秘密扫描成功退出码
 

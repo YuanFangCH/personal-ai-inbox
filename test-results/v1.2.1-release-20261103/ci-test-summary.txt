@@ -1,0 +1,4 @@
+release	Verify Android artifact	2026-11-03T06:02:01.6883231Z ^[[36;1m    throw 'Unable to read the APK signing certificate fingerprint.'^[[0m
+release	Verify Android artifact	2026-11-03T06:02:01.6891378Z ^[[36;1m    throw "APK signing certificate mismatch: $actualFingerprint"^[[0m
+release	Assemble release assets	2026-11-03T06:02:07.2561977Z ^[[36;1m    throw "Installer smoke test failed with exit code $($process.ExitCode)."^[[0m
+release	Assemble release assets	2026-11-03T06:02:07.2570920Z ^[[36;1m    throw "Uninstaller smoke test failed with exit code $($uninstall.ExitCode)."^[[0m

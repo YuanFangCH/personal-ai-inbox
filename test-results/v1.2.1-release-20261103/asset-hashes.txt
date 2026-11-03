@@ -1,0 +1,4 @@
+personal-ai-inbox-v1.2.1-android.apk e5ee3b42769b6cfc2f84621a7ff49f48dab10fc7ab895e707bef4d821276e1c2 PASS
+personal-ai-inbox-v1.2.1-windows-x64-portable.zip c1fad89b0c9506afa0326b92206e4555c5e5f0e9a38fbfd8f36d90a50d65cc30 PASS
+personal-ai-inbox-v1.2.1-windows-x64-setup.exe 79c2a175a7c04264130ddb98d4c47201e4768c0e89a65c8e238847de71381950 PASS
+SHA256SUMS.txt b68e05ec4fe3ae09a0508650da56c9b203ba4e567c173bfde02d4e17e616fab7 PASS
