@@ -24,7 +24,7 @@ void main() {
       final supportRoot = Directory('${root.path}/support');
       await vaultRoot.create();
       await supportRoot.create();
-      _createDatabase('${supportRoot.path}/index.sqlite3', 10, 'result_rows');
+      _createDatabase('${supportRoot.path}/index.sqlite3', 11, 'result_rows');
       _createDatabase(
         '${supportRoot.path}/conversations.sqlite3',
         5,
@@ -117,7 +117,7 @@ void main() {
     final supportRoot = Directory('${root.path}/support');
     await vaultRoot.create();
     await supportRoot.create();
-    _createDatabase('${supportRoot.path}/index.sqlite3', 10, 'result_rows');
+    _createDatabase('${supportRoot.path}/index.sqlite3', 11, 'result_rows');
     _createDatabase(
       '${supportRoot.path}/conversations.sqlite3',
       5,

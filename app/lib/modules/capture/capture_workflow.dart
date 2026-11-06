@@ -6,11 +6,46 @@ import '../../core/table_models.dart';
 import '../../data/index_database.dart';
 import '../../data/result_repository.dart';
 import '../../services/capture_service.dart';
+import '../conversation/content_duplicate_policy.dart';
+import '../conversation/content_intake.dart';
 import '../results/result_library.dart';
 import '../tables/table_library.dart';
 import 'capture_outcome.dart';
 
 export 'capture_outcome.dart';
+
+typedef CaptureDuplicateReadPermissionCheck = Future<bool> Function(
+  SemanticDuplicateRequest request,
+);
+typedef CaptureDuplicateModifyPermissionCheck = Future<bool> Function(
+  SemanticDuplicateRequest request,
+);
+typedef CaptureDuplicateModelRequestBudget = Future<bool> Function(
+  SemanticDuplicateRequest request,
+);
+typedef CaptureDuplicateCancellationProvider = Future<void> Function();
+typedef CaptureDuplicateDecisionSourceFactory =
+    SemanticDuplicateDecisionSource Function(
+      CaptureDuplicateExecutionContext context,
+    );
+
+class CaptureDuplicateExecutionContext {
+  const CaptureDuplicateExecutionContext({
+    required this.capture,
+    required this.canReadCandidates,
+    required this.canModifyExisting,
+    required this.reserveModelRequest,
+    this.cancellation,
+  });
+
+  final CaptureRecord capture;
+  final CaptureDuplicateReadPermissionCheck canReadCandidates;
+  final CaptureDuplicateModifyPermissionCheck canModifyExisting;
+  final CaptureDuplicateModelRequestBudget reserveModelRequest;
+  final CaptureDuplicateCancellationProvider? cancellation;
+
+  String get scopeId => 'capture:${capture.id}';
+}
 
 class CaptureWorkflow extends ChangeNotifier {
   CaptureWorkflow({
@@ -21,19 +56,51 @@ class CaptureWorkflow extends ChangeNotifier {
     required CaptureService captureService,
     Uuid? uuid,
     DateTime Function()? now,
+    SemanticDuplicateDecisionSource? duplicateDecisionSource,
+    CaptureDuplicateDecisionSourceFactory? duplicateDecisionSourceFactory,
+    CaptureDuplicateReadPermissionCheck? canReadDuplicateCandidates,
+    CaptureDuplicateModifyPermissionCheck? canModifyDuplicateCandidates,
+    CaptureDuplicateModelRequestBudget? reserveDuplicateModelRequest,
+    CaptureDuplicateCancellationProvider? duplicateCancellation,
+    ContentIntakeAuthorizationGuard? contentWriteAuthorization,
   }) : _repository = repository,
        _results = results,
        _tables = tables,
+       _duplicateDecisionSource = duplicateDecisionSource,
+       _duplicateDecisionSourceFactory = duplicateDecisionSourceFactory,
+       _canReadDuplicateCandidates = canReadDuplicateCandidates,
+       _canModifyDuplicateCandidates = canModifyDuplicateCandidates,
+       _reserveDuplicateModelRequest = reserveDuplicateModelRequest,
+       _duplicateCancellation = duplicateCancellation,
+       _contentWriteAuthorization = contentWriteAuthorization,
        _indexDatabase = indexDatabase,
        _captureService = captureService,
        _uuid = uuid ?? const Uuid(),
-       _now = now ?? DateTime.now;
+       _now = now ?? DateTime.now {
+    if (duplicateDecisionSource != null &&
+        duplicateDecisionSourceFactory != null) {
+      throw ArgumentError('查重决策 source 与 source factory 只能提供一个。');
+    }
+    if (duplicateDecisionSourceFactory != null &&
+        (canReadDuplicateCandidates == null ||
+            canModifyDuplicateCandidates == null ||
+            reserveDuplicateModelRequest == null)) {
+      throw ArgumentError('capture 模型查重必须提供独立的读取、修改和预算回调。');
+    }
+  }
 
   static const _reviewConfidenceThreshold = 0.72;
 
   final ResultRepository _repository;
   final ResultLibrary _results;
   final TableLibrary? _tables;
+  final SemanticDuplicateDecisionSource? _duplicateDecisionSource;
+  final CaptureDuplicateDecisionSourceFactory? _duplicateDecisionSourceFactory;
+  final CaptureDuplicateReadPermissionCheck? _canReadDuplicateCandidates;
+  final CaptureDuplicateModifyPermissionCheck? _canModifyDuplicateCandidates;
+  final CaptureDuplicateModelRequestBudget? _reserveDuplicateModelRequest;
+  final CaptureDuplicateCancellationProvider? _duplicateCancellation;
+  final ContentIntakeAuthorizationGuard? _contentWriteAuthorization;
   final IndexDatabase _indexDatabase;
   final CaptureService _captureService;
   final Uuid _uuid;
@@ -119,7 +186,10 @@ class CaptureWorkflow extends ChangeNotifier {
         } on Object catch (writeError) {
           return _moveToReview(
             capture,
-            reviewReason: '分析和表内保存均失败，原文仍保留在本机捕获记录中。',
+            reviewReason: _writeFailureReason(
+              writeError,
+              fallback: '分析和表内保存均失败，原文仍保留在本机捕获记录中。',
+            ),
             warning: writeError.toString(),
           );
         }
@@ -169,7 +239,10 @@ class CaptureWorkflow extends ChangeNotifier {
         } on Object catch (error) {
           return _moveToReview(
             updated,
-            reviewReason: '自动分类未确认，表内写入失败；原文已保留。',
+            reviewReason: _writeFailureReason(
+              error,
+              fallback: '自动分类未确认，表内写入失败；原文已保留。',
+            ),
             warning: error.toString(),
           );
         }
@@ -193,7 +266,7 @@ class CaptureWorkflow extends ChangeNotifier {
       } on Object catch (error) {
         return _moveToReview(
           updated,
-          reviewReason: '表内写入失败，原文已保留。',
+          reviewReason: _writeFailureReason(error, fallback: '表内写入失败，原文已保留。'),
           warning: error.toString(),
         );
       }
@@ -297,7 +370,7 @@ class CaptureWorkflow extends ChangeNotifier {
   }) => _createTableEntry(
     capture,
     type: TableContentType.note,
-    tableRole: TableRole.inboxEvent,
+    assignment: InboxAssignmentKind.forContentType(TableContentType.note)!,
     title: title,
     body: capture.text,
   );
@@ -310,16 +383,12 @@ class CaptureWorkflow extends ChangeNotifier {
   }) async {
     final now = _now();
     final requested = overrideType ?? _tableType(candidate, now);
-    final role = switch (requested) {
-      TableContentType.todo => TableRole.inboxTodo,
-      TableContentType.schedule => TableRole.inboxSchedule,
-      TableContentType.event || TableContentType.note => TableRole.inboxEvent,
-    };
+    final assignment = InboxAssignmentKind.forContentType(requested)!;
     final time = candidate.start ?? candidate.due;
     return _createTableEntry(
       capture,
       type: requested,
-      tableRole: role,
+      assignment: assignment,
       title: overrideTitle?.trim().isNotEmpty == true
           ? overrideTitle!.trim()
           : candidate.title.trim().isNotEmpty
@@ -351,7 +420,7 @@ class CaptureWorkflow extends ChangeNotifier {
   Future<TableEntryDocument> _createTableEntry(
     CaptureRecord capture, {
     required TableContentType type,
-    required TableRole tableRole,
+    required InboxAssignmentKind assignment,
     required String title,
     required String body,
     DateTime? due,
@@ -364,21 +433,44 @@ class CaptureWorkflow extends ChangeNotifier {
   }) async {
     final library = _tables;
     if (library == null) throw StateError('表库暂不可用。');
-    final table = library.tables.singleWhere((item) => item.role == tableRole);
-    final id = 'nt_${capture.id.replaceFirst(RegExp(r'^cap_'), '')}';
-    final existing = await library.readEntry(id);
-    if (existing != null) return existing;
-    final now = capture.capturedAt;
-    return library.createEntry(
-      TableEntryDocument(
-        id: id,
+    final duplicateDecisionSource =
+        _duplicateDecisionSourceFactory?.call(
+          CaptureDuplicateExecutionContext(
+            capture: capture,
+            canReadCandidates: _canReadDuplicateCandidates!,
+            canModifyExisting: _canModifyDuplicateCandidates!,
+            reserveModelRequest: _reserveDuplicateModelRequest!,
+            cancellation: _duplicateCancellation,
+          ),
+        ) ??
+        _duplicateDecisionSource ??
+        const _CaptureEvidenceDecisionSource();
+    final intake = ContentIntake(
+      tables: library,
+      semanticDecisionSource: duplicateDecisionSource,
+      clock: _now,
+    );
+    final assignedTable = library.tableForInboxAssignment(assignment);
+    final scanTableId = assignedTable?.id ?? library.tables.firstOrNull?.id;
+    if (scanTableId == null) throw InboxAssignmentUnavailable(assignment);
+    final evidence = contentObjectEvidenceKey(
+      type: type,
+      title: title,
+      due: due,
+      start: start,
+      end: end,
+      occurredAt: occurredAt,
+      allDay: allDay,
+      recurrence: recurrence,
+    );
+    final preparation = await intake.prepare(
+      ContentIntakeRequest(
+        operationId: 'capture:${capture.id}',
+        tableId: scanTableId,
         type: type,
-        tableId: table.id,
         title: title,
-        revision: 1,
-        createdAt: now,
-        updatedAt: now,
         body: body,
+        identity: ContentBusinessIdentity(evidence: [evidence]),
         tags: tags,
         due: due,
         start: start,
@@ -386,9 +478,36 @@ class CaptureWorkflow extends ChangeNotifier {
         allDay: allDay,
         recurrence: recurrence,
         occurredAt: occurredAt,
+        sourceRefs: ['capture:${capture.id}'],
+        requestedEntryId: 'nt_${capture.id.replaceFirst(RegExp(r'^cap_'), '')}',
       ),
     );
+    if (assignedTable == null &&
+        preparation.outcome != ContentIntakeOutcome.reused) {
+      throw InboxAssignmentUnavailable(assignment);
+    }
+    if (preparation.outcome == ContentIntakeOutcome.conflict) {
+      throw CaptureIntakeConflict(preparation.reason ?? '同一业务对象存在冲突，原文已保留。');
+    }
+    final result = await intake.commit(
+      preparation,
+      now: capture.capturedAt,
+      authorizationGuard:
+          _contentWriteAuthorization ?? _allowDefaultCaptureWrite,
+    );
+    if (result.outcome == ContentIntakeOutcome.conflict) {
+      throw CaptureIntakeConflict(result.reason ?? '同一业务对象存在冲突，原文已保留。');
+    }
+    final entry = result.entry;
+    if (entry == null) {
+      throw const CaptureIntakeConflict('内容接收未返回正式内容 ID。');
+    }
+    return entry;
   }
+
+  Future<bool> _allowDefaultCaptureWrite(
+    ContentIntakeWriteAuthorization authorization,
+  ) async => true;
 
   /// Adds a model-produced candidate to the shared review queue.
   ///
@@ -417,6 +536,9 @@ class CaptureWorkflow extends ChangeNotifier {
     return CaptureOutcome.review(updated, warning: warning);
   }
 
+  String _writeFailureReason(Object error, {required String fallback}) =>
+      error is InboxAssignmentUnavailable ? '没有可用的收纳目标；原文已保留在待归表区域。' : fallback;
+
   Future<ResultDocument> _createFromCandidate(
     ClassificationCandidate candidate,
     CaptureRecord capture,
@@ -434,5 +556,61 @@ class CaptureWorkflow extends ChangeNotifier {
       return CaptureSourceType.url;
     }
     return CaptureSourceType.text;
+  }
+}
+
+class CaptureIntakeConflict implements Exception {
+  const CaptureIntakeConflict(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+class _CaptureEvidenceDecisionSource
+    implements SemanticDuplicateDecisionSource {
+  const _CaptureEvidenceDecisionSource();
+
+  @override
+  Future<SemanticDuplicateDecision> decide(
+    SemanticDuplicateRequest request,
+  ) async {
+    if (request.candidates.isEmpty) {
+      return SemanticDuplicateDecision(
+        action: SemanticDuplicateAction.conflict,
+      );
+    }
+    final target = request.candidates.first;
+    final addition = _bodyAddition(target.entry.body, request.signal.body);
+    if (addition.isEmpty) {
+      return SemanticDuplicateDecision(
+        action: SemanticDuplicateAction.conflict,
+        targetId: target.entry.id,
+        expectedRevision: target.entry.revision,
+        reason: '同一业务对象已有相同正文，但没有可自动补充的新信息。',
+      );
+    }
+    return SemanticDuplicateDecision(
+      action: SemanticDuplicateAction.augment,
+      targetId: target.entry.id,
+      expectedRevision: target.entry.revision,
+      evidence: request.signal.identity.evidence.toList(),
+      bodyAddition: addition,
+    );
+  }
+
+  String _bodyAddition(String existingBody, String proposedBody) {
+    final existing = existingBody.trim();
+    final proposed = proposedBody.trim();
+    if (proposed.isEmpty ||
+        normalizeContentText(existing)
+            .contains(normalizeContentText(proposed))) {
+      return '';
+    }
+    if (existing.isNotEmpty && proposed.startsWith(existing)) {
+      return proposed.substring(existing.length).trim();
+    }
+    return proposed;
   }
 }

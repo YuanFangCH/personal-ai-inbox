@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/table_models.dart';
+import '../../modules/conversation/manual_content_intake.dart';
 import '../../modules/tables/table_library.dart';
 import '../app_scope.dart';
 import '../widgets/common.dart';
@@ -42,7 +43,9 @@ class TableDetailPage extends StatelessWidget {
             actions: [
               FilledButton.icon(
                 key: const Key('table_add_content'),
-                onPressed: () => _showCreateMenu(context, tableId),
+                onPressed: library.inboxAssignmentNeedsReview
+                    ? null
+                    : () => _showCreateMenu(context, tableId),
                 icon: const Icon(Icons.add),
                 label: const Text('添加内容'),
               ),
@@ -50,18 +53,30 @@ class TableDetailPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (library.inboxAssignmentNeedsReview) ...[
+                  const MaterialBanner(
+                    content: Text('收纳映射状态待核对。表与内容保持只读，恢复材料已保留。'),
+                    leading: Icon(Icons.warning_amber_rounded),
+                    actions: [SizedBox.shrink()],
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 _TableBodyPanel(
                   table: table,
-                  onEdit: () => _editTableBody(context, library, table),
+                  onEdit: library.inboxAssignmentNeedsReview
+                      ? null
+                      : () => _editTableBody(context, library, table),
                 ),
                 const SizedBox(height: 14),
                 _TableFieldsPanel(
                   fields: table.fields,
-                  onManage: () => Navigator.of(context).push<void>(
-                    MaterialPageRoute<void>(
-                      builder: (_) => TableFieldsPage(tableId: table.id),
-                    ),
-                  ),
+                  onManage: library.inboxAssignmentNeedsReview
+                      ? null
+                      : () => Navigator.of(context).push<void>(
+                          MaterialPageRoute<void>(
+                            builder: (_) => TableFieldsPage(tableId: table.id),
+                          ),
+                        ),
                 ),
                 const SizedBox(height: 22),
                 SectionHeading(
@@ -75,7 +90,9 @@ class TableDetailPage extends StatelessWidget {
                     title: '这张表还没有条目',
                     message: '可以只写上方正文，也可以添加笔记、待办、日程或事件。',
                     action: FilledButton.icon(
-                      onPressed: () => _showCreateMenu(context, tableId),
+                      onPressed: library.inboxAssignmentNeedsReview
+                          ? null
+                          : () => _showCreateMenu(context, tableId),
                       icon: const Icon(Icons.add),
                       label: const Text('添加内容'),
                     ),
@@ -175,7 +192,7 @@ class _TableBodyPanel extends StatelessWidget {
   const _TableBodyPanel({required this.table, required this.onEdit});
 
   final TableDocument table;
-  final VoidCallback onEdit;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -223,7 +240,7 @@ class _TableFieldsPanel extends StatelessWidget {
   const _TableFieldsPanel({required this.fields, required this.onManage});
 
   final List<TableFieldDefinition> fields;
-  final VoidCallback onManage;
+  final VoidCallback? onManage;
 
   @override
   Widget build(BuildContext context) {
@@ -428,6 +445,7 @@ class _EntryCard extends StatelessWidget {
     final theme = Theme.of(context);
     final subtitle = entry.body.trim();
     final businessTime = _businessTime(entry);
+    final readOnly = AppScope.tables(context).inboxAssignmentNeedsReview;
     return Material(
       color: theme.brightness == Brightness.dark
           ? const Color(0xff202123)
@@ -471,7 +489,9 @@ class _EntryCard extends StatelessWidget {
                         if (entry.type == TableContentType.todo)
                           Checkbox(
                             value: entry.done,
-                            onChanged: (value) => _setDone(context, value),
+                            onChanged: readOnly
+                                ? null
+                                : (value) => _setDone(context, value),
                           ),
                       ],
                     ),
@@ -610,6 +630,7 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final readOnly = AppScope.tables(context).inboxAssignmentNeedsReview;
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -622,18 +643,18 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
             IconButton(
               key: const Key('move_table_entry'),
               tooltip: '移动到其他表',
-              onPressed: _saving ? null : _moveToAnotherTable,
+              onPressed: _saving || readOnly ? null : _moveToAnotherTable,
               icon: const Icon(Icons.drive_file_move_outlined),
             ),
           if (_editing)
             IconButton(
               tooltip: '删除',
-              onPressed: _saving ? null : _delete,
+              onPressed: _saving || readOnly ? null : _delete,
               icon: const Icon(Icons.delete_outline),
             ),
           TextButton(
             key: const Key('table_entry_save'),
-            onPressed: _saving ? null : _save,
+            onPressed: _saving || readOnly ? null : _save,
             child: _saving
                 ? const SizedBox.square(
                     dimension: 18,
@@ -646,9 +667,18 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          if (readOnly) ...[
+            const MaterialBanner(
+              content: Text('收纳映射状态待核对。当前内容可查看，保存、移动与删除已暂停。'),
+              leading: Icon(Icons.warning_amber_rounded),
+              actions: [SizedBox.shrink()],
+            ),
+            const SizedBox(height: 12),
+          ],
           TextField(
             key: const Key('table_entry_title'),
             controller: _title,
+            enabled: !readOnly,
             autofocus: !_editing,
             textCapitalization: TextCapitalization.sentences,
             decoration: InputDecoration(
@@ -661,6 +691,7 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
           TextField(
             key: const Key('table_entry_body'),
             controller: _body,
+            enabled: !readOnly,
             minLines: 6,
             maxLines: 18,
             decoration: const InputDecoration(
@@ -672,6 +703,7 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
           const SizedBox(height: 14),
           TextField(
             controller: _tags,
+            enabled: !readOnly,
             decoration: const InputDecoration(
               labelText: '标签（逗号分隔）',
               border: OutlineInputBorder(),
@@ -705,6 +737,7 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
   }
 
   List<Widget> _timeFields(BuildContext context) {
+    final readOnly = AppScope.tables(context).inboxAssignmentNeedsReview;
     switch (widget.type) {
       case TableContentType.note:
         return const [];
@@ -713,7 +746,7 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
           _DateTimeField(
             label: '截止时间（可选）',
             value: _due,
-            onPick: (value) => setState(() => _due = value),
+            onPick: readOnly ? null : (value) => setState(() => _due = value),
           ),
         ];
       case TableContentType.schedule:
@@ -721,13 +754,13 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
           _DateTimeField(
             label: '开始时间（必填）',
             value: _start,
-            onPick: (value) => setState(() => _start = value),
+            onPick: readOnly ? null : (value) => setState(() => _start = value),
           ),
           const SizedBox(height: 12),
           _DateTimeField(
             label: '结束时间（可选）',
             value: _end,
-            onPick: (value) => setState(() => _end = value),
+            onPick: readOnly ? null : (value) => setState(() => _end = value),
           ),
         ];
       case TableContentType.event:
@@ -735,13 +768,16 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
           _DateTimeField(
             label: '发生时间（可选）',
             value: _occurredAt,
-            onPick: (value) => setState(() => _occurredAt = value),
+            onPick: readOnly
+                ? null
+                : (value) => setState(() => _occurredAt = value),
           ),
         ];
     }
   }
 
   Widget _customFieldInput(TableFieldDefinition field) {
+    final readOnly = AppScope.tables(context).inboxAssignmentNeedsReview;
     final storedValue = _customValues[field.id] ?? field.defaultValue;
     final label = field.required ? '${field.name}（必填）' : field.name;
     switch (field.type) {
@@ -753,6 +789,7 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
         return TextField(
           key: ValueKey('custom_field_${field.id}'),
           controller: controller,
+          enabled: !readOnly,
           decoration: InputDecoration(
             labelText: label,
             border: const OutlineInputBorder(),
@@ -766,6 +803,7 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
         return TextField(
           key: ValueKey('custom_field_${field.id}'),
           controller: controller,
+          enabled: !readOnly,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: InputDecoration(
             labelText: label,
@@ -780,13 +818,15 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
           key: ValueKey('custom_field_${field.id}'),
           label: label,
           value: date,
-          onPick: (value) => setState(() {
-            if (value == null) {
-              _customValues.remove(field.id);
-            } else {
-              _customValues[field.id] = value.toIso8601String();
-            }
-          }),
+          onPick: readOnly
+              ? null
+              : (value) => setState(() {
+                  if (value == null) {
+                    _customValues.remove(field.id);
+                  } else {
+                    _customValues[field.id] = value.toIso8601String();
+                  }
+                }),
         );
       case CustomFieldType.singleSelect:
         final selected =
@@ -800,6 +840,15 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
               child: DropdownButtonFormField<String>(
                 key: ValueKey('custom_field_${field.id}'),
                 initialValue: selected,
+                onChanged: readOnly
+                    ? null
+                    : (value) => setState(() {
+                        if (value == null) {
+                          _customValues.remove(field.id);
+                        } else {
+                          _customValues[field.id] = value;
+                        }
+                      }),
                 decoration: InputDecoration(
                   labelText: label,
                   border: const OutlineInputBorder(),
@@ -811,19 +860,14 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
                       child: Text(option.label),
                     ),
                 ],
-                onChanged: (value) => setState(() {
-                  if (value == null) {
-                    _customValues.remove(field.id);
-                  } else {
-                    _customValues[field.id] = value;
-                  }
-                }),
               ),
             ),
             if (selected != null)
               IconButton(
                 tooltip: '清除字段值',
-                onPressed: () => setState(() => _customValues.remove(field.id)),
+                onPressed: readOnly
+                    ? null
+                    : () => setState(() => _customValues.remove(field.id)),
                 icon: const Icon(Icons.close),
               ),
           ],
@@ -845,19 +889,23 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
                 FilterChip(
                   label: Text(option.label),
                   selected: selected.contains(option.id),
-                  onSelected: (enabled) => setState(() {
-                    final values = {...selected};
-                    if (enabled) {
-                      values.add(option.id);
-                    } else {
-                      values.remove(option.id);
-                    }
-                    if (values.isEmpty) {
-                      _customValues.remove(field.id);
-                    } else {
-                      _customValues[field.id] = values.toList(growable: false);
-                    }
-                  }),
+                  onSelected: readOnly
+                      ? null
+                      : (enabled) => setState(() {
+                          final values = {...selected};
+                          if (enabled) {
+                            values.add(option.id);
+                          } else {
+                            values.remove(option.id);
+                          }
+                          if (values.isEmpty) {
+                            _customValues.remove(field.id);
+                          } else {
+                            _customValues[field.id] = values.toList(
+                              growable: false,
+                            );
+                          }
+                        }),
                 ),
             ],
           ),
@@ -871,14 +919,18 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
                 contentPadding: EdgeInsets.zero,
                 title: Text(label),
                 value: storedValue is bool ? storedValue : false,
-                onChanged: (value) =>
-                    setState(() => _customValues[field.id] = value),
+                onChanged: readOnly
+                    ? null
+                    : (value) =>
+                          setState(() => _customValues[field.id] = value),
               ),
             ),
             if (_customValues.containsKey(field.id))
               IconButton(
                 tooltip: '清除字段值',
-                onPressed: () => setState(() => _customValues.remove(field.id)),
+                onPressed: readOnly
+                    ? null
+                    : () => setState(() => _customValues.remove(field.id)),
                 icon: const Icon(Icons.close),
               ),
           ],
@@ -948,41 +1000,53 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
         .toList(growable: false);
     try {
       final library = AppScope.tables(context);
-      if (existing == null) {
-        await library.createEntry(
-          TableEntryDocument(
-            id: 'nt_${const Uuid().v4().replaceAll('-', '')}',
-            type: widget.type,
-            tableId: widget.tableId,
-            title: title,
-            revision: 1,
-            createdAt: now,
-            updatedAt: now,
-            body: _body.text,
-            tags: tags,
-            due: _due,
-            done: _done,
-            start: _start,
-            end: _end,
-            occurredAt: _occurredAt,
-            customValues: customValues,
-          ),
-        );
-      } else {
-        await library.updateEntry(
-          existing.copyWith(
-            title: title,
-            updatedAt: now,
-            body: _body.text,
-            tags: tags,
-            due: _due,
-            done: _done,
-            start: _start,
-            end: _end,
-            occurredAt: _occurredAt,
-            customValues: customValues,
-          ),
-          expectedRevision: existing.revision,
+      final proposed = existing == null
+          ? TableEntryDocument(
+              id: 'nt_${const Uuid().v4().replaceAll('-', '')}',
+              type: widget.type,
+              tableId: widget.tableId,
+              title: title,
+              revision: 1,
+              createdAt: now,
+              updatedAt: now,
+              body: _body.text,
+              tags: tags,
+              due: _due,
+              done: _done,
+              start: _start,
+              end: _end,
+              occurredAt: _occurredAt,
+              customValues: customValues,
+            )
+          : existing.copyWith(
+              title: title,
+              updatedAt: now,
+              body: _body.text,
+              tags: tags,
+              due: _due,
+              done: _done,
+              start: _start,
+              end: _end,
+              occurredAt: _occurredAt,
+              customValues: customValues,
+            );
+      final intake = ManualContentIntake(library);
+      final review = await intake.review(
+        proposed,
+        expectedRevision: existing?.revision,
+      );
+      final choice = review.matches.isEmpty
+          ? null
+          : await _reviewDuplicates(review, existing != null);
+      if (!mounted) return;
+      if (review.matches.isNotEmpty && choice == null) {
+        setState(() => _saving = false);
+        return;
+      }
+      final saved = await intake.commit(review, choice: choice);
+      if (choice == ManualDuplicateChoice.reuse && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('已使用现有内容“${saved.title}”，未新增条目。')),
         );
       }
       if (mounted) Navigator.pop(context);
@@ -992,6 +1056,66 @@ class _TableEntryEditorPageState extends State<TableEntryEditorPage> {
       if (mounted) setState(() => _saving = false);
     }
   }
+
+  Future<ManualDuplicateChoice?> _reviewDuplicates(
+    ManualContentReview review,
+    bool editing,
+  ) => showDialog<ManualDuplicateChoice>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('发现可能重复的内容'),
+      content: SizedBox(
+        width: 560,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('这些结果仅在本机比较。请检查后选择；保存两条会记录本次选择。'),
+              const SizedBox(height: 12),
+              for (final candidate in review.matches) ...[
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    review.exactIds.contains(candidate.id)
+                        ? Icons.check_circle_outline
+                        : Icons.info_outline,
+                  ),
+                  title: Text(candidate.title),
+                  subtitle: Text(
+                    '${review.exactIds.contains(candidate.id) ? '完全相同' : '本地相似提示'} · '
+                    '${candidate.body.trim().isEmpty ? _typeLabel(candidate.type) : candidate.body.trim()}',
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const Divider(height: 1),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('返回编辑'),
+        ),
+        if (!editing && review.exactIds.isNotEmpty)
+          TextButton(
+            key: const Key('manual_duplicate_reuse'),
+            onPressed: () =>
+                Navigator.pop(context, ManualDuplicateChoice.reuse),
+            child: const Text('使用完全相同的已有内容'),
+          ),
+        FilledButton.tonal(
+          key: const Key('manual_duplicate_keep_both'),
+          onPressed: () =>
+              Navigator.pop(context, ManualDuplicateChoice.keepBoth),
+          child: const Text('仍然保存，保留两条'),
+        ),
+      ],
+    ),
+  );
 
   Future<void> _moveToAnotherTable() async {
     final entry = widget.entry;
@@ -1184,7 +1308,7 @@ class _DateTimeField extends StatelessWidget {
 
   final String label;
   final DateTime? value;
-  final ValueChanged<DateTime?> onPick;
+  final ValueChanged<DateTime?>? onPick;
 
   @override
   Widget build(BuildContext context) => Row(
@@ -1200,14 +1324,17 @@ class _DateTimeField extends StatelessWidget {
       ),
       IconButton(
         tooltip: '选择时间',
-        onPressed: () async =>
-            onPick(await _pickDateTime(context, value ?? DateTime.now())),
+        onPressed: onPick == null
+            ? null
+            : () async => onPick!(
+                await _pickDateTime(context, value ?? DateTime.now()),
+              ),
         icon: const Icon(Icons.schedule_outlined),
       ),
       if (value != null)
         IconButton(
           tooltip: '清除时间',
-          onPressed: () => onPick(null),
+          onPressed: onPick == null ? null : () => onPick!(null),
           icon: const Icon(Icons.close),
         ),
     ],

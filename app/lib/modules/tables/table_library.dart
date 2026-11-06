@@ -3,6 +3,22 @@ import 'package:flutter/foundation.dart';
 import '../../core/table_models.dart';
 import '../../data/table_repository.dart';
 
+export '../../data/table_repository.dart'
+    show
+        InboxAssignmentKind,
+        InboxAssignments,
+        IntakeSnapshotConflict,
+        TableContentSnapshot;
+
+class InboxAssignmentUnavailable implements Exception {
+  const InboxAssignmentUnavailable(this.kind);
+
+  final InboxAssignmentKind kind;
+
+  @override
+  String toString() => '没有可用的收纳目标：${kind.wireName}';
+}
+
 /// Immutable UI-facing snapshots for notebook tables and their entries.
 /// Writes always pass through [TableRepository].
 class TableLibrary extends ChangeNotifier {
@@ -10,11 +26,66 @@ class TableLibrary extends ChangeNotifier {
     : _repository = repository;
 
   final TableRepository _repository;
+
+  Future<TableEntryDocument> saveReviewedEntry({
+    required TableEntryDocument entry,
+    required int expectedTableRevision,
+    required String? Function(List<TableEntryDocument>) selectReuse,
+    int? expectedRevision,
+  }) async {
+    final saved = await _repository.saveReviewedEntry(
+      entry: entry,
+      expectedTableRevision: expectedTableRevision,
+      expectedRevision: expectedRevision,
+      selectReuse: selectReuse,
+    );
+    await refresh();
+    return saved;
+  }
+
+  Future<Map<String, Object?>?> readIntakeOperation(
+    String id,
+    String signature,
+  ) => _repository.readIntakeOperation(id, signature);
+
+  Future<TableContentSnapshot> contentSnapshot() =>
+      _repository.contentSnapshot();
+
+  Future<void> validateContentSnapshot(String signature) =>
+      _repository.validateContentSnapshot(signature);
+
+  Future<void> saveIntakeReceipt(Map<String, Object?> receipt) =>
+      _repository.saveIntakeReceipt(receipt);
+
+  Future<TableEntryDocument> commitIntakeEntry({
+    required TableEntryDocument entry,
+    required Map<String, Object?> receipt,
+    required String expectedSnapshotSignature,
+    required int expectedTableRevision,
+    int? expectedRevision,
+    Future<bool?> Function()? authorizationGuard,
+  }) async {
+    final committed = await _repository.commitIntakeEntry(
+      entry: entry,
+      receipt: receipt,
+      expectedSnapshotSignature: expectedSnapshotSignature,
+      expectedTableRevision: expectedTableRevision,
+      expectedRevision: expectedRevision,
+      authorizationGuard: authorizationGuard,
+    );
+    await refresh();
+    return committed;
+  }
+
   List<TableDocument> _tables = const [];
   List<TableEntryDocument> _entries = const [];
+  InboxAssignments _inboxAssignments = const InboxAssignments.empty();
+  bool _inboxAssignmentNeedsReview = false;
 
   List<TableDocument> get tables => _tables;
   List<TableEntryDocument> get entries => _entries;
+  InboxAssignments get inboxAssignments => _inboxAssignments;
+  bool get inboxAssignmentNeedsReview => _inboxAssignmentNeedsReview;
 
   TableDocument? findTable(String id) {
     for (final table in _tables) {
@@ -23,19 +94,111 @@ class TableLibrary extends ChangeNotifier {
     return null;
   }
 
+  TableDocument? tableForInboxAssignment(InboxAssignmentKind kind) {
+    final tableId = _inboxAssignments.targetFor(kind);
+    return tableId == null ? null : findTable(tableId);
+  }
+
   Future<void> initialize() async {
     await _repository.initialize();
     await refresh();
   }
 
   Future<void> refresh({String? tableId}) async {
-    await _repository.purgeExpiredRecoveryBatches();
+    _inboxAssignmentNeedsReview = _repository.inboxAssignmentNeedsReview;
+    final hasPendingInboxOperation =
+        await _repository.pendingInboxAssignmentOperationId() != null;
+    _inboxAssignmentNeedsReview = _repository.inboxAssignmentNeedsReview;
+    if (!_inboxAssignmentNeedsReview && !hasPendingInboxOperation) {
+      await _repository.purgeExpiredRecoveryBatches();
+    }
     _tables = List.unmodifiable(await _repository.listTables());
     _entries = List.unmodifiable(
       await _repository.listEntries(tableId: tableId),
     );
+    _inboxAssignments = await _repository.inboxAssignments();
+    _inboxAssignmentNeedsReview = _repository.inboxAssignmentNeedsReview;
     notifyListeners();
   }
+
+  Future<InboxAssignments> assignInboxTarget({
+    required InboxAssignmentKind kind,
+    required String? tableId,
+  }) async {
+    final assignments = await _repository.assignInboxTarget(
+      kind: kind,
+      tableId: tableId,
+    );
+    _inboxAssignments = assignments;
+    notifyListeners();
+    return assignments;
+  }
+
+  Future<InboxAssignments> assignInboxTargets(
+    Map<InboxAssignmentKind, String?> updates,
+  ) async {
+    final assignments = await _repository.assignInboxTargets(updates);
+    _inboxAssignments = assignments;
+    notifyListeners();
+    return assignments;
+  }
+
+  Future<InboxAssignments> readInboxAssignments() =>
+      _repository.inboxAssignments();
+
+  Future<TableDocument?> readTable(String id) => _repository.readTable(id);
+
+  Future<InboxAssignmentOperationReceipt> assignInboxTargetForOperation({
+    required String operationId,
+    required InboxAssignmentKind kind,
+    required int expectedRevision,
+    required String? expectedPreviousTableId,
+    required String? tableId,
+    Future<bool> Function()? authorizationGuard,
+  }) async {
+    final receipt = await _repository.assignInboxTargetForOperation(
+      operationId: operationId,
+      kind: kind,
+      expectedRevision: expectedRevision,
+      expectedPreviousTableId: expectedPreviousTableId,
+      tableId: tableId,
+      authorizationGuard: authorizationGuard,
+    );
+    _inboxAssignments = receipt.assignments;
+    notifyListeners();
+    return receipt;
+  }
+
+  Future<InboxAssignmentOperationReceipt?> committedInboxAssignmentReceipt({
+    required String operationId,
+    required InboxAssignmentKind kind,
+    required int expectedRevision,
+    required String? expectedPreviousTableId,
+    required String? tableId,
+  }) => _repository.committedInboxAssignmentReceipt(
+    operationId: operationId,
+    kind: kind,
+    expectedRevision: expectedRevision,
+    expectedPreviousTableId: expectedPreviousTableId,
+    tableId: tableId,
+  );
+
+  Future<String?> pendingInboxAssignmentOperationId() =>
+      _repository.pendingInboxAssignmentOperationId();
+
+  Future<void> acknowledgeInboxAssignmentOperation({
+    required String operationId,
+    required InboxAssignmentKind kind,
+    required int expectedRevision,
+    required String? expectedPreviousTableId,
+    required String? tableId,
+  }) => _repository.acknowledgeInboxAssignmentOperation(
+    operationId: operationId,
+    kind: kind,
+    expectedRevision: expectedRevision,
+    expectedPreviousTableId: expectedPreviousTableId,
+    tableId: tableId,
+  );
 
   Future<List<TableRecoveryBatch>> recoveryBatches() =>
       _repository.recoveryBatches();

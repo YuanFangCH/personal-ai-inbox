@@ -1,5 +1,6 @@
 package com.yuanfang.aitext.personal_ai_inbox
 
+import android.content.pm.PackageManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -19,6 +20,10 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         captureSharedPayload(intent)
         super.onCreate(savedInstanceState)
+    }
+
+    override fun provideFlutterEngine(context: android.content.Context): FlutterEngine {
+        return AitextApplication.from(context).getOrCreateFlutterEngine()
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -41,6 +46,36 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        channel?.setMethodCallHandler(null)
+        channel = null
+        super.cleanUpFlutterEngine(flutterEngine)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        AitextApplication.from(this).backgroundController.attachActivity(this)
+    }
+
+    override fun onDestroy() {
+        AitextApplication.from(this).backgroundController.detachActivity(this)
+        super.onDestroy()
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        val granted =
+            grantResults.isNotEmpty() &&
+                grantResults.first() == PackageManager.PERMISSION_GRANTED
+        AitextApplication.from(this)
+            .backgroundController
+            .onNotificationPermissionResult(requestCode, granted)
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -53,7 +88,7 @@ class MainActivity : FlutterActivity() {
         if (intent == null) {
             return
         }
-        val text = when (intent?.action) {
+        val text = when (intent.action) {
             Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)
             Intent.ACTION_PROCESS_TEXT -> intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
             else -> null

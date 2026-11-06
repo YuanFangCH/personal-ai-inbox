@@ -363,7 +363,7 @@ class ResultRepository {
   }) async {
     final previous = await readDocument(document.id);
     if (document.isGlobalKnowledge || previous?.isGlobalKnowledge == true) {
-      throw StateError('全局知识的新增、修改和删除必须经人工确认候选');
+      throw StateError('全局知识的新增、修改和删除必须经已授权候选');
     }
     final saved = document.copyWith(
       originDevice: deviceId,
@@ -528,7 +528,7 @@ class ResultRepository {
       return null;
     }
     if (document.isGlobalKnowledge) {
-      throw StateError('全局知识的新增、修改和删除必须经人工确认候选');
+      throw StateError('全局知识的新增、修改和删除必须经已授权候选');
     }
     final tombstone = document.copyWith(
       deleted: true,
@@ -556,11 +556,15 @@ class ResultRepository {
         extensionFields[globalKnowledgeScopeKey] == globalKnowledgeScopeValue;
     if (!touchesGlobalKnowledge) return;
     if (type != ResultType.knowledge || candidateId == null || digest == null) {
-      throw StateError('全局知识的新增、修改和删除必须经人工确认候选');
+      throw StateError('全局知识的新增、修改和删除必须经已授权候选');
     }
     final candidate = await _index.findGlobalKnowledgeCandidate(candidateId);
     if (candidate == null ||
         candidate.status != GlobalKnowledgeCandidateStatus.approved ||
+        (candidate.authorizationSource !=
+                GlobalKnowledgeAuthorizationSource.human &&
+            candidate.authorizationSource !=
+                GlobalKnowledgeAuthorizationSource.policy) ||
         candidate.operation != operation ||
         candidate.digest != digest ||
         (target == null
@@ -588,6 +592,15 @@ class ResultRepository {
         previous.sourceMessageId != next.sourceMessageId ||
         previous.createdAt != next.createdAt ||
         jsonEncode(previous.proposal) != jsonEncode(next.proposal)) {
+      return false;
+    }
+    if (previous.authorizationSource != next.authorizationSource &&
+        (previous.status != GlobalKnowledgeCandidateStatus.pending ||
+            next.status != GlobalKnowledgeCandidateStatus.approved ||
+            (next.authorizationSource !=
+                    GlobalKnowledgeAuthorizationSource.human &&
+                next.authorizationSource !=
+                    GlobalKnowledgeAuthorizationSource.policy))) {
       return false;
     }
     return switch (previous.status) {

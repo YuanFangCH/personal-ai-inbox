@@ -10,7 +10,8 @@ class _TableChatActionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final pending = action.status == TableChatActionStatus.pendingConfirmation;
-    final tone = pending
+    final retryPending = action.status == TableChatActionStatus.pendingRetry;
+    final tone = pending || retryPending
         ? scheme.tertiary
         : action.status == TableChatActionStatus.applied ||
               action.status == TableChatActionStatus.undone
@@ -30,7 +31,11 @@ class _TableChatActionCard extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  pending ? Icons.rule_outlined : Icons.table_chart_outlined,
+                  pending
+                      ? Icons.rule_outlined
+                      : retryPending
+                      ? Icons.hourglass_top
+                      : Icons.table_chart_outlined,
                   color: tone,
                   size: 20,
                 ),
@@ -44,7 +49,9 @@ class _TableChatActionCard extends StatelessWidget {
                 ),
                 StatusPill(
                   label: _statusLabel(action.status),
-                  tone: pending ? StatusTone.warning : StatusTone.neutral,
+                  tone: pending || retryPending
+                      ? StatusTone.warning
+                      : StatusTone.neutral,
                 ),
               ],
             ),
@@ -84,6 +91,38 @@ class _TableChatActionCard extends StatelessWidget {
                 Text(
                   action.message!,
                   style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+              if ((action.retryableIntake || retryPending) &&
+                  action.intakeCoverageComplete == false) ...[
+                const SizedBox(height: 6),
+                Text(
+                  '查重语义覆盖：已检查 '
+                  '${action.intakeCoverageChecked ?? 0}/'
+                  '${action.intakeCoverageTotal ?? 0} 个候选，'
+                  '仍有 ${((action.intakeCoverageTotal ?? 0) - (action.intakeCoverageChecked ?? 0)).clamp(0, 1 << 30)} 个未检查。'
+                  '原始内容和操作意图已保存，尚未确认写入。',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ] else if (retryPending) ...[
+                const SizedBox(height: 6),
+                Text(
+                  '查重覆盖已完整；授权检查阻止写入。操作编号仍待执行，授权恢复后可继续。',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+              if (action.retryableIntake || retryPending) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: FilledButton.tonalIcon(
+                    key: Key('retry_intake_${action.id}'),
+                    onPressed: app.isHandlingIntakeRetry
+                        ? null
+                        : () => app.retryIncompleteIntakeAction(action.id),
+                    icon: const Icon(Icons.refresh),
+                    label: Text(action.intakeRetryPending ? '继续扫描' : '重新扫描并继续'),
+                  ),
                 ),
               ],
               if (action.recoveryBatchId != null && action.canUndo)
@@ -157,6 +196,10 @@ String _actionHeading(TableChatAction action) {
   if (action.status == TableChatActionStatus.pendingConfirmation) {
     return '需要确认的表结构变更';
   }
+  if (action.retryableIntake ||
+      action.status == TableChatActionStatus.pendingRetry) {
+    return '待重新扫描的接收意图';
+  }
   final verb = switch (action.operation) {
     'content.create' => '已添加内容',
     'table.body.update' => '已更新表正文',
@@ -185,6 +228,7 @@ String _actionHeading(TableChatAction action) {
 String _statusLabel(TableChatActionStatus status) => switch (status) {
   TableChatActionStatus.applied => '已执行',
   TableChatActionStatus.pendingConfirmation => '待确认',
+  TableChatActionStatus.pendingRetry => '待继续扫描',
   TableChatActionStatus.rejected => '已拒绝',
   TableChatActionStatus.stale => '需重新确认',
   TableChatActionStatus.failed => '失败',

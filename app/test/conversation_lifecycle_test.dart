@@ -85,8 +85,22 @@ void main() {
 
     expect(harness.controller.conversations, isEmpty);
     await tester.enterText(find.byKey(const Key('chat_input')), '明天下午三点和客户开会');
+    expect(
+      tester.widget<IconButton>(find.byKey(const Key('chat_send'))).onPressed,
+      isNotNull,
+    );
     await tester.tap(find.byKey(const Key('chat_send')));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.textContaining('发送流程未完成'), findsNothing);
+    await _pumpUntilWidget(
+      tester,
+      () =>
+          harness.controller.conversations.isNotEmpty &&
+          harness.controller
+                  .messagesFor(harness.controller.conversations.single.id)
+                  .length ==
+              2,
+    );
 
     expect(harness.controller.conversations, hasLength(1));
     final conversation = harness.controller.conversations.single;
@@ -96,7 +110,12 @@ void main() {
     await tester.pumpWidget(
       PersonalAiInboxApp(runtime: harness.controller.runtime),
     );
-    await tester.pumpAndSettle();
+    await _pumpUntilWidget(
+      tester,
+      () =>
+          harness.controller.conversations.length == 1 &&
+          find.byKey(const Key('nav_inbox')).evaluate().isNotEmpty,
+    );
     expect(harness.controller.conversations, hasLength(1));
     harness.controller.dispose();
   });
@@ -145,7 +164,14 @@ void main() {
     await tester.pumpWidget(
       PersonalAiInboxApp(runtime: harness.controller.runtime),
     );
-    await tester.pumpAndSettle();
+    await _pumpUntilWidget(
+      tester,
+      () =>
+          harness.controller.conversations.length == 2 &&
+          find.byKey(const Key('nav_inbox')).evaluate().isNotEmpty &&
+          find.byKey(const Key('chat_input')).evaluate().isNotEmpty &&
+          find.text('后分享的内容').evaluate().isNotEmpty,
+    );
 
     expect(find.byKey(const Key('nav_inbox')), findsOneWidget);
     expect(find.byKey(const Key('chat_input')), findsOneWidget);
@@ -163,6 +189,17 @@ Future<void> _waitFor(bool Function() condition) async {
     await Future<void>.delayed(const Duration(milliseconds: 10));
   }
   fail('Condition was not met before timeout');
+}
+
+Future<void> _pumpUntilWidget(
+  WidgetTester tester,
+  bool Function() condition,
+) async {
+  for (var attempt = 0; attempt < 200; attempt++) {
+    if (condition()) return;
+    await tester.pump(const Duration(milliseconds: 10));
+  }
+  fail('Widget condition was not met before timeout');
 }
 
 class _LifecycleHarness {

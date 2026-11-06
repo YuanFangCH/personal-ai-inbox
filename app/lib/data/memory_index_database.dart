@@ -321,6 +321,7 @@ class MemoryIndexDatabase implements IndexDatabase {
       id: candidate.id,
       operation: candidate.operation,
       status: candidate.status,
+      authorizationSource: candidate.authorizationSource,
       proposal: candidate.proposal,
       digest: candidate.digest,
       targetId: candidate.targetId,

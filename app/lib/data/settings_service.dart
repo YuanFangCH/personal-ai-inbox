@@ -146,6 +146,7 @@ class SettingsService {
     calendarMonthDetailed:
         await _prefs.getBool(_calendarMonthDetailedKey) ?? true,
     allowImageEgress: await _prefs.getBool(_allowImageEgressKey) ?? true,
+    defaultAiPolicy: AiPolicy.forPreset(AiPolicyPreset.standard),
   );
 
   Future<void> saveGeneral({
@@ -156,6 +157,7 @@ class SettingsService {
     bool? calendarMonthDetailed,
     bool? allowImageEgress,
     AiPermissions? defaultAiPermissions,
+    AiPolicy? defaultAiPolicy,
     ModelCapabilityOverrides? capabilityOverrides,
     int? responseHeaderTimeoutSeconds,
     int? streamIdleTimeoutSeconds,
@@ -165,7 +167,7 @@ class SettingsService {
     int? imageLimit,
   }) async {
     final current = await load();
-    final next = current.copyWith(
+    var next = current.copyWith(
       themeMode: themeMode,
       modelBaseUrl: modelBaseUrl?.trim(),
       modelName: modelName?.trim(),
@@ -181,6 +183,9 @@ class SettingsService {
       imageMessageLimit: imageMessageLimit,
       imageLimit: imageLimit,
     );
+    if (defaultAiPolicy != null) {
+      next = next.copyWith(defaultAiPolicy: defaultAiPolicy);
+    }
     await saveConfiguration(next);
   }
 
@@ -192,8 +197,11 @@ class SettingsService {
     final errors = configuration.validate();
     if (errors.isNotEmpty) throw ArgumentError(errors.join('；'));
     final old = await load();
+    final effectivePolicy = configuration.effectiveDefaultAiPolicy;
     var next = configuration.copyWith(
       schemaVersion: AppSettings.currentSchemaVersion,
+      defaultAiPolicy: effectivePolicy,
+      defaultAiPermissions: AppSettings.aiPermissionsForPolicy(effectivePolicy),
     );
     String? newlyWrittenSlot;
     if (replaceApiKey) {
@@ -244,6 +252,7 @@ class SettingsService {
       'calendar_month_detailed': settings.calendarMonthDetailed,
       'allow_image_egress': settings.allowImageEgress,
       'default_ai_permissions': settings.defaultAiPermissions.toJson(),
+      'default_ai_policy': settings.effectiveDefaultAiPolicy.toJson(),
       'capability_overrides': {
         'vision': settings.capabilityOverrides.vision,
         'tool_calls': settings.capabilityOverrides.toolCalls,
@@ -271,6 +280,7 @@ class SettingsService {
       'calendar_month_detailed',
       'allow_image_egress',
       'default_ai_permissions',
+      'default_ai_policy',
       'capability_overrides',
       'response_header_timeout_seconds',
       'stream_idle_timeout_seconds',
@@ -292,6 +302,7 @@ class SettingsService {
       throw const FormatException('模型能力覆盖格式错误');
     }
     final defaultAiPermissions = _readPortableAiPermissions(values);
+    final defaultAiPolicy = _readPortableAiPolicy(values, defaultAiPermissions);
     final candidate = current.copyWith(
       themeMode: _parseTheme(_stringValue(values, 'theme_mode')),
       modelBaseUrl: _requiredString(values, 'model_base_url'),
@@ -300,6 +311,7 @@ class SettingsService {
       calendarMonthDetailed: _requiredBool(values, 'calendar_month_detailed'),
       allowImageEgress: _requiredBool(values, 'allow_image_egress'),
       defaultAiPermissions: defaultAiPermissions,
+      defaultAiPolicy: defaultAiPolicy,
       capabilityOverrides: ModelCapabilityOverrides(
         vision: _nullableBool(capabilities, 'vision'),
         toolCalls: _nullableBool(capabilities, 'tool_calls'),
@@ -331,6 +343,20 @@ class SettingsService {
     );
   }
 
+  AiPolicy _readPortableAiPolicy(
+    Map<String, dynamic> values,
+    AiPermissions permissions,
+  ) {
+    final raw = values['default_ai_policy'];
+    if (raw == null) {
+      return AppSettings.aiPolicyForLegacyPermissions(permissions);
+    }
+    if (raw is! Map) throw const FormatException('默认 AI 策略配置格式错误');
+    return AiPolicy.fromJson(
+      raw.map((key, value) => MapEntry(key.toString(), value)),
+    );
+  }
+
   Future<AppSettings> restoreDefaults() async {
     final current = await load();
     final defaults = AppSettings(
@@ -343,6 +369,7 @@ class SettingsService {
       showCompletedTodos: false,
       calendarMonthDetailed: true,
       allowImageEgress: true,
+      defaultAiPolicy: AiPolicy.forPreset(AiPolicyPreset.standard),
     );
     return saveConfiguration(defaults);
   }
@@ -400,7 +427,10 @@ class SettingsService {
     'show_completed_todos': settings.showCompletedTodos,
     'calendar_month_detailed': settings.calendarMonthDetailed,
     'allow_image_egress': settings.allowImageEgress,
-    'default_ai_permissions': settings.defaultAiPermissions.toJson(),
+    'default_ai_permissions': AppSettings.aiPermissionsForPolicy(
+      settings.effectiveDefaultAiPolicy,
+    ).toJson(),
+    'default_ai_policy': settings.effectiveDefaultAiPolicy.toJson(),
     'capability_overrides': {
       'vision': settings.capabilityOverrides.vision,
       'tool_calls': settings.capabilityOverrides.toolCalls,
@@ -426,6 +456,7 @@ class SettingsService {
     if (modelKeySlotId != null && modelKeySlotId is! String) {
       throw const FormatException('模型密钥槽引用格式错误；原始配置已保留。');
     }
+    final permissions = _readAiPermissions(map);
     return AppSettings(
       deviceId: _stringValue(map, 'device_id') ?? deviceId,
       themeMode: _parseTheme(_stringValue(map, 'theme_mode')),
@@ -436,7 +467,8 @@ class SettingsService {
       showCompletedTodos: _boolValue(map, 'show_completed_todos') ?? false,
       calendarMonthDetailed: _boolValue(map, 'calendar_month_detailed') ?? true,
       allowImageEgress: _boolValue(map, 'allow_image_egress') ?? true,
-      defaultAiPermissions: _readAiPermissions(map),
+      defaultAiPermissions: permissions,
+      defaultAiPolicy: _readAiPolicy(map, permissions),
       schemaVersion: map['schema_version'] as int,
       modelKeySlotId: modelKeySlotId as String?,
       capabilityOverrides: ModelCapabilityOverrides(
@@ -482,6 +514,19 @@ class SettingsService {
       throw const FormatException('默认 AI 权限配置格式错误；原始配置已保留。');
     }
     return AiPermissions.fromJson(
+      value.map((key, item) => MapEntry(key.toString(), item)),
+    );
+  }
+
+  AiPolicy _readAiPolicy(Map<String, dynamic> map, AiPermissions permissions) {
+    final value = map['default_ai_policy'];
+    if (value == null) {
+      return AppSettings.aiPolicyForLegacyPermissions(permissions);
+    }
+    if (value is! Map) {
+      throw const FormatException('默认 AI 策略配置格式错误；原始配置已保留。');
+    }
+    return AiPolicy.fromJson(
       value.map((key, item) => MapEntry(key.toString(), item)),
     );
   }

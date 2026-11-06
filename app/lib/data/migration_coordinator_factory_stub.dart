@@ -4,4 +4,5 @@ import 'settings_service.dart';
 Future<MigrationCoordinator?> createMigrationCoordinator({
   required String supportPath,
   required SettingsService settings,
+  List<String> additionalFilePaths = const [],
 }) async => null;

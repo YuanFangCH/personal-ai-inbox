@@ -51,7 +51,7 @@ policy_require_no_high_confidence_secrets() {
     while IFS= read -r path; do
         [ -n "$path" ] || continue
         if git show ":$path" 2>/dev/null | grep -E -q \
-            -e 'sk-[A-Za-z0-9_-]{16,}' \
+            -e '(^|[^A-Za-z0-9_-])sk-[A-Za-z0-9_-]{16,}' \
             -e 'gh[pousr]_[A-Za-z0-9]{20,}' \
             -e 'AIza[0-9A-Za-z_-]{30,}' \
             -e 'xox[baprs]-[A-Za-z0-9-]{20,}' \

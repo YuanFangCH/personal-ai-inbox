@@ -54,12 +54,13 @@ class DevicePreferences extends ChangeNotifier {
     int? imageMessageLimit,
     int? imageLimit,
     AiPermissions? defaultAiPermissions,
+    AiPolicy? defaultAiPolicy,
     List<String>? homeTableOrder,
     List<String>? calendarVisibleTableIds,
   }) {
     return _enqueue<void>(() async {
       final current = _settings ?? await _adapter.load();
-      final candidate = current.copyWith(
+      var candidate = current.copyWith(
         themeMode: themeMode,
         modelBaseUrl: modelBaseUrl?.trim(),
         modelName: modelName?.trim(),
@@ -77,6 +78,9 @@ class DevicePreferences extends ChangeNotifier {
         homeTableOrder: homeTableOrder,
         calendarVisibleTableIds: calendarVisibleTableIds,
       );
+      if (defaultAiPolicy != null) {
+        candidate = candidate.copyWith(defaultAiPolicy: defaultAiPolicy);
+      }
       final next = await _guard<AppSettings>(
         code: 'settings_update_failed',
         message: '端配置更新失败',
@@ -205,6 +209,7 @@ abstract interface class DevicePreferencesAdapter {
     bool? calendarMonthDetailed,
     bool? allowImageEgress,
     AiPermissions? defaultAiPermissions,
+    AiPolicy? defaultAiPolicy,
   });
 
   Future<String?> readModelKey();
@@ -242,6 +247,7 @@ final class SettingsServiceDevicePreferencesAdapter
     bool? calendarMonthDetailed,
     bool? allowImageEgress,
     AiPermissions? defaultAiPermissions,
+    AiPolicy? defaultAiPolicy,
   }) {
     return _settingsService.saveGeneral(
       themeMode: themeMode,
@@ -251,6 +257,7 @@ final class SettingsServiceDevicePreferencesAdapter
       calendarMonthDetailed: calendarMonthDetailed,
       allowImageEgress: allowImageEgress,
       defaultAiPermissions: defaultAiPermissions,
+      defaultAiPolicy: defaultAiPolicy,
     );
   }
 

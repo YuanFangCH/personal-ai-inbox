@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -215,6 +216,11 @@ void main() {
       (await migrated.findConversation('cnv_legacy'))?.aiPermissions,
       const AiPermissions(),
     );
+    expect(
+      (await migrated.findConversation('cnv_legacy'))?.effectiveAiPolicy
+          .decisionFor(AiPermissionAction.tableDelete),
+      AiPolicyDecision.ask,
+    );
 
     final updated = (await migrated.findConversation('cnv_legacy'))!.copyWith(
       aiPermissions: const AiPermissions(read: false, modifyDelete: false),
@@ -229,6 +235,88 @@ void main() {
       const AiPermissions(read: false, create: true, modifyDelete: false),
     );
     await reopened.close();
+    await directory.delete(recursive: true);
+  });
+
+  test('migrates v5 conversations and persists action-level policy', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'conversation-policy-migration',
+    );
+    final path = '${directory.path}${Platform.pathSeparator}chat.sqlite3';
+    final oldDatabase = sqlite3.open(path);
+    oldDatabase
+      ..execute('''
+        CREATE TABLE conversations (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          auto_title INTEGER NOT NULL,
+          preview TEXT NOT NULL,
+          ai_permissions_json TEXT NOT NULL
+        )
+      ''')
+      ..execute('''
+        INSERT INTO conversations VALUES (
+          'cnv_v5', 'v5会话', '2026-01-01T00:00:00.000',
+          '2026-01-01T00:00:00.000', 0, '',
+          '{"read":false,"create":true,"modify_delete":false}'
+        )
+      ''')
+      ..execute('PRAGMA user_version = 5')
+      ..close();
+
+    final migrated = SqliteConversationStore(path);
+    await migrated.open();
+    final legacy = (await migrated.findConversation('cnv_v5'))!;
+    expect(legacy.aiPolicy, isNull);
+    expect(
+      legacy.effectiveAiPolicy.decisionFor(AiPermissionAction.tableRead),
+      AiPolicyDecision.deny,
+    );
+
+    final standard = AiPolicy.forPreset(
+      AiPolicyPreset.standard,
+      version: 2,
+      tableScope: AiResourceScope.selected(const ['tb_v5']),
+      knowledgeReadScope: const AiResourceScope.none(),
+    );
+    await migrated.upsertConversation(legacy.copyWith(aiPolicy: standard));
+    await migrated.close();
+
+    final reopened = SqliteConversationStore(path);
+    await reopened.open();
+    final restored = (await reopened.findConversation('cnv_v5'))!;
+    expect(restored.aiPolicy, isNotNull);
+    expect(restored.aiPolicy!.preset, AiPolicyPreset.standard);
+    expect(restored.aiPolicy!.version, 2);
+    expect(restored.aiPolicy!.tableScope.covers('tb_v5'), isTrue);
+    expect(restored.aiPolicy!.tableScope.covers('tb_other'), isFalse);
+    expect(restored.aiPolicy!.knowledgeReadScope.isNone, isTrue);
+    expect(
+      restored.effectiveAiPolicy.decisionFor(AiPermissionAction.tableDelete),
+      AiPolicyDecision.ask,
+    );
+    await reopened.close();
+
+    final database = sqlite3.open(path);
+    expect(database.select('PRAGMA user_version').single['user_version'], 6);
+    expect(
+      database
+          .select('PRAGMA table_info(conversations)')
+          .map((row) => row['name']),
+      contains('ai_policy_json'),
+    );
+    final stored = database.select(
+      'SELECT ai_permissions_json FROM conversations WHERE id = ?',
+      ['cnv_v5'],
+    ).single;
+    expect(jsonDecode(stored['ai_permissions_json'] as String), {
+      'read': true,
+      'create': true,
+      'modify_delete': true,
+    });
+    database.close();
     await directory.delete(recursive: true);
   });
 }

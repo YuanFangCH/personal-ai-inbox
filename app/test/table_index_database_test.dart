@@ -158,7 +158,7 @@ void main() {
     await database.open();
     addTearDown(database.close);
     final check = sqlite3.open(path);
-    expect(check.select('PRAGMA user_version').single['user_version'], 10);
+    expect(check.select('PRAGMA user_version').single['user_version'], 11);
     expect(
       check.select('SELECT name FROM sqlite_master WHERE name = ?', [
         'notebook_tables',
@@ -272,7 +272,7 @@ void main() {
     await database.close();
 
     final migrated = sqlite3.open(path);
-    expect(migrated.select('PRAGMA user_version').single['user_version'], 10);
+    expect(migrated.select('PRAGMA user_version').single['user_version'], 11);
     expect(
       migrated.select('SELECT id FROM table_recovery_batches ORDER BY id'),
       hasLength(3),
@@ -331,7 +331,7 @@ void main() {
     await database.upsertTableRecoveryBatch(fieldChange);
     await database.close();
     final migrated = sqlite3.open(path);
-    expect(migrated.select('PRAGMA user_version').single['user_version'], 10);
+    expect(migrated.select('PRAGMA user_version').single['user_version'], 11);
     expect(
       migrated.select('SELECT id FROM table_recovery_batches ORDER BY id'),
       hasLength(2),

@@ -9,6 +9,7 @@ class FakeSettingsService extends SettingsService {
     String modelName = 'deepseek-flash',
     String? modelKey,
     AiPermissions defaultAiPermissions = const AiPermissions(),
+    AiPolicy? defaultAiPolicy,
   }) : _settings = AppSettings(
          deviceId: deviceId,
          themeMode: themeMode,
@@ -19,6 +20,7 @@ class FakeSettingsService extends SettingsService {
          calendarMonthDetailed: true,
          allowImageEgress: true,
          defaultAiPermissions: defaultAiPermissions,
+         defaultAiPolicy: defaultAiPolicy,
        ),
        _modelKey = modelKey;
 
@@ -62,6 +64,7 @@ class FakeSettingsService extends SettingsService {
     bool? calendarMonthDetailed,
     bool? allowImageEgress,
     AiPermissions? defaultAiPermissions,
+    AiPolicy? defaultAiPolicy,
     ModelCapabilityOverrides? capabilityOverrides,
     int? responseHeaderTimeoutSeconds,
     int? streamIdleTimeoutSeconds,
@@ -70,7 +73,7 @@ class FakeSettingsService extends SettingsService {
     int? imageMessageLimit,
     int? imageLimit,
   }) async {
-    _settings = _settings.copyWith(
+    var next = _settings.copyWith(
       themeMode: themeMode,
       modelBaseUrl: modelBaseUrl,
       modelName: modelName,
@@ -86,5 +89,9 @@ class FakeSettingsService extends SettingsService {
       imageMessageLimit: imageMessageLimit,
       imageLimit: imageLimit,
     );
+    if (defaultAiPolicy != null) {
+      next = next.copyWith(defaultAiPolicy: defaultAiPolicy);
+    }
+    _settings = next;
   }
 }

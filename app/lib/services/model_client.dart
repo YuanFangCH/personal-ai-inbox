@@ -78,7 +78,38 @@ class ChatStreamDelta {
   final ChatStreamTermination? termination;
 }
 
-enum ChatStreamTermination { completed, incomplete }
+enum ChatStreamTermination {
+  completed,
+  incomplete,
+  empty,
+  disconnected,
+  cancelled,
+}
+
+class ModelHttpException extends StateError {
+  ModelHttpException({
+    required this.operation,
+    required this.statusCode,
+    this.retryAfterHeader,
+    this.retryAfter,
+  }) : super('Model $operation request failed with HTTP $statusCode');
+
+  final String operation;
+  final int statusCode;
+  final String? retryAfterHeader;
+  final Duration? retryAfter;
+}
+
+class ModelStreamProtocolException extends FormatException {
+  const ModelStreamProtocolException(super.message);
+}
+
+class ModelCancelledException implements Exception {
+  const ModelCancelledException();
+
+  @override
+  String toString() => 'Model request cancelled';
+}
 
 class ModelClient {
   ModelClient({http.Client? client}) : _client = client ?? http.Client();
@@ -114,25 +145,25 @@ class ModelClient {
               {'role': 'user', 'content': text},
             ],
           });
-    final response = await _sendAbortably(
-      request,
-      abortTrigger,
-      configuration.responseHeaderTimeout,
-    );
+    final requestStartedAt = DateTime.now();
+    final headerTimeout =
+        configuration.responseHeaderTimeout < configuration.totalTimeout
+        ? configuration.responseHeaderTimeout
+        : configuration.totalTimeout;
+    final response = await _sendAbortably(request, abortTrigger, headerTimeout);
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      unawaited(response.stream.listen((_) {}).cancel());
-      throw StateError('Model request failed with HTTP ${response.statusCode}');
+      await _cancelResponse(response);
+      throw _httpException(response, operation: 'classification', now: now);
     }
 
-    final startedAt = DateTime.now();
     final responseStream = StreamIterator<List<int>>(response.stream);
     final responseBytes = BytesBuilder(copy: false);
     var responseBodyCompleted = false;
     try {
       while (await _moveNextWithinTimeout(
         responseStream,
-        startedAt,
+        requestStartedAt,
         configuration.streamIdleTimeout,
         configuration.totalTimeout,
         abortTrigger,
@@ -170,11 +201,74 @@ class ModelClient {
     String? systemPrompt,
     List<Map<String, dynamic>>? tools,
     bool thinkingEnabled = false,
+    Future<void>? cancellationSignal,
+  }) {
+    final abortTrigger = Completer<void>();
+    final cancellation = _CancellationSignal();
+    StreamSubscription<ChatStreamDelta>? subscription;
+    late final StreamController<ChatStreamDelta> controller;
+    controller = StreamController<ChatStreamDelta>(
+      onListen: () {
+        subscription =
+            _streamChat(
+              messages: messages,
+              configuration: configuration,
+              now: now,
+              systemPrompt: systemPrompt,
+              tools: tools,
+              thinkingEnabled: thinkingEnabled,
+              abortTrigger: abortTrigger,
+              cancellation: cancellation,
+            ).listen(
+              (delta) {
+                if (!cancellation.isCancelled && !controller.isClosed) {
+                  controller.add(delta);
+                }
+              },
+              onError: (Object error, StackTrace stackTrace) {
+                if (!cancellation.isCancelled && !controller.isClosed) {
+                  controller.addError(error, stackTrace);
+                }
+              },
+              onDone: () {
+                if (!controller.isClosed) {
+                  unawaited(controller.close());
+                }
+              },
+            );
+        if (cancellationSignal != null) {
+          unawaited(
+            cancellationSignal.then((_) {
+              cancellation.cancel();
+              if (!abortTrigger.isCompleted) abortTrigger.complete();
+            }),
+          );
+        }
+      },
+      onCancel: () async {
+        cancellation.cancel();
+        if (!abortTrigger.isCompleted) {
+          abortTrigger.complete();
+        }
+        await subscription?.cancel();
+      },
+    );
+    return controller.stream;
+  }
+
+  Stream<ChatStreamDelta> _streamChat({
+    required List<ChatRequestMessage> messages,
+    required ModelConfiguration configuration,
+    required DateTime now,
+    required String? systemPrompt,
+    required List<Map<String, dynamic>>? tools,
+    required bool thinkingEnabled,
+    required Completer<void> abortTrigger,
+    required _CancellationSignal cancellation,
   }) async* {
     final endpoint = Uri.parse(
       '${configuration.baseUrl.replaceAll(RegExp(r'/$'), '')}/chat/completions',
     );
-    final abortTrigger = Completer<void>();
     final request =
         http.AbortableRequest(
             'POST',
@@ -213,40 +307,51 @@ class ModelClient {
             },
           });
 
-    final response = await _sendAbortably(
-      request,
-      abortTrigger,
-      configuration.responseHeaderTimeout,
-    );
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      unawaited(response.stream.listen((_) {}).cancel());
-      throw StateError(
-        'Model chat request failed with HTTP ${response.statusCode}',
+    final requestStartedAt = DateTime.now();
+    final headerTimeout =
+        configuration.responseHeaderTimeout < configuration.totalTimeout
+        ? configuration.responseHeaderTimeout
+        : configuration.totalTimeout;
+    late final http.StreamedResponse response;
+    try {
+      response = await _sendAbortably(
+        request,
+        abortTrigger,
+        headerTimeout,
+        cancellation,
       );
+    } on ModelCancelledException {
+      return;
+    }
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      await _cancelResponse(response);
+      throw _httpException(response, operation: 'chat', now: now);
     }
 
-    final startedAt = DateTime.now();
     final lines = StreamIterator<String>(
       response.stream.transform(utf8.decoder).transform(const LineSplitter()),
     );
+    final events = _SseEventAssembler();
     var terminalSent = false;
+    var sawMeaningfulPayload = false;
+    var reachedEof = false;
     try {
-      while (await _moveNextWithinTimeout(
-        lines,
-        startedAt,
-        configuration.streamIdleTimeout,
-        configuration.totalTimeout,
-        abortTrigger,
-      )) {
-        final line = lines.current;
-        final trimmed = line.trim();
-        if (trimmed.isEmpty ||
-            trimmed.startsWith(':') ||
-            !trimmed.startsWith('data:')) {
-          continue;
+      while (!reachedEof) {
+        String? payload;
+        if (await _moveNextWithinTimeout(
+          lines,
+          requestStartedAt,
+          configuration.streamIdleTimeout,
+          configuration.totalTimeout,
+          abortTrigger,
+          cancellation,
+        )) {
+          payload = events.addLine(lines.current);
+        } else {
+          reachedEof = true;
+          payload = events.finish();
         }
-        final payload = trimmed.substring(5).trim();
-        if (payload.isEmpty) {
+        if (payload == null || payload.isEmpty) {
           continue;
         }
         if (terminalSent) {
@@ -254,124 +359,56 @@ class ModelClient {
         }
         if (payload == '[DONE]') {
           terminalSent = true;
-          abortTrigger.complete();
-          yield const ChatStreamDelta(
-            termination: ChatStreamTermination.completed,
+          yield ChatStreamDelta(
+            termination: sawMeaningfulPayload
+                ? ChatStreamTermination.completed
+                : ChatStreamTermination.empty,
           );
           return;
         }
 
-        final decoded = jsonDecode(payload);
-        if (decoded is! Map) {
-          throw const FormatException('Model stream event is not an object');
+        final event = _decodeChatEvent(
+          payload,
+          toolCallsSupported: configuration.capabilities.toolCalls,
+        );
+        sawMeaningfulPayload =
+            sawMeaningfulPayload || event.hasMeaningfulPayload;
+        for (final delta in event.deltas) {
+          yield delta;
         }
-        final choices = decoded['choices'];
-        if (choices is! List) {
-          throw const FormatException('Model stream event is missing choices');
-        }
-        if (choices.isEmpty) {
-          continue;
-        }
-        final choice = choices.first;
-        if (choice is! Map) {
-          throw const FormatException('Model stream choice is not an object');
-        }
-        final finishReason = choice['finish_reason'];
-        final delta = choice['delta'];
-        if (delta != null && delta is! Map) {
-          throw const FormatException('Model stream delta is not an object');
-        }
-        if (delta == null) {
-          if (finishReason == null) {
-            continue;
-          }
-          final completed =
-              finishReason == 'stop' || finishReason == 'tool_calls';
+        if (event.terminal != null) {
           terminalSent = true;
-          abortTrigger.complete();
           yield ChatStreamDelta(
-            termination: completed
-                ? ChatStreamTermination.completed
-                : ChatStreamTermination.incomplete,
-          );
-          return;
-        }
-        final content = delta['content'];
-        if (content != null && content is! String) {
-          throw const FormatException('Model stream content is not text');
-        }
-        final toolCalls = delta['tool_calls'];
-        if (toolCalls != null && toolCalls is! List) {
-          throw const FormatException('Model stream tool calls are not a list');
-        }
-        if (content is String && content.isNotEmpty) {
-          yield ChatStreamDelta(content: content);
-        }
-        final reasoningContent = delta['reasoning_content'];
-        if (reasoningContent != null && reasoningContent is! String) {
-          throw const FormatException(
-            'Model stream reasoning content is not text',
-          );
-        }
-        if (reasoningContent is String && reasoningContent.isNotEmpty) {
-          yield ChatStreamDelta(reasoningContent: reasoningContent);
-        }
-        if (configuration.capabilities.toolCalls && toolCalls is List) {
-          for (final rawCall in toolCalls) {
-            if (rawCall is! Map) {
-              throw const FormatException(
-                'Model stream tool call is not an object',
-              );
-            }
-            final function = rawCall['function'];
-            if (function != null && function is! Map) {
-              throw const FormatException(
-                'Model stream tool function is invalid',
-              );
-            }
-            final rawIndex = rawCall['index'];
-            if (rawIndex is! num || !rawIndex.isFinite || rawIndex < 0) {
-              throw const FormatException('Model stream tool index is invalid');
-            }
-            final toolId = rawCall['id'];
-            final toolName = function?['name'];
-            final arguments = function?['arguments'];
-            if ((toolId != null && toolId is! String) ||
-                (toolName != null && toolName is! String) ||
-                (arguments != null && arguments is! String)) {
-              throw const FormatException(
-                'Model stream tool fields are invalid',
-              );
-            }
-            yield ChatStreamDelta(
-              toolCallIndex: rawIndex.toInt(),
-              toolCallId: toolId as String?,
-              toolCallName: toolName as String?,
-              toolArguments: arguments as String? ?? '',
-            );
-          }
-        } else if (toolCalls is List && toolCalls.isNotEmpty) {
-          throw const FormatException(
-            'Model returned tool calls without tool-call capability',
-          );
-        }
-        if (finishReason != null) {
-          final completed =
-              finishReason == 'stop' || finishReason == 'tool_calls';
-          terminalSent = true;
-          abortTrigger.complete();
-          yield ChatStreamDelta(
-            termination: completed
-                ? ChatStreamTermination.completed
-                : ChatStreamTermination.incomplete,
+            termination: switch (event.terminal!) {
+              _ChatTerminal.completedWithContent when sawMeaningfulPayload =>
+                ChatStreamTermination.completed,
+              _ChatTerminal.completedWithContent => ChatStreamTermination.empty,
+              _ChatTerminal.completedToolCalls =>
+                ChatStreamTermination.completed,
+              _ChatTerminal.incomplete => ChatStreamTermination.incomplete,
+            },
           );
           return;
         }
       }
+      if (!terminalSent) {
+        yield ChatStreamDelta(
+          termination: sawMeaningfulPayload
+              ? ChatStreamTermination.disconnected
+              : ChatStreamTermination.empty,
+        );
+      }
+    } on ModelCancelledException {
+      return;
     } finally {
-      unawaited(lines.cancel());
-      if (!terminalSent && !abortTrigger.isCompleted) {
-        abortTrigger.complete();
+      if (terminalSent) {
+        if (!abortTrigger.isCompleted) abortTrigger.complete();
+        unawaited(lines.cancel().catchError((Object _) {}));
+      } else {
+        await lines.cancel();
+        if (!abortTrigger.isCompleted) {
+          abortTrigger.complete();
+        }
       }
     }
   }
@@ -379,25 +416,36 @@ class ModelClient {
   Future<http.StreamedResponse> _sendAbortably(
     http.AbortableRequest request,
     Completer<void> abortTrigger,
-    Duration timeout,
-  ) async {
+    Duration timeout, [
+    _CancellationSignal? cancellation,
+  ]) async {
     try {
-      return await _client
-          .send(request)
-          .timeout(
-            timeout,
-            onTimeout: () {
-              if (!abortTrigger.isCompleted) {
-                abortTrigger.complete();
-              }
-              throw TimeoutException('Model response headers timed out');
-            },
-          );
-    } catch (_) {
+      final send = _client.send(request);
+      final response = cancellation == null
+          ? send
+          : Future.any<http.StreamedResponse>([
+              send,
+              cancellation.future.then<http.StreamedResponse>(
+                (_) => throw const ModelCancelledException(),
+              ),
+            ]);
+      return await response.timeout(
+        timeout,
+        onTimeout: () {
+          if (!abortTrigger.isCompleted) {
+            abortTrigger.complete();
+          }
+          throw TimeoutException('Model response headers timed out');
+        },
+      );
+    } catch (error, stackTrace) {
       if (!abortTrigger.isCompleted) {
         abortTrigger.complete();
       }
-      rethrow;
+      if (cancellation?.isCancelled ?? false) {
+        throw const ModelCancelledException();
+      }
+      Error.throwWithStackTrace(error, stackTrace);
     }
   }
 
@@ -406,8 +454,9 @@ class ModelClient {
     DateTime startedAt,
     Duration idleTimeout,
     Duration totalTimeout,
-    Completer<void> abortTrigger,
-  ) {
+    Completer<void> abortTrigger, [
+    _CancellationSignal? cancellation,
+  ]) {
     final elapsed = DateTime.now().difference(startedAt);
     final remainingTotal = totalTimeout - elapsed;
     if (remainingTotal <= Duration.zero) {
@@ -418,7 +467,16 @@ class ModelClient {
     }
     final totalExpiresFirst = remainingTotal <= idleTimeout;
     final wait = totalExpiresFirst ? remainingTotal : idleTimeout;
-    return iterator.moveNext().timeout(
+    final next = iterator.moveNext();
+    final movement = cancellation == null
+        ? next
+        : Future.any<bool>([
+            next,
+            cancellation.future.then<bool>(
+              (_) => throw const ModelCancelledException(),
+            ),
+          ]);
+    return movement.timeout(
       wait,
       onTimeout: () {
         if (!abortTrigger.isCompleted) {
@@ -434,6 +492,202 @@ class ModelClient {
   }
 
   void close() => _client.close();
+
+  _ChatEvent _decodeChatEvent(
+    String payload, {
+    required bool toolCallsSupported,
+  }) {
+    final dynamic decoded;
+    try {
+      decoded = jsonDecode(payload);
+    } on FormatException {
+      throw const ModelStreamProtocolException(
+        'Model stream event contains malformed JSON',
+      );
+    }
+    if (decoded is! Map) {
+      throw const ModelStreamProtocolException(
+        'Model stream event is not an object',
+      );
+    }
+    final choices = decoded['choices'];
+    if (choices is! List) {
+      throw const ModelStreamProtocolException(
+        'Model stream event is missing choices',
+      );
+    }
+    if (choices.isEmpty) {
+      return const _ChatEvent(deltas: [], hasMeaningfulPayload: false);
+    }
+    final choice = choices.first;
+    if (choice is! Map) {
+      throw const ModelStreamProtocolException(
+        'Model stream choice is not an object',
+      );
+    }
+    final finishReason = choice['finish_reason'];
+    final delta = choice['delta'];
+    if (delta != null && delta is! Map) {
+      throw const ModelStreamProtocolException(
+        'Model stream delta is not an object',
+      );
+    }
+    final terminal = switch (finishReason) {
+      null => null,
+      'stop' => _ChatTerminal.completedWithContent,
+      'tool_calls' => _ChatTerminal.completedToolCalls,
+      _ => _ChatTerminal.incomplete,
+    };
+    if (delta == null) {
+      return _ChatEvent(
+        deltas: const [],
+        terminal: terminal,
+        hasMeaningfulPayload: false,
+      );
+    }
+
+    final deltas = <ChatStreamDelta>[];
+    final content = delta['content'];
+    if (content != null && content is! String) {
+      throw const ModelStreamProtocolException(
+        'Model stream content is not text',
+      );
+    }
+    final toolCalls = delta['tool_calls'];
+    if (toolCalls != null && toolCalls is! List) {
+      throw const ModelStreamProtocolException(
+        'Model stream tool calls are not a list',
+      );
+    }
+    final meaningfulContent = content is String && content.isNotEmpty;
+    if (meaningfulContent) {
+      deltas.add(ChatStreamDelta(content: content));
+    }
+    final reasoningContent = delta['reasoning_content'];
+    if (reasoningContent != null && reasoningContent is! String) {
+      throw const ModelStreamProtocolException(
+        'Model stream reasoning content is not text',
+      );
+    }
+    if (reasoningContent is String && reasoningContent.isNotEmpty) {
+      deltas.add(ChatStreamDelta(reasoningContent: reasoningContent));
+    }
+    if (toolCallsSupported && toolCalls is List) {
+      for (final rawCall in toolCalls) {
+        if (rawCall is! Map) {
+          throw const ModelStreamProtocolException(
+            'Model stream tool call is not an object',
+          );
+        }
+        final function = rawCall['function'];
+        if (function != null && function is! Map) {
+          throw const ModelStreamProtocolException(
+            'Model stream tool function is invalid',
+          );
+        }
+        final rawIndex = rawCall['index'];
+        if (rawIndex is! num || !rawIndex.isFinite || rawIndex < 0) {
+          throw const ModelStreamProtocolException(
+            'Model stream tool index is invalid',
+          );
+        }
+        final toolId = rawCall['id'];
+        final toolName = function?['name'];
+        final arguments = function?['arguments'];
+        if ((toolId != null && toolId is! String) ||
+            (toolName != null && toolName is! String) ||
+            (arguments != null && arguments is! String)) {
+          throw const ModelStreamProtocolException(
+            'Model stream tool fields are invalid',
+          );
+        }
+        deltas.add(
+          ChatStreamDelta(
+            toolCallIndex: rawIndex.toInt(),
+            toolCallId: toolId as String?,
+            toolCallName: toolName as String?,
+            toolArguments: arguments as String? ?? '',
+          ),
+        );
+      }
+    } else if (toolCalls is List && toolCalls.isNotEmpty) {
+      throw const ModelStreamProtocolException(
+        'Model returned tool calls without tool-call capability',
+      );
+    }
+    return _ChatEvent(
+      deltas: deltas,
+      terminal: terminal,
+      hasMeaningfulPayload:
+          meaningfulContent ||
+          (toolCallsSupported && toolCalls is List && toolCalls.isNotEmpty),
+    );
+  }
+
+  Future<void> _cancelResponse(http.StreamedResponse response) async {
+    final subscription = response.stream.listen(null);
+    await subscription.cancel();
+  }
+
+  ModelHttpException _httpException(
+    http.StreamedResponse response, {
+    required String operation,
+    required DateTime now,
+  }) {
+    final retryAfterHeader = response.headers['retry-after'];
+    return ModelHttpException(
+      operation: operation,
+      statusCode: response.statusCode,
+      retryAfterHeader: retryAfterHeader,
+      retryAfter: _parseRetryAfter(retryAfterHeader, now),
+    );
+  }
+
+  Duration? _parseRetryAfter(String? rawValue, DateTime now) {
+    final value = rawValue?.trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+    final seconds = int.tryParse(value);
+    if (seconds != null) {
+      return seconds < 0 ? null : Duration(seconds: seconds);
+    }
+    final match = RegExp(
+      r'^(?:[A-Za-z]{3},\s*)?(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})\s+'
+      r'(\d{2}):(\d{2}):(\d{2})\s+GMT$',
+    ).firstMatch(value);
+    if (match == null) {
+      return null;
+    }
+    const months = {
+      'jan': 1,
+      'feb': 2,
+      'mar': 3,
+      'apr': 4,
+      'may': 5,
+      'jun': 6,
+      'jul': 7,
+      'aug': 8,
+      'sep': 9,
+      'oct': 10,
+      'nov': 11,
+      'dec': 12,
+    };
+    final month = months[match.group(2)!.toLowerCase()];
+    if (month == null) {
+      return null;
+    }
+    final retryAt = DateTime.utc(
+      int.parse(match.group(3)!),
+      month,
+      int.parse(match.group(1)!),
+      int.parse(match.group(4)!),
+      int.parse(match.group(5)!),
+      int.parse(match.group(6)!),
+    );
+    final delay = retryAt.difference(now.toUtc());
+    return delay.isNegative ? Duration.zero : delay;
+  }
 
   Map<String, dynamic> _requestMessage(ChatRequestMessage message) {
     if (message.toolCallId != null) {
@@ -626,4 +880,74 @@ create_result 只用于新建。update_result 与 delete_result 只按用户明�
     }
     return DateTime.tryParse(value.toString());
   }
+}
+
+class _CancellationSignal {
+  final Completer<void> _completer = Completer<void>();
+
+  bool get isCancelled => _completer.isCompleted;
+  Future<void> get future => _completer.future;
+
+  void cancel() {
+    if (!_completer.isCompleted) {
+      _completer.complete();
+    }
+  }
+}
+
+class _SseEventAssembler {
+  final List<String> _data = [];
+  bool _isFirstLine = true;
+
+  String? addLine(String line) {
+    var current = line;
+    if (_isFirstLine) {
+      _isFirstLine = false;
+      if (current.startsWith('\uFEFF')) {
+        current = current.substring(1);
+      }
+    }
+    if (current.isEmpty) {
+      return _takeEvent();
+    }
+    if (current.startsWith(':')) {
+      return null;
+    }
+    final colon = current.indexOf(':');
+    final field = colon < 0 ? current : current.substring(0, colon);
+    if (field != 'data') {
+      return null;
+    }
+    var value = colon < 0 ? '' : current.substring(colon + 1);
+    if (value.startsWith(' ')) {
+      value = value.substring(1);
+    }
+    _data.add(value);
+    return null;
+  }
+
+  String? finish() => _takeEvent();
+
+  String? _takeEvent() {
+    if (_data.isEmpty) {
+      return null;
+    }
+    final payload = _data.join('\n');
+    _data.clear();
+    return payload;
+  }
+}
+
+enum _ChatTerminal { completedWithContent, completedToolCalls, incomplete }
+
+class _ChatEvent {
+  const _ChatEvent({
+    required this.deltas,
+    required this.hasMeaningfulPayload,
+    this.terminal,
+  });
+
+  final List<ChatStreamDelta> deltas;
+  final bool hasMeaningfulPayload;
+  final _ChatTerminal? terminal;
 }

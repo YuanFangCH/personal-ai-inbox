@@ -33,7 +33,13 @@
 
 ## 当前进展
 
-2026-11-03 已完成[专用秘书 Agent 设计](docs/secretary-agent-design.md)与[DSH 参考研究](docs/research/04-dsh-agent-permissions-and-runtime.md)，目标包括可选完全权限（任意表及默认表可调整/删除、全局知识可直接生效）、写入前业务查重与自动补充、分页读取/检查及可恢复长任务。产品决定见 [ADR 0024](docs/adr/0024-secretary-agent-permissions-and-deduplication.md)。本轮仅设计落盘，业务代码仍为 v1.2.1，未实现上述新能力；文档验证见[本轮记录](test-results/secretary-agent-design-20261103/VALIDATION.md)。
+专用秘书 Agent A–F 的设备验收主闭环已完成，工作区候选尚未提交或发布。最终设备 manifest `c283f93b19703686ab7caa0da802e43ff8bb5c557051156c070c9e94f07f49bd` 在 Emulator 37.2.12、API35、独立 ADB 5041 上通过 phone 50/50、tablet 27/27、双端 A31/A32/A33 恢复场景及 phone/tablet 各900秒生产业务长测；双端长测均完成47条唯一写入和回执核对。Windows 当前排除范围包含 `6172–6271`，本轮使用仍可用的 `5620/5621` 端口对。A01–A30、A34–A35 的遗留主机组合仍待收敛。详见 [RM_HANDOFF.md](RM_HANDOFF.md)、验收矩阵 `test-results/secretary-agent-implementation/ACCEPTANCE.md` 和 `test-results/secretary-agent-implementation/final-device-20261107/VALIDATION.md`。
+
+本轮新增回归通过：`secretary_conversation_ui_test.dart` 5/5，其中覆盖 workspace 当前会话自动挂载以及主动新建对话不重新吸附旧会话；`app_background_lifecycle_test.dart` 6/6；通知权限拒绝对话框改为等待语义节点并提供失败 UI 层级诊断。长测终态现在会显式切回秘书页、滚到底部并验证真实 SSE 文本。此前 attempt21 的 streaming/消息行缺失问题已由最终长测取代。详见 `test-results/secretary-agent-implementation/final-device-20261107/VALIDATION.md`。
+
+最近宿主 smoke：SEC-034/036/038 的 teardown 修复候选复验 3/3 通过，缓存输出预算、未命中 coverage 与第21次检索批次边界断言均保留。11月5日 SEC-083 smoke 曾失败并定位到 stream terminal 丢失；11月6日当前定向复验通过（ModelClient 19/19、ChatService取消屏障1/1、host smoke 1/1），取代该旧失败结论。SEC-083 Android phone回归也通过；其余 A05 竞态、设备矩阵和长测仍需按当前源码清单验收。详见 `test-results/secretary-agent-implementation/host-smoke-20261105/VALIDATION.md` 与 `test-results/secretary-agent-implementation/ACCEPTANCE.md`。
+
+2026-11-03 已完成[专用秘书 Agent 设计](docs/secretary-agent-design.md)与[DSH 参考研究](docs/research/04-dsh-agent-permissions-and-runtime.md)，目标包括可选完全权限（任意表及默认表可调整/删除、全局知识可直接生效）、写入前业务查重与自动补充、分页读取/检查及可恢复长任务。产品决定见 [ADR 0024](docs/adr/0024-secretary-agent-permissions-and-deduplication.md)。用户后续已授权进入实现；当前未提交代码按上述目标推进，已发布版本仍为 v1.2.1。设计阶段验证见[记录](test-results/secretary-agent-design-20261103/VALIDATION.md)，实现验收以当前交接为准。
 
 2026-11-03 已发布 v1.2.1+9 预览版，包含迁移/重启阻断、校验后旧源清理及真实 DeepSeek 工具名修复。Android 手机/平板 75/75 与真实模型冒烟证据沿用已验收代码；Release 与 main CI 均成功，36 项定向回归通过；四项资产哈希、APK 版本/长期签名与 408 个资产文件/条目的秘密扫描通过。见[发行说明](docs/releases/v1.2.1.md)和[发布验证](test-results/v1.2.1-release-20261103/VALIDATION.md)。
 

@@ -1,59 +1,11 @@
+import 'ai_policy.dart';
+
+export 'ai_policy.dart';
+
 enum ThemePreference { system, light, dark }
 
-/// Default capabilities copied into newly created AI conversations.
-/// Each conversation then stores its own immutable snapshot.
-class AiPermissions {
-  const AiPermissions({
-    this.read = true,
-    this.create = true,
-    this.modifyDelete = true,
-  });
-
-  final bool read;
-  final bool create;
-  final bool modifyDelete;
-
-  AiPermissions copyWith({bool? read, bool? create, bool? modifyDelete}) =>
-      AiPermissions(
-        read: read ?? this.read,
-        create: create ?? this.create,
-        modifyDelete: modifyDelete ?? this.modifyDelete,
-      );
-
-  Map<String, Object?> toJson() => {
-    'read': read,
-    'create': create,
-    'modify_delete': modifyDelete,
-  };
-
-  static AiPermissions fromJson(Map<String, dynamic>? json) {
-    if (json == null) return const AiPermissions();
-    bool flag(String key) {
-      final value = json[key];
-      if (value is! bool) throw FormatException('AI 权限字段 $key 类型错误');
-      return value;
-    }
-
-    return AiPermissions(
-      read: flag('read'),
-      create: flag('create'),
-      modifyDelete: flag('modify_delete'),
-    );
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      other is AiPermissions &&
-      other.read == read &&
-      other.create == create &&
-      other.modifyDelete == modifyDelete;
-
-  @override
-  int get hashCode => Object.hash(read, create, modifyDelete);
-}
-
 class AppSettings {
-  static const currentSchemaVersion = 4;
+  static const currentSchemaVersion = 5;
 
   const AppSettings({
     required this.deviceId,
@@ -73,10 +25,11 @@ class AppSettings {
     this.contextMessageLimit = 20,
     this.imageMessageLimit = 4,
     this.imageLimit = 8,
-    this.defaultAiPermissions = const AiPermissions(),
+    AiPermissions defaultAiPermissions = const AiPermissions(),
+    this.defaultAiPolicy,
     this.homeTableOrder = const [],
     this.calendarVisibleTableIds = const ['*'],
-  });
+  }) : _legacyDefaultAiPermissions = defaultAiPermissions;
 
   final String deviceId;
   final ThemePreference themeMode;
@@ -95,7 +48,22 @@ class AppSettings {
   final int contextMessageLimit;
   final int imageMessageLimit;
   final int imageLimit;
-  final AiPermissions defaultAiPermissions;
+  final AiPermissions _legacyDefaultAiPermissions;
+
+  /// Action-level defaults for conversations created on this device.
+  ///
+  /// This stays nullable so existing `const AppSettings(...)` callers remain
+  /// source-compatible. Runtime code should read [effectiveDefaultAiPolicy].
+  final AiPolicy? defaultAiPolicy;
+
+  /// Compatibility projection for callers that still consume three booleans.
+  AiPermissions get defaultAiPermissions => defaultAiPolicy == null
+      ? _legacyDefaultAiPermissions
+      : aiPermissionsForPolicy(defaultAiPolicy!);
+
+  /// Resolves an explicit v5 policy or safely migrates the legacy snapshot.
+  AiPolicy get effectiveDefaultAiPolicy =>
+      defaultAiPolicy ?? aiPolicyForLegacyPermissions(defaultAiPermissions);
 
   /// Table IDs shown as optional modules below the existing home sections.
   final List<String> homeTableOrder;
@@ -167,34 +135,98 @@ class AppSettings {
     int? imageMessageLimit,
     int? imageLimit,
     AiPermissions? defaultAiPermissions,
+    Object? defaultAiPolicy = _unchangedDefaultAiPolicy,
     List<String>? homeTableOrder,
     List<String>? calendarVisibleTableIds,
-  }) => AppSettings(
-    deviceId: deviceId ?? this.deviceId,
-    themeMode: themeMode ?? this.themeMode,
-    modelBaseUrl: modelBaseUrl ?? this.modelBaseUrl,
-    modelName: modelName ?? this.modelName,
-    hasModelKey: hasModelKey ?? this.hasModelKey,
-    showCompletedTodos: showCompletedTodos ?? this.showCompletedTodos,
-    calendarMonthDetailed: calendarMonthDetailed ?? this.calendarMonthDetailed,
-    allowImageEgress: allowImageEgress ?? this.allowImageEgress,
-    schemaVersion: schemaVersion ?? this.schemaVersion,
-    modelKeySlotId: modelKeySlotId ?? this.modelKeySlotId,
-    capabilityOverrides: capabilityOverrides ?? this.capabilityOverrides,
-    responseHeaderTimeoutSeconds:
-        responseHeaderTimeoutSeconds ?? this.responseHeaderTimeoutSeconds,
-    streamIdleTimeoutSeconds:
-        streamIdleTimeoutSeconds ?? this.streamIdleTimeoutSeconds,
-    totalTimeoutSeconds: totalTimeoutSeconds ?? this.totalTimeoutSeconds,
-    contextMessageLimit: contextMessageLimit ?? this.contextMessageLimit,
-    imageMessageLimit: imageMessageLimit ?? this.imageMessageLimit,
-    imageLimit: imageLimit ?? this.imageLimit,
-    defaultAiPermissions: defaultAiPermissions ?? this.defaultAiPermissions,
-    homeTableOrder: homeTableOrder ?? this.homeTableOrder,
-    calendarVisibleTableIds:
-        calendarVisibleTableIds ?? this.calendarVisibleTableIds,
+  }) {
+    final policyWasProvided = !identical(
+      defaultAiPolicy,
+      _unchangedDefaultAiPolicy,
+    );
+    final nextPolicy = policyWasProvided
+        ? defaultAiPolicy as AiPolicy?
+        : (defaultAiPermissions == null ? this.defaultAiPolicy : null);
+    final nextPermissions =
+        defaultAiPermissions ??
+        (policyWasProvided && nextPolicy != null
+            ? aiPermissionsForPolicy(nextPolicy)
+            : this.defaultAiPermissions);
+    return AppSettings(
+      deviceId: deviceId ?? this.deviceId,
+      themeMode: themeMode ?? this.themeMode,
+      modelBaseUrl: modelBaseUrl ?? this.modelBaseUrl,
+      modelName: modelName ?? this.modelName,
+      hasModelKey: hasModelKey ?? this.hasModelKey,
+      showCompletedTodos: showCompletedTodos ?? this.showCompletedTodos,
+      calendarMonthDetailed:
+          calendarMonthDetailed ?? this.calendarMonthDetailed,
+      allowImageEgress: allowImageEgress ?? this.allowImageEgress,
+      schemaVersion: schemaVersion ?? this.schemaVersion,
+      modelKeySlotId: modelKeySlotId ?? this.modelKeySlotId,
+      capabilityOverrides: capabilityOverrides ?? this.capabilityOverrides,
+      responseHeaderTimeoutSeconds:
+          responseHeaderTimeoutSeconds ?? this.responseHeaderTimeoutSeconds,
+      streamIdleTimeoutSeconds:
+          streamIdleTimeoutSeconds ?? this.streamIdleTimeoutSeconds,
+      totalTimeoutSeconds: totalTimeoutSeconds ?? this.totalTimeoutSeconds,
+      contextMessageLimit: contextMessageLimit ?? this.contextMessageLimit,
+      imageMessageLimit: imageMessageLimit ?? this.imageMessageLimit,
+      imageLimit: imageLimit ?? this.imageLimit,
+      defaultAiPermissions: nextPermissions,
+      defaultAiPolicy: nextPolicy,
+      homeTableOrder: homeTableOrder ?? this.homeTableOrder,
+      calendarVisibleTableIds:
+          calendarVisibleTableIds ?? this.calendarVisibleTableIds,
+    );
+  }
+
+  /// Migrates legacy booleans without adding capabilities.
+  static AiPolicy aiPolicyForLegacyPermissions(AiPermissions permissions) {
+    if (permissions == const AiPermissions()) {
+      return AiPolicy.forPreset(AiPolicyPreset.standard);
+    }
+    return AiPolicy.fromLegacyPermissions(permissions);
+  }
+
+  /// Conservative projection used only by legacy settings consumers.
+  static AiPermissions aiPermissionsForPolicy(AiPolicy policy) => AiPermissions(
+    read: _legacyPermissionGroupEnabled(const {
+      AiPermissionAction.tableRead,
+      AiPermissionAction.contentRead,
+      AiPermissionAction.globalKnowledgeRead,
+      AiPermissionAction.globalKnowledgeSearch,
+      AiPermissionAction.conversationHistorySearch,
+      AiPermissionAction.conversationHistoryRead,
+    }, policy),
+    create: _legacyPermissionGroupEnabled(const {
+      AiPermissionAction.contentCreate,
+      AiPermissionAction.tableCreate,
+      AiPermissionAction.globalKnowledgeCreate,
+    }, policy),
+    modifyDelete: _legacyPermissionGroupEnabled(const {
+      AiPermissionAction.contentUpdate,
+      AiPermissionAction.contentDelete,
+      AiPermissionAction.contentMove,
+      AiPermissionAction.tableBodyUpdate,
+      AiPermissionAction.tableUpdate,
+      AiPermissionAction.tableDelete,
+      AiPermissionAction.fieldAdjust,
+      AiPermissionAction.inboxTargetAdjust,
+      AiPermissionAction.restore,
+      AiPermissionAction.globalKnowledgeUpdate,
+      AiPermissionAction.globalKnowledgeDelete,
+    }, policy),
+  );
+
+  static bool _legacyPermissionGroupEnabled(
+    Set<AiPermissionAction> actions,
+    AiPolicy policy,
+  ) => actions.every(
+    (action) => policy.decisionFor(action) != AiPolicyDecision.deny,
   );
 }
+
+const _unchangedDefaultAiPolicy = Object();
 
 class ModelCapabilityOverrides {
   const ModelCapabilityOverrides({
@@ -371,6 +403,25 @@ enum GlobalKnowledgeCandidateStatus {
   failed,
 }
 
+enum GlobalKnowledgeAuthorizationSource {
+  none('none'),
+  policy('policy'),
+  human('human'),
+  legacyUnknown('legacy_unknown');
+
+  const GlobalKnowledgeAuthorizationSource(this.wireName);
+
+  final String wireName;
+
+  static GlobalKnowledgeAuthorizationSource parse(String value) =>
+      GlobalKnowledgeAuthorizationSource.values.firstWhere(
+        (source) => source.wireName == value,
+        orElse: () => throw FormatException(
+          '未知全局知识授权来源：$value',
+        ),
+      );
+}
+
 /// One exact, local proposal for a global knowledge change.
 /// [digest] binds approval to its operation, target version and payload.
 class GlobalKnowledgeCandidate {
@@ -382,6 +433,7 @@ class GlobalKnowledgeCandidate {
     required this.digest,
     required this.createdAt,
     required this.updatedAt,
+    this.authorizationSource = GlobalKnowledgeAuthorizationSource.legacyUnknown,
     this.targetId,
     this.expectedRevision,
     this.expectedHash,
@@ -394,6 +446,7 @@ class GlobalKnowledgeCandidate {
   final String id;
   final GlobalKnowledgeOperation operation;
   final GlobalKnowledgeCandidateStatus status;
+  final GlobalKnowledgeAuthorizationSource authorizationSource;
   final Map<String, Object?> proposal;
   final String digest;
   final String? targetId;
@@ -408,6 +461,7 @@ class GlobalKnowledgeCandidate {
 
   GlobalKnowledgeCandidate copyWith({
     GlobalKnowledgeCandidateStatus? status,
+    GlobalKnowledgeAuthorizationSource? authorizationSource,
     Object? resultId = _unsetGlobalKnowledge,
     Object? error = _unsetGlobalKnowledge,
     DateTime? updatedAt,
@@ -415,6 +469,7 @@ class GlobalKnowledgeCandidate {
     id: id,
     operation: operation,
     status: status ?? this.status,
+    authorizationSource: authorizationSource ?? this.authorizationSource,
     proposal: proposal,
     digest: digest,
     targetId: targetId,

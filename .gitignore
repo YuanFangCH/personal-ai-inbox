@@ -35,6 +35,7 @@ coverage/
 vault/
 app/build/
 app/.dart_tool/
+app/android/.kotlin/
 /test-results/
 /tests/agent-temp/
 

@@ -1,3 +1,9 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
+
+import '../core/ai_policy.dart';
 import '../core/deterministic_parser.dart';
 import '../data/attachment_store.dart';
 import '../data/attachment_store_factory.dart';
@@ -21,7 +27,12 @@ import '../data/vault_store.dart';
 import '../data/vault_store_factory.dart';
 import '../modules/capture/capture_workflow.dart';
 import '../modules/conversation/conversation_workspace.dart';
+import '../modules/conversation/agent_background_control.dart';
+import '../modules/conversation/agent_task_store.dart';
 import '../modules/conversation/auto_record_processor.dart';
+import '../modules/conversation/content_duplicate_policy.dart';
+import '../modules/conversation/content_intake.dart';
+import '../modules/conversation/model_duplicate_decision_source.dart';
 import '../modules/conversation/table_action_processor.dart';
 import '../modules/results/result_library.dart';
 import '../modules/tables/table_library.dart';
@@ -32,6 +43,7 @@ import '../services/capture_service.dart';
 import '../services/chat_service.dart';
 import '../services/image_input_service.dart';
 import '../services/file_input_service.dart';
+import '../services/agent_background_service.dart';
 import '../services/voice_service.dart';
 import '../services/model_client.dart';
 
@@ -51,12 +63,20 @@ final class AppRuntime {
     SyncProvider? syncProvider,
     FileInputService? fileInputService,
     VoiceService? voiceService,
+    AgentTaskStore? agentTaskStore,
+    AgentBackgroundControl? agentBackground,
+    Duration Function()? activeBudgetElapsedDuration,
   }) async {
     final vault = vaultOverride ?? await createPlatformVaultStore();
     final supportPath = vaultOverride == null
         ? await appSupportPath()
         : 'memory';
     final settingsService = settingsOverride ?? SettingsService();
+    final taskStore =
+        agentTaskStore ??
+        (vaultOverride != null
+            ? MemoryAgentTaskStore()
+            : VaultAgentTaskStore(vault));
     final migration =
         migrationCoordinatorOverride ??
         (vaultOverride != null
@@ -64,9 +84,16 @@ final class AppRuntime {
             : await createMigrationCoordinator(
                 supportPath: supportPath,
                 settings: settingsService,
+                additionalFilePaths: [
+                  p.join(
+                    await vault.describeRoot(),
+                    AgentTaskCheckpoint.storagePath,
+                  ),
+                ],
               ));
     try {
       await migration?.prepare();
+      await taskStore.preflight();
     } catch (_) {
       await migration?.rollback();
       rethrow;
@@ -123,14 +150,9 @@ final class AppRuntime {
         service: tableMigrationService,
         onMigrationComplete: () => runtime!._initializeModules(),
       );
-      final chatService = ChatService(
-        settings: settingsService,
-        repository: chatRepository,
-        results: results,
-        tables: tables,
-        modelClient: modelClient,
-      );
-      final capture = CaptureWorkflow(
+      final captureSemanticRuntime = _CaptureSemanticRuntime();
+      late final CaptureWorkflow capture;
+      capture = CaptureWorkflow(
         repository: repository,
         results: results,
         tables: tables,
@@ -140,23 +162,132 @@ final class AppRuntime {
           parser: const DeterministicParser(),
           modelClient: modelClient,
         ),
+        duplicateDecisionSourceFactory: (context) {
+          final source = ModelSemanticDuplicateDecisionSource.fromSettings(
+            settings: settingsService,
+            modelClient: modelClient,
+            canReadCandidates: context.canReadCandidates,
+            canModifyExisting: context.canModifyExisting,
+            reserveModelRequest: (_) =>
+                captureSemanticRuntime.reserve(context.scopeId),
+            cancellation: () =>
+                captureSemanticRuntime.cancellationFor(context.scopeId),
+          );
+          return _CaptureScopedSemanticDecisionSource(
+            source: source,
+            onFinished: () => captureSemanticRuntime.finish(context.scopeId),
+          );
+        },
+        canReadDuplicateCandidates: (request) {
+          final policy = preferences.settings.effectiveDefaultAiPolicy;
+          final tableIds = request.candidates
+              .map((candidate) => candidate.entry.tableId)
+              .toSet();
+          return Future<bool>.value(
+            policy.decisionFor(
+                  AiPermissionAction.contentRead,
+                  tableIds: tableIds,
+                ) ==
+                AiPolicyDecision.allow,
+          );
+        },
+        canModifyDuplicateCandidates: (request) {
+          final policy = preferences.settings.effectiveDefaultAiPolicy;
+          final tableIds = request.candidates
+              .map((candidate) => candidate.entry.tableId)
+              .toSet();
+          return Future<bool>.value(
+            policy.decisionFor(
+                  AiPermissionAction.contentUpdate,
+                  tableIds: tableIds,
+                ) ==
+                AiPolicyDecision.allow,
+          );
+        },
+        // The per-capture source ignores this callback and reserves its own
+        // capture-scoped budget through the factory above.
+        reserveDuplicateModelRequest: (_) async => false,
+        contentWriteAuthorization: (authorization) {
+          final policy = preferences.settings.effectiveDefaultAiPolicy;
+          final action = authorization.kind == ContentIntakeWriteKind.create
+              ? AiPermissionAction.contentCreate
+              : AiPermissionAction.contentUpdate;
+          return Future<bool>.value(
+            policy.decisionFor(action, tableIds: [authorization.tableId]) ==
+                AiPolicyDecision.allow,
+          );
+        },
       );
-      final conversations = ConversationWorkspace(
+      late final ConversationWorkspace conversations;
+      final autoRecordProcessor = AutoRecordProcessor(
+        chatRepository: chatRepository,
+        results: results,
+        captures: capture,
+        deviceId: () => repository.deviceId,
+      );
+      final semanticDuplicateDecisionSource =
+          ModelSemanticDuplicateDecisionSource.fromSettings(
+            settings: settingsService,
+            modelClient: modelClient,
+            canReadCandidates: (request) async {
+              final policy = await conversations.currentRunningPolicy();
+              final tableIds = request.candidates
+                  .map((candidate) => candidate.entry.tableId)
+                  .toSet();
+              return policy?.decisionFor(
+                    AiPermissionAction.contentRead,
+                    tableIds: tableIds,
+                  ) ==
+                  AiPolicyDecision.allow;
+            },
+            canModifyExisting: (request) async {
+              final policy = await conversations.currentRunningPolicy();
+              final tableIds = request.candidates
+                  .map((candidate) => candidate.entry.tableId)
+                  .toSet();
+              return policy?.decisionFor(
+                    AiPermissionAction.contentUpdate,
+                    tableIds: tableIds,
+                  ) ==
+                  AiPolicyDecision.allow;
+            },
+            reserveModelRequest: (_) =>
+                conversations.reserveAuxiliaryModelRequest(),
+            remainingActiveDuration: () =>
+                conversations.activeTaskRemainingDuration,
+            cancellation: () => conversations.activeCancellationFuture(),
+          );
+      final tableActionProcessor = TableActionProcessor(
+        chatRepository: chatRepository,
+        tables: tables,
+        semanticDuplicateDecisionSource: semanticDuplicateDecisionSource,
+        policyResolver: (conversation) => conversation.effectiveAiPolicy,
+      );
+      final chatService = ChatService(
+        settings: settingsService,
+        repository: chatRepository,
+        results: results,
+        tables: tables,
+        modelClient: modelClient,
+        writeToolExecutor: (call) => conversations.executeWriteTool(call),
+      );
+      final backgroundAgent =
+          agentBackground ??
+          (vaultOverride != null
+              ? DisabledAgentBackgroundControl()
+              : _defaultAgentBackground());
+      conversations = ConversationWorkspace(
         repository: chatRepository,
         results: results,
         chatService: chatService,
-        autoRecordProcessor: AutoRecordProcessor(
-          chatRepository: chatRepository,
-          results: results,
-          captures: capture,
-          deviceId: () => repository.deviceId,
-        ),
-        tableActionProcessor: TableActionProcessor(
-          chatRepository: chatRepository,
-          tables: tables,
-        ),
+        autoRecordProcessor: autoRecordProcessor,
+        tableActionProcessor: tableActionProcessor,
         defaultPermissions: () => preferences.settings.defaultAiPermissions,
+        defaultPolicy: () => preferences.settings.effectiveDefaultAiPolicy,
+        taskStore: taskStore,
+        backgroundAgent: backgroundAgent,
         imageInputService: ImageInputService(),
+        activeBudgetElapsedDuration: activeBudgetElapsedDuration,
       );
       final sync = SyncWorkspace(
         engine: syncEngine,
@@ -171,10 +302,12 @@ final class AppRuntime {
         initializeConversationStore: chatRepository.initialize,
         capture: capture,
         conversations: conversations,
+        backgroundAgent: backgroundAgent,
         sync: sync,
         fileInputService: fileInputService ?? const FileInputService(),
         voiceService: voiceService ?? SystemVoiceService(),
         closeAdapters: () async {
+          captureSemanticRuntime.cancelAll();
           await chatRepository!.close();
           await index!.close();
         },
@@ -202,12 +335,14 @@ final class AppRuntime {
     this.initializeConversationStore,
     required this.capture,
     required this.conversations,
+    AgentBackgroundControl? backgroundAgent,
     required this.sync,
     this.fileInputService = const FileInputService(),
     VoiceService? voiceService,
     this.closeAdapters,
   }) : migrationGate = migrationGate ?? TableMigrationGate.disabled(),
-       voiceService = voiceService ?? SystemVoiceService();
+       voiceService = voiceService ?? SystemVoiceService(),
+       backgroundAgent = backgroundAgent ?? _defaultAgentBackground();
 
   final DevicePreferences preferences;
   final ResultLibrary results;
@@ -216,6 +351,7 @@ final class AppRuntime {
   final Future<void> Function()? initializeConversationStore;
   final CaptureWorkflow capture;
   final ConversationWorkspace conversations;
+  final AgentBackgroundControl backgroundAgent;
   final SyncWorkspace sync;
   final FileInputService fileInputService;
   final VoiceService voiceService;
@@ -223,6 +359,9 @@ final class AppRuntime {
   bool _disposed = false;
   bool _modulesInitialized = false;
   Future<void>? _shutdownFuture;
+  String? _shutdownError;
+
+  String? get shutdownError => _shutdownError;
 
   Future<void> initialize() async {
     await preferences.initialize();
@@ -279,15 +418,86 @@ final class AppRuntime {
   Future<void> shutdown() => _shutdownFuture ??= _shutdown();
 
   Future<void> _shutdown() async {
-    try {
-      await conversations.shutdown();
-      await voiceService.close();
-      await sync.shutdown();
-      await results.shutdown();
-      await preferences.shutdown();
-    } finally {
-      dispose();
-      await closeAdapters?.call();
+    final errors = <Object>[];
+    Future<void> collect(Future<void> Function() operation) async {
+      try {
+        await operation();
+      } catch (error) {
+        errors.add(error);
+      }
     }
+
+    await collect(conversations.shutdown);
+    final workspaceError = conversations.shutdownError;
+    if (workspaceError != null) errors.add(workspaceError);
+    await collect(voiceService.close);
+    await collect(sync.shutdown);
+    await collect(results.shutdown);
+    await collect(preferences.shutdown);
+    dispose();
+    final close = closeAdapters;
+    if (close != null) {
+      await collect(close);
+    }
+    if (errors.isNotEmpty) {
+      _shutdownError = errors.map((error) => error.toString()).join('\n');
+      debugPrint('AppRuntime shutdown completed with errors:\n$_shutdownError');
+    }
+  }
+}
+
+AgentBackgroundControl _defaultAgentBackground() {
+  if (const bool.fromEnvironment('FLUTTER_TEST') ||
+      BindingBase.debugBindingType() == null ||
+      defaultTargetPlatform != TargetPlatform.android) {
+    return DisabledAgentBackgroundControl();
+  }
+  return ServiceAgentBackgroundControl(AgentBackgroundService.instance);
+}
+
+class _CaptureScopedSemanticDecisionSource
+    implements SemanticDuplicateDecisionSource {
+  _CaptureScopedSemanticDecisionSource({
+    required this.source,
+    required this.onFinished,
+  });
+
+  final SemanticDuplicateDecisionSource source;
+  final void Function() onFinished;
+
+  @override
+  Future<SemanticDuplicateDecision> decide(
+    SemanticDuplicateRequest request,
+  ) async {
+    try {
+      return await source.decide(request);
+    } finally {
+      onFinished();
+    }
+  }
+}
+
+class _CaptureSemanticRuntime {
+  final Set<String> _reservedScopes = {};
+  final Map<String, Completer<void>> _cancellations = {};
+
+  Future<bool> reserve(String scopeId) async {
+    return _reservedScopes.add(scopeId);
+  }
+
+  Future<void> cancellationFor(String scopeId) =>
+      _cancellations.putIfAbsent(scopeId, Completer<void>.new).future;
+
+  void finish(String scopeId) {
+    _reservedScopes.remove(scopeId);
+    _cancellations.remove(scopeId);
+  }
+
+  void cancelAll() {
+    for (final cancellation in _cancellations.values) {
+      if (!cancellation.isCompleted) cancellation.complete();
+    }
+    _cancellations.clear();
+    _reservedScopes.clear();
   }
 }

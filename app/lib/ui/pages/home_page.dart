@@ -291,9 +291,29 @@ class _TodoSection extends StatelessWidget {
               FilledButton.tonalIcon(
                 onPressed: () {
                   final library = AppScope.tables(context);
-                  final table = library.tables.firstWhere(
-                    (candidate) => candidate.role == TableRole.inboxTodo,
+                  final table = library.tableForInboxAssignment(
+                    InboxAssignmentKind.todo,
                   );
+                  if (table == null) {
+                    Navigator.of(context).push<void>(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const Scaffold(
+                          body: SafeArea(
+                            child: Column(
+                              children: [
+                                Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Text('请先选择待办收纳目标，或在表中直接新建。'),
+                                ),
+                                Expanded(child: TablesPage()),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                    return;
+                  }
                   Navigator.of(context).push<void>(
                     MaterialPageRoute<void>(
                       builder: (_) => TableEntryEditorPage(

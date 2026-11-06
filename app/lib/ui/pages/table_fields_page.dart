@@ -18,6 +18,7 @@ class TableFieldsPage extends StatelessWidget {
       animation: library,
       builder: (context, _) {
         final table = library.findTable(tableId);
+        final readOnly = library.inboxAssignmentNeedsReview;
         if (table == null) {
           return Scaffold(
             appBar: AppBar(title: const Text('管理字段')),
@@ -35,7 +36,9 @@ class TableFieldsPage extends StatelessWidget {
               IconButton(
                 key: const Key('add_table_field'),
                 tooltip: '新增字段',
-                onPressed: () => _addField(context, library, table),
+                onPressed: readOnly
+                    ? null
+                    : () => _addField(context, library, table),
                 icon: const Icon(Icons.add),
               ),
             ],
@@ -43,11 +46,23 @@ class TableFieldsPage extends StatelessWidget {
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              if (readOnly) ...[
+                const MaterialBanner(
+                  content: Text('收纳映射状态待核对。字段与恢复操作已暂停。'),
+                  leading: Icon(Icons.warning_amber_rounded),
+                  actions: [SizedBox.shrink()],
+                ),
+                const SizedBox(height: 12),
+              ],
               const Text(
                 '字段定义属于表结构，每条内容可单独填写字段值。字段类型暂不支持直接转换；删除字段和值会保留 30 天，可在本页撤销。',
               ),
               const SizedBox(height: 12),
-              _FieldRecoverySection(tableId: table.id, library: library),
+              _FieldRecoverySection(
+                tableId: table.id,
+                library: library,
+                readOnly: readOnly,
+              ),
               const SizedBox(height: 16),
               if (table.fields.isEmpty)
                 EmptyState(
@@ -55,7 +70,9 @@ class TableFieldsPage extends StatelessWidget {
                   title: '还没有自定义字段',
                   message: '例如课程、章节、提交方式等信息可以定义成字段。',
                   action: FilledButton.icon(
-                    onPressed: () => _addField(context, library, table),
+                    onPressed: readOnly
+                        ? null
+                        : () => _addField(context, library, table),
                     icon: const Icon(Icons.add),
                     label: const Text('新增字段'),
                   ),
@@ -68,6 +85,7 @@ class TableFieldsPage extends StatelessWidget {
                       title: Text(field.name),
                       subtitle: Text(_fieldDescription(field)),
                       trailing: PopupMenuButton<String>(
+                        enabled: !readOnly,
                         onSelected: (action) {
                           if (action == 'rename') {
                             _renameField(context, library, table, field);
@@ -269,10 +287,15 @@ class TableFieldsPage extends StatelessWidget {
 }
 
 class _FieldRecoverySection extends StatelessWidget {
-  const _FieldRecoverySection({required this.tableId, required this.library});
+  const _FieldRecoverySection({
+    required this.tableId,
+    required this.library,
+    required this.readOnly,
+  });
 
   final String tableId;
   final TableLibrary library;
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context) => FutureBuilder(
@@ -291,18 +314,20 @@ class _FieldRecoverySection extends StatelessWidget {
                   '字段定义与原有字段值保留至 ${batch.expiresAt.month}月${batch.expiresAt.day}日',
                 ),
                 trailing: TextButton(
-                  onPressed: () async {
-                    try {
-                      await library.restoreRecoveryBatch(batch.id);
-                    } on Object catch (error) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('字段恢复失败：$error')),
-                        );
-                      }
-                    }
-                  },
-                  child: const Text('撤销'),
+                  onPressed: readOnly
+                      ? null
+                      : () async {
+                          try {
+                            await library.restoreRecoveryBatch(batch.id);
+                          } on Object catch (error) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('字段恢复失败：$error')),
+                              );
+                            }
+                          }
+                        },
+                  child: Text(readOnly ? '核对后可撤销' : '撤销'),
                 ),
               ),
           ],

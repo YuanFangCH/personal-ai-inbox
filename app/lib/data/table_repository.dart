@@ -9,6 +9,118 @@ import '../core/table_models.dart';
 import 'index_database.dart';
 import 'vault_store.dart';
 
+enum InboxAssignmentKind {
+  todo('todo'),
+  schedule('schedule'),
+  event('event');
+
+  const InboxAssignmentKind(this.wireName);
+
+  final String wireName;
+
+  static InboxAssignmentKind? forContentType(TableContentType type) =>
+      switch (type) {
+        TableContentType.todo => InboxAssignmentKind.todo,
+        TableContentType.schedule => InboxAssignmentKind.schedule,
+        TableContentType.event ||
+        TableContentType.note => InboxAssignmentKind.event,
+      };
+
+  static InboxAssignmentKind parse(String value) =>
+      InboxAssignmentKind.values.firstWhere(
+        (kind) => kind.wireName == value,
+        orElse: () => throw FormatException('未知收纳目标类型：$value'),
+      );
+}
+
+class InboxAssignments {
+  InboxAssignments(
+    Map<InboxAssignmentKind, String?> targets, {
+    this.revision = 0,
+  }) : _targets = Map.unmodifiable({
+         for (final kind in InboxAssignmentKind.values) kind: targets[kind],
+       });
+
+  const InboxAssignments.empty() : _targets = const {}, revision = 0;
+
+  final Map<InboxAssignmentKind, String?> _targets;
+  final int revision;
+
+  String? targetFor(InboxAssignmentKind kind) => _targets[kind];
+
+  Map<InboxAssignmentKind, String?> get targets => _targets;
+
+  InboxAssignments withTargets(
+    Map<InboxAssignmentKind, String?> updates, {
+    int? revision,
+  }) => InboxAssignments({
+    ..._targets,
+    ...updates,
+  }, revision: revision ?? this.revision);
+
+  Map<String, Object?> toJson() => {
+    for (final kind in InboxAssignmentKind.values)
+      kind.wireName: _targets[kind],
+  };
+
+  factory InboxAssignments.fromJson(Object? value, {int revision = 0}) {
+    if (value is! Map) {
+      throw const FormatException('收纳目标字段格式无效。');
+    }
+    final targets = <InboxAssignmentKind, String?>{};
+    for (final kind in InboxAssignmentKind.values) {
+      final raw = value[kind.wireName];
+      if (raw != null && raw is! String) {
+        throw FormatException('收纳目标 ${kind.wireName} 格式无效。');
+      }
+      if (raw is String && raw.trim().isEmpty) {
+        throw FormatException('收纳目标 ${kind.wireName} 不能为空字符串。');
+      }
+      targets[kind] = raw as String?;
+    }
+    return InboxAssignments(targets, revision: revision);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! InboxAssignments) return false;
+    return InboxAssignmentKind.values.every(
+          (kind) => _targets[kind] == other._targets[kind],
+        ) &&
+        revision == other.revision;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+    for (final kind in InboxAssignmentKind.values) _targets[kind],
+    revision,
+  ]);
+}
+
+class InboxAssignmentOperationReceipt {
+  const InboxAssignmentOperationReceipt({
+    required this.operationId,
+    required this.kind,
+    required this.previousTableId,
+    required this.tableId,
+    required this.previousRevision,
+    required this.revision,
+    required this.assignments,
+  });
+
+  final String operationId;
+  final InboxAssignmentKind kind;
+  final String? previousTableId;
+  final String? tableId;
+  final int previousRevision;
+  final int revision;
+  final InboxAssignments assignments;
+}
+
+class InboxAssignmentAuthorizationDeferred implements Exception {
+  const InboxAssignmentAuthorizationDeferred();
+}
+
 /// Markdown is authoritative; this repository owns the table paths and their
 /// rebuildable SQLite projection.
 class TableRepository {
@@ -29,6 +141,114 @@ class TableRepository {
     ('tb_default_event', TableRole.inboxEvent, '事件'),
   ];
 
+  static const inboxAssignmentsPath = 'vault/.local/inbox-assignments.json';
+  static const inboxAssignmentsSchemaVersion = 2;
+  static const writeJournalPath = 'vault/.local/table-write-journal.json';
+
+  static String intakeOperationPath(String operationId) =>
+      'vault/.local/intake-operations/${sha256.convert(utf8.encode(operationId))}.json';
+
+  Future<Map<String, Object?>?> readIntakeOperation(
+    String operationId,
+    String requestSignature,
+  ) => _vault.exclusive(() async {
+    await _recoverTableWriteUnlocked();
+    await _ensureNoPendingInboxOperationUnlocked();
+    final path = intakeOperationPath(operationId);
+    final source = await _vault.read(path);
+    if (source == null) return null;
+    final record = Map<String, Object?>.from(jsonDecode(source) as Map);
+    if (record['schema_version'] != 1 ||
+        record['operation_id'] != operationId ||
+        record['request_signature'] != requestSignature) {
+      throw StateError('接收操作身份或请求不匹配，已保留恢复材料。');
+    }
+    if (record['phase'] == 'prepared') {
+      final entry = _codec.decodeEntry(record['entry'] as String);
+      final current = await _vault.read(entryPath(entry.id));
+      if (current == record['before']) return null;
+      if (current != record['entry']) {
+        throw StateError('接收操作状态不确定，须核对后继续。');
+      }
+      await _index.upsertTableEntry(_indexEntry(entry, current!));
+      record['phase'] = 'committed';
+      await _vault.write(path, jsonEncode(record));
+    }
+    if (record['phase'] != 'committed') throw StateError('接收操作阶段无效。');
+    return record;
+  });
+
+  Future<void> saveIntakeReceipt(Map<String, Object?> record) =>
+      _vault.exclusive(() async {
+        await _recoverTableWriteUnlocked();
+        await _ensureNoPendingInboxOperationUnlocked();
+        await _vault.write(
+          intakeOperationPath(record['operation_id'] as String),
+          jsonEncode({...record, 'schema_version': 1, 'phase': 'committed'}),
+        );
+      });
+
+  Future<TableEntryDocument> commitIntakeEntry({
+    required TableEntryDocument entry,
+    required Map<String, Object?> receipt,
+    required String expectedSnapshotSignature,
+    required int expectedTableRevision,
+    int? expectedRevision,
+    Future<bool?> Function()? authorizationGuard,
+  }) => _vault.exclusive(() async {
+    _validateId(entry.id);
+    _validateId(entry.tableId);
+    await _recoverTableWriteUnlocked();
+    await _ensureNoPendingInboxOperationUnlocked();
+    final currentSnapshot = await _contentSnapshotUnlocked();
+    if (currentSnapshot.signature != expectedSnapshotSignature) {
+      throw const IntakeSnapshotConflict();
+    }
+    final previous = await _vault.read(entryPath(entry.id));
+    if (expectedRevision == null) {
+      if (previous != null) throw StateError('内容 ID 已存在：${entry.id}');
+    } else {
+      if (previous == null) throw StateError('内容不存在：${entry.id}');
+      _checkRevision(_codec.decodeEntry(previous).revision, expectedRevision);
+    }
+    await _requireWritableTableUnlocked(entry.tableId);
+    final table = (await _readTableUnlocked(entry.tableId))!;
+    _checkRevision(table.revision, expectedTableRevision);
+    final updated = expectedRevision == null
+        ? entry
+        : entry.copyWith(
+            revision: expectedRevision + 1,
+            updatedAt: DateTime.now(),
+          );
+    final encoded = _codec.encodeEntry(updated, fields: table.fields);
+    if (authorizationGuard != null) {
+      bool? authorized;
+      try {
+        authorized = await authorizationGuard();
+      } on IntakeWriteAuthorizationDenied {
+        rethrow;
+      } on Object {
+        throw const IntakeWriteAuthorizationDenied('写入前无法确认授权，操作未执行。');
+      }
+      if (authorized != true) {
+        throw const IntakeWriteAuthorizationDenied('写入前授权已失效，操作未执行。');
+      }
+    }
+    final record = <String, Object?>{
+      ...receipt,
+      'schema_version': 1,
+      'phase': 'prepared',
+      'before': previous,
+      'entry': encoded,
+      'new_revision': updated.revision,
+    };
+    final path = intakeOperationPath(receipt['operation_id'] as String);
+    await _vault.write(path, jsonEncode(record));
+    await _writeAndIndexEntry(updated, encoded, previous: previous);
+    record['phase'] = 'committed';
+    await _vault.write(path, jsonEncode(record));
+    return updated;
+  });
   static const _uuid = Uuid();
   static const entryUndoWindow = Duration(minutes: 10);
   static const tableRecoveryWindow = Duration(days: 30);
@@ -37,41 +257,261 @@ class TableRepository {
   final TableMarkdownCodec _codec;
   final DateTime Function() _clock;
   final String deviceId;
+  bool _inboxAssignmentNeedsReview = false;
+
+  bool get inboxAssignmentNeedsReview => _inboxAssignmentNeedsReview;
 
   Future<void> initialize() async {
     await _vault.initialize();
+    await _vault.exclusive(_recoverTableWriteUnlocked);
+    final inboxOperationPending = await _vault.exclusive(
+      () async => await _readPendingInboxOperationUnlocked() != null,
+    );
+    if (_inboxAssignmentNeedsReview || inboxOperationPending) {
+      await rebuildIndex();
+      return;
+    }
     await _resumeRecoveryBatches();
     await ensureDefaultTables();
     await rebuildIndex();
-    await _expireRecoveryBatches(_clock());
+    await _expireRecoveryBatches(_clock(), skipIfInboxOperationPending: true);
   }
 
   Future<void> ensureDefaultTables() async {
     await _vault.exclusive(() async {
-      for (final (id, role, title) in defaultTables) {
-        final path = tablePath(id);
-        final source = await _vault.read(path);
-        if (source == null) {
-          final now = DateTime.now();
-          final table = TableDocument(
-            id: id,
-            role: role,
-            title: title,
-            revision: 1,
-            createdAt: now,
-            updatedAt: now,
-            body: '',
-          );
-          await _writeAndIndexTable(table, previous: null);
-          continue;
-        }
-        final table = _codec.decodeTable(source);
-        if (table.id != id || table.role != role || table.deleted) {
-          throw StateError('默认表角色或身份冲突：$id');
-        }
+      await _recoverTableWriteUnlocked();
+      await _ensureNoPendingInboxOperationUnlocked();
+      final metadataSource = await _vault.read(inboxAssignmentsPath);
+      if (metadataSource == null) {
+        await _seedDefaultTablesUnlocked();
+        final assignments = await _defaultInboxAssignmentsUnlocked();
+        await _writeInboxStateUnlocked(
+          _InboxState(seeded: true, assignments: assignments),
+        );
+        return;
+      }
+      _InboxState state;
+      try {
+        state = _decodeInboxState(metadataSource);
+      } on FormatException {
+        state = _InboxState(
+          seeded: true,
+          assignments: await _defaultInboxAssignmentsUnlocked(),
+        );
+        await _writeInboxStateUnlocked(state);
+        return;
+      }
+      if (!state.seeded) {
+        await _seedDefaultTablesUnlocked();
+        state = _InboxState(
+          seeded: true,
+          assignments: await _defaultInboxAssignmentsUnlocked(),
+        );
+        await _writeInboxStateUnlocked(state);
+        return;
+      }
+      final normalized = await _normalizeInboxAssignmentsUnlocked(
+        state.assignments,
+      );
+      if (normalized != state.assignments) {
+        await _writeInboxStateUnlocked(
+          _InboxState(seeded: true, assignments: normalized),
+        );
       }
     });
   }
+
+  Future<InboxAssignments> inboxAssignments() => _vault.exclusive(
+    () async => (await _readInboxStateUnlocked()).assignments,
+  );
+
+  Future<InboxAssignments> assignInboxTarget({
+    required InboxAssignmentKind kind,
+    required String? tableId,
+  }) => assignInboxTargets({kind: tableId});
+
+  Future<InboxAssignments> assignInboxTargets(
+    Map<InboxAssignmentKind, String?> updates,
+  ) => _vault.exclusive(() async {
+    await _recoverTableWriteUnlocked();
+    await _ensureNoPendingInboxOperationUnlocked();
+    final state = await _readInboxStateUnlocked();
+    for (final tableId in updates.values.whereType<String>()) {
+      _validateId(tableId);
+      final table = await _readTableUnlocked(tableId);
+      if (table == null || table.deleted) {
+        throw StateError('收纳目标表不存在或已删除。');
+      }
+    }
+    final updated = state.assignments.withTargets(
+      updates,
+      revision: state.assignments.revision + 1,
+    );
+    await _writeInboxStateUnlocked(
+      _InboxState(seeded: true, assignments: updated),
+    );
+    return updated;
+  });
+
+  Future<InboxAssignmentOperationReceipt> assignInboxTargetForOperation({
+    required String operationId,
+    required InboxAssignmentKind kind,
+    required int expectedRevision,
+    required String? expectedPreviousTableId,
+    required String? tableId,
+    Future<bool> Function()? authorizationGuard,
+  }) => _vault.exclusive(() async {
+    _validateOperationId(operationId);
+    await _recoverTableWriteUnlocked();
+    final signature = _inboxAssignmentSignature(
+      kind: kind,
+      expectedRevision: expectedRevision,
+      expectedPreviousTableId: expectedPreviousTableId,
+      tableId: tableId,
+    );
+    final pending = await _readPendingInboxOperationUnlocked();
+    if (pending != null) {
+      if (pending['operation_id'] != operationId ||
+          pending['request_signature'] != signature) {
+        throw StateError('收纳目标操作仍待恢复核对；没有覆盖当前映射。');
+      }
+      final after = pending['after'] as String;
+      final current = await _vault.read(inboxAssignmentsPath);
+      if (current == after) return _receiptFromPendingJournal(pending);
+      if (current != pending['before']) {
+        throw StateError('收纳目标操作状态不确定，已保留恢复材料。');
+      }
+      final beforeState = _decodeInboxState(current!);
+      final beforeAssignments = beforeState.assignments;
+      if (beforeAssignments.revision != expectedRevision ||
+          beforeAssignments.targetFor(kind) != expectedPreviousTableId) {
+        throw StateError('收纳目标操作版本不匹配，已保留恢复材料。');
+      }
+      await _validateInboxTargetUnlocked(expectedPreviousTableId);
+      await _validateInboxTargetUnlocked(tableId);
+      if (authorizationGuard != null && !await authorizationGuard()) {
+        throw const InboxAssignmentAuthorizationDeferred();
+      }
+      await _vault.write(inboxAssignmentsPath, after);
+      return _receiptFromPendingJournal(pending);
+    }
+
+    final state = await _readInboxStateUnlocked();
+    final assignments = state.assignments;
+    if (assignments.revision != expectedRevision ||
+        assignments.targetFor(kind) != expectedPreviousTableId) {
+      throw StateError('收纳目标已变化；请重新读取后再调整。');
+    }
+    await _validateInboxTargetUnlocked(expectedPreviousTableId);
+    await _validateInboxTargetUnlocked(tableId);
+    if (authorizationGuard != null && !await authorizationGuard()) {
+      throw const InboxAssignmentAuthorizationDeferred();
+    }
+    final previousSource = await _vault.read(inboxAssignmentsPath);
+    if (previousSource == null) {
+      throw StateError('收纳映射文件缺失，无法安全提交操作。');
+    }
+    final updated = assignments.withTargets({
+      kind: tableId,
+    }, revision: assignments.revision + 1);
+    final after = _encodeInboxState(
+      _InboxState(seeded: true, assignments: updated),
+    );
+    final receiptJson = <String, Object?>{
+      'operation_id': operationId,
+      'kind': kind.wireName,
+      'previous_table_id': expectedPreviousTableId,
+      'table_id': tableId,
+      'previous_revision': expectedRevision,
+      'revision': updated.revision,
+    };
+    final journal = <String, Object?>{
+      'schema_version': 2,
+      'kind': 'inbox_assignments',
+      'operation_id': operationId,
+      'request_signature': signature,
+      'before': previousSource,
+      'after': after,
+      'receipt': receiptJson,
+    };
+    await _vault.write(writeJournalPath, jsonEncode(journal));
+    try {
+      await _vault.write(inboxAssignmentsPath, after);
+    } on Object {
+      // Keep the journal. Startup recovery or a retry with this same operation
+      // ID will classify the exact before/after state without blind replay.
+      rethrow;
+    }
+    return InboxAssignmentOperationReceipt(
+      operationId: operationId,
+      kind: kind,
+      previousTableId: expectedPreviousTableId,
+      tableId: tableId,
+      previousRevision: expectedRevision,
+      revision: updated.revision,
+      assignments: updated,
+    );
+  });
+
+  Future<InboxAssignmentOperationReceipt?> committedInboxAssignmentReceipt({
+    required String operationId,
+    required InboxAssignmentKind kind,
+    required int expectedRevision,
+    required String? expectedPreviousTableId,
+    required String? tableId,
+  }) => _vault.exclusive(() async {
+    _validateOperationId(operationId);
+    await _recoverTableWriteUnlocked();
+    final pending = await _readPendingInboxOperationUnlocked();
+    if (pending == null ||
+        pending['operation_id'] != operationId ||
+        pending['request_signature'] !=
+            _inboxAssignmentSignature(
+              kind: kind,
+              expectedRevision: expectedRevision,
+              expectedPreviousTableId: expectedPreviousTableId,
+              tableId: tableId,
+            )) {
+      return null;
+    }
+    final current = await _vault.read(inboxAssignmentsPath);
+    if (current != pending['after']) return null;
+    return _receiptFromPendingJournal(pending);
+  });
+
+  Future<String?> pendingInboxAssignmentOperationId() =>
+      _vault.exclusive(() async {
+        await _recoverTableWriteUnlocked();
+        final pending = await _readPendingInboxOperationUnlocked();
+        return pending?['operation_id'] as String?;
+      });
+
+  Future<void> acknowledgeInboxAssignmentOperation({
+    required String operationId,
+    required InboxAssignmentKind kind,
+    required int expectedRevision,
+    required String? expectedPreviousTableId,
+    required String? tableId,
+  }) => _vault.exclusive(() async {
+    await _recoverTableWriteUnlocked();
+    final pending = await _readPendingInboxOperationUnlocked();
+    if (pending == null) return;
+    if (pending['operation_id'] != operationId ||
+        pending['request_signature'] !=
+            _inboxAssignmentSignature(
+              kind: kind,
+              expectedRevision: expectedRevision,
+              expectedPreviousTableId: expectedPreviousTableId,
+              tableId: tableId,
+            )) {
+      throw StateError('收纳目标操作回执与待恢复操作不匹配。');
+    }
+    final current = await _vault.read(inboxAssignmentsPath);
+    if (current != pending['after']) {
+      throw StateError('收纳目标操作状态不确定，已保留恢复材料。');
+    }
+    await _vault.delete(writeJournalPath);
+  });
 
   Future<IndexRebuildReport> rebuildIndex() async {
     final diagnostics = <IndexRebuildDiagnostic>[];
@@ -336,6 +776,68 @@ class TableRepository {
         return entry;
       });
 
+  /// Rechecks a user-reviewed duplicate decision under the same writer lock
+  /// as the eventual Markdown/index commit.
+  Future<TableEntryDocument> saveReviewedEntry({
+    required TableEntryDocument entry,
+    required int expectedTableRevision,
+    required String? Function(List<TableEntryDocument>) selectReuse,
+    int? expectedRevision,
+  }) => _vault.exclusive(() async {
+    _validateId(entry.id);
+    _validateId(entry.tableId);
+    await _recoverTableWriteUnlocked();
+    final table = await _readTableUnlocked(entry.tableId);
+    if (table == null || table.deleted) throw StateError('目标表已变化，请重新检查。');
+    _checkRevision(table.revision, expectedTableRevision);
+    final previous = await _vault.read(entryPath(entry.id));
+    if (expectedRevision == null) {
+      if (previous != null) throw StateError('内容 ID 已存在：${entry.id}');
+    } else {
+      if (previous == null) throw StateError('编辑对象已不存在。');
+      final current = _codec.decodeEntry(previous);
+      _checkRevision(current.revision, expectedRevision);
+      if (current.deleted || current.tableId != entry.tableId) {
+        throw StateError('编辑对象已删除或移表，请重新检查。');
+      }
+    }
+    final activeTables = <String>{};
+    for (final row in await _index.listTables()) {
+      final currentTable = await _readTableUnlocked(row.id);
+      if (currentTable != null && !currentTable.deleted) {
+        activeTables.add(currentTable.id);
+      }
+    }
+    final candidates = <TableEntryDocument>[];
+    for (final row in await _index.listTableEntries()) {
+      final current = await _readEntryUnlocked(row.id);
+      if (current != null &&
+          !current.deleted &&
+          activeTables.contains(current.tableId)) {
+        candidates.add(current);
+      }
+    }
+    final reuseId = selectReuse(List.unmodifiable(candidates));
+    if (reuseId != null) {
+      final reused = candidates.singleWhere(
+        (candidate) => candidate.id == reuseId,
+      );
+      if (expectedRevision != null) {
+        throw StateError('编辑操作不能复用其他内容并丢弃原编辑对象。');
+      }
+      return reused;
+    }
+    final updated = expectedRevision == null
+        ? entry
+        : entry.copyWith(
+            revision: expectedRevision + 1,
+            updatedAt: DateTime.now(),
+          );
+    final encoded = _codec.encodeEntry(updated, fields: table.fields);
+    await _writeAndIndexEntry(updated, encoded, previous: previous);
+    return updated;
+  });
+
   Future<TableEntryDocument> updateEntry(
     TableEntryDocument proposed, {
     required int expectedRevision,
@@ -366,6 +868,8 @@ class TableRepository {
     Map<String, String> fieldMapping = const {},
     Map<String, Map<String, String>> optionMapping = const {},
   }) => _vault.exclusive(() async {
+    await _recoverTableWriteUnlocked();
+    await _ensureNoPendingInboxOperationUnlocked();
     _validateId(id);
     _validateId(tableId);
     final path = entryPath(id);
@@ -434,6 +938,8 @@ class TableRepository {
     DateTime? eventOccurredAt,
     DateTime? now,
   }) => _vault.exclusive(() async {
+    await _recoverTableWriteUnlocked();
+    await _ensureNoPendingInboxOperationUnlocked();
     _validateId(scheduleId);
     final timestamp = (now ?? _clock()).toLocal();
     final batchId = _recoveryId(idempotencyKey);
@@ -441,8 +947,11 @@ class TableRepository {
     if (prior != null) {
       final objects = _recoveryObjects(prior).toList();
       if (prior.scope != TableRecoveryScope.scheduleChange ||
+          (prior.status != TableRecoveryStatus.active &&
+              prior.status != TableRecoveryStatus.expired) ||
           objects.length != 2 ||
-          !objects.any((object) => object['id'] == scheduleId)) {
+          objects.any((object) => object['kind'] != 'entry') ||
+          objects.where((object) => object['id'] == scheduleId).length != 1) {
         throw StateError('日程修改幂等键已用于其他操作');
       }
       final schedule = await _readEntryUnlocked(scheduleId);
@@ -452,6 +961,55 @@ class TableRepository {
       final event = await _readEntryUnlocked(eventId);
       if (schedule == null || event == null) {
         throw StateError('日程修改账本对应的内容缺失：$batchId');
+      }
+      if (schedule.type != TableContentType.schedule ||
+          schedule.deleted ||
+          event.type != TableContentType.event ||
+          event.deleted ||
+          event.title != eventTitle.trim() ||
+          event.body != eventBody ||
+          event.occurredAt == null ||
+          !event.occurredAt!.isAtSameMomentAs(eventOccurredAt ?? timestamp) ||
+          !event.affects.any((change) => change.scheduleId == scheduleId)) {
+        throw StateError('改期回执对象与已保存内容不一致，请核对后继续。');
+      }
+      final priorManifest =
+          jsonDecode(prior.manifestJson) as Map<String, dynamic>;
+      final priorChange = priorManifest['schedule_change'];
+      final priorEndValue = priorChange is Map<String, dynamic>
+          ? priorChange['end']
+          : null;
+      final priorStart = priorChange is Map<String, dynamic>
+          ? DateTime.tryParse(priorChange['start'] as String? ?? '')
+          : null;
+      final priorEnd = priorEndValue is String
+          ? DateTime.tryParse(priorEndValue)
+          : null;
+      final priorOccurredAt = priorChange is Map<String, dynamic>
+          ? DateTime.tryParse(priorChange['event_occurred_at'] as String? ?? '')
+          : null;
+      final requestedOccurredAt = eventOccurredAt ?? timestamp;
+      if (priorChange is! Map<String, dynamic> ||
+          !priorChange.containsKey('end') ||
+          (priorEndValue != null &&
+              (priorEndValue is! String || priorEnd == null)) ||
+          priorChange['event_title'] is! String ||
+          priorChange['event_body'] is! String ||
+          priorStart == null ||
+          !priorStart.isAtSameMomentAs(start) ||
+          (priorEnd == null) != (end == null) ||
+          (priorEnd != null && !priorEnd.isAtSameMomentAs(end!)) ||
+          priorOccurredAt == null ||
+          !priorOccurredAt.isAtSameMomentAs(requestedOccurredAt) ||
+          priorChange['event_title'] != eventTitle.trim() ||
+          priorChange['event_body'] != eventBody) {
+        throw StateError('同一改期通知的内容或目标时间发生变化，请核对后重新处理。');
+      }
+      if (schedule.start == null ||
+          !schedule.start!.isAtSameMomentAs(start) ||
+          (schedule.end == null) != (end == null) ||
+          (schedule.end != null && !schedule.end!.isAtSameMomentAs(end!))) {
+        throw StateError('日程当前版本已偏离该改期回执，请核对后继续。');
       }
       return ScheduleChangeResult(
         batch: prior,
@@ -524,6 +1082,17 @@ class TableRepository {
           deleteTarget: false,
         ),
       ],
+      metadata: {
+        'schedule_change': {
+          'start': start.toUtc().toIso8601String(),
+          'end': end?.toUtc().toIso8601String(),
+          'event_occurred_at': (eventOccurredAt ?? timestamp)
+              .toUtc()
+              .toIso8601String(),
+          'event_title': eventTitle.trim(),
+          'event_body': eventBody,
+        },
+      },
     );
     final updated = await _readEntryUnlocked(scheduleId);
     final createdEvent = await _readEntryUnlocked(eventId);
@@ -546,6 +1115,7 @@ class TableRepository {
     required List<_RecoveryObject> objects,
     Map<String, Object?> metadata = const {},
   }) async {
+    await _ensureNoPendingInboxOperationUnlocked();
     if (await _index.findTableRecoveryBatch(id) != null) {
       throw StateError('删除批次已存在：$id');
     }
@@ -633,6 +1203,7 @@ class TableRepository {
       await _vault.write(sourcePath, desired);
       await _indexRecoveredObject(object, desired);
     }
+    await _applyInboxAssignmentsForDelete(batch);
     await _index.upsertTableRecoveryBatch(
       batch.copyWith(status: TableRecoveryStatus.active, error: null),
     );
@@ -748,6 +1319,7 @@ class TableRepository {
       await _vault.write(path, restored);
       await _indexRecoveredObject(object, restored);
     }
+    await _applyInboxAssignmentsForRestore(batch);
     final restoredBatch = batch.copyWith(
       status: TableRecoveryStatus.restored,
       error: null,
@@ -794,6 +1366,12 @@ class TableRepository {
   void _validateId(String id) {
     if (!RegExp(r'^[A-Za-z0-9_-]{1,128}$').hasMatch(id)) {
       throw ArgumentError.value(id, 'id');
+    }
+  }
+
+  void _validateOperationId(String operationId) {
+    if (!RegExp(r'^[A-Za-z0-9_-]{1,128}$').hasMatch(operationId)) {
+      throw ArgumentError.value(operationId, 'operationId');
     }
   }
 
@@ -883,6 +1461,8 @@ class TableRepository {
     String? idempotencyKey,
     DateTime? now,
   }) => _vault.exclusive(() async {
+    await _recoverTableWriteUnlocked();
+    await _ensureNoPendingInboxOperationUnlocked();
     _validateId(id);
     final currentBatchId = _recoveryId(idempotencyKey);
     final prior = await _index.findTableRecoveryBatch(currentBatchId);
@@ -969,6 +1549,8 @@ class TableRepository {
     String? idempotencyKey,
     DateTime? now,
   }) => _vault.exclusive(() async {
+    await _recoverTableWriteUnlocked();
+    await _ensureNoPendingInboxOperationUnlocked();
     _validateId(id);
     final currentBatchId = _recoveryId(idempotencyKey);
     final prior = await _index.findTableRecoveryBatch(currentBatchId);
@@ -983,9 +1565,14 @@ class TableRepository {
     if (tableSource == null) throw StateError('表不存在：$id');
     final table = _codec.decodeTable(tableSource);
     _checkRevision(table.revision, expectedRevision);
-    if (table.role != TableRole.custom) throw StateError('默认表禁止删除：$id');
     if (table.deleted) throw StateError('表已删除：$id');
     final timestamp = (now ?? _clock()).toLocal();
+    final inboxState = await _readInboxStateUnlocked();
+    final inboxTargets = <String, String>{
+      for (final kind in InboxAssignmentKind.values)
+        if (inboxState.assignments.targetFor(kind) == table.id)
+          kind.wireName: table.id,
+    };
     final objects = <_RecoveryObject>[];
     final affectedScheduleIds = <String>{};
     final deletedTable = table.copyWith(
@@ -1074,6 +1661,9 @@ class TableRepository {
       createdAt: timestamp,
       lifetime: tableRecoveryWindow,
       objects: objects,
+      metadata: {
+        if (inboxTargets.isNotEmpty) 'inbox_assignments': inboxTargets,
+      },
     );
   });
 
@@ -1140,6 +1730,8 @@ class TableRepository {
     String? idempotencyKey,
     DateTime? now,
   }) => _vault.exclusive(() async {
+    await _recoverTableWriteUnlocked();
+    await _ensureNoPendingInboxOperationUnlocked();
     _validateId(tableId);
     _validateId(fieldId);
     final operationKey =
@@ -1248,6 +1840,8 @@ class TableRepository {
 
   Future<TableRecoveryBatch> restoreRecoveryBatch(String id, {DateTime? now}) =>
       _vault.exclusive(() async {
+        await _recoverTableWriteUnlocked();
+        await _ensureNoPendingInboxOperationUnlocked();
         var batch = await _index.findTableRecoveryBatch(id);
         if (batch == null) throw StateError('恢复批次不存在：$id');
         final timestamp = (now ?? _clock()).toLocal();
@@ -1286,18 +1880,208 @@ class TableRepository {
     }
   }
 
-  Future<void> _expireRecoveryBatches(DateTime now) async {
-    final batches = await _index.listTableRecoveryBatches();
-    for (final batch in batches) {
-      if ((batch.status == TableRecoveryStatus.prepared ||
-              batch.status == TableRecoveryStatus.restoring) ||
-          now.isBefore(batch.expiresAt) ||
-          batch.status == TableRecoveryStatus.expired ||
-          batch.status == TableRecoveryStatus.failed) {
+  Future<void> _expireRecoveryBatches(
+    DateTime now, {
+    bool skipIfInboxOperationPending = false,
+  }) async {
+    await _vault.exclusive(() async {
+      await _recoverTableWriteUnlocked();
+      if (skipIfInboxOperationPending &&
+          (_inboxAssignmentNeedsReview ||
+              await _readPendingInboxOperationUnlocked() != null)) {
+        return;
+      }
+      await _ensureNoPendingInboxOperationUnlocked();
+      final batches = await _index.listTableRecoveryBatches();
+      for (final batch in batches) {
+        if ((batch.status == TableRecoveryStatus.prepared ||
+                batch.status == TableRecoveryStatus.restoring) ||
+            now.isBefore(batch.expiresAt) ||
+            batch.status == TableRecoveryStatus.expired ||
+            batch.status == TableRecoveryStatus.failed) {
+          continue;
+        }
+        await _expireBatch(batch, now);
+      }
+    });
+  }
+
+  Future<void> _seedDefaultTablesUnlocked() async {
+    for (final (id, role, title) in defaultTables) {
+      final path = tablePath(id);
+      final source = await _vault.read(path);
+      if (source == null) {
+        final now = _clock();
+        final table = TableDocument(
+          id: id,
+          role: role,
+          title: title,
+          revision: 1,
+          createdAt: now,
+          updatedAt: now,
+          body: '',
+        );
+        await _writeAndIndexTable(table, previous: null);
         continue;
       }
-      await _vault.exclusive(() => _expireBatch(batch, now));
+      final table = _codec.decodeTable(source);
+      if (table.id != id || table.role != role) {
+        throw StateError('预置表角色或身份冲突：$id');
+      }
     }
+  }
+
+  Future<InboxAssignments> _defaultInboxAssignmentsUnlocked() async {
+    final targets = <InboxAssignmentKind, String?>{};
+    for (final (id, role, _) in defaultTables) {
+      final table = await _readTableUnlocked(id);
+      if (table == null || table.deleted) continue;
+      final kind = switch (role) {
+        TableRole.inboxTodo => InboxAssignmentKind.todo,
+        TableRole.inboxSchedule => InboxAssignmentKind.schedule,
+        TableRole.inboxEvent => InboxAssignmentKind.event,
+        TableRole.custom => null,
+      };
+      if (kind != null) targets[kind] = id;
+    }
+    return InboxAssignments(targets);
+  }
+
+  Future<InboxAssignments> _normalizeInboxAssignmentsUnlocked(
+    InboxAssignments assignments,
+  ) async {
+    final updates = <InboxAssignmentKind, String?>{};
+    for (final kind in InboxAssignmentKind.values) {
+      final tableId = assignments.targetFor(kind);
+      if (tableId == null) continue;
+      final table = await _readTableUnlocked(tableId);
+      if (table == null || table.deleted) updates[kind] = null;
+    }
+    return updates.isEmpty
+        ? assignments
+        : assignments.withTargets(updates, revision: assignments.revision + 1);
+  }
+
+  Future<_InboxState> _readInboxStateUnlocked() async {
+    final source = await _vault.read(inboxAssignmentsPath);
+    if (source != null) {
+      try {
+        return _decodeInboxState(source);
+      } on FormatException {
+        // A corrupt local routing file must not prevent startup. The fallback
+        // intentionally references only tables that still exist.
+      }
+    }
+    final repaired = _InboxState(
+      seeded: true,
+      assignments: await _defaultInboxAssignmentsUnlocked(),
+    );
+    await _writeInboxStateUnlocked(repaired);
+    return repaired;
+  }
+
+  _InboxState _decodeInboxState(String source) {
+    final decoded = jsonDecode(source);
+    if (decoded is! Map ||
+        !const [
+          1,
+          inboxAssignmentsSchemaVersion,
+        ].contains(decoded['schema_version']) ||
+        decoded['seeded'] is! bool ||
+        decoded['assignments'] is! Map) {
+      throw const FormatException('收纳映射元数据格式无效。');
+    }
+    final schemaVersion = decoded['schema_version'] as int;
+    final revision = schemaVersion == 1 ? 0 : decoded['revision'];
+    if (revision is! int || revision < 0) {
+      throw const FormatException('收纳映射版本号无效。');
+    }
+    return _InboxState(
+      seeded: decoded['seeded'] as bool,
+      assignments: InboxAssignments.fromJson(
+        decoded['assignments'],
+        revision: revision,
+      ),
+    );
+  }
+
+  String _encodeInboxState(_InboxState state) => jsonEncode({
+    'schema_version': inboxAssignmentsSchemaVersion,
+    'seeded': state.seeded,
+    'revision': state.assignments.revision,
+    'assignments': state.assignments.toJson(),
+  });
+
+  Future<void> _writeInboxStateUnlocked(_InboxState state) async {
+    if (await _readPendingInboxOperationUnlocked() != null) {
+      throw StateError('收纳目标操作仍待恢复核对；没有覆盖当前映射。');
+    }
+    await _vault.write(inboxAssignmentsPath, _encodeInboxState(state));
+  }
+
+  Map<String, String>? _inboxRecoveryTargets(TableRecoveryBatch batch) {
+    final manifest = jsonDecode(batch.manifestJson);
+    if (manifest is! Map) return null;
+    final raw = manifest['inbox_assignments'];
+    if (raw is! Map) return null;
+    final targets = <String, String>{};
+    for (final kind in InboxAssignmentKind.values) {
+      final value = raw[kind.wireName];
+      if (value == null) continue;
+      if (value is! String || value != batch.tableId) {
+        throw StateError('收纳映射恢复材料损坏：${batch.id}');
+      }
+      targets[kind.wireName] = value;
+    }
+    return targets.isEmpty ? null : targets;
+  }
+
+  Future<void> _applyInboxAssignmentsForDelete(TableRecoveryBatch batch) async {
+    final recoveryTargets = _inboxRecoveryTargets(batch);
+    if (recoveryTargets == null) return;
+    final state = await _readInboxStateUnlocked();
+    final updates = <InboxAssignmentKind, String?>{};
+    for (final entry in recoveryTargets.entries) {
+      final kind = InboxAssignmentKind.parse(entry.key);
+      if (state.assignments.targetFor(kind) == entry.value) {
+        updates[kind] = null;
+      }
+    }
+    if (updates.isEmpty) return;
+    await _writeInboxStateUnlocked(
+      _InboxState(
+        seeded: true,
+        assignments: state.assignments.withTargets(
+          updates,
+          revision: state.assignments.revision + 1,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _applyInboxAssignmentsForRestore(
+    TableRecoveryBatch batch,
+  ) async {
+    final recoveryTargets = _inboxRecoveryTargets(batch);
+    if (recoveryTargets == null) return;
+    final state = await _readInboxStateUnlocked();
+    final updates = <InboxAssignmentKind, String?>{};
+    for (final entry in recoveryTargets.entries) {
+      final kind = InboxAssignmentKind.parse(entry.key);
+      if (state.assignments.targetFor(kind) == null) {
+        updates[kind] = entry.value;
+      }
+    }
+    if (updates.isEmpty) return;
+    await _writeInboxStateUnlocked(
+      _InboxState(
+        seeded: true,
+        assignments: state.assignments.withTargets(
+          updates,
+          revision: state.assignments.revision + 1,
+        ),
+      ),
+    );
   }
 
   Future<void> _requireWritableTableUnlocked(String id) async {
@@ -1311,15 +2095,33 @@ class TableRepository {
   }) async {
     final path = tablePath(table.id);
     final encoded = _codec.encodeTable(table);
-    await _vault.write(path, encoded);
+    await _recoverTableWriteUnlocked();
+    await _ensureNoPendingInboxOperationUnlocked();
+    await _vault.write(
+      writeJournalPath,
+      jsonEncode({
+        'schema_version': 1,
+        'kind': 'table',
+        'id': table.id,
+        'before': previous,
+        'after': encoded,
+      }),
+    );
     try {
+      await _vault.write(path, encoded);
       await _index.upsertTable(_indexTable(table, encoded));
+      await _vault.delete(writeJournalPath);
     } catch (_) {
       if (previous == null) {
         await _vault.delete(path);
+        await _index.removeTable(table.id);
       } else {
         await _vault.write(path, previous);
+        await _index.upsertTable(
+          _indexTable(_codec.decodeTable(previous), previous),
+        );
       }
+      await _vault.delete(writeJournalPath);
       rethrow;
     }
   }
@@ -1330,17 +2132,162 @@ class TableRepository {
     required String? previous,
   }) async {
     final path = entryPath(entry.id);
-    await _vault.write(path, encoded);
+    await _recoverTableWriteUnlocked();
+    await _ensureNoPendingInboxOperationUnlocked();
+    await _vault.write(
+      writeJournalPath,
+      jsonEncode({
+        'schema_version': 1,
+        'kind': 'entry',
+        'id': entry.id,
+        'before': previous,
+        'after': encoded,
+      }),
+    );
     try {
+      await _vault.write(path, encoded);
       await _index.upsertTableEntry(_indexEntry(entry, encoded));
+      await _vault.delete(writeJournalPath);
     } catch (_) {
       if (previous == null) {
         await _vault.delete(path);
+        await _index.removeTableEntry(entry.id);
       } else {
         await _vault.write(path, previous);
+        await _index.upsertTableEntry(
+          _indexEntry(_codec.decodeEntry(previous), previous),
+        );
       }
+      await _vault.delete(writeJournalPath);
       rethrow;
     }
+  }
+
+  Future<Map<String, Object?>?> _readPendingInboxOperationUnlocked() async {
+    final raw = await _vault.read(writeJournalPath);
+    if (raw == null) return null;
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map || decoded['kind'] != 'inbox_assignments') return null;
+    if (decoded['schema_version'] != 2 ||
+        decoded['operation_id'] is! String ||
+        decoded['request_signature'] is! String ||
+        decoded['before'] is! String ||
+        decoded['after'] is! String ||
+        decoded['receipt'] is! Map) {
+      throw StateError('收纳映射恢复日志无效，已保留恢复材料。');
+    }
+    return Map<String, Object?>.from(decoded);
+  }
+
+  Future<void> _ensureNoPendingInboxOperationUnlocked() async {
+    if (_inboxAssignmentNeedsReview) {
+      throw StateError('收纳映射状态待核对；表与内容写入已暂停。');
+    }
+    if (await _readPendingInboxOperationUnlocked() != null) {
+      throw StateError('收纳目标操作仍待恢复核对；其他写入已暂停。');
+    }
+  }
+
+  String _inboxAssignmentSignature({
+    required InboxAssignmentKind kind,
+    required int expectedRevision,
+    required String? expectedPreviousTableId,
+    required String? tableId,
+  }) => sha256
+      .convert(
+        utf8.encode(
+          jsonEncode({
+            'kind': kind.wireName,
+            'expected_revision': expectedRevision,
+            'expected_previous_table_id': expectedPreviousTableId,
+            'table_id': tableId,
+          }),
+        ),
+      )
+      .toString();
+
+  InboxAssignmentOperationReceipt _receiptFromPendingJournal(
+    Map<String, Object?> journal,
+  ) {
+    final receipt = Map<String, Object?>.from(journal['receipt'] as Map);
+    final kind = InboxAssignmentKind.parse(receipt['kind'] as String);
+    final afterState = _decodeInboxState(journal['after'] as String);
+    return InboxAssignmentOperationReceipt(
+      operationId: receipt['operation_id'] as String,
+      kind: kind,
+      previousTableId: receipt['previous_table_id'] as String?,
+      tableId: receipt['table_id'] as String?,
+      previousRevision: receipt['previous_revision'] as int,
+      revision: receipt['revision'] as int,
+      assignments: afterState.assignments,
+    );
+  }
+
+  Future<void> _validateInboxTargetUnlocked(String? tableId) async {
+    if (tableId == null) return;
+    _validateId(tableId);
+    final target = await _readTableUnlocked(tableId);
+    if (target == null || target.deleted) {
+      throw StateError('收纳目标不可用；没有修改映射。');
+    }
+  }
+
+  Future<void> _recoverTableWriteUnlocked() async {
+    final raw = await _vault.read(writeJournalPath);
+    if (raw == null) {
+      _inboxAssignmentNeedsReview = false;
+      return;
+    }
+    final journal = jsonDecode(raw);
+    if (journal is Map && journal['kind'] == 'inbox_assignments') {
+      if (journal['schema_version'] != 2 ||
+          journal['before'] is! String ||
+          journal['after'] is! String ||
+          journal['operation_id'] is! String ||
+          journal['request_signature'] is! String ||
+          journal['receipt'] is! Map) {
+        throw StateError('收纳映射恢复日志无效，已保留恢复材料。');
+      }
+      final current = await _vault.read(inboxAssignmentsPath);
+      if (current != journal['before'] && current != journal['after']) {
+        _inboxAssignmentNeedsReview = true;
+        return;
+      }
+      _inboxAssignmentNeedsReview = false;
+      // Do not apply the after image during startup. The processor must replay
+      // this exact operation under the current policy and scope first.
+      return;
+    }
+    if (journal is! Map ||
+        journal['schema_version'] != 1 ||
+        journal['id'] is! String ||
+        journal['after'] is! String ||
+        (journal['before'] != null && journal['before'] is! String) ||
+        !const ['table', 'entry'].contains(journal['kind'])) {
+      throw StateError('表写入恢复日志无效，已保留恢复材料。');
+    }
+    final id = journal['id'] as String;
+    _validateId(id);
+    final isTable = journal['kind'] == 'table';
+    final path = isTable ? tablePath(id) : entryPath(id);
+    final after = journal['after'] as String;
+    final before = journal['before'] as String?;
+    final current = await _vault.read(path);
+    if (current != before && current != after) {
+      throw StateError('表写入恢复遇到外部修改：$id，已保留恢复材料。');
+    }
+    if (isTable) {
+      final document = _codec.decodeTable(after);
+      if (document.id != id) throw StateError('表恢复日志身份不一致：$id');
+      await _vault.write(path, after);
+      await _index.upsertTable(_indexTable(document, after));
+    } else {
+      final document = _codec.decodeEntry(after);
+      if (document.id != id) throw StateError('内容恢复日志身份不一致：$id');
+      await _vault.write(path, after);
+      await _index.upsertTableEntry(_indexEntry(document, after));
+    }
+    await _vault.delete(writeJournalPath);
   }
 
   IndexedTable _indexTable(TableDocument table, String source) => IndexedTable(
@@ -1391,6 +2338,81 @@ class TableRepository {
 
   static String tablePath(String id) => 'vault/tables/$id.md';
   static String entryPath(String id) => 'vault/items/$id.md';
+
+  Future<TableContentSnapshot> contentSnapshot() =>
+      _vault.exclusive(_contentSnapshotUnlocked);
+
+  Future<void> validateContentSnapshot(String expectedSignature) =>
+      _vault.exclusive(() async {
+        final current = await _contentSnapshotUnlocked();
+        if (current.signature != expectedSignature) {
+          throw const IntakeSnapshotConflict();
+        }
+      });
+
+  Future<TableContentSnapshot> _contentSnapshotUnlocked() async {
+    final tables = <TableDocument>[];
+    final entries = <TableEntryDocument>[];
+    final activeTableIds = <String>{};
+    final fingerprintParts = <String>[];
+    final paths = await _vault.listMarkdownFiles();
+    for (final path in paths) {
+      if (!path.startsWith('vault/tables/')) continue;
+      final source = await _vault.read(path);
+      if (source == null) continue;
+      final table = _codec.decodeTable(source);
+      if (path != tablePath(table.id)) {
+        throw const FormatException('表文件路径和 ID 不一致');
+      }
+      if (table.deleted) continue;
+      tables.add(table);
+      activeTableIds.add(table.id);
+      fingerprintParts.add('table:${table.id}:${_hash(source)}');
+    }
+    for (final path in paths) {
+      if (!path.startsWith('vault/items/')) continue;
+      final source = await _vault.read(path);
+      if (source == null) continue;
+      final entry = _codec.decodeEntry(source);
+      if (path != entryPath(entry.id)) {
+        throw const FormatException('内容文件路径和 ID 不一致');
+      }
+      if (entry.deleted || !activeTableIds.contains(entry.tableId)) continue;
+      entries.add(entry);
+      fingerprintParts.add('entry:${entry.id}:${_hash(source)}');
+    }
+    fingerprintParts.sort();
+    return TableContentSnapshot(
+      tables: List.unmodifiable(tables),
+      entries: List.unmodifiable(entries),
+      signature: _hash(jsonEncode(fingerprintParts)),
+    );
+  }
+}
+
+class TableContentSnapshot {
+  const TableContentSnapshot({
+    required this.tables,
+    required this.entries,
+    required this.signature,
+  });
+
+  final List<TableDocument> tables;
+  final List<TableEntryDocument> entries;
+  final String signature;
+}
+
+class IntakeSnapshotConflict implements Exception {
+  const IntakeSnapshotConflict();
+
+  @override
+  String toString() => '准备后表或内容发生变化，请重新查重后再写入。';
+}
+
+class IntakeWriteAuthorizationDenied implements Exception {
+  const IntakeWriteAuthorizationDenied(this.reason);
+
+  final String reason;
 }
 
 class _RecoveryObject {
@@ -1411,6 +2433,13 @@ class _RecoveryObject {
   final String deleted;
   final bool deleteTarget;
   final bool existsBefore;
+}
+
+class _InboxState {
+  const _InboxState({required this.seeded, required this.assignments});
+
+  final bool seeded;
+  final InboxAssignments assignments;
 }
 
 class ScheduleChangeResult {

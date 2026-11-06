@@ -61,6 +61,7 @@ enum AutoRecordOperation { create, update, delete }
 enum TableChatActionStatus {
   applied,
   pendingConfirmation,
+  pendingRetry,
   rejected,
   stale,
   failed,
@@ -85,6 +86,14 @@ class TableChatAction {
     this.recoveryBatchId,
     this.expectedRevision,
     this.proposal = const {},
+    this.requestFingerprint,
+    this.intakeCoverageChecked,
+    this.intakeCoverageTotal,
+    this.intakeCoverageComplete,
+    this.retryableIntake = false,
+    this.intakeRetryAttempt = 0,
+    this.intakeRetryOperationId,
+    this.intakeRetryPending = false,
   });
 
   final String id;
@@ -102,6 +111,14 @@ class TableChatAction {
   final String? recoveryBatchId;
   final int? expectedRevision;
   final Map<String, Object?> proposal;
+  final String? requestFingerprint;
+  final int? intakeCoverageChecked;
+  final int? intakeCoverageTotal;
+  final bool? intakeCoverageComplete;
+  final bool retryableIntake;
+  final int intakeRetryAttempt;
+  final String? intakeRetryOperationId;
+  final bool intakeRetryPending;
 
   bool get canUndo =>
       status == TableChatActionStatus.applied &&
@@ -117,6 +134,15 @@ class TableChatAction {
     DateTime? undoUntil,
     Map<String, Object?>? proposal,
     int? expectedRevision,
+    String? requestFingerprint,
+    int? intakeCoverageChecked,
+    int? intakeCoverageTotal,
+    bool? intakeCoverageComplete,
+    bool? retryableIntake,
+    int? intakeRetryAttempt,
+    String? intakeRetryOperationId,
+    bool clearIntakeRetryOperationId = false,
+    bool? intakeRetryPending,
   }) => TableChatAction(
     id: id,
     operation: operation,
@@ -133,6 +159,17 @@ class TableChatAction {
     recoveryBatchId: recoveryBatchId ?? this.recoveryBatchId,
     expectedRevision: expectedRevision ?? this.expectedRevision,
     proposal: proposal ?? this.proposal,
+    requestFingerprint: requestFingerprint ?? this.requestFingerprint,
+    intakeCoverageChecked: intakeCoverageChecked ?? this.intakeCoverageChecked,
+    intakeCoverageTotal: intakeCoverageTotal ?? this.intakeCoverageTotal,
+    intakeCoverageComplete:
+        intakeCoverageComplete ?? this.intakeCoverageComplete,
+    retryableIntake: retryableIntake ?? this.retryableIntake,
+    intakeRetryAttempt: intakeRetryAttempt ?? this.intakeRetryAttempt,
+    intakeRetryOperationId: clearIntakeRetryOperationId
+        ? null
+        : intakeRetryOperationId ?? this.intakeRetryOperationId,
+    intakeRetryPending: intakeRetryPending ?? this.intakeRetryPending,
   );
 
   Map<String, dynamic> toJson() => {
@@ -152,6 +189,14 @@ class TableChatAction {
     'recovery_batch_id': recoveryBatchId,
     'expected_revision': expectedRevision,
     'proposal': proposal,
+    'request_fingerprint': requestFingerprint,
+    'intake_coverage_checked': intakeCoverageChecked,
+    'intake_coverage_total': intakeCoverageTotal,
+    'intake_coverage_complete': intakeCoverageComplete,
+    'retryable_intake': retryableIntake,
+    'intake_retry_attempt': intakeRetryAttempt,
+    'intake_retry_operation_id': intakeRetryOperationId,
+    'intake_retry_pending': intakeRetryPending,
   };
 
   static TableChatAction fromJson(Map<String, dynamic> json) {
@@ -179,6 +224,22 @@ class TableChatAction {
       proposal: rawProposal is Map
           ? Map<String, Object?>.from(rawProposal)
           : const {},
+      requestFingerprint: json['request_fingerprint'] as String?,
+      intakeCoverageChecked: json['intake_coverage_checked'] is int
+          ? json['intake_coverage_checked'] as int
+          : null,
+      intakeCoverageTotal: json['intake_coverage_total'] is int
+          ? json['intake_coverage_total'] as int
+          : null,
+      intakeCoverageComplete: json['intake_coverage_complete'] is bool
+          ? json['intake_coverage_complete'] as bool
+          : null,
+      retryableIntake: json['retryable_intake'] == true,
+      intakeRetryAttempt: json['intake_retry_attempt'] is int
+          ? json['intake_retry_attempt'] as int
+          : 0,
+      intakeRetryOperationId: json['intake_retry_operation_id']?.toString(),
+      intakeRetryPending: json['intake_retry_pending'] == true,
     );
   }
 }
@@ -256,8 +317,9 @@ class Conversation {
     required this.updatedAt,
     required this.autoTitle,
     this.preview = '',
-    this.aiPermissions = const AiPermissions(),
-  });
+    AiPermissions aiPermissions = const AiPermissions(),
+    this.aiPolicy,
+  }) : _legacyPermissions = aiPermissions;
 
   final String id;
   final String title;
@@ -265,7 +327,20 @@ class Conversation {
   final DateTime updatedAt;
   final bool autoTitle;
   final String preview;
-  final AiPermissions aiPermissions;
+  final AiPermissions _legacyPermissions;
+
+  /// New conversations persist an action-level policy. Conversations from
+  /// older versions keep their three-boolean snapshot until migrated.
+  final AiPolicy? aiPolicy;
+
+  /// Compatibility projection consumed by code that has not migrated to
+  /// [AiPolicy] yet.
+  AiPermissions get aiPermissions =>
+      aiPolicy?.legacyCompatibilityPermissions ?? _legacyPermissions;
+
+  /// Existing sessions derive a custom policy without widening permission.
+  AiPolicy get effectiveAiPolicy =>
+      aiPolicy ?? AiPolicy.fromLegacyPermissions(aiPermissions);
 
   Conversation copyWith({
     String? title,
@@ -273,7 +348,11 @@ class Conversation {
     bool? autoTitle,
     String? preview,
     AiPermissions? aiPermissions,
+    Object? aiPolicy = _unset,
   }) {
+    final nextAiPolicy = identical(aiPolicy, _unset)
+        ? (aiPermissions == null ? this.aiPolicy : null)
+        : aiPolicy as AiPolicy?;
     return Conversation(
       id: id,
       title: title ?? this.title,
@@ -282,8 +361,48 @@ class Conversation {
       autoTitle: autoTitle ?? this.autoTitle,
       preview: preview ?? this.preview,
       aiPermissions: aiPermissions ?? this.aiPermissions,
+      aiPolicy: nextAiPolicy,
     );
   }
+}
+
+/// Projects an action-level policy into the legacy three-boolean API.
+///
+/// Each coarse flag stays enabled only when every action covered by that flag
+/// remains available. This keeps old consumers from treating one narrow grant
+/// as access to a whole capability group.
+extension AiPolicyLegacyCompatibility on AiPolicy {
+  AiPermissions get legacyCompatibilityPermissions => AiPermissions(
+    read: _legacyGroupEnabled(const {
+      AiPermissionAction.tableRead,
+      AiPermissionAction.contentRead,
+      AiPermissionAction.globalKnowledgeRead,
+      AiPermissionAction.globalKnowledgeSearch,
+      AiPermissionAction.conversationHistorySearch,
+      AiPermissionAction.conversationHistoryRead,
+    }),
+    create: _legacyGroupEnabled(const {
+      AiPermissionAction.contentCreate,
+      AiPermissionAction.tableCreate,
+      AiPermissionAction.globalKnowledgeCreate,
+    }),
+    modifyDelete: _legacyGroupEnabled(const {
+      AiPermissionAction.contentUpdate,
+      AiPermissionAction.contentDelete,
+      AiPermissionAction.contentMove,
+      AiPermissionAction.tableBodyUpdate,
+      AiPermissionAction.tableUpdate,
+      AiPermissionAction.tableDelete,
+      AiPermissionAction.fieldAdjust,
+      AiPermissionAction.inboxTargetAdjust,
+      AiPermissionAction.restore,
+      AiPermissionAction.globalKnowledgeUpdate,
+      AiPermissionAction.globalKnowledgeDelete,
+    }),
+  );
+
+  bool _legacyGroupEnabled(Set<AiPermissionAction> actions) =>
+      actions.every((action) => decisionFor(action) != AiPolicyDecision.deny);
 }
 
 class ChatAttachment {

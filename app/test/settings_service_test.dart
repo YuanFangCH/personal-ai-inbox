@@ -50,12 +50,14 @@ void main() {
       expect(settings.allowImageEgress, isFalse);
       expect(settings.hasModelKey, isTrue);
       expect(settings.defaultAiPermissions, const AiPermissions());
+      expect(settings.effectiveDefaultAiPolicy.preset, AiPolicyPreset.standard);
       expect(settings.calendarVisibleTableIds, ['*']);
       expect(settings.validate(), isNotEmpty);
       expect(
         jsonDecode(persisted!)['schema_version'],
         AppSettings.currentSchemaVersion,
       );
+      expect(jsonDecode(persisted), contains('default_ai_policy'));
       expect(persisted, isNot(contains('legacy-key')));
     },
   );
@@ -140,9 +142,16 @@ void main() {
       create: true,
       modifyDelete: false,
     );
+    final defaultPolicy = AiPolicy.custom(
+      decisions: AiPolicy.forPreset(AiPolicyPreset.standard).decisions,
+      version: 3,
+      tableScope: AiResourceScope.selected(const ['tb_school']),
+      knowledgeReadScope: const AiResourceScope.none(),
+    ).withDecision(AiPermissionAction.contentCreate, AiPolicyDecision.allow);
     final withPermissions = await service.saveConfiguration(
       initial.copyWith(
         defaultAiPermissions: permissions,
+        defaultAiPolicy: defaultPolicy,
         capabilityOverrides: const ModelCapabilityOverrides(thinking: false),
       ),
     );
@@ -152,6 +161,7 @@ void main() {
       replaceApiKey: true,
     );
     final portable = await service.exportPortableSettings();
+    expect(portable['default_ai_policy'], isA<Map>());
     portable['model_name'] = 'portable-model';
 
     final snapshotBeforeImport = preferences.strings['settings_snapshot'];
@@ -167,7 +177,17 @@ void main() {
     final imported = await service.importPortableSettings(portable);
 
     expect(imported.modelName, 'portable-model');
-    expect(imported.defaultAiPermissions, permissions);
+    expect(imported.effectiveDefaultAiPolicy.preset, AiPolicyPreset.custom);
+    expect(
+      imported.effectiveDefaultAiPolicy.decisionFor(
+        AiPermissionAction.contentCreate,
+      ),
+      AiPolicyDecision.allow,
+    );
+    expect(
+      imported.effectiveDefaultAiPolicy.tableScope.covers('tb_school'),
+      isTrue,
+    );
     expect(imported.capabilityOverrides.thinking, isFalse);
     expect(imported.deviceId, 'device-local');
     expect(imported.modelKeySlotId, keyed.modelKeySlotId);
@@ -186,6 +206,7 @@ void main() {
     final imported = await service.importPortableSettings(legacy);
 
     expect(imported.defaultAiPermissions, const AiPermissions());
+    expect(imported.effectiveDefaultAiPolicy.preset, AiPolicyPreset.standard);
   });
 
   test('reset defaults preserves device ID and secure key reference', () async {
@@ -216,6 +237,70 @@ void main() {
     expect(restored.modelName, 'deepseek-flash');
     expect(restored.allowImageEgress, isTrue);
     expect(restored.defaultAiPermissions, const AiPermissions());
+    expect(restored.effectiveDefaultAiPolicy.preset, AiPolicyPreset.standard);
+  });
+
+  test('migrates v4 restricted permissions without adding access', () async {
+    final preferences = _MemoryPreferencesStore({
+      'device_id': 'device-v4',
+      'settings_snapshot': jsonEncode({
+        'schema_version': 4,
+        'device_id': 'device-v4',
+        'theme_mode': 'system',
+        'model_base_url': 'https://api.deepseek.com',
+        'model_name': 'deepseek-flash',
+        'model_key_slot_id': null,
+        'show_completed_todos': false,
+        'calendar_month_detailed': true,
+        'allow_image_egress': true,
+        'default_ai_permissions': {
+          'read': false,
+          'create': true,
+          'modify_delete': false,
+        },
+        'capability_overrides': {
+          'vision': null,
+          'tool_calls': null,
+          'json_output': null,
+          'thinking': null,
+        },
+        'response_header_timeout_seconds': 45,
+        'stream_idle_timeout_seconds': 60,
+        'total_timeout_seconds': 300,
+        'context_message_limit': 20,
+        'image_message_limit': 4,
+        'image_limit': 8,
+        'home_table_order': <String>[],
+        'calendar_visible_table_ids': ['*'],
+      }),
+    });
+    final service = SettingsService(
+      preferenceStore: preferences,
+      keyStore: _MemorySecureKeyStore(),
+    );
+
+    final settings = await service.load();
+    final policy = settings.effectiveDefaultAiPolicy;
+
+    expect(settings.schemaVersion, 5);
+    expect(policy.preset, AiPolicyPreset.custom);
+    expect(
+      policy.decisionFor(AiPermissionAction.tableRead),
+      AiPolicyDecision.deny,
+    );
+    expect(
+      policy.decisionFor(AiPermissionAction.contentCreate),
+      AiPolicyDecision.allow,
+    );
+    expect(
+      policy.decisionFor(AiPermissionAction.tableDelete),
+      AiPolicyDecision.deny,
+    );
+    final persisted = jsonDecode(
+      preferences.strings['settings_snapshot']!,
+    ) as Map<String, dynamic>;
+    expect(persisted['schema_version'], 5);
+    expect(persisted['default_ai_policy'], isA<Map>());
   });
 
   test('accepts loopback HTTP and enforces timeout and context ranges', () {
@@ -240,6 +325,42 @@ void main() {
     expect(
       base.copyWith(contextMessageLimit: 21).validate(),
       contains('上下文消息数必须在 2–20 条之间'),
+    );
+  });
+
+  test('settings policy and legacy permission updates stay consistent', () {
+    final base = AppSettings(
+      deviceId: 'device-policy',
+      themeMode: ThemePreference.system,
+      modelBaseUrl: 'https://api.deepseek.com',
+      modelName: 'deepseek-flash',
+      hasModelKey: false,
+      showCompletedTodos: false,
+      calendarMonthDetailed: true,
+    );
+    final withPolicy = base.copyWith(
+      defaultAiPolicy: AiPolicy.forPreset(AiPolicyPreset.readOnly),
+    );
+
+    expect(withPolicy.effectiveDefaultAiPolicy.preset, AiPolicyPreset.readOnly);
+    expect(
+      withPolicy.defaultAiPermissions,
+      const AiPermissions(read: true, create: false, modifyDelete: false),
+    );
+
+    final legacyUpdate = withPolicy.copyWith(
+      defaultAiPermissions: const AiPermissions(
+        read: false,
+        create: true,
+        modifyDelete: false,
+      ),
+    );
+    expect(legacyUpdate.defaultAiPolicy, isNull);
+    expect(
+      legacyUpdate.effectiveDefaultAiPolicy.decisionFor(
+        AiPermissionAction.tableRead,
+      ),
+      AiPolicyDecision.deny,
     );
   });
 

@@ -5,5 +5,10 @@ import 'sqlite_migration_coordinator.dart';
 Future<MigrationCoordinator?> createMigrationCoordinator({
   required String supportPath,
   required SettingsService settings,
+  List<String> additionalFilePaths = const [],
 }) async =>
-    SqliteMigrationCoordinator(supportPath: supportPath, settings: settings);
+    SqliteMigrationCoordinator(
+      supportPath: supportPath,
+      settings: settings,
+      additionalFilePaths: additionalFilePaths,
+    );

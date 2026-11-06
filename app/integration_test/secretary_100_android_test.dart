@@ -22,14 +22,30 @@ void main() {
   }
   final scenarios = secretaryScenarioMaps
       .map(SecretaryScenario.fromMap)
-      .where(
-        (item) =>
-            item.platform == platform &&
-            (filter.isEmpty || filter.contains(item.id)),
-      )
+      .where((item) {
+        final sharedTabletCase =
+            platform == RealisticPlatform.tablet &&
+            const {'SEC-001', 'SEC-083'}.contains(item.id);
+        return (item.platform == platform || sharedTabletCase) &&
+            (filter.isEmpty || filter.contains(item.id));
+      })
+      .map((item) {
+        if (platform == RealisticPlatform.tablet &&
+            const {'SEC-001', 'SEC-083'}.contains(item.id)) {
+          return SecretaryScenario(
+            id: item.id,
+            platform: platform,
+            category: item.category,
+            title: item.title,
+            assertions: item.assertions,
+            steps: item.steps,
+          );
+        }
+        return item;
+      })
       .toList(growable: false);
   final expectedCount = filter.isEmpty
-      ? (platform == RealisticPlatform.phone ? 50 : 25)
+      ? (platform == RealisticPlatform.phone ? 50 : 27)
       : filter.length;
   if (scenarios.length != expectedCount) {
     throw StateError(

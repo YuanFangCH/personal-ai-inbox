@@ -385,6 +385,11 @@ class _CalendarPageState extends State<CalendarPage> {
         ? TableRole.inboxTodo
         : TableRole.inboxSchedule;
     final candidates = visibleTables.isEmpty ? library.tables : visibleTables;
+    if (candidates.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('还没有可保存的表，请先在表与笔记中创建表。')));
+      return;
+    }
     final target = candidates.length == 1
         ? candidates.single
         : await showModalBottomSheet<TableDocument>(

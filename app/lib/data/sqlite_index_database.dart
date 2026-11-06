@@ -25,8 +25,8 @@ class SqliteIndexDatabase implements IndexDatabase {
         ..execute('PRAGMA foreign_keys = ON');
       final version =
           _database.select('PRAGMA user_version').single['user_version'] as int;
-      if (version > 10) {
-        throw StateError('索引数据库版本 $version 高于此应用支持的版本 10');
+      if (version > 11) {
+        throw StateError('索引数据库版本 $version 高于此应用支持的版本 11');
       }
       _database.execute('BEGIN EXCLUSIVE');
       final hasRecoveryBatches = _database
@@ -201,6 +201,7 @@ class SqliteIndexDatabase implements IndexDatabase {
           digest TEXT NOT NULL,
           source_conversation_id TEXT,
           source_message_id TEXT,
+           authorization_source TEXT NOT NULL DEFAULT 'legacy_unknown',
           result_id TEXT,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
@@ -221,7 +222,17 @@ class SqliteIndexDatabase implements IndexDatabase {
           'ALTER TABLE objects ADD COLUMN global_knowledge INTEGER NOT NULL DEFAULT 0',
         );
       }
-      if (version < 10) _database.execute('PRAGMA user_version = 10');
+      final candidateColumns = _database.select(
+        'PRAGMA table_info(global_knowledge_candidates)',
+      );
+      if (!candidateColumns.any(
+        (row) => row['name'] == 'authorization_source',
+      )) {
+        _database.execute(
+          "ALTER TABLE global_knowledge_candidates ADD COLUMN authorization_source TEXT NOT NULL DEFAULT 'legacy_unknown'",
+        );
+      }
+      if (version < 11) _database.execute('PRAGMA user_version = 11');
       _database.execute('COMMIT');
     } catch (_) {
       try {
@@ -811,10 +822,11 @@ class SqliteIndexDatabase implements IndexDatabase {
       INSERT INTO global_knowledge_candidates (
         id, operation, status, target_id, expected_revision, expected_hash,
         proposal_json, digest, source_conversation_id, source_message_id,
-        result_id, created_at, updated_at, error
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        authorization_source, result_id, created_at, updated_at, error
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         status = excluded.status,
+        authorization_source = excluded.authorization_source,
         result_id = excluded.result_id,
         updated_at = excluded.updated_at,
         error = excluded.error
@@ -830,6 +842,7 @@ class SqliteIndexDatabase implements IndexDatabase {
         candidate.digest,
         candidate.sourceConversationId,
         candidate.sourceMessageId,
+        candidate.authorizationSource.wireName,
         candidate.resultId,
         candidate.createdAt.toIso8601String(),
         candidate.updatedAt.toIso8601String(),
@@ -928,6 +941,9 @@ class SqliteIndexDatabase implements IndexDatabase {
       ),
       status: GlobalKnowledgeCandidateStatus.values.byName(
         row['status'] as String,
+      ),
+      authorizationSource: GlobalKnowledgeAuthorizationSource.parse(
+        row['authorization_source'] as String,
       ),
       targetId: row['target_id'] as String?,
       expectedRevision: row['expected_revision'] as int?,

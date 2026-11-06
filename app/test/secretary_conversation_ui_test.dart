@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:personal_ai_inbox/app.dart';
 import 'package:personal_ai_inbox/bootstrap/app_runtime.dart';
+import 'package:personal_ai_inbox/core/models.dart';
 import 'package:personal_ai_inbox/data/memory_index_database.dart';
 import 'package:personal_ai_inbox/data/memory_vault_store.dart';
 import 'package:personal_ai_inbox/services/model_client.dart';
@@ -13,6 +14,62 @@ import 'package:personal_ai_inbox/services/model_client.dart';
 import 'test_support.dart';
 
 void main() {
+  testWidgets('workspace active conversation mounts in the secretary page', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final runtime = await AppRuntime.bootstrap(
+      vaultOverride: MemoryVaultStore(),
+      indexOverride: MemoryIndexDatabase(),
+      modelClient: ModelClient(
+        client: MockClient.streaming((request, body) async {
+          const event = {
+            'choices': [
+              {
+                'delta': {'content': '当前会话已经打开。'},
+              },
+            ],
+          };
+          return http.StreamedResponse(
+            Stream.fromIterable([
+              utf8.encode('data: ${jsonEncode(event)}\n\n'),
+              utf8.encode('data: [DONE]\n\n'),
+            ]),
+            200,
+            headers: {'content-type': 'text/event-stream'},
+          );
+        }),
+      ),
+      settingsOverride: FakeSettingsService(
+        deviceId: 'secretary-active-conversation-ui',
+        modelKey: 'test-key',
+      ),
+    );
+    addTearDown(runtime.dispose);
+    final conversation = await runtime.conversations.createConversation();
+    await runtime.conversations.openConversation(conversation.id);
+    await runtime.conversations.sendChatMessage(
+      conversation.id,
+      text: '打开当前会话',
+    );
+
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav_inbox')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('conversation_message_list')),
+      findsOneWidget,
+    );
+    expect(find.text('当前会话已经打开。'), findsWidgets);
+    await _disposeApp(tester);
+  });
+
   testWidgets('conversation drawer and permissions are session scoped', (
     tester,
   ) async {
@@ -107,27 +164,37 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('conversation_permissions')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(SwitchListTile).at(0));
+    await tester.tap(find.byKey(const Key('permission_preset_read_only')));
+    await tester.ensureVisible(
+      find.byKey(const Key('conversation_permissions_apply')),
+    );
+    await tester.tap(find.byKey(const Key('conversation_permissions_apply')));
     await tester.pumpAndSettle();
     expect(
-      runtime.conversations.findConversation(existing.id)!.aiPermissions.read,
-      isFalse,
+      runtime.conversations.findConversation(existing.id)!.aiPolicy?.preset,
+      AiPolicyPreset.readOnly,
     );
-    await tester.tap(find.byKey(const Key('conversation_permissions_close')));
-    await tester.pumpAndSettle();
+    expect(
+      runtime.conversations.findConversation(existing.id)!.aiPermissions.read,
+      isTrue,
+      reason: 'read-only still permits the legacy read flag',
+    );
 
     await tester.tap(find.byKey(const Key('inbox_new_conversation')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('conversation_permissions')));
     await tester.pumpAndSettle();
     expect(
-      (tester.widget<SwitchListTile>(find.byType(SwitchListTile).first)).value,
+      tester
+          .widget<ChoiceChip>(find.byKey(const Key('permission_preset_custom')))
+          .selected,
       isTrue,
       reason: 'a blank new conversation starts from global defaults',
     );
     await tester.tap(find.byKey(const Key('conversation_permissions_close')));
     await tester.pumpAndSettle();
     expect(runtime.conversations.conversations, hasLength(1));
+    await _disposeApp(tester);
   });
 
   testWidgets('desktop secretary sidebar keeps app navigation and history', (
@@ -211,6 +278,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('设置'), findsWidgets);
     expect(tester.takeException(), isNull);
+    await _disposeApp(tester);
   });
 
   testWidgets('tablet assistant drawer retains the main app sections', (
@@ -240,6 +308,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('nav_calendar')), findsOneWidget);
     expect(tester.takeException(), isNull);
+    await _disposeApp(tester);
   });
 
   testWidgets('secretary state survives compact, tablet and desktop widths', (
@@ -293,5 +362,11 @@ void main() {
       );
       expect(tester.takeException(), isNull);
     }
+    await _disposeApp(tester);
   });
+}
+
+Future<void> _disposeApp(WidgetTester tester) async {
+  await tester.pumpWidget(const SizedBox.shrink());
+  await tester.pump(const Duration(seconds: 3));
 }

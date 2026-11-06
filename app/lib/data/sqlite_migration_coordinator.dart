@@ -10,18 +10,22 @@ import 'settings_service.dart';
 import 'migration_coordinator.dart';
 
 /// Takes a consistent pre-migration snapshot and coordinates rollback across
-/// the local index database, conversation database, and non-secret settings.
+/// the local databases, task checkpoint, and non-secret settings.
 class SqliteMigrationCoordinator implements MigrationCoordinator {
   SqliteMigrationCoordinator({
     required this.supportPath,
     required SettingsService settings,
-  }) : _settings = settings;
+    List<String> additionalFilePaths = const [],
+  }) : _settings = settings,
+       additionalFilePaths = List.unmodifiable(additionalFilePaths);
 
   static const _indexFile = 'index.sqlite3';
   static const _conversationFile = 'conversations.sqlite3';
-  static const _supportedVersions = {_indexFile: 10, _conversationFile: 5};
+  static const _supportedVersions = {_indexFile: 11, _conversationFile: 6};
+  static const _migrationStateSchemaVersion = 2;
 
   final String supportPath;
+  final List<String> additionalFilePaths;
   final SettingsService _settings;
 
   RandomAccessFile? _startupLock;
@@ -37,7 +41,10 @@ class SqliteMigrationCoordinator implements MigrationCoordinator {
     final stateFile = File(p.join(supportPath, '.migration-state.json'));
     if (await stateFile.exists()) {
       final state = jsonDecode(await stateFile.readAsString());
-      if (state is! Map<String, dynamic> || state['schema_version'] != 1) {
+      if (state is! Map<String, dynamic> ||
+          !const {1, _migrationStateSchemaVersion}.contains(
+            state['schema_version'],
+          )) {
         throw StateError('本地数据库迁移状态损坏；应用保持停止，备份文件已保留。');
       }
       if (!const {
@@ -51,6 +58,19 @@ class SqliteMigrationCoordinator implements MigrationCoordinator {
         await _restore(state);
         await _writeState({...state, 'status': 'rolled_back'});
       }
+    }
+
+    final normalizedAdditionalFilePaths = additionalFilePaths
+        .map((path) => p.normalize(path))
+        .toList(growable: false);
+    if (normalizedAdditionalFilePaths.toSet().length !=
+        normalizedAdditionalFilePaths.length) {
+      throw StateError('当前迁移附加文件路径重复；应用保持停止。');
+    }
+    if (normalizedAdditionalFilePaths.any(
+      (path) => !p.isWithin(p.normalize(supportPath), path),
+    )) {
+      throw StateError('迁移附加文件路径超出应用数据目录。');
     }
 
     final databases = [
@@ -100,16 +120,44 @@ class SqliteMigrationCoordinator implements MigrationCoordinator {
         'backup_sha256': backupHash,
       });
     }
+    final fileSnapshots = <Map<String, Object?>>[];
+    for (var index = 0;
+        index < normalizedAdditionalFilePaths.length;
+        index++) {
+      final sourcePath = normalizedAdditionalFilePaths[index];
+      final sourceFile = File(sourcePath);
+      final exists = await sourceFile.exists();
+      String? backupPath;
+      String? backupHash;
+      if (exists) {
+        backupPath = p.join(
+          backupRoot.path,
+          'file-$index-${p.basename(sourcePath)}',
+        );
+        await File(backupPath).writeAsBytes(
+          await sourceFile.readAsBytes(),
+          flush: true,
+        );
+        backupHash = await _sha256File(backupPath);
+      }
+      fileSnapshots.add({
+        'path': sourcePath,
+        'existed': exists,
+        'backup': backupPath,
+        'backup_sha256': backupHash,
+      });
+    }
     final settingsBackup = p.join(backupRoot.path, 'preferences.json');
     final settingsJson = jsonEncode(
       await _settings.exportMigrationPreferences(),
     );
     await File(settingsBackup).writeAsString(settingsJson, flush: true);
     final state = <String, dynamic>{
-      'schema_version': 1,
+      'schema_version': _migrationStateSchemaVersion,
       'status': 'pending',
       'created_at': DateTime.now().toIso8601String(),
       'databases': snapshots,
+      'files': fileSnapshots,
       'settings_backup': settingsBackup,
       'settings_backup_sha256': sha256
           .convert(utf8.encode(settingsJson))
@@ -144,10 +192,13 @@ class SqliteMigrationCoordinator implements MigrationCoordinator {
       await _releaseLock();
       return;
     }
-    await _restore(pending);
-    await _writeState({...pending, 'status': 'rolled_back'});
-    _pendingState = null;
-    await _releaseLock();
+    try {
+      await _restore(pending);
+      await _writeState({...pending, 'status': 'rolled_back'});
+      _pendingState = null;
+    } finally {
+      await _releaseLock();
+    }
   }
 
   /// Creates a durable database/settings snapshot for a table migration.
@@ -320,30 +371,39 @@ class SqliteMigrationCoordinator implements MigrationCoordinator {
     final rawDatabases = state['databases'];
     final rawSettingsBackup = state['settings_backup'];
     final settingsBackupHash = state['settings_backup_sha256'];
+    final stateSchemaVersion = state['schema_version'];
     if (rawDatabases is! List ||
         rawSettingsBackup is! String ||
-        settingsBackupHash is! String) {
+        settingsBackupHash is! String ||
+        (stateSchemaVersion != 1 &&
+            stateSchemaVersion != _migrationStateSchemaVersion)) {
       throw StateError('迁移备份清单损坏；应用保持停止，备份文件已保留。');
     }
-    for (final raw in rawDatabases) {
-      if (raw is! Map) {
-        throw StateError('迁移数据库备份清单损坏。');
-      }
-      final databasePath = raw['path'];
-      final existed = raw['existed'];
-      final backupPath = raw['backup'];
-      final backupHash = raw['backup_sha256'];
-      if (databasePath is! String || existed is! bool) {
-        throw StateError('迁移数据库备份清单损坏。');
-      }
-      final allowedDatabasePaths = {
-        p.normalize(p.join(supportPath, _indexFile)),
-        p.normalize(p.join(supportPath, _conversationFile)),
-      };
-      if (!allowedDatabasePaths.contains(p.normalize(databasePath))) {
-        throw StateError('迁移清单引用了未知数据库路径。');
-      }
-      if (!existed) {
+    final databaseSnapshots = await _validateDatabaseSnapshots(rawDatabases);
+    final fileSnapshots = await _validateAdditionalFileSnapshots(
+      state['files'],
+      stateSchemaVersion as int,
+    );
+    final settingsPath = p.normalize(rawSettingsBackup);
+    final backupRoot = p.normalize(p.join(supportPath, '.migration-backups'));
+    if (!p.isWithin(backupRoot, settingsPath) ||
+        !await File(settingsPath).exists() ||
+        await _sha256File(settingsPath) != settingsBackupHash) {
+      throw StateError('端配置迁移备份缺失或校验失败；应用保持停止，备份文件已保留。');
+    }
+    final decodedSettings = jsonDecode(
+      await File(settingsPath).readAsString(),
+    );
+    if (decodedSettings is! Map<String, dynamic>) {
+      throw StateError('端配置迁移备份损坏；应用保持停止，备份文件已保留。');
+    }
+
+    // Validate the entire rollback set before the first source is changed.
+    // A later corrupt backup must not leave databases or earlier files
+    // partially restored while the state still says `pending`.
+    for (final raw in databaseSnapshots) {
+      final databasePath = raw['path'] as String;
+      if (raw['existed'] == false) {
         await _removeSqliteSidecars(databasePath);
         final databaseFile = File(databasePath);
         if (await databaseFile.exists()) {
@@ -351,19 +411,7 @@ class SqliteMigrationCoordinator implements MigrationCoordinator {
         }
         continue;
       }
-      if (backupPath is! String ||
-          backupHash is! String ||
-          !await File(backupPath).exists()) {
-        throw StateError('找不到迁移备份：${p.basename(databasePath)}');
-      }
-      final canonicalRoot = p.normalize(supportPath);
-      final canonicalBackup = p.normalize(backupPath);
-      if (!p.isWithin(canonicalRoot, canonicalBackup)) {
-        throw StateError('迁移备份路径超出应用数据目录。');
-      }
-      if (await _sha256File(backupPath) != backupHash) {
-        throw StateError('迁移数据库备份校验失败：${p.basename(databasePath)}');
-      }
+      final backupPath = raw['backup'] as String;
       await _removeSqliteSidecars(databasePath);
       final staged = File('$databasePath.restore.tmp');
       if (await staged.exists()) {
@@ -377,21 +425,134 @@ class SqliteMigrationCoordinator implements MigrationCoordinator {
       await staged.rename(databasePath);
     }
 
-    if (!await File(rawSettingsBackup).exists()) {
-      throw StateError('找不到端配置迁移备份。');
+    for (final raw in fileSnapshots) {
+      final sourcePath = raw['path'] as String;
+      final sourceFile = File(sourcePath);
+      if (raw['existed'] == false) {
+        if (await sourceFile.exists()) await sourceFile.delete();
+        continue;
+      }
+      final backupPath = raw['backup'] as String;
+      final staged = File('$sourcePath.restore.tmp');
+      if (await staged.exists()) await staged.delete();
+      await staged.writeAsBytes(
+        await File(backupPath).readAsBytes(),
+        flush: true,
+      );
+      if (await sourceFile.exists()) await sourceFile.delete();
+      await staged.rename(sourcePath);
     }
-    if (!p.isWithin(p.normalize(supportPath), p.normalize(rawSettingsBackup)) ||
-        sha256
-                .convert(await File(rawSettingsBackup).readAsBytes())
-                .toString() !=
-            settingsBackupHash) {
-      throw StateError('端配置迁移备份校验失败。');
+    await _settings.restoreMigrationPreferences(decodedSettings);
+  }
+
+  Future<List<Map>> _validateDatabaseSnapshots(Object? rawDatabases) async {
+    if (rawDatabases is! List) {
+      throw StateError('迁移数据库备份清单损坏；应用保持停止，备份文件已保留。');
     }
-    final settings = jsonDecode(await File(rawSettingsBackup).readAsString());
-    if (settings is! Map<String, dynamic>) {
-      throw StateError('端配置迁移备份损坏。');
+    final expectedPaths = {
+      p.normalize(p.join(supportPath, _indexFile)),
+      p.normalize(p.join(supportPath, _conversationFile)),
+    };
+    final backupRoot = p.normalize(p.join(supportPath, '.migration-backups'));
+    final seenPaths = <String>{};
+    final snapshots = <Map>[];
+    for (final raw in rawDatabases) {
+      if (raw is! Map ||
+          raw['path'] is! String ||
+          raw['existed'] is! bool) {
+        throw StateError('迁移数据库备份清单损坏；应用保持停止，备份文件已保留。');
+      }
+      final databasePath = p.normalize(raw['path'] as String);
+      if (!expectedPaths.contains(databasePath)) {
+        throw StateError('迁移清单引用了未知数据库路径。');
+      }
+      if (!seenPaths.add(databasePath)) {
+        throw StateError('迁移数据库备份清单包含重复路径；应用保持停止。');
+      }
+      if (raw['existed'] == true) {
+        final backupPath = raw['backup'];
+        final backupHash = raw['backup_sha256'];
+        if (backupPath is! String ||
+            backupHash is! String ||
+            !p.isWithin(backupRoot, p.normalize(backupPath)) ||
+            !await File(backupPath).exists()) {
+          throw StateError('迁移数据库备份缺失或路径无效；应用保持停止，备份文件已保留。');
+        }
+        if (await _sha256File(backupPath) != backupHash) {
+          throw StateError('迁移数据库备份校验失败：${p.basename(databasePath)}');
+        }
+        final backup = sqlite3.open(backupPath);
+        try {
+          final check = backup.select('PRAGMA quick_check').first.values.first;
+          if (check != 'ok') {
+            throw StateError('迁移数据库备份完整性检查失败：${p.basename(databasePath)}');
+          }
+          backup.select('PRAGMA user_version').single;
+        } finally {
+          backup.close();
+        }
+      } else if (raw['backup'] != null || raw['backup_sha256'] != null) {
+        throw StateError('不存在的数据库不得关联迁移备份；应用保持停止。');
+      }
+      snapshots.add(raw);
     }
-    await _settings.restoreMigrationPreferences(settings);
+    if (seenPaths.length != expectedPaths.length) {
+      throw StateError('迁移数据库备份清单缺少数据库；应用保持停止，备份文件已保留。');
+    }
+    return snapshots;
+  }
+
+  Future<List<Map>> _validateAdditionalFileSnapshots(
+    Object? rawFiles,
+    int stateSchemaVersion,
+  ) async {
+    if (rawFiles == null && stateSchemaVersion == 1) {
+      return const [];
+    }
+    if (rawFiles is! List) {
+      throw StateError('迁移文件备份清单损坏；应用保持停止，备份文件已保留。');
+    }
+    final expectedPaths = additionalFilePaths
+        .map((path) => p.normalize(path))
+        .toSet();
+    if (expectedPaths.length != additionalFilePaths.length) {
+      throw StateError('当前迁移附加文件路径重复；应用保持停止。');
+    }
+    final seenPaths = <String>{};
+    for (final raw in rawFiles) {
+      if (raw is! Map ||
+          raw['path'] is! String ||
+          raw['existed'] is! bool) {
+        throw StateError('迁移文件备份清单损坏；应用保持停止，备份文件已保留。');
+      }
+      final sourcePath = p.normalize(raw['path'] as String);
+      if (!expectedPaths.contains(sourcePath)) {
+        throw StateError('迁移清单引用了未知文件路径。');
+      }
+      if (!seenPaths.add(sourcePath)) {
+        throw StateError('迁移文件备份清单包含重复路径；应用保持停止。');
+      }
+      if (raw['existed'] == true) {
+        final backupPath = raw['backup'];
+        final backupHash = raw['backup_sha256'];
+        final backupRoot = p.normalize(
+          p.join(supportPath, '.migration-backups'),
+        );
+        if (backupPath is! String ||
+            backupHash is! String ||
+            !p.isWithin(backupRoot, p.normalize(backupPath)) ||
+            !await File(backupPath).exists() ||
+            await _sha256File(backupPath) != backupHash) {
+          throw StateError('迁移附加文件备份缺失或校验失败；应用保持停止，备份文件已保留。');
+        }
+      } else if (raw['backup'] != null || raw['backup_sha256'] != null) {
+        throw StateError('不存在的附加文件不得关联迁移备份；应用保持停止。');
+      }
+    }
+    if (seenPaths.length != expectedPaths.length) {
+      throw StateError('迁移文件备份清单缺少附加文件；应用保持停止，备份文件已保留。');
+    }
+    return rawFiles.cast<Map>();
   }
 
   Future<void> _snapshotDatabase(String source, String destination) async {

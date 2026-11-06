@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:personal_ai_inbox/core/chat_models.dart';
+import 'package:personal_ai_inbox/core/ai_policy.dart';
 import 'package:personal_ai_inbox/core/models.dart';
 import 'package:personal_ai_inbox/core/table_models.dart';
 import 'package:personal_ai_inbox/data/chat_repository.dart';
@@ -21,6 +23,132 @@ import 'package:personal_ai_inbox/services/model_client.dart';
 import 'test_support.dart';
 
 void main() {
+  test('cancelling ChatService reply cancels the HTTP response body', () async {
+    final chats = ChatRepository(
+      store: MemoryConversationStore(),
+      attachments: MemoryAttachmentStore(),
+    );
+    await chats.initialize();
+    final conversation = await chats.createConversation();
+    await chats.saveMessage(
+      ChatMessage(
+        id: 'msg_cancel_propagation_user',
+        conversationId: conversation.id,
+        role: ChatRole.user,
+        content: '停止测试',
+        status: ChatMessageStatus.complete,
+        createdAt: conversation.createdAt,
+        updatedAt: conversation.updatedAt,
+      ),
+    );
+    final bodyCancelled = Completer<void>();
+    final body = StreamController<List<int>>(
+      onCancel: () {
+        if (!bodyCancelled.isCompleted) bodyCancelled.complete();
+      },
+    );
+    final service = ChatService(
+      settings: FakeSettingsService(modelKey: 'cancel-propagation'),
+      repository: chats,
+      modelClient: ModelClient(
+        client: MockClient.streaming((request, requestBody) async {
+          await requestBody.bytesToString();
+          return http.StreamedResponse(body.stream, 200);
+        }),
+      ),
+    );
+    final reply = await service.streamReply(conversationId: conversation.id);
+    final firstDelta = Completer<void>();
+    final subscription = reply.listen((delta) {
+      if (delta.content.isNotEmpty && !firstDelta.isCompleted) {
+        firstDelta.complete();
+      }
+    });
+    body.add(utf8.encode('data: {"choices":[{"delta":{"content":"首段"}}]}\n\n'));
+    await firstDelta.future.timeout(const Duration(seconds: 1));
+    await subscription.cancel();
+
+    await bodyCancelled.future.timeout(const Duration(seconds: 1));
+    await body.close();
+  });
+
+  test(
+    'cancel after tool intent yield fences local executor dispatch',
+    () async {
+      final chats = ChatRepository(
+        store: MemoryConversationStore(),
+        attachments: MemoryAttachmentStore(),
+      );
+      await chats.initialize();
+      final conversation = await chats.createConversation(
+        aiPolicy: AiPolicy.forPreset(AiPolicyPreset.fullAccess),
+      );
+      await chats.saveMessage(
+        ChatMessage(
+          id: 'msg_tool_cancel_race',
+          conversationId: conversation.id,
+          role: ChatRole.user,
+          content: '创建一张表',
+          status: ChatMessageStatus.complete,
+          createdAt: conversation.createdAt,
+          updatedAt: conversation.updatedAt,
+        ),
+      );
+      var cancelled = false;
+      var executorCalls = 0;
+      final service = ChatService(
+        settings: FakeSettingsService(modelKey: 'cancel-race'),
+        repository: chats,
+        modelClient: ModelClient(
+          client: MockClient.streaming((request, body) async {
+            await body.bytesToString();
+            return _stream({
+              'choices': [
+                {
+                  'delta': {
+                    'tool_calls': [
+                      {
+                        'index': 0,
+                        'id': 'call_cancel_race',
+                        'function': {
+                          'name': 'table_propose',
+                          'arguments': jsonEncode({
+                            'operation': 'create',
+                            'payload': {'title': '不应创建'},
+                            'idempotency_key': 'cancel-race-create',
+                          }),
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            }, finish: 'tool_calls');
+          }),
+        ),
+        writeToolExecutor: (_) async {
+          executorCalls++;
+          return ChatWriteToolReceipt.succeeded(operationId: 'act_cancel_race');
+        },
+      );
+
+      final iterator = StreamIterator(
+        await service.streamReply(
+          conversationId: conversation.id,
+          isCancelled: () => cancelled,
+        ),
+      );
+      while (await iterator.moveNext()) {
+        if (iterator.current.toolCallIndex != null) {
+          cancelled = true;
+        }
+      }
+
+      expect(cancelled, isTrue);
+      expect(executorCalls, 0);
+    },
+  );
+
   test(
     'table mode searches indexed table content and offers no legacy writes',
     () async {
@@ -62,7 +190,7 @@ void main() {
       final now = DateTime(2026, 11, 2, 14);
       await tables.createEntry(
         TableEntryDocument(
-          id: 'sc_midterm',
+          id: 'sc_midterm_a',
           type: TableContentType.schedule,
           tableId: examTable.id,
           title: '期中考试',
@@ -70,6 +198,19 @@ void main() {
           createdAt: now,
           updatedAt: now,
           body: '第三教学楼 101 室',
+          start: now,
+        ),
+      );
+      await tables.createEntry(
+        TableEntryDocument(
+          id: 'sc_midterm_z',
+          type: TableContentType.schedule,
+          tableId: examTable.id,
+          title: '期中考试',
+          revision: 1,
+          createdAt: now,
+          updatedAt: now,
+          body: '第四教学楼 202 室',
           start: now,
         ),
       );
@@ -99,7 +240,33 @@ void main() {
                               'query': '期中考试',
                               'table_ids': [examTable.id],
                               'types': ['schedule'],
-                              'limit': 5,
+                              'offset': 1,
+                              'limit': 1,
+                            }),
+                          },
+                        },
+                      ],
+                    },
+                  },
+                ],
+              }, finish: 'tool_calls');
+            }
+            if (requests.length == 2) {
+              return _stream({
+                'choices': [
+                  {
+                    'delta': {
+                      'tool_calls': [
+                        {
+                          'index': 0,
+                          'id': 'call_content_read',
+                          'function': {
+                            'name': 'content_read',
+                            'arguments': jsonEncode({
+                              'id': 'sc_midterm_z',
+                              'if_revision': 1,
+                              'offset': 2,
+                              'length': 3,
                             }),
                           },
                         },
@@ -112,7 +279,7 @@ void main() {
             return _stream({
               'choices': [
                 {
-                  'delta': {'content': '在第三教学楼 101 室。'},
+                  'delta': {'content': '在第四教学楼 202 室。'},
                 },
               ],
             });
@@ -145,12 +312,43 @@ void main() {
       );
       expect(toolNames, isNot(contains('create_result')));
       expect(toolNames, isNot(contains('search_results')));
-      final toolMessage = (requests.last['messages'] as List)
+      final scheduleChangeTool = tools.cast<Map>().singleWhere(
+        (entry) => entry['function']['name'] == 'schedule_change',
+      );
+      expect(
+        scheduleChangeTool['function']['description'],
+        contains('原通知发生时间'),
+      );
+      final contentSearchTool = tools.cast<Map>().singleWhere(
+        (entry) => entry['function']['name'] == 'content_search',
+      );
+      final contentSearchProperties =
+          contentSearchTool['function']['parameters']['properties'] as Map;
+      expect(contentSearchProperties, contains('offset'));
+      expect(contentSearchProperties, contains('cursor'));
+      final contentReadTool = tools.cast<Map>().singleWhere(
+        (entry) => entry['function']['name'] == 'content_read',
+      );
+      final contentReadProperties =
+          contentReadTool['function']['parameters']['properties'] as Map;
+      expect(contentReadProperties, contains('offset'));
+      expect(contentReadProperties, contains('length'));
+      expect(contentReadProperties, contains('cursor'));
+      final searchToolMessage = (requests[1]['messages'] as List)
           .cast<Map>()
           .singleWhere((message) => message['role'] == 'tool');
-      expect(toolMessage['content'], contains(examTable.id));
-      expect(toolMessage['content'], contains('第三教学楼 101 室'));
-      expect(deltas.map((delta) => delta.content).join(), '在第三教学楼 101 室。');
+      expect(searchToolMessage['content'], contains('"offset":1'));
+      expect(searchToolMessage['content'], contains('sc_midterm_z'));
+      expect(searchToolMessage['content'], contains('第四教学楼 202 室'));
+      final detailToolMessage = (requests.last['messages'] as List)
+          .cast<Map>()
+          .where((message) => message['role'] == 'tool')
+          .last;
+      expect(detailToolMessage['content'], contains('"bodyOffset":2'));
+      expect(detailToolMessage['content'], contains('"bodyLength":3'));
+      expect(detailToolMessage['content'], contains('教学楼'));
+      expect(deltas.map((delta) => delta.content).join(), '在第四教学楼 202 室。');
+      expect(requests, hasLength(3));
 
       service.close();
       await chats.close();

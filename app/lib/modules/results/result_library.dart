@@ -194,6 +194,8 @@ class ResultLibrary extends ChangeNotifier {
     String? sourceConversationId,
     String? sourceMessageId,
     String? candidateId,
+    GlobalKnowledgeAuthorizationSource authorizationSource =
+        GlobalKnowledgeAuthorizationSource.none,
   }) async {
     final normalized = _normalizeGlobalProposal(operation, proposal);
     final digest = _globalKnowledgeDigest(
@@ -253,6 +255,7 @@ class ResultLibrary extends ChangeNotifier {
       status: GlobalKnowledgeCandidateStatus.pending,
       proposal: normalized,
       digest: digest,
+      authorizationSource: authorizationSource,
       targetId: targetId,
       expectedRevision: expectedRevision,
       expectedHash: expectedHash,
@@ -287,14 +290,31 @@ class ResultLibrary extends ChangeNotifier {
   Future<ResultActionResult> confirmGlobalKnowledgeChange(
     String candidateId, {
     required String displayedDigest,
+    GlobalKnowledgeAuthorizationSource authorizationSource =
+        GlobalKnowledgeAuthorizationSource.human,
+    Future<bool> Function()? authorizationGuard,
   }) async {
     final candidate = await _requirePendingCandidate(
       candidateId,
       displayedDigest,
     );
+    if (authorizationSource == GlobalKnowledgeAuthorizationSource.policy &&
+        candidate.authorizationSource !=
+            GlobalKnowledgeAuthorizationSource.policy) {
+      throw StateError('该候选没有当前会话策略授权，不能按策略自动应用。');
+    }
+    if (authorizationSource != GlobalKnowledgeAuthorizationSource.policy &&
+        authorizationSource != GlobalKnowledgeAuthorizationSource.human) {
+      throw ArgumentError.value(authorizationSource, 'authorizationSource');
+    }
+    if (authorizationSource == GlobalKnowledgeAuthorizationSource.policy &&
+        (authorizationGuard == null || !await authorizationGuard())) {
+      throw StateError('当前会话策略已不再授权此全局知识操作。');
+    }
     await _verifyGlobalCandidateTarget(candidate);
     final approved = candidate.copyWith(
       status: GlobalKnowledgeCandidateStatus.approved,
+      authorizationSource: authorizationSource,
       updatedAt: DateTime.now(),
       error: null,
     );
@@ -355,7 +375,8 @@ class ResultLibrary extends ChangeNotifier {
       candidateId,
     );
     if (candidate == null ||
-        candidate.status != GlobalKnowledgeCandidateStatus.approved) {
+        candidate.status != GlobalKnowledgeCandidateStatus.approved ||
+        !_hasAuthorization(candidate.authorizationSource)) {
       throw StateError('只有已确认的全局知识变更可重试：$candidateId');
     }
     return _applyApprovedGlobalCandidate(candidate);
@@ -427,6 +448,9 @@ class ResultLibrary extends ChangeNotifier {
   Future<ResultActionResult> _applyApprovedGlobalCandidate(
     GlobalKnowledgeCandidate candidate,
   ) async {
+    if (!_hasAuthorization(candidate.authorizationSource)) {
+      throw StateError('全局知识审批来源不明；需要人工重新核对该候选。');
+    }
     if (candidate.digest !=
         _globalKnowledgeDigest(
           operation: candidate.operation,
@@ -447,6 +471,7 @@ class ResultLibrary extends ChangeNotifier {
           proposal,
           candidate.digest,
           approvedAt,
+          candidate.authorizationSource,
         );
         result = await _repository.create(
           type: ResultType.knowledge,
@@ -469,7 +494,12 @@ class ResultLibrary extends ChangeNotifier {
           deleted: false,
           extensionFields: {
             ...current.extensionFields,
-            ..._globalKnowledgeFields(proposal, candidate.digest, approvedAt),
+            ..._globalKnowledgeFields(
+              proposal,
+              candidate.digest,
+              approvedAt,
+              candidate.authorizationSource,
+            ),
           },
         );
         result = await _repository.saveWithUndo(
@@ -526,10 +556,12 @@ class ResultLibrary extends ChangeNotifier {
     Map<String, Object?> proposal,
     String digest,
     DateTime approvedAt,
+    GlobalKnowledgeAuthorizationSource authorizationSource,
   ) => {
     globalKnowledgeScopeKey: globalKnowledgeScopeValue,
     'global_facts': proposal['facts'],
     'global_approval_digest': digest,
+    'global_authorization_source': authorizationSource.wireName,
     'global_approved_at': approvedAt.toUtc().toIso8601String(),
     if (proposal['applies_to'] != null)
       'global_applies_to': proposal['applies_to'],
@@ -543,6 +575,16 @@ class ResultLibrary extends ChangeNotifier {
   Future<void> _resumeApprovedGlobalKnowledgeChanges() async {
     for (final candidate in await _repository.listGlobalKnowledgeCandidates()) {
       if (candidate.status != GlobalKnowledgeCandidateStatus.approved) continue;
+      if (!_hasAuthorization(candidate.authorizationSource)) {
+        final unverified = candidate.copyWith(
+          status: GlobalKnowledgeCandidateStatus.failed,
+          updatedAt: DateTime.now(),
+          error: '旧候选没有可验证的人工或策略授权来源，未自动重放。',
+        );
+        await _repository.saveGlobalKnowledgeCandidate(unverified);
+        _setGlobalKnowledgeCandidate(unverified);
+        continue;
+      }
       try {
         await _applyApprovedGlobalCandidate(candidate);
       } on StateError catch (error) {
@@ -559,6 +601,10 @@ class ResultLibrary extends ChangeNotifier {
       }
     }
   }
+
+  bool _hasAuthorization(GlobalKnowledgeAuthorizationSource source) =>
+      source == GlobalKnowledgeAuthorizationSource.human ||
+      source == GlobalKnowledgeAuthorizationSource.policy;
 
   void _setGlobalKnowledgeCandidate(GlobalKnowledgeCandidate candidate) {
     _globalKnowledgeCandidates = List.unmodifiable([

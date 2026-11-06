@@ -49,6 +49,7 @@ class ChatRepository {
   Future<Conversation> createConversation({
     DateTime? createdAt,
     AiPermissions aiPermissions = const AiPermissions(),
+    AiPolicy? aiPolicy,
   }) async {
     final timestamp = createdAt ?? DateTime.now();
     final conversation = Conversation(
@@ -58,6 +59,7 @@ class ChatRepository {
       updatedAt: timestamp,
       autoTitle: true,
       aiPermissions: aiPermissions,
+      aiPolicy: aiPolicy,
     );
     await _store.upsertConversation(conversation);
     return conversation;
@@ -66,6 +68,20 @@ class ChatRepository {
   Future<Conversation> saveConversation(Conversation conversation) async {
     await _store.upsertConversation(conversation);
     return conversation;
+  }
+
+  Future<Conversation?> setAiPolicy(
+    String conversationId,
+    AiPolicy aiPolicy,
+  ) async {
+    final conversation = await _store.findConversation(conversationId);
+    if (conversation == null) return null;
+    final updated = conversation.copyWith(
+      aiPolicy: aiPolicy,
+      updatedAt: DateTime.now(),
+    );
+    await _store.upsertConversation(updated);
+    return updated;
   }
 
   Future<void> deleteConversation(String id) async {

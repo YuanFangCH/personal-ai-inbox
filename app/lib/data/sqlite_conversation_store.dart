@@ -29,8 +29,8 @@ class SqliteConversationStore implements ConversationStore {
         ..execute('PRAGMA foreign_keys = ON');
       final version =
           _database.select('PRAGMA user_version').single['user_version'] as int;
-      if (version > 5) {
-        throw StateError('会话数据库版本 $version 高于此应用支持的版本 5');
+      if (version > 6) {
+        throw StateError('会话数据库版本 $version 高于此应用支持的版本 6');
       }
       _database.execute('BEGIN EXCLUSIVE');
       _database
@@ -91,6 +91,14 @@ class SqliteConversationStore implements ConversationStore {
           TEXT NOT NULL DEFAULT '{"read":true,"create":true,"modify_delete":true}' ''',
         );
       }
+      final conversationColumns = _database.select(
+        'PRAGMA table_info(conversations)',
+      );
+      if (!conversationColumns.any((row) => row['name'] == 'ai_policy_json')) {
+        _database.execute(
+          'ALTER TABLE conversations ADD COLUMN ai_policy_json TEXT',
+        );
+      }
       final messageColumns = _database.select(
         'PRAGMA table_info(chat_messages)',
       );
@@ -136,7 +144,7 @@ class SqliteConversationStore implements ConversationStore {
           );
         }
       }
-      _database.execute('PRAGMA user_version = 5');
+      _database.execute('PRAGMA user_version = 6');
       _database.execute('COMMIT');
     } catch (_) {
       try {
@@ -177,14 +185,15 @@ class SqliteConversationStore implements ConversationStore {
       '''
       INSERT INTO conversations (
         id, title, created_at, updated_at, auto_title, preview,
-        ai_permissions_json
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ai_permissions_json, ai_policy_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         title = excluded.title,
         updated_at = excluded.updated_at,
         auto_title = excluded.auto_title,
         preview = excluded.preview,
-        ai_permissions_json = excluded.ai_permissions_json
+        ai_permissions_json = excluded.ai_permissions_json,
+        ai_policy_json = excluded.ai_policy_json
       ''',
       [
         conversation.id,
@@ -194,6 +203,9 @@ class SqliteConversationStore implements ConversationStore {
         conversation.autoTitle ? 1 : 0,
         conversation.preview,
         jsonEncode(conversation.aiPermissions.toJson()),
+        conversation.aiPolicy == null
+            ? null
+            : jsonEncode(conversation.aiPolicy!.toJson()),
       ],
     );
   }
@@ -456,6 +468,7 @@ class SqliteConversationStore implements ConversationStore {
   }
 
   Conversation _conversationFromRow(Row row) {
+    final policyJson = _decodeMap(row['ai_policy_json']);
     return Conversation(
       id: row['id'] as String,
       title: row['title'] as String,
@@ -466,6 +479,7 @@ class SqliteConversationStore implements ConversationStore {
       aiPermissions: AiPermissions.fromJson(
         _decodeMap(row['ai_permissions_json']),
       ),
+      aiPolicy: policyJson == null ? null : AiPolicy.fromJson(policyJson),
     );
   }
 
@@ -527,7 +541,7 @@ class SqliteConversationStore implements ConversationStore {
   Map<String, dynamic>? _decodeMap(Object? value) {
     if (value is! String || value.isEmpty) return null;
     final decoded = jsonDecode(value);
-    if (decoded is! Map) throw const FormatException('会话 AI 权限快照格式错误');
+    if (decoded is! Map) throw const FormatException('会话 AI 快照格式错误');
     return decoded.map((key, value) => MapEntry(key.toString(), value));
   }
 }

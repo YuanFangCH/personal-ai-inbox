@@ -86,6 +86,14 @@ class _TablesPageState extends State<TablesPage> {
               : '${notes.length} 条笔记',
           actions: [
             OutlinedButton.icon(
+              key: const Key('inbox_assignments'),
+              onPressed: library.inboxAssignmentNeedsReview
+                  ? null
+                  : () => _editInboxAssignments(context, library),
+              icon: const Icon(Icons.inbox_outlined),
+              label: const Text('收纳目标'),
+            ),
+            OutlinedButton.icon(
               key: Key(
                 _showTables ? 'notebook_show_notes' : 'notebook_show_tables',
               ),
@@ -103,7 +111,9 @@ class _TablesPageState extends State<TablesPage> {
             ),
             FilledButton.icon(
               key: const Key('create_table_button'),
-              onPressed: () => _createTable(context, library),
+              onPressed: library.inboxAssignmentNeedsReview
+                  ? null
+                  : () => _createTable(context, library),
               icon: const Icon(Icons.add),
               label: const Text('新建表'),
             ),
@@ -111,6 +121,14 @@ class _TablesPageState extends State<TablesPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (library.inboxAssignmentNeedsReview) ...[
+                const MaterialBanner(
+                  content: Text('收纳映射状态待核对。表与内容保持只读，恢复材料已保留。'),
+                  leading: Icon(Icons.warning_amber_rounded),
+                  actions: [SizedBox.shrink()],
+                ),
+                const SizedBox(height: 12),
+              ],
               TextField(
                 key: const Key('notebook_search_field'),
                 controller: _query,
@@ -180,7 +198,9 @@ class _TablesPageState extends State<TablesPage> {
                   message: _normalizedQuery.isEmpty
                       ? '可以先写一段正文，或创建作业、考试等主题表。'
                       : '试试其他关键词。',
-                  action: _normalizedQuery.isEmpty
+                  action:
+                      _normalizedQuery.isEmpty &&
+                          !library.inboxAssignmentNeedsReview
                       ? FilledButton.icon(
                           onPressed: () => _createTable(context, library),
                           icon: const Icon(Icons.add),
@@ -190,12 +210,18 @@ class _TablesPageState extends State<TablesPage> {
                 )
               else ...[
                 if (defaults.isNotEmpty) ...[
-                  const SectionHeading(title: '默认收纳表'),
+                  const SectionHeading(title: '预置收纳表'),
                   const SizedBox(height: 8),
                   for (final table in defaults) ...[
                     _TableCard(
                       table: table,
                       entryCount: _entryCount(library, table.id),
+                      onRename: library.inboxAssignmentNeedsReview
+                          ? null
+                          : () => _renameTable(context, library, table),
+                      onDelete: library.inboxAssignmentNeedsReview
+                          ? null
+                          : () => _deleteTable(context, library, table),
                     ),
                     const SizedBox(height: 10),
                   ],
@@ -208,8 +234,12 @@ class _TablesPageState extends State<TablesPage> {
                     _TableCard(
                       table: table,
                       entryCount: _entryCount(library, table.id),
-                      onRename: () => _renameTable(context, library, table),
-                      onDelete: () => _deleteTable(context, library, table),
+                      onRename: library.inboxAssignmentNeedsReview
+                          ? null
+                          : () => _renameTable(context, library, table),
+                      onDelete: library.inboxAssignmentNeedsReview
+                          ? null
+                          : () => _deleteTable(context, library, table),
                     ),
                     const SizedBox(height: 10),
                   ],
@@ -219,6 +249,90 @@ class _TablesPageState extends State<TablesPage> {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _editInboxAssignments(
+    BuildContext context,
+    TableLibrary library,
+  ) async {
+    final updates = <InboxAssignmentKind, String?>{
+      for (final kind in InboxAssignmentKind.values)
+        kind: library.inboxAssignments.targetFor(kind),
+    };
+    var saving = false;
+    await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('收纳目标'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final kind in InboxAssignmentKind.values)
+                  DropdownButtonFormField<String>(
+                    key: ValueKey('inbox_target_${kind.name}'),
+                    initialValue: updates[kind] ?? '',
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: switch (kind) {
+                        InboxAssignmentKind.todo => '待办',
+                        InboxAssignmentKind.schedule => '日程',
+                        InboxAssignmentKind.event => '事件与普通笔记',
+                      },
+                    ),
+                    items: [
+                      const DropdownMenuItem(value: '', child: Text('暂不指定')),
+                      for (final table in library.tables)
+                        DropdownMenuItem(
+                          value: table.id,
+                          child: Text(
+                            table.title,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: saving
+                        ? null
+                        : (value) => setDialogState(
+                            () => updates[kind] = value == '' ? null : value,
+                          ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: saving
+                  ? null
+                  : () => Navigator.pop(dialogContext, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              key: const Key('save_inbox_assignments'),
+              onPressed: saving
+                  ? null
+                  : () async {
+                      setDialogState(() => saving = true);
+                      try {
+                        await library.assignInboxTargets(updates);
+                        if (dialogContext.mounted) {
+                          Navigator.pop(dialogContext, true);
+                        }
+                      } catch (error) {
+                        if (!dialogContext.mounted) return;
+                        setDialogState(() => saving = false);
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          SnackBar(content: Text('收纳目标保存失败：$error')),
+                        );
+                      }
+                    },
+              child: Text(saving ? '保存中…' : '保存'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -386,6 +500,7 @@ class _TablesPageState extends State<TablesPage> {
                       _RecoveryTableTile(
                         batch: batch,
                         preview: previews[batch.id],
+                        readOnly: library.inboxAssignmentNeedsReview,
                         onRestore: () async {
                           try {
                             await library.restoreRecoveryBatch(batch.id);
@@ -518,11 +633,13 @@ class _RecoveryTableTile extends StatelessWidget {
   const _RecoveryTableTile({
     required this.batch,
     required this.preview,
+    required this.readOnly,
     required this.onRestore,
   });
 
   final TableRecoveryBatch batch;
   final TableRecoveryPreview? preview;
+  final bool readOnly;
   final VoidCallback onRestore;
 
   @override
@@ -542,6 +659,12 @@ class _RecoveryTableTile extends StatelessWidget {
       title: Text(title),
       subtitle: Text('${entries.length} 条内容 · $remainingLabel'),
       children: [
+        if (readOnly)
+          const ListTile(
+            dense: true,
+            leading: Icon(Icons.info_outline),
+            title: Text('收纳映射待核对，恢复操作已暂停。'),
+          ),
         for (final entry in entries.take(5))
           ListTile(
             dense: true,
@@ -557,8 +680,8 @@ class _RecoveryTableTile extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.only(right: 12, bottom: 8),
             child: FilledButton.tonal(
-              onPressed: remaining.isNegative ? null : onRestore,
-              child: const Text('恢复整表'),
+              onPressed: readOnly || remaining.isNegative ? null : onRestore,
+              child: Text(readOnly ? '核对后可恢复' : '恢复整表'),
             ),
           ),
         ),

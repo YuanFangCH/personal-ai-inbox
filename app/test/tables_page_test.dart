@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_ai_inbox/app.dart';
@@ -6,10 +8,145 @@ import 'package:personal_ai_inbox/core/models.dart';
 import 'package:personal_ai_inbox/core/table_models.dart';
 import 'package:personal_ai_inbox/data/memory_index_database.dart';
 import 'package:personal_ai_inbox/data/memory_vault_store.dart';
+import 'package:personal_ai_inbox/data/table_repository.dart';
 
 import 'test_support.dart';
 
 void main() {
+  testWidgets('third-state review disables table, recovery, and field writes', (
+    tester,
+  ) async {
+    final vault = MemoryVaultStore();
+    final runtime = await AppRuntime.bootstrap(
+      vaultOverride: vault,
+      indexOverride: MemoryIndexDatabase(),
+      settingsOverride: FakeSettingsService(deviceId: 'table-review-ui-test'),
+    );
+    final deleted = await runtime.tables.createTable(title: '待恢复表');
+    await runtime.tables.deleteTable(
+      id: deleted.id,
+      expectedRevision: deleted.revision,
+    );
+    final todoTable = runtime.tables.tableForInboxAssignment(
+      InboxAssignmentKind.todo,
+    )!;
+    final entryCreatedAt = DateTime.now();
+    await runtime.tables.createEntry(
+      TableEntryDocument(
+        id: 'td_review_ui',
+        type: TableContentType.todo,
+        tableId: todoTable.id,
+        title: '只读待办',
+        body: '',
+        revision: 1,
+        createdAt: entryCreatedAt,
+        updatedAt: entryCreatedAt,
+      ),
+    );
+    final beforeRaw = (await vault.read(TableRepository.inboxAssignmentsPath))!;
+    final before = jsonDecode(beforeRaw) as Map<String, dynamic>;
+    final expectedAssignments = Map<String, dynamic>.from(
+      before['assignments'] as Map,
+    )..['todo'] = 'tb_default_event';
+    final after = jsonEncode({
+      ...before,
+      'revision': (before['revision'] as int) + 1,
+      'assignments': expectedAssignments,
+    });
+    final externalAssignments = Map<String, dynamic>.from(
+      before['assignments'] as Map,
+    )..['todo'] = 'tb_default_schedule';
+    await vault.write(
+      TableRepository.inboxAssignmentsPath,
+      jsonEncode({
+        ...before,
+        'revision': (before['revision'] as int) + 2,
+        'assignments': externalAssignments,
+      }),
+    );
+    await vault.write(
+      TableRepository.writeJournalPath,
+      jsonEncode({
+        'schema_version': 2,
+        'kind': 'inbox_assignments',
+        'operation_id': 'act_review_ui',
+        'request_signature': 'review-ui-signature',
+        'before': beforeRaw,
+        'after': after,
+        'receipt': {
+          'operation_id': 'act_review_ui',
+          'kind': InboxAssignmentKind.todo.wireName,
+          'previous_table_id': before['assignments']['todo'],
+          'table_id': 'tb_default_event',
+          'previous_revision': before['revision'],
+          'revision': (before['revision'] as int) + 1,
+        },
+      }),
+    );
+    await runtime.tables.initialize();
+    expect(await runtime.tables.recoveryBatches(), isNotEmpty);
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav_more')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('sheet_nav_matters')));
+    await tester.pumpAndSettle();
+    await _openTablesView(tester);
+
+    expect(find.textContaining('状态待核对'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const Key('create_table_button')))
+          .onPressed,
+      isNull,
+    );
+    expect(
+      tester
+          .widget<OutlinedButton>(find.byKey(const Key('inbox_assignments')))
+          .onPressed,
+      isNull,
+    );
+    expect(find.byTooltip('表选项'), findsNothing);
+    await tester.tap(find.byKey(ValueKey('table_${todoTable.id}')));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const Key('table_add_content')))
+          .onPressed,
+      isNull,
+    );
+    expect(
+      tester
+          .widget<TextButton>(find.byKey(const Key('table_body_edit')))
+          .onPressed,
+      isNull,
+    );
+    expect(
+      tester
+          .widget<TextButton>(find.byKey(const Key('manage_table_fields')))
+          .onPressed,
+      isNull,
+    );
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).onChanged, isNull);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('notebook_recycle_bin')));
+    await tester.pumpAndSettle();
+    expect(find.text('回收站'), findsNWidgets(2));
+    expect(find.text('待恢复表'), findsOneWidget);
+    await tester.tap(find.text('待恢复表'));
+    await tester.pumpAndSettle();
+    expect(find.text('核对后可恢复'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, '核对后可恢复'))
+          .onPressed,
+      isNull,
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+    await runtime.shutdown();
+  });
+
   testWidgets('replaces the matters page with tables and creates a note', (
     tester,
   ) async {
@@ -124,7 +261,9 @@ void main() {
     expect(find.text('删除这张表？'), findsOneWidget);
     await tester.tap(find.text('删除表和内容'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('回收站'));
+    await tester.ensureVisible(find.byKey(const Key('notebook_recycle_bin')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('notebook_recycle_bin')));
     await tester.pumpAndSettle();
     expect(find.text('作业表'), findsOneWidget);
     expect(find.textContaining('1 条内容 · 剩余'), findsOneWidget);
@@ -224,10 +363,16 @@ void main() {
         );
         await tester.enterText(
           find.byKey(const Key('table_entry_body')),
-          '编辑器在当前宽度下保持可滚动。',
+          '编辑器在宽度 ${size.width.toInt()} 下保持可滚动。',
         );
         await tester.tap(find.byKey(const Key('table_entry_save')));
-        await tester.pumpAndSettle();
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        if (find.text('发现可能重复的内容').evaluate().isNotEmpty) {
+          await tester.tap(find.byKey(const Key('manual_duplicate_keep_both')));
+          await tester.pump();
+          await tester.pump(const Duration(seconds: 1));
+        }
         expect(find.text(entryTitle), findsOneWidget);
         expect(tester.takeException(), isNull, reason: 'entry editor at $size');
         await tester.pageBack();
@@ -235,6 +380,7 @@ void main() {
       }
 
       await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 2));
       await runtime.shutdown();
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
@@ -293,6 +439,147 @@ void main() {
     expect(moved.tableId, target.id);
     expect(moved.body, note.body);
     await tester.pumpWidget(const SizedBox.shrink());
+    await runtime.shutdown();
+  });
+
+  testWidgets(
+    'manual editor shows local exact duplicates and reuses the existing entry',
+    (tester) async {
+      final runtime = await AppRuntime.bootstrap(
+        vaultOverride: MemoryVaultStore(),
+        indexOverride: MemoryIndexDatabase(),
+        settingsOverride: FakeSettingsService(deviceId: 'manual-dedupe-ui'),
+      );
+      final table = await runtime.tables.createTable(title: '手工查重表');
+      final now = DateTime.now();
+      await runtime.tables.createEntry(
+        TableEntryDocument(
+          id: 'nt_manual_ui_original',
+          type: TableContentType.note,
+          tableId: table.id,
+          title: '重复笔记',
+          revision: 1,
+          createdAt: now,
+          updatedAt: now,
+          body: '这是一条完全相同的本地记录。',
+        ),
+      );
+      await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('nav_more')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('sheet_nav_matters')));
+      await tester.pumpAndSettle();
+      await _openTablesView(tester);
+      await tester.ensureVisible(find.text('手工查重表').last);
+      await tester.tap(find.text('手工查重表').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('table_add_content')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ListTile, '笔记').last);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('table_entry_title')),
+        '重复笔记',
+      );
+      await tester.enterText(
+        find.byKey(const Key('table_entry_body')),
+        '这是一条完全相同的本地记录。',
+      );
+      await tester.tap(find.byKey(const Key('table_entry_save')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.text('发现可能重复的内容'), findsOneWidget);
+      expect(find.textContaining('完全相同 ·'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('manual_duplicate_reuse')));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(
+        await runtime.tables.readEntry('nt_manual_ui_original'),
+        isNotNull,
+      );
+      expect(
+        runtime.tables.entries.where((entry) => entry.title == '重复笔记'),
+        hasLength(1),
+      );
+      expect(find.textContaining('未新增条目'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await runtime.shutdown();
+    },
+  );
+
+  testWidgets('manual duplicate review can retain both with its credential', (
+    tester,
+  ) async {
+    final runtime = await AppRuntime.bootstrap(
+      vaultOverride: MemoryVaultStore(),
+      indexOverride: MemoryIndexDatabase(),
+      settingsOverride: FakeSettingsService(deviceId: 'manual-keep-both-ui'),
+    );
+    final table = await runtime.tables.createTable(title: '保留两条测试表');
+    final now = DateTime.now();
+    await runtime.tables.createEntry(
+      TableEntryDocument(
+        id: 'nt_keep_both_original',
+        type: TableContentType.note,
+        tableId: table.id,
+        title: '信号系统考试范围',
+        revision: 1,
+        createdAt: now,
+        updatedAt: now,
+        body: '周五复习信号系统第二章。',
+      ),
+    );
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav_more')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('sheet_nav_matters')));
+    await tester.pumpAndSettle();
+    await _openTablesView(tester);
+    await tester.ensureVisible(find.text('保留两条测试表').last);
+    await tester.tap(find.text('保留两条测试表').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('table_add_content')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, '笔记').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('table_entry_title')),
+      '信号系统考试范围',
+    );
+    await tester.enterText(
+      find.byKey(const Key('table_entry_body')),
+      '周五复习信号系统第二章，并补充第三章。',
+    );
+    await tester.tap(find.byKey(const Key('table_entry_save')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('发现可能重复的内容'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('manual_duplicate_keep_both')));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    final entries = runtime.tables.entries
+        .where((entry) => entry.title == '信号系统考试范围')
+        .toList(growable: false);
+    expect(entries, hasLength(2));
+    final added = entries.singleWhere(
+      (entry) => entry.id != 'nt_keep_both_original',
+    );
+    final credential =
+        added.extensionFields['manual_duplicate_exception'] as Map;
+    expect(credential['decision'], 'keep_both');
+    expect(
+      (credential['candidates'] as List).single['id'],
+      'nt_keep_both_original',
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 2));
     await runtime.shutdown();
   });
 

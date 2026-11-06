@@ -69,6 +69,41 @@ void main() {
       await failed.close();
     },
   );
+
+  test(
+    'capture without an assigned table stays pending with raw text',
+    () async {
+      final harness = await _CaptureHarness.create(
+        candidate: ClassificationCandidate(
+          type: ResultType.todo,
+          title: '交报告',
+          confidence: 0.95,
+          due: DateTime(2026, 11, 2, 17),
+        ),
+      );
+      final todoTable = harness.tables.tables.firstWhere(
+        (table) => table.role == TableRole.inboxTodo,
+      );
+      await harness.tables.deleteTable(
+        id: todoTable.id,
+        expectedRevision: todoTable.revision,
+      );
+      expect(
+        harness.tables.inboxAssignments.targetFor(InboxAssignmentKind.todo),
+        isNull,
+      );
+
+      final outcome = await harness.workflow.captureText('周五交报告');
+      expect(outcome.status, CaptureOutcomeStatus.review);
+      expect(outcome.tableEntry, isNull);
+      final pending = harness.workflow.reviewCaptures.single;
+      expect(pending.text, '周五交报告');
+      expect(pending.status, CaptureStatus.needsReview);
+      expect(pending.reviewReason, contains('收纳目标'));
+
+      await harness.close();
+    },
+  );
 }
 
 class _CaptureHarness {

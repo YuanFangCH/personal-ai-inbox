@@ -60,8 +60,21 @@ class _Composer extends StatelessWidget {
     return range.isValid && !range.isCollapsed;
   }
 
+  bool get _hasDraftContent =>
+      controller.text.trim().isNotEmpty ||
+      attachments.isNotEmpty ||
+      files.isNotEmpty;
+
   void _submitFromKeyboard() {
-    if (!enabled || generating || _isComposing) return;
+    if (!enabled || !_hasDraftContent || _isComposing) return;
+    onSend();
+  }
+
+  void _submitFromButton() {
+    if (!enabled || !_hasDraftContent) return;
+    if (_isComposing) {
+      controller.value = controller.value.copyWith(composing: TextRange.empty);
+    }
     onSend();
   }
 
@@ -278,17 +291,19 @@ class _Composer extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 2),
+                        if (generating)
+                          IconButton.outlined(
+                            key: const Key('chat_stop'),
+                            tooltip: '停止生成',
+                            onPressed: onStop,
+                            icon: const Icon(Icons.stop),
+                          ),
+                        if (generating) const SizedBox(width: 4),
                         IconButton.filled(
                           key: const Key('chat_send'),
-                          tooltip: generating ? '停止生成' : '发送',
-                          onPressed: enabled
-                              ? generating
-                                    ? onStop
-                                    : onSend
-                              : null,
-                          icon: Icon(
-                            generating ? Icons.stop : Icons.arrow_upward,
-                          ),
+                          tooltip: generating ? '发送补充' : '发送',
+                          onPressed: enabled ? _submitFromButton : null,
+                          icon: const Icon(Icons.arrow_upward),
                         ),
                       ],
                     ),

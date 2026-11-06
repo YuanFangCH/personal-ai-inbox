@@ -103,6 +103,11 @@ void main() {
         candidate.id,
         displayedDigest: candidate.digest,
       );
+      expect(
+        (await repository.findGlobalKnowledgeCandidate(candidate.id))
+            ?.authorizationSource,
+        GlobalKnowledgeAuthorizationSource.human,
+      );
       expect(created.document.isGlobalKnowledge, isTrue);
       expect(created.document.extensionFields['global_facts'], {
         'semester_start': '2026-09-01',
@@ -172,6 +177,44 @@ void main() {
       library.dispose();
     },
   );
+
+  test('legacy approved candidate without source is never replayed', () async {
+    final initial = ResultLibrary(repository: repository);
+    await initial.initialize();
+    final pending = await initial.proposeGlobalKnowledgeChange(
+      operation: GlobalKnowledgeOperation.create,
+      candidateId: 'gkc_legacy_approved',
+      proposal: const {
+        'title': '来源不明的旧审批',
+        'body': '启动恢复不得自动应用。',
+        'facts': {'legacy': true},
+      },
+    );
+    await index.upsertGlobalKnowledgeCandidate(
+      pending.copyWith(
+        status: GlobalKnowledgeCandidateStatus.approved,
+        authorizationSource:
+            GlobalKnowledgeAuthorizationSource.legacyUnknown,
+      ),
+    );
+
+    final recovered = ResultLibrary(repository: repository);
+    await recovered.initialize();
+
+    expect(await repository.listDocuments(), isEmpty);
+    expect(
+      (await repository.findGlobalKnowledgeCandidate(pending.id))?.status,
+      GlobalKnowledgeCandidateStatus.failed,
+    );
+    expect(
+      (await repository.findGlobalKnowledgeCandidate(pending.id))?.error,
+      contains('未自动重放'),
+    );
+    await recovered.shutdown();
+    recovered.dispose();
+    await initial.shutdown();
+    initial.dispose();
+  });
 
   test(
     'reversible result operations use CAS and undo with new revisions',

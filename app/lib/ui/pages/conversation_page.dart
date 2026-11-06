@@ -22,6 +22,8 @@ import 'document_detail_page.dart';
 import 'table_detail_page.dart';
 import 'global_knowledge_page.dart';
 import '../widgets/global_knowledge_candidate_card.dart';
+import 'conversation/conversation_permission_sheet.dart';
+import 'conversation/agent_task_status_card.dart';
 
 part 'conversation/attachment_preview.dart';
 part 'conversation/auto_record_card.dart';
@@ -62,11 +64,11 @@ class _ConversationPageState extends State<ConversationPage>
   void didChangeDependencies() {
     super.didChangeDependencies();
     _conversationWorkspaceForCleanup = AppScope.conversations(context);
-    if (!_temporaryPermissionsInitialized) {
-      _temporaryPermissions = AppScope.preferences(context)
-          .settings
-          .defaultAiPermissions;
-      _temporaryPermissionsInitialized = true;
+    if (!_temporaryPolicyInitialized) {
+      _temporaryAiPolicy = AiPolicy.fromLegacyPermissions(
+        AppScope.preferences(context).settings.defaultAiPermissions,
+      );
+      _temporaryPolicyInitialized = true;
     }
   }
 
@@ -142,6 +144,10 @@ class _ConversationPageState extends State<ConversationPage>
     final app = AppScope.conversations(context);
     final settings = AppScope.preferences(context).settings;
     final results = AppScope.results(context);
+    if (!_didResolveInitialConversation) {
+      _didResolveInitialConversation = true;
+      _conversationId ??= app.activeConversationId;
+    }
     final conversationId = _conversationId;
     final conversation = conversationId == null
         ? null
@@ -182,7 +188,7 @@ class _ConversationPageState extends State<ConversationPage>
         defaultTargetPlatform == TargetPlatform.windows ||
         defaultTargetPlatform == TargetPlatform.macOS ||
         defaultTargetPlatform == TargetPlatform.linux;
-    final conversationContent = Align(
+    final messageContent = Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: const BoxConstraints(
@@ -204,6 +210,7 @@ class _ConversationPageState extends State<ConversationPage>
             : NotificationListener<ScrollNotification>(
                 onNotification: _handleConversationScroll,
                 child: ListView(
+                  key: const ValueKey('conversation_message_list'),
                   controller: _scrollController,
                   padding: EdgeInsets.fromLTRB(
                     16,
@@ -231,6 +238,12 @@ class _ConversationPageState extends State<ConversationPage>
                 ),
               ),
       ),
+    );
+    final conversationContent = Column(
+      children: [
+        AgentTaskStatusCard(workspace: app),
+        Expanded(child: messageContent),
+      ],
     );
     _scheduleComposerLayout();
     final composer = NotificationListener<SizeChangedLayoutNotification>(

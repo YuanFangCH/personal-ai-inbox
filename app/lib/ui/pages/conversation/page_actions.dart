@@ -14,17 +14,19 @@ mixin _ConversationPageActions on State<ConversationPage> {
   final _enteringMessageIds = <String>{};
   ConversationWorkspace? _conversationWorkspaceForCleanup;
   bool _sending = false;
+  int _sendSequence = 0;
   bool _followConversationTail = true;
   bool _sessionDrawerOpen = false;
   bool _drawerWasOpen = false;
   bool _compactHistoryOpen = false;
+  bool _didResolveInitialConversation = false;
   int _lastMessageCount = -1;
   String? _conversationId;
   String _voiceBaseText = '';
   int _voiceInsertStart = 0;
   int _voiceReplaceEnd = 0;
-  AiPermissions _temporaryPermissions = const AiPermissions();
-  bool _temporaryPermissionsInitialized = false;
+  AiPolicy _temporaryAiPolicy = AiPolicy.forPreset(AiPolicyPreset.standard);
+  bool _temporaryPolicyInitialized = false;
   bool _thinkingEnabled = false;
   bool _attachmentTrayOpen = false;
   double _composerHeight = 128;
@@ -179,11 +181,10 @@ mixin _ConversationPageActions on State<ConversationPage> {
   Future<void> _send() async {
     final app = AppScope.conversations(context);
     final initialText = _composeMessageText(_textController.text);
-    if ((initialText.trim().isEmpty && _imageInputs.isEmpty) ||
-        app.isChatGenerating ||
-        _sending) {
+    if ((initialText.trim().isEmpty && _imageInputs.isEmpty) || _sending) {
       return;
     }
+    final sendSequence = ++_sendSequence;
     _followConversationTail = true;
     setState(() => _sending = true);
     try {
@@ -192,11 +193,13 @@ mixin _ConversationPageActions on State<ConversationPage> {
       if (!mounted) return;
       final text = _composeMessageText(_textController.text);
       final attachments = List<ChatAttachmentInput>.from(_imageInputs);
+      final files = List<ExtractedFileText>.from(_fileTexts);
       var conversationId = _conversationId;
       if (conversationId == null) {
         final conversation = await app.createConversation(
-          permissions: _temporaryPermissions,
+          permissions: _temporaryAiPolicy.legacyCompatibilityPermissions,
         );
+        await app.setAiPolicy(conversation.id, _temporaryAiPolicy);
         conversationId = conversation.id;
         if (mounted) {
           setState(() => _conversationId = conversationId);
@@ -215,11 +218,17 @@ mixin _ConversationPageActions on State<ConversationPage> {
         thinkingEnabled: _thinkingEnabled,
         onUserMessageSaved: () {
           if (!mounted) return;
-          _textController.clear();
+          final clearText = _composeMessageText(_textController.text) == text;
+          final submittedImages = Set<ChatAttachmentInput>.identity()
+            ..addAll(attachments);
+          final submittedFiles = Set<ExtractedFileText>.identity()
+            ..addAll(files);
           setState(() {
-            _imageInputs.clear();
-            _fileTexts.clear();
+            if (clearText) _textController.clear();
+            _imageInputs.removeWhere(submittedImages.contains);
+            _fileTexts.removeWhere(submittedFiles.contains);
             _attachmentTrayOpen = false;
+            if (sendSequence == _sendSequence) _sending = false;
           });
         },
       );
@@ -229,7 +238,7 @@ mixin _ConversationPageActions on State<ConversationPage> {
             .showSnackBar(SnackBar(content: Text('发送流程未完成：$error')));
       }
     } finally {
-      if (mounted) {
+      if (mounted && sendSequence == _sendSequence && _sending) {
         setState(() => _sending = false);
       }
     }
@@ -372,9 +381,9 @@ mixin _ConversationPageActions on State<ConversationPage> {
     if (widget.isRoot) {
       setState(() {
         _conversationId = null;
-        _temporaryPermissions = AppScope.preferences(context)
-            .settings
-            .defaultAiPermissions;
+        _temporaryAiPolicy = AiPolicy.fromLegacyPermissions(
+          AppScope.preferences(context).settings.defaultAiPermissions,
+        );
         _textController.clear();
         _imageInputs.clear();
         _fileTexts.clear();
@@ -715,113 +724,22 @@ mixin _ConversationPageActions on State<ConversationPage> {
     });
   }
 
-  AiPermissions _currentPermissions(Conversation? conversation) =>
-      conversation?.aiPermissions ?? _temporaryPermissions;
+  AiPolicy _currentAiPolicy(Conversation? conversation) =>
+      conversation?.effectiveAiPolicy ?? _temporaryAiPolicy;
 
   Future<void> _showPermissions(Conversation? conversation) async {
-    var permissions = _currentPermissions(conversation);
-    await showModalBottomSheet<void>(
+    final selected = await showConversationPermissionSheet(
       context: context,
-      showDragHandle: true,
-      sheetAnimationStyle: reducedMotionAnimationStyle(context),
-      builder: (_) => StatefulBuilder(
-        builder: (context, setSheetState) => SafeArea(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '当前对话权限',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ),
-                      IconButton(
-                        key: const Key('conversation_permissions_close'),
-                        tooltip: '完成',
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  const Text('只影响当前对话；全局设置决定新对话默认值。'),
-                  const SizedBox(height: 8),
-                  _permissionTile(
-                    title: '读取',
-                    subtitle: '按需读取成果、全局知识和其他对话',
-                    value: permissions.read,
-                    onChanged: (value) => _setPermission(
-                      conversation,
-                      permissions.copyWith(read: value),
-                      setSheetState,
-                      (next) => permissions = next,
-                    ),
-                  ),
-                  _permissionTile(
-                    title: '新增',
-                    subtitle: '允许创建普通成果、提议新增全局知识',
-                    value: permissions.create,
-                    onChanged: (value) => _setPermission(
-                      conversation,
-                      permissions.copyWith(create: value),
-                      setSheetState,
-                      (next) => permissions = next,
-                    ),
-                  ),
-                  _permissionTile(
-                    title: '修改与删除',
-                    subtitle: '修改/删除普通成果；全局知识仍需确认',
-                    value: permissions.modifyDelete,
-                    onChanged: (value) => _setPermission(
-                      conversation,
-                      permissions.copyWith(modifyDelete: value),
-                      setSheetState,
-                      (next) => permissions = next,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+      initialPolicy: _currentAiPolicy(conversation),
     );
-  }
-
-  Future<void> _setPermission(
-    Conversation? conversation,
-    AiPermissions next,
-    StateSetter setSheetState,
-    ValueChanged<AiPermissions> updateLocal,
-  ) async {
-    updateLocal(next);
-    setSheetState(() {});
+    if (selected == null || !mounted) return;
     if (conversation == null) {
-      setState(() => _temporaryPermissions = next);
+      setState(() => _temporaryAiPolicy = selected);
     } else {
       await AppScope.conversations(context)
-          .setConversationPermissions(conversation.id, next);
+          .setAiPolicy(conversation.id, selected);
     }
   }
-
-  Widget _permissionTile({
-    required String title,
-    required String subtitle,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) => SwitchListTile(
-    title: Text(title),
-    subtitle: Text(subtitle),
-    value: value,
-    onChanged: onChanged,
-    contentPadding: EdgeInsets.zero,
-  );
 
   Future<void> _renameConversation(Conversation conversation) async {
     var editedTitle = conversation.title;
@@ -878,9 +796,9 @@ mixin _ConversationPageActions on State<ConversationPage> {
     if (mounted && conversation.id == _conversationId && widget.isRoot) {
       setState(() {
         _conversationId = null;
-        _temporaryPermissions = AppScope.preferences(context)
-            .settings
-            .defaultAiPermissions;
+        _temporaryAiPolicy = AiPolicy.fromLegacyPermissions(
+          AppScope.preferences(context).settings.defaultAiPermissions,
+        );
         _lastMessageCount = 0;
         _textController.clear();
         _imageInputs.clear();

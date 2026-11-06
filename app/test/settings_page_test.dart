@@ -10,7 +10,7 @@ import 'test_support.dart';
 
 void main() {
   testWidgets(
-    'permission defaults affect only conversations created afterward',
+    'permission defaults update settings without mutating existing conversations',
     (tester) async {
       final runtime = await AppRuntime.bootstrap(
         vaultOverride: MemoryVaultStore(),
@@ -18,37 +18,47 @@ void main() {
         settingsOverride: FakeSettingsService(deviceId: 'ai-permission-page'),
       );
       addTearDown(runtime.dispose);
-      final existing = await runtime.conversations.createConversation();
+      final existing = await runtime.conversations.createConversation(
+        policy: AiPolicy.forPreset(AiPolicyPreset.standard),
+      );
       await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('nav_more')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('sheet_nav_settings')));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('读取'));
+      await tester.ensureVisible(find.text('AI 权限默认值'));
       await tester.pumpAndSettle();
 
-      final switches = find.byType(SwitchListTile);
-      await tester.tap(switches.at(0));
-      await tester.tap(switches.at(1));
-      await tester.tap(switches.at(2));
+      for (final preset in const [
+        'read_only',
+        'standard',
+        'full_access',
+        'custom',
+      ]) {
+        expect(find.byKey(Key('settings_ai_preset_$preset')), findsOneWidget);
+      }
+      await tester.tap(find.byKey(const Key('settings_ai_preset_read_only')));
+      await tester.pumpAndSettle();
       _scrollToTop(tester);
       await tester.pumpAndSettle();
       await tester.tap(find.text('保存'));
       await tester.pumpAndSettle();
 
       expect(
+        runtime.preferences.settings.effectiveDefaultAiPolicy.preset,
+        AiPolicyPreset.readOnly,
+      );
+      expect(
         runtime.preferences.settings.defaultAiPermissions,
-        const AiPermissions(read: false, create: false, modifyDelete: false),
+        const AiPermissions(read: true, create: false, modifyDelete: false),
       );
       expect(
-        runtime.conversations.findConversation(existing.id)!.aiPermissions,
-        const AiPermissions(),
-      );
-      final next = await runtime.conversations.createConversation();
-      expect(
-        next.aiPermissions,
-        const AiPermissions(read: false, create: false, modifyDelete: false),
+        runtime.conversations
+            .findConversation(existing.id)!
+            .effectiveAiPolicy
+            .preset,
+        AiPolicyPreset.standard,
       );
     },
   );
@@ -97,6 +107,44 @@ void main() {
       );
     },
   );
+
+  testWidgets('custom default policy controls fit a phone layout', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final runtime = await AppRuntime.bootstrap(
+      vaultOverride: MemoryVaultStore(),
+      indexOverride: MemoryIndexDatabase(),
+      settingsOverride: FakeSettingsService(deviceId: 'settings-policy-phone'),
+    );
+    addTearDown(runtime.dispose);
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav_more')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('sheet_nav_settings')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const Key('settings_ai_preset_custom')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('settings_ai_preset_custom')));
+    await tester.pumpAndSettle();
+
+    for (final group in const [
+      'read',
+      'create',
+      'modify',
+      'structure',
+      'knowledge',
+    ]) {
+      expect(find.byKey(Key('settings_ai_group_$group')), findsOneWidget);
+    }
+    expect(tester.takeException(), isNull);
+  });
 }
 
 void _scrollToTop(WidgetTester tester) {

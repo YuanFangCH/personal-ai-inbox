@@ -33,7 +33,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool? _jsonOutputOverride;
   bool? _thinkingOverride;
   bool _allowImageEgress = true;
-  AiPermissions _defaultAiPermissions = const AiPermissions();
+  AiPolicy _defaultAiPolicy = AiPolicy.forPreset(AiPolicyPreset.standard);
   bool _initialized = false;
   bool _apiKeyChanged = false;
   bool _saving = false;
@@ -71,7 +71,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _thinkingOverride = settings.capabilityOverrides.thinking;
     _themeMode = materialThemeMode(settings.themeMode);
     _allowImageEgress = settings.allowImageEgress;
-    _defaultAiPermissions = settings.defaultAiPermissions;
+    _defaultAiPolicy = settings.effectiveDefaultAiPolicy;
     final invalidSettings = settings.validate();
     if (invalidSettings.isNotEmpty) {
       _saveError = '当前配置需要修正：${invalidSettings.join('；')}';
@@ -174,37 +174,35 @@ class _SettingsPageState extends State<SettingsPage> {
                   '只决定新对话的初始权限；已有对话保留自己的设置。',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
-                const SizedBox(height: 8),
-                _permissionSwitch(
-                  title: '读取',
-                  subtitle: '按需读取本端成果与其他对话',
-                  value: _defaultAiPermissions.read,
-                  onChanged: (value) => setState(() {
-                    _defaultAiPermissions = _defaultAiPermissions.copyWith(
-                      read: value,
-                    );
-                  }),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final preset in AiPolicyPreset.values)
+                      ChoiceChip(
+                        key: Key('settings_ai_preset_${preset.wireName}'),
+                        label: Text(_aiPresetLabel(preset)),
+                        selected: _defaultAiPolicy.preset == preset,
+                        onSelected: (_) => _selectDefaultAiPreset(preset),
+                      ),
+                  ],
                 ),
-                _permissionSwitch(
-                  title: '新增',
-                  subtitle: '允许 AI 新建成果',
-                  value: _defaultAiPermissions.create,
-                  onChanged: (value) => setState(() {
-                    _defaultAiPermissions = _defaultAiPermissions.copyWith(
-                      create: value,
-                    );
-                  }),
-                ),
-                _permissionSwitch(
-                  title: '修改与删除',
-                  subtitle: '允许 AI 按要求修改或删除成果',
-                  value: _defaultAiPermissions.modifyDelete,
-                  onChanged: (value) => setState(() {
-                    _defaultAiPermissions = _defaultAiPermissions.copyWith(
-                      modifyDelete: value,
-                    );
-                  }),
-                ),
+                const SizedBox(height: 10),
+                _AiPresetSummary(preset: _defaultAiPolicy.preset),
+                if (_defaultAiPolicy.preset == AiPolicyPreset.custom) ...[
+                  const SizedBox(height: 12),
+                  for (final group in _settingsPolicyGroups)
+                    _SettingsPolicyGroupTile(
+                      group: group,
+                      decision: _policyGroupDecision(
+                        _defaultAiPolicy,
+                        group.actions,
+                      ),
+                      onChanged: (decision) =>
+                          _setDefaultDecisionGroup(group.actions, decision),
+                    ),
+                ],
               ],
             ),
           ),
@@ -413,7 +411,7 @@ class _SettingsPageState extends State<SettingsPage> {
         modelName: _model.text,
         apiKey: _apiKeyChanged ? _apiKey.text : null,
         allowImageEgress: _allowImageEgress,
-        defaultAiPermissions: _defaultAiPermissions,
+        defaultAiPolicy: _defaultAiPolicy,
         capabilityOverrides: ModelCapabilityOverrides(
           vision: _visionOverride,
           toolCalls: _toolCallsOverride,
@@ -467,18 +465,40 @@ class _SettingsPageState extends State<SettingsPage> {
     }),
   );
 
-  Widget _permissionSwitch({
-    required String title,
-    required String subtitle,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) => SwitchListTile(
-    contentPadding: EdgeInsets.zero,
-    title: Text(title),
-    subtitle: Text(subtitle),
-    value: value,
-    onChanged: onChanged,
-  );
+  void _selectDefaultAiPreset(AiPolicyPreset preset) {
+    setState(() {
+      _defaultAiPolicy = preset == AiPolicyPreset.custom
+          ? AiPolicy.custom(
+              decisions: _defaultAiPolicy.decisions,
+              version: _defaultAiPolicy.version + 1,
+              tableScope: _defaultAiPolicy.tableScope,
+              knowledgeReadScope: _defaultAiPolicy.knowledgeReadScope,
+              conversationHistoryReadScope:
+                  _defaultAiPolicy.conversationHistoryReadScope,
+            )
+          : AiPolicy.forPreset(preset, version: _defaultAiPolicy.version + 1);
+    });
+  }
+
+  void _setDefaultDecisionGroup(
+    Set<AiPermissionAction> actions,
+    AiPolicyDecision decision,
+  ) {
+    final decisions = {..._defaultAiPolicy.decisions};
+    for (final action in actions) {
+      decisions[action] = decision;
+    }
+    setState(() {
+      _defaultAiPolicy = AiPolicy.custom(
+        decisions: decisions,
+        version: _defaultAiPolicy.version + 1,
+        tableScope: _defaultAiPolicy.tableScope,
+        knowledgeReadScope: _defaultAiPolicy.knowledgeReadScope,
+        conversationHistoryReadScope:
+            _defaultAiPolicy.conversationHistoryReadScope,
+      );
+    });
+  }
 
   Widget _numberField(TextEditingController controller, String label) =>
       Padding(
@@ -504,7 +524,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _model.text = settings.modelName;
     _themeMode = materialThemeMode(settings.themeMode);
     _allowImageEgress = settings.allowImageEgress;
-    _defaultAiPermissions = settings.defaultAiPermissions;
+    _defaultAiPolicy = settings.effectiveDefaultAiPolicy;
     _visionOverride = settings.capabilityOverrides.vision;
     _toolCallsOverride = settings.capabilityOverrides.toolCalls;
     _jsonOutputOverride = settings.capabilityOverrides.jsonOutput;
@@ -666,6 +686,9 @@ class _SettingsPageState extends State<SettingsPage> {
       'default_ai_permissions': jsonEncode(
         current.defaultAiPermissions.toJson(),
       ),
+      'default_ai_policy': jsonEncode(
+        current.effectiveDefaultAiPolicy.toJson(),
+      ),
       'response_header_timeout_seconds': current.responseHeaderTimeoutSeconds,
       'stream_idle_timeout_seconds': current.streamIdleTimeoutSeconds,
       'total_timeout_seconds': current.totalTimeoutSeconds,
@@ -681,6 +704,7 @@ class _SettingsPageState extends State<SettingsPage> {
       'calendar_month_detailed': '详细月历',
       'allow_image_egress': '图片出网',
       'default_ai_permissions': 'AI 权限默认值',
+      'default_ai_policy': 'AI 权限预设',
       'response_header_timeout_seconds': '响应头等待',
       'stream_idle_timeout_seconds': '流空闲期限',
       'total_timeout_seconds': '请求总时限',
@@ -698,6 +722,13 @@ class _SettingsPageState extends State<SettingsPage> {
                   : (rawNext as Map).map(
                       (key, value) => MapEntry(key.toString(), value),
                     ),
+            )
+          : entry.key == 'default_ai_policy'
+          ? jsonEncode(
+              rawNext ??
+                  AppSettings.aiPolicyForLegacyPermissions(
+                    const AiPermissions(),
+                  ).toJson(),
             )
           : rawNext;
       final currentValue = currentValues[entry.key];
@@ -767,4 +798,194 @@ class _SettingsPageState extends State<SettingsPage> {
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
   }
+}
+
+class _AiPresetSummary extends StatelessWidget {
+  const _AiPresetSummary({required this.preset});
+
+  final AiPolicyPreset preset;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final (title, description, color) = switch (preset) {
+      AiPolicyPreset.readOnly => (
+        '只读',
+        '新对话可以读取，但不能新增、修改、删除或调整表结构。',
+        theme.colorScheme.secondaryContainer,
+      ),
+      AiPolicyPreset.standard => (
+        '标准秘书',
+        '表内内容可直接增改删；表结构、恢复和全局知识写入逐项确认。',
+        theme.colorScheme.surfaceContainerHighest,
+      ),
+      AiPolicyPreset.fullAccess => (
+        '完全权限',
+        '新对话可直接管理任意表、字段、内容和全局知识，包括删除预置表。',
+        theme.colorScheme.errorContainer,
+      ),
+      AiPolicyPreset.custom => (
+        '自定义',
+        '按读取、内容、结构和全局知识分组选择允许、确认或禁止。',
+        theme.colorScheme.tertiaryContainer,
+      ),
+    };
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: theme.textTheme.titleSmall),
+          const SizedBox(height: 4),
+          Text(description),
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsPolicyGroupTile extends StatelessWidget {
+  const _SettingsPolicyGroupTile({
+    required this.group,
+    required this.decision,
+    required this.onChanged,
+  });
+
+  final _SettingsPolicyGroup group;
+  final AiPolicyDecision decision;
+  final ValueChanged<AiPolicyDecision> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(group.title),
+                const SizedBox(height: 2),
+                Text(
+                  group.subtitle,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          DropdownButton<AiPolicyDecision>(
+            key: Key('settings_ai_group_${group.id}'),
+            value: decision,
+            onChanged: (value) {
+              if (value != null) onChanged(value);
+            },
+            items: [
+              for (final value in AiPolicyDecision.values)
+                DropdownMenuItem(
+                  value: value,
+                  child: Text(_aiDecisionLabel(value)),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+AiPolicyDecision _policyGroupDecision(
+  AiPolicy policy,
+  Set<AiPermissionAction> actions,
+) {
+  final decisions = {for (final action in actions) policy.decisionFor(action)};
+  return decisions.length == 1 ? decisions.single : AiPolicyDecision.ask;
+}
+
+String _aiPresetLabel(AiPolicyPreset preset) => switch (preset) {
+  AiPolicyPreset.readOnly => '只读',
+  AiPolicyPreset.standard => '标准秘书',
+  AiPolicyPreset.fullAccess => '完全权限',
+  AiPolicyPreset.custom => '自定义',
+};
+
+String _aiDecisionLabel(AiPolicyDecision decision) => switch (decision) {
+  AiPolicyDecision.allow => '允许',
+  AiPolicyDecision.ask => '每次确认',
+  AiPolicyDecision.deny => '禁止',
+};
+
+const _settingsPolicyGroups = [
+  _SettingsPolicyGroup(
+    id: 'read',
+    title: '读取',
+    subtitle: '表、内容、全局知识和历史会话',
+    actions: {
+      AiPermissionAction.tableRead,
+      AiPermissionAction.contentRead,
+      AiPermissionAction.globalKnowledgeRead,
+      AiPermissionAction.globalKnowledgeSearch,
+      AiPermissionAction.conversationHistorySearch,
+      AiPermissionAction.conversationHistoryRead,
+    },
+  ),
+  _SettingsPolicyGroup(
+    id: 'create',
+    title: '新增内容',
+    subtitle: '创建表内笔记、待办、日程和事件',
+    actions: {AiPermissionAction.contentCreate},
+  ),
+  _SettingsPolicyGroup(
+    id: 'modify',
+    title: '修改内容',
+    subtitle: '更新、移动和删除表内内容及表正文',
+    actions: {
+      AiPermissionAction.contentUpdate,
+      AiPermissionAction.contentDelete,
+      AiPermissionAction.contentMove,
+      AiPermissionAction.tableBodyUpdate,
+    },
+  ),
+  _SettingsPolicyGroup(
+    id: 'structure',
+    title: '表结构、收纳与恢复',
+    subtitle: '建删表、调整字段、收纳目标和恢复操作',
+    actions: {
+      AiPermissionAction.tableCreate,
+      AiPermissionAction.tableUpdate,
+      AiPermissionAction.tableDelete,
+      AiPermissionAction.fieldAdjust,
+      AiPermissionAction.inboxTargetAdjust,
+      AiPermissionAction.restore,
+    },
+  ),
+  _SettingsPolicyGroup(
+    id: 'knowledge',
+    title: '全局知识写入',
+    subtitle: '新增、更新或删除全局事实',
+    actions: {
+      AiPermissionAction.globalKnowledgeCreate,
+      AiPermissionAction.globalKnowledgeUpdate,
+      AiPermissionAction.globalKnowledgeDelete,
+    },
+  ),
+];
+
+class _SettingsPolicyGroup {
+  const _SettingsPolicyGroup({
+    required this.id,
+    required this.title,
+    required this.subtitle,
+    required this.actions,
+  });
+
+  final String id;
+  final String title;
+  final String subtitle;
+  final Set<AiPermissionAction> actions;
 }

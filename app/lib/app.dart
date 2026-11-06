@@ -3,15 +3,24 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'bootstrap/app_runtime.dart';
+import 'services/agent_background_service.dart';
 import 'ui/app_shell.dart';
 import 'ui/app_scope.dart';
 import 'ui/presentation/domain_presentation.dart';
 import 'ui/theme/app_theme.dart';
 
+final Expando<AgentBackgroundLifecycleGate> _runtimeShutdownGates =
+    Expando<AgentBackgroundLifecycleGate>('runtime shutdown gate');
+
 class PersonalAiInboxApp extends StatefulWidget {
-  const PersonalAiInboxApp({super.key, required this.runtime});
+  const PersonalAiInboxApp({
+    super.key,
+    required this.runtime,
+    this.backgroundAgent,
+  });
 
   final AppRuntime runtime;
+  final AgentBackgroundPort? backgroundAgent;
 
   @override
   State<PersonalAiInboxApp> createState() => _PersonalAiInboxAppState();
@@ -20,11 +29,21 @@ class PersonalAiInboxApp extends StatefulWidget {
 class _PersonalAiInboxAppState extends State<PersonalAiInboxApp>
     with WidgetsBindingObserver {
   late final AppModules _modules;
+  late final AgentBackgroundPort _backgroundAgent;
+  late final AgentBackgroundLifecycleGate _shutdownGate;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _backgroundAgent =
+        widget.backgroundAgent ?? AgentBackgroundService.instance;
+    _shutdownGate = _runtimeShutdownGates[widget.runtime] ??=
+        AgentBackgroundLifecycleGate(
+          backgroundAgent: _backgroundAgent,
+          shutdownRuntime: widget.runtime.shutdown,
+        );
+    unawaited(_backgroundAgent.initialize());
     final runtime = widget.runtime;
     _modules = AppModules(
       results: runtime.results,
@@ -41,16 +60,27 @@ class _PersonalAiInboxAppState extends State<PersonalAiInboxApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.detached) {
-      unawaited(widget.runtime.shutdown());
+    switch (state) {
+      case AppLifecycleState.detached:
+        _scheduleShutdownAfterBackgroundTask();
+      case AppLifecycleState.resumed:
+        _shutdownGate.cancelShutdown();
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+        break;
     }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    unawaited(widget.runtime.shutdown());
+    _scheduleShutdownAfterBackgroundTask();
     super.dispose();
+  }
+
+  void _scheduleShutdownAfterBackgroundTask() {
+    unawaited(_shutdownGate.scheduleShutdown());
   }
 
   @override

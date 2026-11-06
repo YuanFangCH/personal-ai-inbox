@@ -104,6 +104,11 @@ Future<void> runRealisticScenario(
       '${capturedDetails.map((item) => item.toString()).join('\n')}',
     );
   }
+  // Dispose the app while the widget-test clock is still available, then
+  // advance its normal two-second lifecycle shutdown before harness cleanup.
+  await tester.pumpWidget(const SizedBox.shrink());
+  await tester.pump(const Duration(seconds: 2));
+  await tester.pump();
 }
 
 Future<void> runSecretaryScenario(
@@ -234,6 +239,7 @@ class _Harness {
   final MemoryAttachmentStore _attachmentStore = MemoryAttachmentStore();
   late _MatrixVoiceService _voiceService;
   final requestBodies = <Map<String, dynamic>>[];
+  bool _stopStreamCancelled = false;
   bool _secretaryCaseCompleted = false;
   Map<String, Object?> _caseMetrics = const {};
 
@@ -519,11 +525,21 @@ class _Harness {
           headers: {'content-type': 'application/json'},
         );
       }
+      if (scenario.id == 'SEC-084' && requestBodies.length == 1) {
+        return http.StreamedResponse(
+          Stream.value(utf8.encode('{"error":"scripted unauthorized"}')),
+          401,
+          headers: {'content-type': 'application/json'},
+        );
+      }
       if (scenario.id == 'SEC-084' && requestBodies.length > 1) {
         return http.StreamedResponse(
           Stream.fromIterable([
             utf8.encode(
               'data: {"choices":[{"delta":{"content":"重试成功。"}}]}\n\n',
+            ),
+            utf8.encode(
+              'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n',
             ),
             utf8.encode('data: [DONE]\n\n'),
           ]),
@@ -536,6 +552,38 @@ class _Harness {
   }
 
   http.StreamedResponse _sseResponse() {
+    if (scenario.id == 'SEC-083' && requestBodies.length == 1) {
+      // Keep the first response open until cancellation, independent of device speed.
+      late final StreamController<List<int>> stream;
+      stream = StreamController<List<int>>(
+        onListen: () =>
+            stream.add(utf8.encode(_contentChunks(scenario.reply).first)),
+        onCancel: () {
+          _stopStreamCancelled = true;
+          unawaited(stream.close());
+        },
+      );
+      return http.StreamedResponse(
+        stream.stream,
+        200,
+        headers: {'content-type': 'text/event-stream'},
+      );
+    }
+    if (scenario.id == 'SEC-083' && requestBodies.length > 1) {
+      return http.StreamedResponse(
+        Stream.fromIterable([
+          utf8.encode(
+            'data: {"choices":[{"delta":{"content":"继续问题已完成。"}}]}\n\n',
+          ),
+          utf8.encode(
+            'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n',
+          ),
+          utf8.encode('data: [DONE]\n\n'),
+        ]),
+        200,
+        headers: {'content-type': 'text/event-stream'},
+      );
+    }
     final chunks = <String>[];
     final reply = scenario.reply;
     switch (scenario.chatScript) {
@@ -871,11 +919,17 @@ class _Harness {
             expect(find.text('全部笔记'), findsWidgets);
           case 'SEC-007':
             await _tapKey(tester, 'conversation_permissions');
-            final toggles = tester.widgetList<SwitchListTile>(
-              find.byType(SwitchListTile),
-            );
-            expect(toggles, hasLength(3));
-            expect(toggles.every((item) => item.value), isTrue);
+            for (final preset in const [
+              'read_only',
+              'standard',
+              'full_access',
+              'custom',
+            ]) {
+              expect(
+                find.byKey(Key('permission_preset_$preset')),
+                findsOneWidget,
+              );
+            }
             await _tapKey(tester, 'conversation_permissions_close');
           case 'SEC-008':
             expect(_logicalWidth(tester), greaterThanOrEqualTo(1200));
@@ -1085,17 +1139,25 @@ class _Harness {
         await results.undoAction('${id}_delete');
         expect(results.findDocument(original.id)?.deleted, isFalse);
         if (id == 'SEC-053') {
-          final before = results.documents.length;
+          final beforeResults = results.documents.length;
+          final beforeTodos = tables.entries.length;
           await _startChat(tester, title);
           await _waitFor(
             tester,
             () => !conversations.isChatGenerating,
             reason: 'incomplete tool response',
           );
-          expect(results.documents, hasLength(before));
+          expect(results.documents, hasLength(beforeResults));
+          expect(tables.entries, hasLength(beforeTodos));
           final assistant = (await _allMessages()).last;
           expect(assistant.status, ChatMessageStatus.failed);
-          expect(assistant.error, contains('响应不完整'));
+          expect(assistant.error, contains('连接在模型确认完成前中断，本轮没有继续执行后续工具'));
+          expect(requestBodies, hasLength(1));
+          _caseMetrics = {
+            'model_requests': requestBodies.length,
+            'result_writes': results.documents.length - beforeResults,
+            'todo_writes': tables.entries.length - beforeTodos,
+          };
         }
         if (id == 'SEC-054') {
           await _newChat(tester, title);
@@ -1368,7 +1430,35 @@ class _Harness {
         if (id == 'SEC-083') {
           await _startChat(tester, title);
           final stoppedConversationId = conversations.activeConversationId!;
-          await _stopChat(tester);
+          await _waitFor(
+            tester,
+            () => conversations
+                .messagesFor(stoppedConversationId)
+                .any(
+                  (message) => !message.isUser && message.content.isNotEmpty,
+                ),
+            reason: 'first streamed text before stop',
+          );
+          await _waitFor(
+            tester,
+            () => conversations.isChatGenerating,
+            reason: 'generation to start before timed stop',
+            timeout: const Duration(seconds: 15),
+          );
+          await tester.pump(const Duration(milliseconds: 120));
+          final stop = find.byKey(const Key('chat_stop'));
+          expect(stop, findsOneWidget, reason: 'stop button');
+          final stopClock = Stopwatch()..start();
+          await tester.tap(stop);
+          while (conversations.isChatGenerating &&
+              stopClock.elapsed < const Duration(seconds: 5)) {
+            await tester.pump(const Duration(milliseconds: 16));
+          }
+          stopClock.stop();
+          expect(stopClock.elapsed, lessThan(const Duration(seconds: 1)));
+          expect(conversations.isChatGenerating, isFalse);
+          await _settle(tester);
+          expect(_stopStreamCancelled, isTrue);
           final stopped = conversations.messagesFor(stoppedConversationId);
           expect(stopped.last.status, ChatMessageStatus.interrupted);
           final field = find.byKey(const Key('chat_input'));
@@ -1387,7 +1477,9 @@ class _Harness {
             find.byKey(const Key('chat_send')),
           );
           expect(sendButton.onPressed, isNotNull);
-          await _tapKey(tester, 'chat_send');
+          await tester.ensureVisible(find.byKey(const Key('chat_send')));
+          await tester.tap(find.byKey(const Key('chat_send')));
+          await tester.pump();
           await _waitFor(
             tester,
             () => requestBodies.length >= 2,
@@ -1402,6 +1494,7 @@ class _Harness {
           final continued = conversations.messagesFor(continuedId);
           expect(continued.where((message) => message.isUser), hasLength(2));
           expect(continued.last.status, ChatMessageStatus.complete);
+          expect(continued.last.content, '继续问题已完成。');
           expect(
             (await _allMessages()).where((message) => message.isUser),
             hasLength(2),
@@ -1438,16 +1531,94 @@ class _Harness {
           await _waitFor(
             tester,
             () => !conversations.isChatGenerating,
-            reason: 'failed model request',
+            reason: 'unauthorized model request',
           );
           expect((await _allMessages()).last.status, ChatMessageStatus.failed);
+          expect(
+            requestBodies,
+            hasLength(1),
+            reason: '401 must not be retried automatically before user action',
+          );
           await _retryChat(tester);
+          try {
+            await _waitFor(
+              tester,
+              () => requestBodies.length >= 2,
+              timeout: const Duration(seconds: 10),
+              reason: 'manual retry request dispatch',
+            );
+          } catch (_) {
+            final latestAssistant = (await _allMessages()).lastWhere(
+              (message) => !message.isUser,
+            );
+            final taskCheckpoint = await conversations.taskStore.load();
+            final taskSummary = taskCheckpoint.turns
+                .map(
+                  (turn) => {
+                    'taskId': turn.taskId,
+                    'runId': turn.effectiveBudgetRunId,
+                    'status': turn.status.wireName,
+                    'assistantMessageId': turn.assistantMessageId,
+                    'sequence': turn.sequence,
+                  },
+                )
+                .toList();
+            final retryText = find.text('重试');
+            final retryTextCount = retryText.evaluate().length;
+            final retryButton = retryTextCount == 0
+                ? null
+                : find.ancestor(
+                    of: retryText.first,
+                    matching: find.byType(TextButton),
+                  );
+            final retryButtonCount = retryButton?.evaluate().length ?? 0;
+            final retryEnabled = retryButtonCount == 0
+                ? 'absent'
+                : (tester.widget<TextButton>(retryButton!).onPressed != null)
+                      .toString();
+            debugPrint(
+              'retry_dispatch_diagnostic requests=${requestBodies.length} '
+              'activeConversation=${conversations.activeConversationId} '
+              'generatingConversation=${conversations.generatingConversationId} '
+              'isGenerating=${conversations.isChatGenerating} '
+              'assistantId=${latestAssistant.id} '
+              'assistantStatus=${latestAssistant.status} '
+              'assistantError=${latestAssistant.error} '
+              'pendingChatConversations=${conversations.pendingChatConversationIds} '
+              'hasPendingTurns=${conversations.hasPendingChatTurns} '
+              'taskCheckpoint=$taskSummary '
+              'retryTextCount=$retryTextCount '
+              'retryButtonCount=$retryButtonCount '
+              'retryEnabled=$retryEnabled',
+            );
+            rethrow;
+          }
+          await _waitFor(
+            tester,
+            () => !conversations.isChatGenerating,
+            reason: 'manual retry response completion',
+          );
           final messages = await _allMessages();
+          debugPrint(
+            'SEC084_request_summary=${requestBodies.map((request) {
+              final requestMessages = (request['messages'] as List).cast<Map>();
+              return {
+                'messageCount': requestMessages.length,
+                'roles': requestMessages.map((message) => message['role']).toList(),
+                'lastUser': requestMessages.lastWhere((message) => message['role'] == 'user')['content'],
+                'assistantMessages': requestMessages.where((message) => message['role'] == 'assistant').map((message) => {'content': message['content'], 'toolCallCount': (message['tool_calls'] as List?)?.length ?? 0}).toList(),
+              };
+            }).toList()}',
+          );
           expect(requestBodies, hasLength(2));
           expect(messages.where((message) => message.isUser), hasLength(1));
           expect(messages.last.status, ChatMessageStatus.complete);
           expect(messages.last.content, '重试成功。');
-          _caseMetrics = {'model_requests': requestBodies.length};
+          _caseMetrics = {
+            'model_requests': requestBodies.length,
+            'automatic_retries': 0,
+            'manual_retry': true,
+          };
         } else if (id == 'SEC-085') {
           await _tapKey(tester, 'inbox_new_conversation');
           await _tapText(tester, '深度思考');
@@ -1705,6 +1876,63 @@ class _Harness {
       results: results,
     );
 
+    Map<String, dynamic> decodeSearchEnvelope(
+      String response,
+      LocalRetrieval retrieval, {
+      required int expectedHits,
+    }) {
+      final envelope = Map<String, dynamic>.from(jsonDecode(response) as Map);
+      expect(
+        envelope.keys,
+        containsAll([
+          'status',
+          'data',
+          'coverage',
+          'nextCursor',
+          'warnings',
+          'budget',
+        ]),
+      );
+      expect(envelope.containsKey('hits'), isFalse);
+      expect(envelope['status'], 'ok');
+      expect(envelope['nextCursor'], isNull);
+      expect(envelope['warnings'], isEmpty);
+
+      final data = Map<String, dynamic>.from(envelope['data'] as Map);
+      final coverage = Map<String, dynamic>.from(envelope['coverage'] as Map);
+      final budget = Map<String, dynamic>.from(envelope['budget'] as Map);
+      final hits = data['hits'] as List;
+      expect(data['source'], 'results');
+      expect(data['offset'], 0);
+      expect(data['nextOffset'], isNull);
+      expect(hits, hasLength(expectedHits));
+      expect(coverage['complete'], isTrue);
+      expect(coverage['scopeComplete'], isTrue);
+      expect(coverage['checkedEntries'], greaterThanOrEqualTo(expectedHits));
+      expect(coverage['matchedEntries'], expectedHits);
+      expect(coverage['returnedEntries'], expectedHits);
+      expect(coverage['characters'], jsonEncode(data).runes.length);
+      expect(coverage['uncovered'], isEmpty);
+      expect(budget['limitChars'], LocalRetrieval.maxTurnChars);
+      expect(
+        budget['usedChars'] + budget['remainingChars'],
+        budget['limitChars'],
+      );
+      expect(
+        budget['remainingChars'],
+        greaterThanOrEqualTo(response.runes.length),
+      );
+      expect(budget['searchCalls'], retrieval.searchCalls);
+      expect(budget['detailCalls'], retrieval.detailCalls);
+      expect(retrieval.searchCalls, 1);
+      expect(retrieval.detailCalls, 0);
+      expect(
+        retrieval.resultChars,
+        lessThanOrEqualTo(LocalRetrieval.maxTurnChars),
+      );
+      return envelope;
+    }
+
     switch (id) {
       case 'SEC-029':
         await results.createManual(
@@ -1749,7 +1977,14 @@ class _Harness {
           type: ResultType.todo,
         );
         expect(result, contains(title));
-        expect(jsonDecode(result)['hits'], hasLength(1));
+        final envelope = decodeSearchEnvelope(
+          result,
+          retrieval,
+          expectedHits: 1,
+        );
+        final hit = ((envelope['data'] as Map)['hits'] as List).single as Map;
+        expect(hit['title'], title);
+        expect(hit['type'], ResultType.todo.wireName);
         _caseMetrics = {
           'search_calls': retrieval.searchCalls,
           'result_chars': retrieval.resultChars,
@@ -1814,12 +2049,18 @@ class _Harness {
         );
         final retrieval = buildRetrieval();
         final result = await retrieval.searchResults(query: marker);
-        final hit = (jsonDecode(result)['hits'] as List).single as Map;
+        final envelope = decodeSearchEnvelope(
+          result,
+          retrieval,
+          expectedHits: 1,
+        );
+        final hit = ((envelope['data'] as Map)['hits'] as List).single as Map;
         expect(
           (hit['snippet'] as String).runes.length,
           lessThanOrEqualTo(LocalRetrieval.maxHitChars),
         );
         expect(hit['id'], document.id);
+        expect(result, isNot(contains(List.filled(500, '正文').join())));
         expect(retrieval.detailCalls, 0);
         _caseMetrics = {
           'search_calls': retrieval.searchCalls,
@@ -1838,7 +2079,7 @@ class _Harness {
         final second = await retrieval.searchResults(query: marker);
         expect(second, first);
         expect(retrieval.searchCalls, 2);
-        expect(retrieval.resultChars, firstChars);
+        expect(retrieval.resultChars, firstChars + second.runes.length);
         _caseMetrics = {
           'search_calls': retrieval.searchCalls,
           'cache_reused_chars': retrieval.resultChars,
@@ -1865,7 +2106,12 @@ class _Harness {
         final result = await retrieval.searchResults(
           query: 'no_matching_source_$marker',
         );
-        expect(jsonDecode(result)['hits'], isEmpty);
+        final envelope = jsonDecode(result) as Map;
+        final data = envelope['data'] as Map;
+        final coverage = envelope['coverage'] as Map;
+        expect(envelope['status'], 'ok');
+        expect(data['hits'], isEmpty);
+        expect(coverage['complete'], isTrue);
         expect(retrieval.searchCalls, 1);
         _caseMetrics = {
           'search_calls': retrieval.searchCalls,
@@ -1884,22 +2130,35 @@ class _Harness {
         );
         final retrieval = buildRetrieval();
         final result = await retrieval.searchResults(query: marker);
-        expect(jsonDecode(result)['hits'], hasLength(2));
+        final envelope = decodeSearchEnvelope(
+          result,
+          retrieval,
+          expectedHits: 2,
+        );
         expect(
           results.documents.where((item) => item.title.startsWith('课程安排')),
           hasLength(2),
         );
         _caseMetrics = {
           'search_calls': retrieval.searchCalls,
-          'ambiguous_hits': (jsonDecode(result)['hits'] as List).length,
+          'ambiguous_hits': ((envelope['data'] as Map)['hits'] as List).length,
+          'coverage_complete': (envelope['coverage'] as Map)['complete'],
+          'output_chars': result.runes.length,
         };
       case 'SEC-038':
         final retrieval = buildRetrieval();
-        await retrieval.searchResults(query: '${marker}_one');
-        await retrieval.searchResults(query: '${marker}_two');
-        final blocked = await retrieval.searchResults(query: '${marker}_three');
-        expect(blocked, contains('搜索次数上限'));
-        expect(retrieval.searchCalls, 3);
+        for (var index = 1; index <= 20; index++) {
+          final response = jsonDecode(
+            await retrieval.searchResults(query: '${marker}_$index'),
+          ) as Map;
+          expect(response['status'], 'ok');
+        }
+        final blocked = jsonDecode(
+          await retrieval.searchResults(query: '${marker}_21'),
+        ) as Map;
+        expect(blocked['status'], 'batch_boundary');
+        expect(blocked['warnings'], contains(contains('检索调用上限')));
+        expect(retrieval.searchCalls, 21);
         expect(
           retrieval.resultChars,
           lessThanOrEqualTo(LocalRetrieval.maxTurnChars),
@@ -1907,7 +2166,7 @@ class _Harness {
         _caseMetrics = {
           'search_calls': retrieval.searchCalls,
           'result_chars': retrieval.resultChars,
-          'third_call_blocked': true,
+          'blocked_call': 21,
         };
       case 'SEC-039':
         final documents = <ResultDocument>[];
@@ -2291,9 +2550,57 @@ class _Harness {
   Future<void> _retryChat(WidgetTester tester) async {
     final retry = find.text('重试');
     expect(retry, findsWidgets, reason: 'retry action for a failed reply');
-    await tester.ensureVisible(retry.first);
+    final retryButton = find.ancestor(
+      of: retry.first,
+      matching: find.byType(TextButton),
+    );
+    expect(retryButton, findsOneWidget, reason: 'retry button');
+    final conversationScrollable = find.ancestor(
+      of: retryButton,
+      matching: find.byType(Scrollable),
+    );
+    expect(
+      conversationScrollable,
+      findsWidgets,
+      reason: 'retry button conversation scrollable',
+    );
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.scrollUntilVisible(
+      retryButton,
+      180,
+      scrollable: conversationScrollable.first,
+    );
     await tester.pump();
-    await tester.tap(retry.first);
+    final input = find.byKey(const Key('chat_input'));
+    var buttonRect = tester.getRect(retryButton);
+    var inputRect = tester.getRect(input);
+    if (buttonRect.bottom > inputRect.top - 8) {
+      await tester.drag(conversationScrollable.first, const Offset(0, -100));
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+      buttonRect = tester.getRect(retryButton);
+      inputRect = tester.getRect(input);
+    }
+    debugPrint(
+      'retry_geometry button=$buttonRect input=$inputRect '
+      'scrollable=${tester.getRect(conversationScrollable.first)}',
+    );
+    expect(
+      buttonRect.bottom,
+      lessThanOrEqualTo(inputRect.top - 8),
+      reason: 'retry button must clear composer',
+    );
+    expect(retryButton.hitTestable(), findsOneWidget);
+    expect(
+      retryButton,
+      findsOneWidget,
+      reason: 'retry button visible rect ${tester.getRect(retryButton)}',
+    );
+    debugPrint(
+      'retry_tap_before requests=${requestBodies.length} '
+      'isGenerating=${conversations.isChatGenerating} '
+      'buttonRect=${tester.getRect(retryButton)}',
+    );
+    await tester.tap(retryButton);
     await tester.pump(const Duration(milliseconds: 300));
     if (conversations.isChatGenerating) {
       await _waitFor(
@@ -2303,6 +2610,16 @@ class _Harness {
       );
     }
     await _settle(tester);
+    final latestAssistant = (await _allMessages()).lastWhere(
+      (message) => !message.isUser,
+    );
+    debugPrint(
+      'retry_tap_after requests=${requestBodies.length} '
+      'isGenerating=${conversations.isChatGenerating} '
+      'generatingConversation=${conversations.generatingConversationId} '
+      'assistantStatus=${latestAssistant.status} '
+      'assistantError=${latestAssistant.error}',
+    );
   }
 
   Future<void> _stopChat(WidgetTester tester) async {
@@ -2313,7 +2630,7 @@ class _Harness {
       timeout: const Duration(seconds: 15),
     );
     await tester.pump(const Duration(milliseconds: 120));
-    final stop = find.byKey(const Key('chat_send'));
+    final stop = find.byKey(const Key('chat_stop'));
     expect(stop, findsOneWidget, reason: 'stop button');
     await tester.tap(stop);
     await _waitFor(

@@ -90,6 +90,24 @@ void main() {
       expect(preferences.settings.hasModelKey, isFalse);
     });
 
+    test('update persists an explicit default AI policy', () async {
+      final settings = _FakeSettingsService();
+      final preferences = _preferences(settings);
+      await preferences.initialize();
+      final policy = AiPolicy.forPreset(AiPolicyPreset.readOnly, version: 2);
+
+      await preferences.update(defaultAiPolicy: policy);
+
+      expect(
+        preferences.settings.effectiveDefaultAiPolicy.preset,
+        AiPolicyPreset.readOnly,
+      );
+      expect(
+        preferences.settings.defaultAiPermissions,
+        const AiPermissions(read: true, create: false, modifyDelete: false),
+      );
+    });
+
     test('wraps adapter failures without swallowing them', () async {
       final settings = _FakeSettingsService()
         ..loadError = StateError('load failed');
@@ -197,6 +215,7 @@ final class _FakeSettingsService extends SettingsService {
     bool? calendarMonthDetailed,
     bool? allowImageEgress,
     AiPermissions? defaultAiPermissions,
+    AiPolicy? defaultAiPolicy,
     ModelCapabilityOverrides? capabilityOverrides,
     int? responseHeaderTimeoutSeconds,
     int? streamIdleTimeoutSeconds,
@@ -206,7 +225,7 @@ final class _FakeSettingsService extends SettingsService {
     int? imageLimit,
   }) async {
     saveGeneralCalls++;
-    _settings = _settings.copyWith(
+    var next = _settings.copyWith(
       themeMode: themeMode,
       modelBaseUrl: modelBaseUrl?.trim(),
       modelName: modelName?.trim(),
@@ -222,6 +241,10 @@ final class _FakeSettingsService extends SettingsService {
       imageMessageLimit: imageMessageLimit,
       imageLimit: imageLimit,
     );
+    if (defaultAiPolicy != null) {
+      next = next.copyWith(defaultAiPolicy: defaultAiPolicy);
+    }
+    _settings = next;
   }
 
   @override
