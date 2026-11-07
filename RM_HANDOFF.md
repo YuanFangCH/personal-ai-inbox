@@ -10,12 +10,12 @@
 | 最后更新时间 | 2026-11-08 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | 正式实现已提交为 `111f996`；按用户要求收敛为 Android 手机 v1.3.0 预发布。手机最终设备矩阵、A31–A33、900 秒长测、长历史/生命周期回归及新增“最近任务划掉”场景已通过，正在走 `phone-v1.3.0` Android 专用发布流水线 |
+| 当前阶段 | 正式实现已提交为 `111f996`；按用户要求收敛为 Android 手机 v1.3.0 预发布。手机最终设备矩阵、A31–A33、900 秒长测、长历史/生命周期回归及新增“最近任务划掉”场景已通过。首轮 Android Release `42403556704` 因发行说明路径错误在 tag 校验失败，修复后移动同一标签重跑 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.3.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
 
-2026-11-08 按用户要求只完成 Android 手机交付：正式实现已提交为 `111f996`，版本升至 `1.3.0+10`，手机长历史与生命周期回归通过，新增“最近任务划掉→冷启动→显式继续”两阶段设备场景通过。下一步通过 `phone-v1.3.0` Android 专用流水线发布，不构建新的 Windows 资产；A01–A30、A34–A35 延期，不操作真实资料。
+2026-11-08 按用户要求只完成 Android 手机交付：正式实现已提交为 `111f996`，发布准备提交为 `e507c13`，版本升至 `1.3.0+10`。手机长历史、生命周期和“最近任务划掉→冷启动→显式继续”场景通过；main CI `42403280116` 成功。Android Release 首轮仅因发行说明路径缺少 `v` 在 tag 校验失败，修复后继续使用 `phone-v1.3.0` 重跑。
 
 最新手机发布结论见 `test-results/phone-release-v1.3.0/VALIDATION.md`，既有最终设备验证见 `test-results/secretary-agent-implementation/final-device-20261107/VALIDATION.md`。上一公开版本为 v1.2.1+9；v1.3.0 仅使用 Android 专用发布入口。
 ## 3. 当前目标与范围
@@ -68,6 +68,7 @@
 
 ## 6. 当前进度与验证
 
+- 2026-11-08 Android Release 失败修正：run `42403556704` 在 `Validate phone release tag` 失败，原因是工作流查找 `docs/releases/1.3.0.md`，实际文件为 `docs/releases/v1.3.0.md`。该轮未读取签名密钥、未构建 APK、未创建 Release；路径已修正。
 - 2026-11-08 Android 手机发布准备：版本升至 `1.3.0+10`；新增 `.github/workflows/android-release.yml`，仅响应 `phone-v*` 标签，校验版本、API 24/36、必要权限和长期证书后发布 Universal APK 与 `SHA256SUMS.txt`，不构建 Windows。
 - 2026-11-08 手机回归：`conversation_lifecycle_test.dart` 4/4、`conversation_large_history_ui_test.dart` 1/1；长历史覆盖 220 条消息、滚到最早位置、流式长回复、停止后保留草稿，生命周期延迟关停计时器在测试卸载后推进完成。
 - 2026-11-08 最近任务划掉设备场景：phone AVD `aitext_agent_c_phone`、API35、ADB5041、serial `emulator-5620`，最终 source manifest `f9c8c219edb3218bb21b96d5225d2257fc8042bb0d2f101f5170537740cfde50`；真实打开最近任务并滑动移除 app task，冷启动 15 秒无新增模型请求，显式继续传入原 task ID，原 operation 幂等回执重复出现但均绑定同一 entry/table，最终仅一条内容。证据：`test-results/secretary-agent-implementation/luna-c/20261107T183122Z-phone-recents_swipe_recovery/`。
@@ -213,6 +214,14 @@
 5. Windows 与平板验收、云盘同步和到点提醒继续单独规划。
 
 ## 8. 变更记录
+
+### 2026-11-08 / 修正 Android Release 发行说明路径
+
+- 任务：修复 `phone-v1.3.0` 首轮 Android 专用发布在 tag 校验阶段的失败。
+- 变更：Android Release 工作流改查 `docs/releases/v$tagVersion.md`；发布验证记录补充失败 run 与未构建边界。
+- 验证：失败 run `42403556704` 的 job `128496313900` 显示仅 `Validate phone release tag` 失败，后续安装依赖、签名、构建和发布步骤均 skipped；失败前秘密扫描与工具链准备成功。
+- 状态：等待修正提交与移动后的标签触发重跑。
+- 风险/下一步：重跑需继续验证长期 Android 签名 Secret、APK 版本/权限/证书、GitHub Release 创建及公开资产哈希。
 
 ### 2026-11-08 / 准备 Android 手机 v1.3.0 预发布
 

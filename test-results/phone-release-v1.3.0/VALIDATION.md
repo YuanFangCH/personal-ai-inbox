@@ -10,6 +10,8 @@ Android 手机发布候选版本为 `1.3.0+10`。最终运行时代码清单为 
 
 手机定向回归、静态分析、格式门和新增“最近任务划掉”设备场景均通过。GitHub Android Release workflow 和公开 APK 复核在发布阶段执行。
 
+首轮 Android Release run `42403556704` 在 tag 校验失败：工作流错误查找 `docs/releases/1.3.0.md`，实际发行说明为 `docs/releases/v1.3.0.md`。该轮未安装签名密钥、未构建 APK、未创建 Release；修复后移动同一标签重跑。
+
 ## 主机验证
 
 命令：

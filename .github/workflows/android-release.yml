@@ -55,7 +55,7 @@ jobs:
               throw "Expected Android versionCode 10, found $($Matches.build)."
           }
 
-          $notesPath = Join-Path (Resolve-Path '..').Path "docs\releases\$tagVersion.md"
+          $notesPath = Join-Path (Resolve-Path '..').Path "docs\releases\v$tagVersion.md"
           if (-not (Test-Path -LiteralPath $notesPath -PathType Leaf)) {
               throw "Release notes are missing: $notesPath"
           }
