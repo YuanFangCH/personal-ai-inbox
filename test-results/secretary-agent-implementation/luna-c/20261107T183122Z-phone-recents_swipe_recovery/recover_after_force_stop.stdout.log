@@ -1,0 +1,14 @@
+00:00 +0: loading D:/Dsk/aitext/app/integration_test/agent_task_longrun_android_test.dart
+Running Gradle task 'assembleDebug'...                          
+Running Gradle task 'assembleDebug'...                             37.2s
+√ Built build\app\outputs\flutter-apk\app-debug.apk
+Installing build\app\outputs\flutter-apk\app-debug.apk...        1,364ms
+00:00 +0: production agent device acceptance: phone / recover_after_force_stop
+AGENT_TEST_READY|phone|recover_after_force_stop
+AGENT_HARNESS_OPEN|support_dir
+AGENT_HARNESS_OPEN|root_ready
+AGENT_HARNESS_OPEN|index_open
+AGENT_HARNESS_OPEN|runtime_ready
+AGENT_FORCE_STOP_RECOVERY_RESULT|phone|passed|recents_swipe|nt_65921bda95e1608cf505b1f8
+00:20 +1: (tearDownAll)
+00:21 +1: All tests passed!

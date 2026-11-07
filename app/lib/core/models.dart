@@ -416,9 +416,7 @@ enum GlobalKnowledgeAuthorizationSource {
   static GlobalKnowledgeAuthorizationSource parse(String value) =>
       GlobalKnowledgeAuthorizationSource.values.firstWhere(
         (source) => source.wireName == value,
-        orElse: () => throw FormatException(
-          '未知全局知识授权来源：$value',
-        ),
+        orElse: () => throw FormatException('未知全局知识授权来源：$value'),
       );
 }
 

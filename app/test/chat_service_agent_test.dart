@@ -34,7 +34,9 @@ void main() {
         onCancel: () async {
           if (!cancellationStarted.isCompleted) cancellationStarted.complete();
           await cancellationGate.future;
-          if (!cancellationFinished.isCompleted) cancellationFinished.complete();
+          if (!cancellationFinished.isCompleted) {
+            cancellationFinished.complete();
+          }
         },
       );
       final service = ChatService(
@@ -83,9 +85,7 @@ void main() {
       } finally {
         if (!cancellationGate.isCompleted) cancellationGate.complete();
         if (cancellationStarted.isCompleted) {
-          await cancellationFinished.future.timeout(
-            const Duration(seconds: 3),
-          );
+          await cancellationFinished.future.timeout(const Duration(seconds: 3));
         }
         await body.close();
       }

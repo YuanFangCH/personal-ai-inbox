@@ -234,14 +234,16 @@ void main() {
     await migrated.close();
   });
 
-  test('v10 pending candidates migrate without granting an approval source', () async {
-    final directory = await Directory.systemTemp.createTemp(
-      'global-knowledge-v10-migration',
-    );
-    addTearDown(() => directory.delete(recursive: true));
-    final path = '${directory.path}/index.sqlite3';
-    final raw = sqlite3.open(path)
-      ..execute('''
+  test(
+    'v10 pending candidates migrate without granting an approval source',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'global-knowledge-v10-migration',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final path = '${directory.path}/index.sqlite3';
+      final raw = sqlite3.open(path)
+        ..execute('''
         CREATE TABLE global_knowledge_candidates (
           id TEXT PRIMARY KEY,
           operation TEXT NOT NULL,
@@ -259,38 +261,39 @@ void main() {
           error TEXT
         )
       ''')
-      ..execute(
-        '''
+        ..execute(
+          '''
         INSERT INTO global_knowledge_candidates (
           id, operation, status, proposal_json, digest, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?)
         ''',
-        [
-          'gkc_legacy_pending',
-          'create',
-          'pending',
-          jsonEncode({'title': '旧待确认', 'body': '', 'facts': {}}),
-          'sha256:legacy-pending',
-          '2026-11-04T00:00:00.000',
-          '2026-11-04T00:00:00.000',
-        ],
-      )
-      ..execute('PRAGMA user_version = 10');
-    raw.close();
+          [
+            'gkc_legacy_pending',
+            'create',
+            'pending',
+            jsonEncode({'title': '旧待确认', 'body': '', 'facts': {}}),
+            'sha256:legacy-pending',
+            '2026-11-04T00:00:00.000',
+            '2026-11-04T00:00:00.000',
+          ],
+        )
+        ..execute('PRAGMA user_version = 10');
+      raw.close();
 
-    final database = SqliteIndexDatabase(path);
-    await database.open();
-    addTearDown(database.close);
-    final candidate = await database.findGlobalKnowledgeCandidate(
-      'gkc_legacy_pending',
-    );
-    expect(candidate?.status, GlobalKnowledgeCandidateStatus.pending);
-    expect(
-      candidate?.authorizationSource,
-      GlobalKnowledgeAuthorizationSource.legacyUnknown,
-    );
-    final migrated = sqlite3.open(path);
-    expect(migrated.select('PRAGMA user_version').single['user_version'], 11);
-    migrated.close();
-  });
+      final database = SqliteIndexDatabase(path);
+      await database.open();
+      addTearDown(database.close);
+      final candidate = await database.findGlobalKnowledgeCandidate(
+        'gkc_legacy_pending',
+      );
+      expect(candidate?.status, GlobalKnowledgeCandidateStatus.pending);
+      expect(
+        candidate?.authorizationSource,
+        GlobalKnowledgeAuthorizationSource.legacyUnknown,
+      );
+      final migrated = sqlite3.open(path);
+      expect(migrated.select('PRAGMA user_version').single['user_version'], 11);
+      migrated.close();
+    },
+  );
 }

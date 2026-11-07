@@ -1,0 +1,70 @@
+00:00 +0: loading D:/Dsk/aitext/app/test/conversation_lifecycle_test.dart
+00:00 +0: D:/Dsk/aitext/app/test/conversation_lifecycle_test.dart: startup removes empty conversations and keeps conversations with data
+00:00 +1: D:/Dsk/aitext/app/test/conversation_lifecycle_test.dart: the first sent message creates exactly one conversation
+00:02 +2: D:/Dsk/aitext/app/test/secretary_conversation_ui_test.dart: workspace active conversation mounts in the secretary page
+00:02 +3: D:/Dsk/aitext/app/test/secretary_conversation_ui_test.dart: workspace active conversation mounts in the secretary page
+00:02 +4: D:/Dsk/aitext/app/test/secretary_conversation_ui_test.dart: workspace active conversation mounts in the secretary page
+00:03 +5: D:/Dsk/aitext/app/test/secretary_conversation_ui_test.dart: conversation drawer and permissions are session scoped
+00:04 +6: D:/Dsk/aitext/app/test/secretary_conversation_ui_test.dart: conversation drawer and permissions are session scoped
+00:04 +7: D:/Dsk/aitext/app/test/secretary_conversation_ui_test.dart: conversation drawer and permissions are session scoped
+00:04 +8: D:/Dsk/aitext/app/test/secretary_conversation_ui_test.dart: conversation drawer and permissions are session scoped
+00:05 +9: D:/Dsk/aitext/app/test/app_background_lifecycle_test.dart: resuming a shared-engine app cancels deferred shutdown after activity recreation
+00:05 +10: D:/Dsk/aitext/app/test/secretary_conversation_ui_test.dart: desktop secretary sidebar keeps app navigation and history
+00:06 +11: D:/Dsk/aitext/app/test/secretary_conversation_ui_test.dart: desktop secretary sidebar keeps app navigation and history
+00:06 +12: D:/Dsk/aitext/app/test/secretary_conversation_ui_test.dart: desktop secretary sidebar keeps app navigation and history
+00:06 +13: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:06 +14: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:07 +15: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:07 +16: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:07 +17: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:07 +18: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:07 +19: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:07 +20: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +21: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +22: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +23: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +24: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +25: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +26: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +27: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +28: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +29: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:10 +30: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:10 +31: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:10 +32: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:10 +33: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:10 +34: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:10 +35: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:10 +36: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:10 +37: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:10 +38: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:10 +39: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:10 +40: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:10 +41: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:10 +42: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:10 +43: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:10 +44: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:10 +45: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:10 +46: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:10 +47: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:10 +48: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:13 +49: D:/Dsk/aitext/app/test/table_migration_service_test.dart: source cleanup protects data: none
+00:13 +50: D:/Dsk/aitext/app/test/table_migration_service_test.dart: source cleanup protects data: interrupted
+00:13 +51: D:/Dsk/aitext/app/test/table_migration_service_test.dart: source cleanup protects data: bad-backup
+00:13 +52: D:/Dsk/aitext/app/test/table_migration_service_test.dart: source cleanup protects data: changed-source
+00:13 +53: D:/Dsk/aitext/app/test/table_migration_service_test.dart: dated legacy schedules remain migratable after their start time
+00:13 +54: D:/Dsk/aitext/app/test/table_migration_service_test.dart: previews and copies legacy records with deterministic table mapping
+00:13 +55: D:/Dsk/aitext/app/test/table_migration_service_test.dart: confirmed global knowledge changes do not reopen completed table migration
+00:13 +56: D:/Dsk/aitext/app/test/table_migration_service_test.dart: preflight retains tombstones and blocks undated, draft and conflicted records
+00:13 +57: D:/Dsk/aitext/app/test/table_migration_service_test.dart: replays an interrupted table migration and rolls back only matching targets
+00:13 +58: D:/Dsk/aitext/app/test/table_migration_service_test.dart: preflight refuses even identical pre-existing target files
+00:13 +59: D:/Dsk/aitext/app/test/table_migration_service_test.dart: preflight blocks when the supplied free-space reading is insufficient
+00:13 +60: D:/Dsk/aitext/app/test/table_migration_gate_test.dart: migration confirms, backs up and cleans sources before restart
+00:15 +61: D:/Dsk/aitext/app/test/table_migration_io_test.dart: file-backed migration snapshots, promotes, reopens and rolls back
+00:20 +62: D:/Dsk/aitext/app/test/app_runtime_test.dart: cleaned migration keeps legacy links and sync gate
+00:20 +63: D:/Dsk/aitext/app/test/app_runtime_test.dart: cleaned migration keeps legacy links and sync gate
+00:20 +64: D:/Dsk/aitext/app/test/app_runtime_test.dart: renders the legacy migration gate instead of writable app pages
+00:20 +65: D:/Dsk/aitext/app/test/app_runtime_test.dart: keeps a legacy vault in read-only migration review at startup
+00:20 +66: D:/Dsk/aitext/app/test/app_runtime_test.dart: bootstraps modules in a temporary memory configuration and shuts down safely
+00:20 +67: D:/Dsk/aitext/app/test/app_runtime_test.dart: uses the injected sync provider instead of the sandbox default
+00:20 +68: All tests passed!

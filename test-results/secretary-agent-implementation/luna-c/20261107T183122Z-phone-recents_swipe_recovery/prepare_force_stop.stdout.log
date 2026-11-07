@@ -1,0 +1,19 @@
+00:00 +0: loading D:/Dsk/aitext/app/integration_test/agent_task_longrun_android_test.dart
+Running Gradle task 'assembleDebug'...                          
+Running Gradle task 'assembleDebug'...                             43.0s
+√ Built build\app\outputs\flutter-apk\app-debug.apk
+Installing build\app\outputs\flutter-apk\app-debug.apk...        1,478ms
+00:00 +0: production agent device acceptance: phone / prepare_force_stop
+AGENT_HARNESS_OPEN|support_dir
+AGENT_HARNESS_OPEN|root_ready
+AGENT_HARNESS_OPEN|index_open
+AGENT_HARNESS_OPEN|runtime_ready
+AGENT_HARNESS_OPEN|model_server_ready
+AGENT_TEST_SETUP|harness_open
+AGENT_TEST_SETUP|pump_widget_start
+AGENT_TEST_SETUP|pump_widget_done
+AGENT_TEST_SETUP|pump_start
+AGENT_TEST_SETUP|pump_done
+AGENT_TEST_READY|phone|prepare_force_stop
+AGENT_MODEL_BLOCKED|prepare_force_stop|act_65921bda95e1608cf505b1f8
+AGENT_FORCE_STOP_READY|cnv_c9f8e86e-3f27-43cb-9083-34350c5b2720|act_65921bda95e1608cf505b1f8|nt_65921bda95e1608cf505b1f8

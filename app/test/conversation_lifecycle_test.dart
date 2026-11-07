@@ -117,7 +117,7 @@ void main() {
           find.byKey(const Key('nav_inbox')).evaluate().isNotEmpty,
     );
     expect(harness.controller.conversations, hasLength(1));
-    harness.controller.dispose();
+    await _disposeWidgetHarness(tester, harness);
   });
 
   test(
@@ -177,7 +177,7 @@ void main() {
     expect(find.byKey(const Key('chat_input')), findsOneWidget);
     expect(find.text('后分享的内容'), findsOneWidget);
     expect(harness.controller.conversations, hasLength(2));
-    harness.controller.dispose();
+    await _disposeWidgetHarness(tester, harness);
   });
 }
 
@@ -200,6 +200,16 @@ Future<void> _pumpUntilWidget(
     await tester.pump(const Duration(milliseconds: 10));
   }
   fail('Widget condition was not met before timeout');
+}
+
+Future<void> _disposeWidgetHarness(
+  WidgetTester tester,
+  _LifecycleHarness harness,
+) async {
+  await tester.pumpWidget(const SizedBox.shrink());
+  await tester.pump(const Duration(seconds: 2));
+  await tester.pump();
+  await harness.controller.shutdown();
 }
 
 class _LifecycleHarness {

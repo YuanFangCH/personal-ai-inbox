@@ -71,6 +71,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('表格式跨端同步尚未接入'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump();
     await runtime.shutdown();
   });
   testWidgets(
@@ -115,6 +117,8 @@ void main() {
       expect(find.text('重新检查'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump();
       await runtime.shutdown();
     },
   );

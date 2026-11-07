@@ -193,8 +193,7 @@ void main() {
     await index.upsertGlobalKnowledgeCandidate(
       pending.copyWith(
         status: GlobalKnowledgeCandidateStatus.approved,
-        authorizationSource:
-            GlobalKnowledgeAuthorizationSource.legacyUnknown,
+        authorizationSource: GlobalKnowledgeAuthorizationSource.legacyUnknown,
       ),
     );
 

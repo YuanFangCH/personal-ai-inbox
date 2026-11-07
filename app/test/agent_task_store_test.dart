@@ -5,66 +5,75 @@ import 'package:personal_ai_inbox/data/memory_vault_store.dart';
 import 'package:personal_ai_inbox/modules/conversation/agent_task_store.dart';
 
 void main() {
-  test('upgrade preserves original v1 snapshot and refuses corrupt state', () async {
-    final vault = MemoryVaultStore();
-    final store = VaultAgentTaskStore(vault);
-    final legacy = const AgentTaskCheckpoint(
-      budget: AgentBudgetCheckpoint(usedRequests: 19),
-    ).toJson()..['schema_version'] = 1;
-    final source = jsonEncode(legacy);
-    await vault.write(store.relativePath, source);
-    final loaded = await store.load();
-    await store.save(loaded);
-    expect(await vault.read('${store.relativePath}.v1.backup'), source);
-    expect(jsonDecode((await vault.read(store.relativePath))!)['schema_version'], 2);
-    await vault.write(store.relativePath, '{invalid');
-    await expectLater(store.save(loaded), throwsFormatException);
-    expect(await vault.read(store.relativePath), '{invalid');
-    expect(await vault.read('${store.relativePath}.v1.backup'), source);
-  });
+  test(
+    'upgrade preserves original v1 snapshot and refuses corrupt state',
+    () async {
+      final vault = MemoryVaultStore();
+      final store = VaultAgentTaskStore(vault);
+      final legacy = const AgentTaskCheckpoint(
+        budget: AgentBudgetCheckpoint(usedRequests: 19),
+      ).toJson()..['schema_version'] = 1;
+      final source = jsonEncode(legacy);
+      await vault.write(store.relativePath, source);
+      final loaded = await store.load();
+      await store.save(loaded);
+      expect(await vault.read('${store.relativePath}.v1.backup'), source);
+      expect(
+        jsonDecode((await vault.read(store.relativePath))!)['schema_version'],
+        2,
+      );
+      await vault.write(store.relativePath, '{invalid');
+      await expectLater(store.save(loaded), throwsFormatException);
+      expect(await vault.read(store.relativePath), '{invalid');
+      expect(await vault.read('${store.relativePath}.v1.backup'), source);
+    },
+  );
 
-  test('startup preflight upgrades v1 and preserves task identifiers and budget', () async {
-    final vault = MemoryVaultStore();
-    final store = VaultAgentTaskStore(vault);
-    final legacy = AgentTaskCheckpoint(
-      budget: const AgentBudgetCheckpoint(
-        usedRequests: 19,
-        usedActiveMillis: 1234,
-        grantedRequests: 240,
-      ),
-      turns: const [
-        AgentTurnCheckpoint(
-          taskId: 'task-v1',
-          conversationId: 'conversation-v1',
-          userMessageId: 'user-v1',
-          assistantMessageId: 'assistant-v1',
-          kind: AgentTurnQueueKind.conversation,
-          status: AgentTurnCheckpointStatus.running,
-          sequence: 7,
+  test(
+    'startup preflight upgrades v1 and preserves task identifiers and budget',
+    () async {
+      final vault = MemoryVaultStore();
+      final store = VaultAgentTaskStore(vault);
+      final legacy = AgentTaskCheckpoint(
+        budget: const AgentBudgetCheckpoint(
+          usedRequests: 19,
+          usedActiveMillis: 1234,
+          grantedRequests: 240,
         ),
-      ],
-    ).toJson();
-    legacy['schema_version'] = 1;
-    legacy.remove('run_budgets');
-    legacy.remove('active_budget_run_id');
-    ((legacy['turns'] as List).single as Map).remove('budget_run_id');
-    final source = jsonEncode(legacy);
-    await vault.write(store.relativePath, source);
+        turns: const [
+          AgentTurnCheckpoint(
+            taskId: 'task-v1',
+            conversationId: 'conversation-v1',
+            userMessageId: 'user-v1',
+            assistantMessageId: 'assistant-v1',
+            kind: AgentTurnQueueKind.conversation,
+            status: AgentTurnCheckpointStatus.running,
+            sequence: 7,
+          ),
+        ],
+      ).toJson();
+      legacy['schema_version'] = 1;
+      legacy.remove('run_budgets');
+      legacy.remove('active_budget_run_id');
+      ((legacy['turns'] as List).single as Map).remove('budget_run_id');
+      final source = jsonEncode(legacy);
+      await vault.write(store.relativePath, source);
 
-    final checkpoint = await store.preflight();
+      final checkpoint = await store.preflight();
 
-    expect(await vault.read('${store.relativePath}.v1.backup'), source);
-    expect(
-      jsonDecode((await vault.read(store.relativePath))!)['schema_version'],
-      2,
-    );
-    expect(checkpoint.turns.single.taskId, 'task-v1');
-    expect(checkpoint.turns.single.assistantMessageId, 'assistant-v1');
-    expect(checkpoint.turns.single.effectiveBudgetRunId, 'legacy');
-    expect(checkpoint.runBudgets['legacy']!.usedRequests, 19);
-    expect(checkpoint.runBudgets['legacy']!.usedActiveMillis, 1234);
-    expect(await store.load(), checkpoint);
-  });
+      expect(await vault.read('${store.relativePath}.v1.backup'), source);
+      expect(
+        jsonDecode((await vault.read(store.relativePath))!)['schema_version'],
+        2,
+      );
+      expect(checkpoint.turns.single.taskId, 'task-v1');
+      expect(checkpoint.turns.single.assistantMessageId, 'assistant-v1');
+      expect(checkpoint.turns.single.effectiveBudgetRunId, 'legacy');
+      expect(checkpoint.runBudgets['legacy']!.usedRequests, 19);
+      expect(checkpoint.runBudgets['legacy']!.usedActiveMillis, 1234);
+      expect(await store.load(), checkpoint);
+    },
+  );
 
   test('preflight preserves unsupported schema and status bytes', () async {
     final vault = MemoryVaultStore();
@@ -103,51 +112,60 @@ void main() {
     expect(await vault.read('${store.relativePath}.v1.backup'), isNull);
   });
 
-  test('missing primary with a legacy backup fails closed without losing it', () async {
-    final vault = MemoryVaultStore();
-    final store = VaultAgentTaskStore(vault);
-    final legacy = AgentTaskCheckpoint(
-      budget: const AgentBudgetCheckpoint(usedRequests: 17),
-      turns: const [
-        AgentTurnCheckpoint(
-          taskId: 'task-in-backup',
-          conversationId: 'conversation-in-backup',
-          userMessageId: 'user-in-backup',
-          assistantMessageId: 'assistant-in-backup',
-          kind: AgentTurnQueueKind.conversation,
-          status: AgentTurnCheckpointStatus.paused,
-          sequence: 4,
-        ),
-      ],
-    ).toJson();
-    legacy['schema_version'] = 1;
-    legacy.remove('run_budgets');
-    legacy.remove('active_budget_run_id');
-    ((legacy['turns'] as List).single as Map).remove('budget_run_id');
-    final source = jsonEncode(legacy);
-    await vault.write('${store.relativePath}.v1.backup', source);
+  test(
+    'missing primary with a legacy backup fails closed without losing it',
+    () async {
+      final vault = MemoryVaultStore();
+      final store = VaultAgentTaskStore(vault);
+      final legacy = AgentTaskCheckpoint(
+        budget: const AgentBudgetCheckpoint(usedRequests: 17),
+        turns: const [
+          AgentTurnCheckpoint(
+            taskId: 'task-in-backup',
+            conversationId: 'conversation-in-backup',
+            userMessageId: 'user-in-backup',
+            assistantMessageId: 'assistant-in-backup',
+            kind: AgentTurnQueueKind.conversation,
+            status: AgentTurnCheckpointStatus.paused,
+            sequence: 4,
+          ),
+        ],
+      ).toJson();
+      legacy['schema_version'] = 1;
+      legacy.remove('run_budgets');
+      legacy.remove('active_budget_run_id');
+      ((legacy['turns'] as List).single as Map).remove('budget_run_id');
+      final source = jsonEncode(legacy);
+      await vault.write('${store.relativePath}.v1.backup', source);
 
-    await expectLater(store.preflight(), throwsStateError);
-    await expectLater(store.load(), throwsStateError);
-    await expectLater(store.save(const AgentTaskCheckpoint()), throwsStateError);
+      await expectLater(store.preflight(), throwsStateError);
+      await expectLater(store.load(), throwsStateError);
+      await expectLater(
+        store.save(const AgentTaskCheckpoint()),
+        throwsStateError,
+      );
 
-    expect(await vault.read(store.relativePath), isNull);
-    expect(await vault.read('${store.relativePath}.v1.backup'), source);
-  });
+      expect(await vault.read(store.relativePath), isNull);
+      expect(await vault.read('${store.relativePath}.v1.backup'), source);
+    },
+  );
 
-  test('missing primary with a temporary write fails closed and preserves it', () async {
-    final vault = MemoryVaultStore();
-    final store = VaultAgentTaskStore(vault);
-    const partialWrite = '{"schema_version":2,"turns":';
-    await vault.write('${store.relativePath}.tmp', partialWrite);
+  test(
+    'missing primary with a temporary write fails closed and preserves it',
+    () async {
+      final vault = MemoryVaultStore();
+      final store = VaultAgentTaskStore(vault);
+      const partialWrite = '{"schema_version":2,"turns":';
+      await vault.write('${store.relativePath}.tmp', partialWrite);
 
-    await expectLater(store.preflight(), throwsStateError);
-    await expectLater(store.load(), throwsStateError);
+      await expectLater(store.preflight(), throwsStateError);
+      await expectLater(store.load(), throwsStateError);
 
-    expect(await vault.read(store.relativePath), isNull);
-    expect(await vault.read('${store.relativePath}.tmp'), partialWrite);
-    expect(await vault.read('${store.relativePath}.v1.backup'), isNull);
-  });
+      expect(await vault.read(store.relativePath), isNull);
+      expect(await vault.read('${store.relativePath}.tmp'), partialWrite);
+      expect(await vault.read('${store.relativePath}.v1.backup'), isNull);
+    },
+  );
 
   test('missing primary with a migration restore file fails closed', () async {
     final vault = MemoryVaultStore();
@@ -162,24 +180,27 @@ void main() {
     expect(await vault.read('${store.relativePath}.restore.tmp'), restoreBytes);
   });
 
-  test('existing primary remains authoritative when sidecars are present', () async {
-    final vault = MemoryVaultStore();
-    final store = VaultAgentTaskStore(vault);
-    final primary = jsonEncode(
-      const AgentTaskCheckpoint(
-        budget: AgentBudgetCheckpoint(usedRequests: 8),
-      ).toJson(),
-    );
-    const temporary = '{"schema_version":2,"partial":"newer?"}';
-    await vault.write(store.relativePath, primary);
-    await vault.write('${store.relativePath}.tmp', temporary);
+  test(
+    'existing primary remains authoritative when sidecars are present',
+    () async {
+      final vault = MemoryVaultStore();
+      final store = VaultAgentTaskStore(vault);
+      final primary = jsonEncode(
+        const AgentTaskCheckpoint(
+          budget: AgentBudgetCheckpoint(usedRequests: 8),
+        ).toJson(),
+      );
+      const temporary = '{"schema_version":2,"partial":"newer?"}';
+      await vault.write(store.relativePath, primary);
+      await vault.write('${store.relativePath}.tmp', temporary);
 
-    final checkpoint = await store.preflight();
+      final checkpoint = await store.preflight();
 
-    expect(checkpoint.budget.usedRequests, 8);
-    expect(await vault.read(store.relativePath), primary);
-    expect(await vault.read('${store.relativePath}.tmp'), temporary);
-  });
+      expect(checkpoint.budget.usedRequests, 8);
+      expect(await vault.read(store.relativePath), primary);
+      expect(await vault.read('${store.relativePath}.tmp'), temporary);
+    },
+  );
 
   test('v1 upgrade refuses a backup with different source bytes', () async {
     final vault = MemoryVaultStore();

@@ -1,4 +1,5 @@
-// ignore_for_file: avoid_print
+// ignore_for_file: avoid_print, prefer_interpolation_to_compose_strings
+// ignore_for_file: prefer_adjacent_string_concatenation
 
 import 'dart:async';
 import 'dart:convert';
@@ -46,6 +47,13 @@ void main() {
     'E2E_DURATION_SECONDS',
     defaultValue: 900,
   );
+  const terminationMode = String.fromEnvironment(
+    'E2E_TERMINATION_MODE',
+    defaultValue: 'force_stop',
+  );
+  if (terminationMode != 'force_stop' && terminationMode != 'recents_swipe') {
+    fail('E2E_TERMINATION_MODE must be force_stop or recents_swipe.');
+  }
   testWidgets('production agent device acceptance: $profile / $phase', (
     tester,
   ) async {
@@ -54,7 +62,7 @@ void main() {
     }
     if (phase == 'recover_after_force_stop') {
       print('AGENT_TEST_READY|' + profile + '|' + phase);
-      await _verifyExplicitRecovery(tester, profile);
+      await _verifyExplicitRecovery(tester, profile, terminationMode);
       return;
     }
 
@@ -96,7 +104,7 @@ void main() {
         }
         break;
       case 'prepare_force_stop':
-        await _prepareForceStop(tester, harness);
+        await _prepareForceStop(tester, harness, terminationMode);
         break;
       case 'activity_recreate':
         await _verifyActivityRecreation(tester, harness);
@@ -556,6 +564,7 @@ Future<void> _scrollConversationToBottom(WidgetTester tester) async {
 Future<void> _prepareForceStop(
   WidgetTester tester,
   _ProductionHarness harness,
+  String terminationMode,
 ) async {
   final conversation = await _startTask(harness, '创建一条合成资料，然后等待我核对后继续。');
   harness.fixture.conversationId = conversation.id;
@@ -585,6 +594,7 @@ Future<void> _prepareForceStop(
   expect(entry.tableId, harness.fixture.lastReceiptTableId);
   await harness.fixture.record({
     'kind': 'force_stop_ready',
+    'termination_mode': terminationMode,
     'conversation_id': conversation.id,
     'task_id': runningTurn.taskId,
     'assistant_message_id': runningTurn.assistantMessageId,
@@ -612,6 +622,7 @@ Future<void> _prepareForceStop(
 Future<void> _verifyExplicitRecovery(
   WidgetTester tester,
   String profile,
+  String terminationMode,
 ) async {
   final harness = await _ProductionHarness.open(
     profile: profile,
@@ -627,6 +638,7 @@ Future<void> _verifyExplicitRecovery(
   final ready = await harness.fixture.readLastKind('force_stop_ready');
   expect(ready, isNotNull, reason: 'force-stop fixture was not persisted');
   final event = ready!;
+  expect(event['termination_mode'], terminationMode);
   final conversationId = event['conversation_id'].toString();
   final taskId = event['task_id'].toString();
   final operationId = event['operation_id'].toString();
@@ -639,7 +651,13 @@ Future<void> _verifyExplicitRecovery(
   expect(taskId, isNotEmpty);
   expect(event['assistant_message_id'], isNotEmpty);
   final requestsBefore = await harness.fixture.readModelRequestCount();
-  expect(requestsBefore, event['model_requests']);
+  expect(
+    requestsBefore,
+    greaterThanOrEqualTo(event['model_requests'] as int),
+    reason:
+        'A real recent-task swipe can allow in-flight requests to finish before '
+        'the task is removed.',
+  );
   await _waitReal(tester, const Duration(seconds: 15));
   expect(await harness.fixture.readModelRequestCount(), requestsBefore);
   expect(
@@ -677,18 +695,28 @@ Future<void> _verifyExplicitRecovery(
     harness.runtime.tables.entries.where((entry) => entry.id == entryId),
     hasLength(1),
   );
-  expect(harness.fixture.lastOperationId, operationId);
-  expect(harness.fixture.lastReceiptStatus, 'succeeded');
-  expect(harness.fixture.lastReceiptActionId, operationId);
-  expect(harness.fixture.lastReceiptEntryId, entryId);
-  expect(harness.fixture.lastReceiptTableId, event['table_id']);
+  final writeReceipts = await harness.fixture.readAllKind('write_receipt');
+  final originalReceipts = writeReceipts
+      .where((receipt) => receipt['operation_id'] == operationId)
+      .toList(growable: false);
+  expect(originalReceipts, isNotEmpty);
+  for (final receipt in originalReceipts) {
+    expect(receipt['entry_id'], entryId);
+    expect(receipt['table_id'], event['table_id']);
+  }
+  if (terminationMode == 'force_stop') {
+    expect(harness.fixture.lastOperationId, operationId);
+    expect(harness.fixture.lastReceiptStatus, 'succeeded');
+    expect(harness.fixture.lastReceiptActionId, operationId);
+    expect(harness.fixture.lastReceiptEntryId, entryId);
+    expect(harness.fixture.lastReceiptTableId, event['table_id']);
+  }
   final recoveredEntry = harness.runtime.tables.entries.singleWhere(
     (entry) => entry.id == entryId,
   );
   expect(recoveredEntry.tableId, event['receipt_table_id']);
-  final recoveredReceipt = await harness.fixture.readLastKind('write_receipt');
-  expect(recoveredReceipt, isNotNull);
-  expect(recoveredReceipt!['operation_id'], operationId);
+  final recoveredReceipt = originalReceipts.last;
+  expect(recoveredReceipt['operation_id'], operationId);
   expect(recoveredReceipt['status'], 'succeeded');
   expect(recoveredReceipt['action_id'], operationId);
   expect(recoveredReceipt['entry_id'], entryId);
@@ -704,6 +732,7 @@ Future<void> _verifyExplicitRecovery(
   );
   await harness.fixture.record({
     'kind': 'force_stop_recovery_complete',
+    'termination_mode': terminationMode,
     'conversation_id': conversationId,
     'operation_id': operationId,
     'entry_id': entryId,
@@ -711,7 +740,14 @@ Future<void> _verifyExplicitRecovery(
     'model_requests_after_continue': await harness.fixture
         .readModelRequestCount(),
   });
-  print('AGENT_FORCE_STOP_RECOVERY_RESULT|' + profile + '|passed|' + entryId);
+  print(
+    'AGENT_FORCE_STOP_RECOVERY_RESULT|' +
+        profile +
+        '|passed|' +
+        terminationMode +
+        '|' +
+        entryId,
+  );
 }
 
 Future<void> _verifyActivityRecreation(
@@ -1941,8 +1977,9 @@ class _DeterministicModelFixture {
   }) async {
     _nextEntry++;
     final currentTableId = tableId;
-    if (currentTableId == null)
+    if (currentTableId == null) {
       throw StateError('Event inbox table unavailable.');
+    }
     lastCreatedTitle = 'Luna ' + profile + ' entry ' + '$_nextEntry';
     final arguments = jsonEncode({
       'table_id': currentTableId,
@@ -2200,6 +2237,14 @@ class _DeterministicModelFixture {
     return (await eventFile.readAsLines())
         .where((line) => _jsonObject(line)['kind'] == kind)
         .length;
+  }
+
+  Future<List<Map<String, Object?>>> readAllKind(String kind) async {
+    if (!await eventFile.exists()) return const [];
+    return [
+      for (final line in await eventFile.readAsLines())
+        if (_jsonObject(line)['kind'] == kind) _jsonObject(line),
+    ];
   }
 
   Future<Map<String, Object?>?> readLastKind(String kind) async {

@@ -1,8 +1,8 @@
 # 懒狗秘书专用 Agent：设计与实施规格
 
-设计日期：2026-11-03；实施状态更新：2026-11-04。设计已确认，业务代码正在实施与定向验收，尚未收敛提交或发布；实际完成性以 RM_HANDOFF.md 与 test-results/secretary-agent-implementation/ACCEPTANCE.md 为准。
+设计日期：2026-11-03；实施状态更新：2026-11-08。设计已确认，实现提交为 `111f996`，当前由 v1.3.0 Android 手机预发布承载；剩余审计边界以 RM_HANDOFF.md 与 test-results/secretary-agent-implementation/ACCEPTANCE.md 为准。
 
-本文件完整替代本聊天上一版 Agent 草案。新增的完全权限、默认表可删除、全局知识免逐项确认及自动合并规则，以本文件和 [ADR 0024](adr/0024-secretary-agent-permissions-and-deduplication.md) 为目标；v1.2.1 的实际行为仍按现有实现。研究事实和来源见 [DSH 研究](research/04-dsh-agent-permissions-and-runtime.md)，术语见 [CONTEXT](../CONTEXT.md)。
+本文件完整替代本聊天上一版 Agent 草案。新增的完全权限、预置表可删除、全局知识免逐项确认及自动合并规则，以本文件和 [ADR 0024](adr/0024-secretary-agent-permissions-and-deduplication.md) 为目标；相关运行能力已进入提交 `111f996` 和 v1.3.0 Android 手机候选。研究事实和来源见 [DSH 研究](research/04-dsh-agent-permissions-and-runtime.md)，术语见 [CONTEXT](../CONTEXT.md)。
 
 ## 1. 用户已确认的目标
 

@@ -247,8 +247,8 @@ class ModelSemanticDuplicateDecisionSource
           remainingActiveDuration <= Duration.zero) {
         return _conflict('当前任务活动时间预算已用尽，查重比较未发送。');
       }
-      final boundedTotalTimeout = remainingActiveDuration <
-              configuration.totalTimeout
+      final boundedTotalTimeout =
+          remainingActiveDuration < configuration.totalTimeout
           ? remainingActiveDuration
           : configuration.totalTimeout;
       requestConfiguration = _withTotalTimeout(
@@ -730,17 +730,16 @@ Map<String, Object?> _fieldMap(Object? value) {
 ModelConfiguration _withTotalTimeout(
   ModelConfiguration source,
   Duration totalTimeout,
-) =>
-    ModelConfiguration(
-      baseUrl: source.baseUrl,
-      model: source.model,
-      apiKey: source.apiKey,
-      capabilities: source.capabilities,
-      thinkingParameterSupported: source.thinkingParameterSupported,
-      responseHeaderTimeout: source.responseHeaderTimeout,
-      streamIdleTimeout: source.streamIdleTimeout,
-      totalTimeout: totalTimeout,
-    );
+) => ModelConfiguration(
+  baseUrl: source.baseUrl,
+  model: source.model,
+  apiKey: source.apiKey,
+  capabilities: source.capabilities,
+  thinkingParameterSupported: source.thinkingParameterSupported,
+  responseHeaderTimeout: source.responseHeaderTimeout,
+  streamIdleTimeout: source.streamIdleTimeout,
+  totalTimeout: totalTimeout,
+);
 
 ModelConfiguration _withoutTools(ModelConfiguration source) =>
     ModelConfiguration(

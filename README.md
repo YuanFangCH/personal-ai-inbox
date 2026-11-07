@@ -8,22 +8,22 @@
 
 首个预发布版本从 [GitHub Releases](https://github.com/YuanFangCH/personal-ai-inbox/releases) 下载：
 
-- Android 7.0 及以上：安装通用 APK。
-- Windows 11 x64：选择安装包或便携 ZIP。
+- 本次 `v1.3.0`：Android 7.0 及以上安装通用 APK，不提供新的 Windows 资产。
+- Windows 11 x64 继续使用上一版全平台预发布中的安装包或便携 ZIP。
 - 发布页同时提供 `SHA256SUMS.txt`，下载后应校验文件哈希。
 
-`v1.2.1` 预览版已发布（pre-release），资产见 [GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/v1.2.1)，并附 `SHA256SUMS.txt`。升级前请完整备份旧版应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.2.1.md)；真实资料迁移需要在应用内确认，不能把迁移演练当作真实资料升级验证。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
+Android 手机预览版使用 `phone-v1.3.0` 标签和 Android 专用流水线，只提供通用 APK 与 `SHA256SUMS.txt`；发布页见 [GitHub Releases](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.3.0)。`v1.2.1` 继续作为上一版全平台预发布保留。升级前请完整备份应用数据与 Markdown 主库，并先阅读对应发行说明；真实资料迁移需要在应用内确认。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
 
 ## 核心能力
 
 - 本地优先：文本、分享内容和图片先在本端落盘，离线时捕获、编辑和查看不受影响。
 - Markdown 主库：一个成果一个 `.md` 文件，SQLite 保存派生索引、同步游标和本地操作/撤销账本。Markdown 仍是成果正文权威副本；可撤销的前一版本仅在本地账本短暂保留，现采用 10 分钟窗口。
-- AI 秘书对话：会话管理、SSE 多轮工具回复；按会话保存读取/新增/修改删除权限，表内内容操作默认执行并可撤销，表结构变更在当前对话确认。
+- AI 秘书对话：会话管理、SSE 多轮工具回复、可恢复后台任务；会话可选择标准或完全权限，标准模式保留结构/全局知识确认，完全权限在应用内直接执行并保留版本与撤权检查。
 - 图片输入：相册、拍照、Android 图片分享、自动缩放和 EXIF 清理。
-- 笔记式表：三个不可删除的默认收纳表和可自定义表；每张表可写正文并混合收纳笔记、待办、未来日程和事件，支持六类自定义字段及整表回收恢复。
+- 笔记式表：首次初始化提供的待办、日程、事件收纳表均可调整、删除和恢复；每张表可写正文并混合收纳笔记、待办、未来日程和事件，支持六类自定义字段及整表回收恢复。
 - 首页与日历：首页保留安排、待办和笔记区块，并可排序展示表模块；日历只投影表内带业务时间的待办、日程与事件，支持按表筛选，不复制或存储日历条目。
-- 受控 AI 与知识：AI 按表检索并执行表内内容增改删和跨表移动；新增/删除表及字段变更在聊天卡片确认。普通知识进入表，全局知识继续独立管理并逐项确认。
-- 行动与同步：保留捕获审核、旧草稿迁入、同步冲突处理和设置入口；没有独立待处理页。跨设备云盘同步和通知尚未接入。
+- 受控 AI 与知识：AI 按表检索、查重并执行表内内容增删改和跨表移动；完全权限可直接管理表结构、字段与全局知识，标准模式继续在聊天卡片确认。普通知识进入表，全局知识保留独立审批路径。
+- 行动与同步：保留捕获审核、旧草稿迁入、同步冲突处理和设置入口；没有独立待处理页。跨设备云盘同步、到点提醒和百度网盘归档尚未接入。
 - 系统接入：Android 注册 `ACTION_SEND` 与 `ACTION_PROCESS_TEXT`，支持从其他 App 分享文本和图片。
 - 多端形态：同一套 Flutter 代码适配手机、平板、Windows 和 Web 预览。
 
@@ -33,13 +33,13 @@
 
 ## 当前进展
 
-专用秘书 Agent A–F 的设备验收主闭环已完成，工作区候选尚未提交或发布。最终设备 manifest `c283f93b19703686ab7caa0da802e43ff8bb5c557051156c070c9e94f07f49bd` 在 Emulator 37.2.12、API35、独立 ADB 5041 上通过 phone 50/50、tablet 27/27、双端 A31/A32/A33 恢复场景及 phone/tablet 各900秒生产业务长测；双端长测均完成47条唯一写入和回执核对。Windows 当前排除范围包含 `6172–6271`，本轮使用仍可用的 `5620/5621` 端口对。A01–A30、A34–A35 的遗留主机组合仍待收敛。详见 [RM_HANDOFF.md](RM_HANDOFF.md)、验收矩阵 `test-results/secretary-agent-implementation/ACCEPTANCE.md` 和 `test-results/secretary-agent-implementation/final-device-20261107/VALIDATION.md`。
+专用秘书 Agent A–F 的最终设备验收主闭环已完成，正式实现提交为 `111f996`。当前按用户要求只推进 Android 手机交付：版本升至 `1.3.0+10`，新增 `phone-v1.3.0` Android 专用预发布流水线；平板和 Windows 不参与本次发布门禁。最终设备 manifest `c283f93b19703686ab7caa0da802e43ff8bb5c557051156c070c9e94f07f49bd` 已通过 phone 50/50、phone A31/A32/A33 和 900 秒生产业务长测，47 条唯一写入与回执核对通过。A01–A30、A34–A35 的遗留主机组合延期。详见 [RM_HANDOFF.md](RM_HANDOFF.md)、[v1.3.0 发行说明](docs/releases/v1.3.0.md) 和 `test-results/secretary-agent-implementation/final-device-20261107/VALIDATION.md`。
 
-本轮新增回归通过：`secretary_conversation_ui_test.dart` 5/5，其中覆盖 workspace 当前会话自动挂载以及主动新建对话不重新吸附旧会话；`app_background_lifecycle_test.dart` 6/6；通知权限拒绝对话框改为等待语义节点并提供失败 UI 层级诊断。长测终态现在会显式切回秘书页、滚到底部并验证真实 SSE 文本。此前 attempt21 的 streaming/消息行缺失问题已由最终长测取代。详见 `test-results/secretary-agent-implementation/final-device-20261107/VALIDATION.md`。
+手机发布新增回归通过：`conversation_lifecycle_test.dart` 4/4，修复生命周期延迟关停计时器的测试收尾；`conversation_large_history_ui_test.dart` 1/1，覆盖 220 条历史、滚到最早消息、长流渲染、停止后保留草稿。新增“最近任务划掉”两阶段设备场景通过：任务被真实滑动移除后冷启动不自动请求，显式继续复用原任务、条目和写入回执。详见 `test-results/phone-release-v1.3.0/VALIDATION.md`。
 
 最近宿主 smoke：SEC-034/036/038 的 teardown 修复候选复验 3/3 通过，缓存输出预算、未命中 coverage 与第21次检索批次边界断言均保留。11月5日 SEC-083 smoke 曾失败并定位到 stream terminal 丢失；11月6日当前定向复验通过（ModelClient 19/19、ChatService取消屏障1/1、host smoke 1/1），取代该旧失败结论。SEC-083 Android phone回归也通过；其余 A05 竞态、设备矩阵和长测仍需按当前源码清单验收。详见 `test-results/secretary-agent-implementation/host-smoke-20261105/VALIDATION.md` 与 `test-results/secretary-agent-implementation/ACCEPTANCE.md`。
 
-2026-11-03 已完成[专用秘书 Agent 设计](docs/secretary-agent-design.md)与[DSH 参考研究](docs/research/04-dsh-agent-permissions-and-runtime.md)，目标包括可选完全权限（任意表及默认表可调整/删除、全局知识可直接生效）、写入前业务查重与自动补充、分页读取/检查及可恢复长任务。产品决定见 [ADR 0024](docs/adr/0024-secretary-agent-permissions-and-deduplication.md)。用户后续已授权进入实现；当前未提交代码按上述目标推进，已发布版本仍为 v1.2.1。设计阶段验证见[记录](test-results/secretary-agent-design-20261103/VALIDATION.md)，实现验收以当前交接为准。
+2026-11-03 已完成[专用秘书 Agent 设计](docs/secretary-agent-design.md)与[DSH 参考研究](docs/research/04-dsh-agent-permissions-and-runtime.md)，目标包括可选完全权限（任意表及预置收纳表可调整/删除、全局知识可直接生效）、写入前业务查重与自动补充、分页读取/检查及可恢复长任务。产品决定见 [ADR 0024](docs/adr/0024-secretary-agent-permissions-and-deduplication.md)。实现已在提交 `111f996` 落地，并进入 v1.3.0 Android 手机预发布流程。
 
 2026-11-03 已发布 v1.2.1+9 预览版，包含迁移/重启阻断、校验后旧源清理及真实 DeepSeek 工具名修复。Android 手机/平板 75/75 与真实模型冒烟证据沿用已验收代码；Release 与 main CI 均成功，36 项定向回归通过；四项资产哈希、APK 版本/长期签名与 408 个资产文件/条目的秘密扫描通过。见[发行说明](docs/releases/v1.2.1.md)和[发布验证](test-results/v1.2.1-release-20261103/VALIDATION.md)。
 

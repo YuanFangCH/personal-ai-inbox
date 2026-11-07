@@ -118,7 +118,13 @@ void main() {
         } on Object {
           // Best-effort cleanup for the deliberately open stream.
         }
-        if (!response.isClosed) await response.close();
+        if (!response.isClosed) {
+          try {
+            await response.close().timeout(const Duration(seconds: 2));
+          } on Object {
+            // A cancelled HTTP body can leave the controller close pending.
+          }
+        }
         controller.dispose();
       });
 
@@ -152,7 +158,15 @@ void main() {
             find.byKey(const Key('chat_input')).evaluate().isNotEmpty &&
             find.textContaining('历史助手回复 219').evaluate().isNotEmpty,
       );
+      await tester.pump(const Duration(milliseconds: 400));
 
+      final input = find.byKey(const Key('chat_input'));
+      expect(
+        input.hitTestable(),
+        findsOneWidget,
+        reason:
+            'Composer input must be interactive after opening a long history.',
+      );
       final visibleMessage = find.byWidgetPredicate(
         (widget) =>
             widget is KeyedSubtree &&
@@ -178,8 +192,13 @@ void main() {
       expect(oldest, findsOneWidget);
       expect(scrollState.position.pixels, 0);
 
-      final input = find.byKey(const Key('chat_input'));
-      expect(input.hitTestable(), findsOneWidget);
+      expect(
+        input.hitTestable(),
+        findsOneWidget,
+        reason:
+            'Composer input must remain interactive after scrolling to the '
+            'oldest message.',
+      );
       await tester.enterText(input, '基于全部历史继续整理');
       expect(tester.widget<TextField>(input).controller!.text, '基于全部历史继续整理');
 
@@ -236,9 +255,10 @@ void main() {
       expect(tester.widget<TextField>(input).controller!.text, '停止前仍可输入');
       expect(tester.takeException(), isNull);
 
-      response.add(utf8.encode('data: [DONE]\n\n'));
-      await response.close();
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 2));
       await tester.pump();
+      controller.dispose();
     },
   );
 }

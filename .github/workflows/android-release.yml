@@ -1,0 +1,230 @@
+name: Android Release
+
+on:
+  push:
+    tags:
+      - 'phone-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-2022
+    env:
+      RELEASE_TAG: ${{ github.ref_name }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Scan public source for secrets
+        shell: pwsh
+        run: ./scripts/scan-public-release.ps1 -CurrentTreeOnly
+
+      - name: Set up Java
+        uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2.23.0
+        with:
+          flutter-version: '3.47.6'
+          cache: true
+
+      - name: Validate phone release tag
+        working-directory: app
+        shell: pwsh
+        run: |
+          $tag = $env:RELEASE_TAG
+          if ($tag -notmatch '^phone-v(?<version>\d+\.\d+\.\d+)$') {
+              throw "Phone release tag must use phone-v<major>.<minor>.<patch>: $tag"
+          }
+
+          $tagVersion = $Matches.version
+          $pubspec = Get-Content -Raw -Encoding UTF8 pubspec.yaml
+          if ($pubspec -notmatch '(?m)^version:\s*(?<version>\d+\.\d+\.\d+)\+(?<build>\d+)\s*$') {
+              throw 'Unable to read the app version from pubspec.yaml.'
+          }
+          if ($Matches.version -ne $tagVersion) {
+              throw "Release tag $tag does not match app version $($Matches.version)."
+          }
+          if ($Matches.build -ne '10') {
+              throw "Expected Android versionCode 10, found $($Matches.build)."
+          }
+
+          $notesPath = Join-Path (Resolve-Path '..').Path "docs\releases\$tagVersion.md"
+          if (-not (Test-Path -LiteralPath $notesPath -PathType Leaf)) {
+              throw "Release notes are missing: $notesPath"
+          }
+
+          "RELEASE_VERSION=$tagVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "RELEASE_NOTES=$notesPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Install Dart dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Check Dart formatting
+        working-directory: app
+        run: dart format --output=none --set-exit-if-changed lib test integration_test tool
+
+      - name: Analyze
+        working-directory: app
+        run: flutter analyze
+
+      - name: Test Android phone regressions
+        working-directory: app
+        run: >
+          flutter test --reporter expanded
+          test/conversation_lifecycle_test.dart
+          test/conversation_large_history_ui_test.dart
+          test/secretary_conversation_ui_test.dart
+          test/app_background_lifecycle_test.dart
+          test/chat_service_tools_test.dart
+          test/table_ai_runtime_test.dart
+          test/table_action_processor_test.dart
+          test/table_migration_service_test.dart
+          test/table_migration_gate_test.dart
+          test/table_migration_io_test.dart
+          test/app_runtime_test.dart
+
+      - name: Restore Android release keystore
+        shell: pwsh
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if (-not $env:ANDROID_KEYSTORE_BASE64 -or -not $env:ANDROID_KEYSTORE_PASSWORD) {
+              throw 'Android release signing secrets are not configured.'
+          }
+
+          $keystorePath = Join-Path $env:RUNNER_TEMP 'lazy-secretary-release.jks'
+          [IO.File]::WriteAllBytes($keystorePath, [Convert]::FromBase64String($env:ANDROID_KEYSTORE_BASE64))
+          "ANDROID_KEYSTORE_PATH=$keystorePath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANDROID_KEYSTORE_PASSWORD=$env:ANDROID_KEYSTORE_PASSWORD" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          'ANDROID_KEY_ALIAS=lazy-secretary-release' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANDROID_KEY_PASSWORD=$env:ANDROID_KEYSTORE_PASSWORD" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build Android release
+        working-directory: app
+        run: flutter build apk --release
+
+      - name: Verify Android artifact
+        working-directory: app
+        shell: pwsh
+        run: |
+          $sdkRoot = $env:ANDROID_SDK_ROOT
+          if (-not $sdkRoot) { $sdkRoot = $env:ANDROID_HOME }
+          if (-not $sdkRoot) { throw 'Android SDK path is not configured.' }
+
+          $buildTools = Get-ChildItem -Path (Join-Path $sdkRoot 'build-tools') -Directory |
+              Sort-Object { [version]$_.Name } -Descending |
+              Select-Object -First 1
+          if (-not $buildTools) { throw 'Android build-tools were not found.' }
+
+          $apk = Resolve-Path 'build\app\outputs\flutter-apk\app-release.apk'
+          $badging = & (Join-Path $buildTools.FullName 'aapt2.exe') dump badging $apk | Out-String
+          if ($LASTEXITCODE -ne 0) { throw 'aapt2 could not inspect the APK.' }
+          if ($badging -notmatch "versionCode='10'") {
+              throw 'APK versionCode is not 10.'
+          }
+          if ($badging -notmatch "versionName='$env:RELEASE_VERSION'") {
+              throw "APK versionName does not match $env:RELEASE_VERSION."
+          }
+          if ($badging -notmatch "minSdkVersion:'24'") {
+              throw 'APK minSdkVersion is not 24.'
+          }
+          if ($badging -notmatch "targetSdkVersion:'36'") {
+              throw 'APK targetSdkVersion is not 36.'
+          }
+          foreach ($permission in @(
+              'android.permission.INTERNET',
+              'android.permission.POST_NOTIFICATIONS',
+              'android.permission.FOREGROUND_SERVICE',
+              'android.permission.FOREGROUND_SERVICE_DATA_SYNC',
+              'android.permission.WAKE_LOCK'
+          )) {
+              if ($badging -notmatch "uses-permission: name='$([regex]::Escape($permission))'") {
+                  throw "APK does not declare $permission."
+              }
+          }
+
+          $certificate = & (Join-Path $buildTools.FullName 'apksigner.bat') verify --print-certs $apk | Out-String
+          if ($LASTEXITCODE -ne 0) { throw 'apksigner verification failed.' }
+          $expectedFingerprint = '51B5E2F3F44CE9374CB680A0173C6498A4E13C718C602A355A8B6A50523F4816'
+          $fingerprintMatch = [regex]::Match($certificate, 'certificate SHA-256 digest:\s*([0-9a-fA-F:]+)')
+          if (-not $fingerprintMatch.Success) {
+              throw 'Unable to read the APK signing certificate fingerprint.'
+          }
+          $actualFingerprint = $fingerprintMatch.Groups[1].Value.Replace(':', '').ToUpperInvariant()
+          if ($actualFingerprint -ne $expectedFingerprint) {
+              throw "APK signing certificate mismatch: $actualFingerprint"
+          }
+
+      - name: Remove Android release keystore
+        if: always()
+        shell: pwsh
+        run: |
+          $keystorePath = Join-Path $env:RUNNER_TEMP 'lazy-secretary-release.jks'
+          if (Test-Path -LiteralPath $keystorePath) {
+              Remove-Item -LiteralPath $keystorePath -Force
+          }
+
+      - name: Assemble Android release assets
+        working-directory: app
+        shell: pwsh
+        run: |
+          $version = $env:RELEASE_VERSION
+          $dist = Join-Path $PWD 'build\github-release-phone'
+          $apkSource = Join-Path $PWD 'build\app\outputs\flutter-apk\app-release.apk'
+
+          if (Test-Path -LiteralPath $dist) {
+              Remove-Item -LiteralPath $dist -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path $dist -Force | Out-Null
+
+          $apkName = "personal-ai-inbox-v$version-android.apk"
+          $apkPath = Join-Path $dist $apkName
+          Copy-Item -LiteralPath $apkSource -Destination $apkPath
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $apkPath).Hash.ToLowerInvariant()
+          Set-Content -LiteralPath (Join-Path $dist 'SHA256SUMS.txt') -Value "$hash  $apkName" -Encoding utf8
+
+      - name: Publish Android GitHub Release
+        working-directory: app
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = $env:RELEASE_TAG
+          $version = $env:RELEASE_VERSION
+          $dist = Join-Path $PWD 'build\github-release-phone'
+          $assets = @(
+              (Join-Path $dist "personal-ai-inbox-v$version-android.apk"),
+              (Join-Path $dist 'SHA256SUMS.txt')
+          )
+          foreach ($asset in $assets) {
+              if (-not (Test-Path -LiteralPath $asset -PathType Leaf)) {
+                  throw "Release asset is missing: $asset"
+              }
+          }
+
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+              gh release edit $tag `
+                  --title "懒狗秘书 v$version Android 预览版" `
+                  --notes-file $env:RELEASE_NOTES `
+                  --prerelease
+              if ($LASTEXITCODE -ne 0) { throw 'Unable to update Android GitHub Release metadata.' }
+              gh release upload $tag @assets --clobber
+              if ($LASTEXITCODE -ne 0) { throw 'Unable to upload Android GitHub Release assets.' }
+          } else {
+              gh release create $tag @assets `
+                  --verify-tag `
+                  --title "懒狗秘书 v$version Android 预览版" `
+                  --notes-file $env:RELEASE_NOTES `
+                  --prerelease
+              if ($LASTEXITCODE -ne 0) { throw 'Unable to create Android GitHub Release.' }
+          }

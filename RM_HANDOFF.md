@@ -7,25 +7,25 @@
 | 字段 | 当前值 |
 |---|---|
 | 项目名称 | 懒狗秘书 |
-| 最后更新时间 | 2026-11-07 |
+| 最后更新时间 | 2026-11-08 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | 专用秘书 Agent A–F 最终设备候选 `c283f93b19703686ab7caa0da802e43ff8bb5c557051156c070c9e94f07f49bd` 已通过 phone 50/50、tablet 27/27、双端 A31/A32/A33 恢复场景及双端 900 秒长测，尚未提交或发布。A01–A30、A34–A35 的遗留主机组合和最终交叉审查仍待收敛 |
-| 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。OneDrive 双向同步、百度网盘归档和通知尚未接入 |
+| 当前阶段 | 正式实现已提交为 `111f996`；按用户要求收敛为 Android 手机 v1.3.0 预发布。手机最终设备矩阵、A31–A33、900 秒长测、长历史/生命周期回归及新增“最近任务划掉”场景已通过，正在走 `phone-v1.3.0` Android 专用发布流水线 |
+| 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.3.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
 
-2026-11-07 最终设备候选 `c283f93b19703686ab7caa0da802e43ff8bb5c557051156c070c9e94f07f49bd` 已通过 phone 50/50、tablet 27/27、双端 A31/A32/A33 恢复场景与双端 900 秒长测；双端长测均完成47条唯一写入和回执核对。通知权限对话框解析、空会话终态和末轮回显断言已修复。A01–A30、A34–A35 的遗留主机组合仍需收尾，完成后更新文档并形成一个原子提交；不推送、不发布、不操作真实资料。
+2026-11-08 按用户要求只完成 Android 手机交付：正式实现已提交为 `111f996`，版本升至 `1.3.0+10`，手机长历史与生命周期回归通过，新增“最近任务划掉→冷启动→显式继续”两阶段设备场景通过。下一步通过 `phone-v1.3.0` Android 专用流水线发布，不构建新的 Windows 资产；A01–A30、A34–A35 延期，不操作真实资料。
 
-最新分项结论见 `test-results/secretary-agent-implementation/ACCEPTANCE.md`，最终设备验证见 `test-results/secretary-agent-implementation/final-device-20261107/VALIDATION.md`，子代理证据分别进入 `luna-a/`、`luna-b/`、`luna-c/`。公开版本仍为 v1.2.1+9。
+最新手机发布结论见 `test-results/phone-release-v1.3.0/VALIDATION.md`，既有最终设备验证见 `test-results/secretary-agent-implementation/final-device-20261107/VALIDATION.md`。上一公开版本为 v1.2.1+9；v1.3.0 仅使用 Android 专用发布入口。
 ## 3. 当前目标与范围
 
-- 当前任务：完成专用秘书设计 A–F 实现及 A01–A36 验收，保留自动续批、2 小时/240 次累计请求额度、后台/检查点恢复和运行中补充指令。父代理统筹三名子代理、审查证据与最终交付。
+- 当前任务：完成 Android 手机 v1.3.0 可交付发布。复用已通过手机矩阵、A31–A33 和 900 秒长测证据，只收敛长历史/生命周期及最近任务划掉等手机直接影响项；A01–A30、A34–A35 与平板/Windows UI 验收延期。
 
 - Android 手机、Android 平板和 Windows 作为独立客户端运行。
 - 每个成果保存为一个 Markdown 文件；本地索引由 SQLite 管理。
 - AI 使用 OpenAI 兼容接口，凭据保存在系统安全存储。
-- 真实 OneDrive、百度网盘、通知和跨端同步仍属于后续产品工作。
+- 真实 OneDrive、百度网盘、到点提醒和跨端同步仍属于后续产品工作；Android 后台任务所需的前台服务通知已接。
 - 现行 P0–P9 已实现本地表/内容类型、首页/日历投影、AI 权限和旧事项迁移首轮；现行全局知识人工确认，下一版按 ADR 0024 区分权限模式。真实资料迁移仍由应用迁移门单独确认。
 
 ## 4. 权威文件
@@ -49,27 +49,30 @@
 
 ## 5. 已锁定决定
 
-- 2026-11-03 新目标优先级：ADR 0024/专用设计取代本节旧目标中“默认表永久不可删”和“所有模式全局知识均逐项确认”。现行 v1.2.1 仍保留旧行为，代码尚未切换；旧 ADR/历史验证不改写。
+- 2026-11-03 新目标优先级：ADR 0024/专用设计取代本节旧目标中“默认表永久不可删”和“所有模式全局知识均逐项确认”。实现已在 `111f996` 切换到新行为，并由 v1.3.0 Android 手机候选承载；旧版本及历史验证不改写。
 - 完全权限由用户为会话显式选择，可直接操作任意表、字段、内容和全局知识；标准模式继续结构/知识确认，升级不扩大授权。完全权限包含预置表删除，删除后启动不重建，缺少收纳目标的原文保留待归表。
 - 正式自动入库统一查重：同操作幂等，同一件事复用或自动补充；同标题不同时间/对象保持独立，未解决的身份/事实冲突才询问。权限、版本和必要本地检查不因完全权限或预算边界被省略。
 
 - 各设备独立运行本地核心，不依赖集中式后端。
 - Markdown 是成果正文的权威副本；SQLite 是可重建索引与本地状态存储。
 - 仅确认后的成果进入同步；未确认候选留在本机。
-- 普通成果操作受会话权限约束；现行全局知识需人工确认，新目标在标准模式确认、完全权限直接生效并记录策略授权来源。
+- 普通成果操作受会话权限约束；全局知识在标准模式确认，完全权限直接生效并记录策略授权来源。
 - Web 仅作界面预览，不作为可靠备份或迁移来源。
-- 表采用可写正文的笔记页，可混合承载内容；现行待办/日程/事件默认表不可删除，自定义表删除时连内容一起删除并支持恢复。下一版预置表删除和收纳映射按 ADR 0024 执行。
+- 表采用可写正文的笔记页，可混合承载内容；待办/日程/事件预置收纳表可调整、删除和恢复，自定义表及预置表删除时连内容进入回收站。收纳目标由独立映射决定，删除后启动不重建。
 - 新目标：日程表示未来要做且时间明确的安排；事件缺少上述任一条件，事件可以引发已有日程修改。普通笔记仅加时间标签不进入日历。
-- 首页保留现有区块和无日期待办，下方支持添加表展示、排序、默认五行与展开；AI 表内内容操作和跨表移动按权限执行，现行表结构在对话确认，下一版完全权限可直接执行；没有独立待处理页。
-- 旧事项迁移为表并保留正文和关联待办、事件；普通知识进入表，全局知识继续独立管理，确认方式按当前实现/ADR 0024 区分。ADR 0020/0021 的本地存储及权限首轮已实现；跨端同步格式仍旧，真实资料迁移由应用迁移门确认。
+- 首页保留现有区块和无日期待办，下方支持添加表展示、排序、默认五行与展开；AI 表内内容操作和跨表移动按权限执行，标准模式的结构变更在对话确认，完全权限可直接执行；没有独立待处理页。
+- 旧事项迁移为表并保留正文和关联待办、事件；普通知识进入表，全局知识继续独立管理，确认方式按 ADR 0024 区分。ADR 0020/0021 的本地存储及权限已实现；跨端同步格式仍旧，真实资料迁移由应用迁移门确认。
 - 新目标细化：带截止时间的待办仍是待办；无指定表且无其他明确归属的普通笔记进入事件表但保持笔记类型。自定义字段按表定义、逐条填写，首版为文本、数字、日期时间、单选、多选、勾选六种类型。
 - 新目标细化：调整通知保留为事件并更新原日程；自定义表连内容删除后进入回收站，保留 30 天，期间整表恢复，到期自动清理。
 - 秘书导航更新：秘书页在 AppShell 中常驻；主页面切换保留会话、未发送草稿、已选附件、思考选项和阅读位置，回复生成不中断。手机保留底部导航，宽屏用统一应用侧栏；新建/历史/分享定位不增加对话路由。全局约定见 ADR 0022。
 
 ## 6. 当前进度与验证
 
+- 2026-11-08 Android 手机发布准备：版本升至 `1.3.0+10`；新增 `.github/workflows/android-release.yml`，仅响应 `phone-v*` 标签，校验版本、API 24/36、必要权限和长期证书后发布 Universal APK 与 `SHA256SUMS.txt`，不构建 Windows。
+- 2026-11-08 手机回归：`conversation_lifecycle_test.dart` 4/4、`conversation_large_history_ui_test.dart` 1/1；长历史覆盖 220 条消息、滚到最早位置、流式长回复、停止后保留草稿，生命周期延迟关停计时器在测试卸载后推进完成。
+- 2026-11-08 最近任务划掉设备场景：phone AVD `aitext_agent_c_phone`、API35、ADB5041、serial `emulator-5620`，最终 source manifest `f9c8c219edb3218bb21b96d5225d2257fc8042bb0d2f101f5170537740cfde50`；真实打开最近任务并滑动移除 app task，冷启动 15 秒无新增模型请求，显式继续传入原 task ID，原 operation 幂等回执重复出现但均绑定同一 entry/table，最终仅一条内容。证据：`test-results/secretary-agent-implementation/luna-c/20261107T183122Z-phone-recents_swipe_recovery/`。
 - 2026-11-07 最终设备候选通过：manifest `c283f93b19703686ab7caa0da802e43ff8bb5c557051156c070c9e94f07f49bd`；phone 50/50、tablet 27/27；双端 `activity_recreate`、`force_stop_recovery`、`service_interrupted`、`service_restricted`、`service_timeout`、`notification_denied` 全部通过；phone 900秒长测916.934秒/47条、tablet 900秒长测917.914秒/47条，均通过后台/锁屏恢复、预算、回执及最终 SSE 文本渲染。详见 `test-results/secretary-agent-implementation/final-device-20261107/VALIDATION.md`。
-- 2026-11-07 主机定向回归：`secretary_conversation_ui_test.dart` 5/5，新增当前活动会话挂载和主动新建对话隔离回归；`app_background_lifecycle_test.dart` 6/6；相关四文件 analyze 无 warning/error，format/diff-check 通过。一次额外组合运行中 `conversation_lifecycle_test.dart` 与 `conversation_large_history_ui_test.dart` 暴露既有 pending timer/输入可见性问题，本轮未修改或宣称修复。
+- 2026-11-07 主机定向回归：`secretary_conversation_ui_test.dart` 5/5，新增当前活动会话挂载和主动新建对话隔离回归；`app_background_lifecycle_test.dart` 6/6；相关四文件 analyze 无 warning/error，format/diff-check 通过。组合运行中的 pending timer/长历史输入可见性问题已由 2026-11-08 修复并通过。
 - 2026-11-06 当前候选 host 重绑：`chat_service_agent_test.dart` 27/27，`model_client_stream_test.dart` 19/19，`secretary_host_smoke_test.dart` 15/15（SEC-083两次请求/287ms），`content_intake_test.dart` 25/25、`content_intake_recovery_test.dart` 3/3、`model_duplicate_decision_source_test.dart` 16/16；退出码均0。ChatService、ModelClient 与 smoke test SHA 及范围见 `test-results/secretary-agent-implementation/host-smoke-current-rebind/VALIDATION.md`。这替代 SEC-083 的11/05旧 host失败结论，但不代表设备矩阵或 A01–A36 全部闭合。
 - 2026-11-06 phone 专用 AVD 当前源短场景复验：A31 Activity recreation、A32 force-stop 后冷启动无自动请求且显式继续原 task、A33 service_interrupted 均通过；Android API35 / Emulator37.2.12 / ADB5041，source manifest `733b7fbd6c53b158b98d032bbe70dfe935ef3a5a111a4ad568c4c1803248538a`。逐项命令与 APK SHA 见 `luna-c/20261106T115952Z-phone-activity_recreate/VALIDATION.md`、`20261106T120153Z-phone-force_stop_recovery/VALIDATION.md`、`20261106T115525Z-phone-service_interrupted/VALIDATION.md`。A32最近任务划掉、平板复验、A33通知拒绝/服务限制/超时、设备矩阵及双端900秒长测仍开放。
 - 2026-11-06 phone `service_interrupted` 当前源设备短场景通过：显式恢复原 task ID，核验同一 assistant/task ID、第二轮 `content_verify`、条目唯一及写入回执复用；Emulator37.2.12/API35/ADB5041，exit0，manifest/APK 哈希及命令见 `luna-c/20261106T115525Z-phone-service_interrupted/VALIDATION.md`。定位前一失败为验收等待条件漏掉续跑验证回执，非生产恢复缺陷；只关闭此手机短场景，A33其余子项、A32及长测仍未闭合。
@@ -173,11 +176,11 @@
 - 隔离模拟器的旧5580/5600端口位于Windows管理的排除TCP范围5520–5619，Android启动成功不等于ADB传输可用。C使用未排除端口与显式TCP连接排查，不修改全局网络或排除设置；原设备失败证据保留。
 
 
-- 当前交接曾混有设计阶段的‘尚未实施’与当前未提交实现两种状态；本轮更新当前入口以消除冲突，历史变更记录不改写。已发布 v1.2.1 行为与当前工作区候选必须分开；不得用旧版设备75/75代替本轮候选验收。
+- v1.2.1 是上一公开版本，v1.3.0 是当前 Android 手机候选。不得用旧版设备证据替代 v1.3.0；也不得把 Android 专用发布解释为新的 Windows 或平板验收。
 
 
 
-- 2026-11-03 文档新旧语义已分层：ADR 0024 接受下一版目标，现行库 v10/会话 v5/设置 v4 和 v1.2.1 业务代码不变。默认表启动保护、捕获角色 singleWhere、全局知识全人工确认等代码必须一起改；仅开放模型工具会造成启动阻断、丢失归表路径或授权绕过。
+- 2026-11-03 记录的新旧语义冲突已由 `111f996` 的实现收敛：预置表删除/收纳映射、标准与完全权限、全局知识策略授权和写前查重已进入 v1.3.0 Android 手机候选。A01–A30、A34–A35 的剩余主机组合仍不能据此宣称全部完成。
 - DSH 手机壳运行清单固定的是上游 1f81c047，当前 master 8bd07339 不能当作 APK 实际能力证据；未下载/解包 APK。参考项目未证实表业务语义查重。本项目自动合并仍需实现后的语料与并发验证，不能承诺绝对无误合并或跨设备唯一。
 
 - 2026-11-05 的 tablet longrun attempt 1/2 与 ADB 启动失败保留为历史证据；2026-11-07 manifest `c283…49bd` 已在 `emulator-5620` 上通过 tablet 矩阵、全部恢复场景与900秒长测，旧阻塞不再作为当前风险。
@@ -197,19 +200,27 @@
 - 新目标替代旧文档中的事项聚合、固定四类成果和独立待处理页设计；这是有意的产品改版。旧方案/现行同步协议保留已发布 v1.1.5 的格式与历史规则；本地新 schema 和迁移契约已首轮实现，跨端表同步和协议切换仍待设计。
 - P3 的本地恢复与事件联动事务已实现首轮，并由表页/AI 表工具接入；尚未纳入真实同步协议。整表删除的跨端墓碑/恢复前像同步策略仍需专门同步 ADR；现阶段只能承诺本机 30 天恢复。
 - P4 已接只读启动门和确认迁移副本入口；候选已在空 AVD 的合成旧文件目录上通过迁移确认、主应用导航、重启及源哈希检查。旧数据源和新格式副本可同时读回；普通旧格式编辑和旧同步入口关闭，全局知识独立确认仍可用。vault与数据库快照在迁移 journal 中关联；跨进程或外部同步同时写入不能由当前进程 barrier 阻止，真实生产资料的备份恢复仍须单独完成。
-- 真实云盘、跨端同步和本地通知尚不可用。
+- 真实云盘、跨端同步和到点提醒尚不可用；Android 专用 Agent 前台服务通知已接。
 - Windows 包未进行代码签名。
 - Android 旧版 v1.1.3 及更早版本的预览包不保证可直接升级至固定签名版本；升级前需备份应用数据与 Markdown 主库。
 
 ### 下一步
 
-1. 补齐 A01–A30、A34–A35 的遗留主机组合，重点包括 A06 长历史、A07 升级不扩权、A08/A09 结构权限、A13–A18 检索/缓存/核对、A24/A25 并发查重及 A34/A35 越权与撤权迁移组合；区分用户显式继续与权限/额度恢复后的自动续扫。
-2. 完成 A/B 交叉审查与最终源码清单冻结，更新 README/RM/验收矩阵，运行提交门禁并形成一个原子提交；不推送、不发布、不操作真实资料。
-3. 恢复手机无线调试时，先核对安装版本及长期签名，并将 Base URL 恢复为 `https://api.deepseek.com`，再验证真实工具调用。
-4. Windows 启动验收使用独立用户/VM 或可证明的数据隔离；当前应用目录存在真实数据。
-5. 云盘同步、通知和跨设备恢复继续单独规划，不能将本端 Agent 设计当作已接入这些能力。
+1. 完成 Android 手机发布门的定向 format/analyze/test、PowerShell AST 和 diff-check，创建一个原子发布准备提交。
+2. 快进合并到 `main`，推送 `main` 与 `phone-v1.3.0` 标签；等待 main CI 和 Android Release workflow，确认长期签名与版本校验通过。
+3. 从公开 GitHub Release 下载 APK，复核 SHA-256、签名、versionCode/versionName、API 24/36 与权限，并记录发布验证提交。
+4. A01–A30、A34–A35 的遗留主机组合以后续 Android 手机审计任务处理；本轮不扩大范围。
+5. Windows 与平板验收、云盘同步和到点提醒继续单独规划。
 
 ## 8. 变更记录
+
+### 2026-11-08 / 准备 Android 手机 v1.3.0 预发布
+
+- 任务：按用户要求只完成 Android 手机可交付事项，提供长期签名 GitHub APK。
+- 变更：版本升至 `1.3.0+10`；新增 `phone-v1.3.0` Android 专用发布工作流；修复长历史测试稳定性与生命周期延迟关停测试收尾；验收脚本新增真实最近任务滑动恢复场景；新增 v1.3.0 发行说明并更新当前交接。
+- 验证：最终手机定向套件 68/68、`flutter analyze --no-pub` 0 issue、259 文件格式门 0 change；PowerShell AST 与 diff-check 通过；phone AVD 最近任务划掉恢复两阶段通过，source manifest `f9c8c219edb3218bb21b96d5225d2257fc8042bb0d2f101f5170537740cfde50`。既有 phone 50/50、A31–A33 与 900 秒长测复用。
+- 状态：发布准备中；尚未推送 `main`/标签，尚未创建 `phone-v1.3.0` GitHub Release。
+- 风险/下一步：Android Release secrets 必须可用；发布完成后下载公开 APK 独立核验并补记 workflow/run/hash。A01–A30、A34–A35、平板和 Windows 不在本轮门禁。
 
 ### 2026-11-07 / 专用秘书最终设备验收与长测闭环
 

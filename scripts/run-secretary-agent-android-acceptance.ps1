@@ -8,7 +8,7 @@ param(
     [string]$DeviceSerial,
 
     [Parameter(Mandatory = $true)]
-    [ValidateSet('longrun', 'force_stop_recovery', 'activity_recreate', 'service_interrupted', 'service_timeout', 'service_restricted', 'notification_denied', 'secretary_matrix')]
+    [ValidateSet('longrun', 'force_stop_recovery', 'recents_swipe_recovery', 'activity_recreate', 'service_interrupted', 'service_timeout', 'service_restricted', 'notification_denied', 'secretary_matrix')]
     [string]$Scenario,
 
     [Parameter(Mandatory = $true)]
@@ -1407,7 +1407,9 @@ function Invoke-IntegrationPhase(
     [scriptblock]$OnRunningPoll = $null,
     [int]$RunningPollIntervalMilliseconds = 1000,
     [scriptblock]$OnFailureCapture = $null,
-    [switch]$AllowExpectedDriverDisconnect
+    [switch]$AllowExpectedDriverDisconnect,
+    [int]$ExpectedDisconnectGraceSeconds = 60,
+    [string[]]$AdditionalDartDefines = @()
 ) {
     if ($HostTimeoutMinutes -lt 1 -or $HostTimeoutMinutes -gt 20) {
         throw 'Integration phase host timeout must be between 1 and 20 minutes.'
@@ -1417,6 +1419,14 @@ function Invoke-IntegrationPhase(
     }
     if ($RunningPollIntervalMilliseconds -lt 250) {
         throw 'Running poll interval must be at least 250 milliseconds.'
+    }
+    if ($ExpectedDisconnectGraceSeconds -lt 1 -or $ExpectedDisconnectGraceSeconds -gt 120) {
+        throw 'Expected disconnect grace period must be between 1 and 120 seconds.'
+    }
+    foreach ($additionalDefine in $AdditionalDartDefines) {
+        if ($additionalDefine -notmatch '^--dart-define=[A-Za-z_][A-Za-z0-9_]*=') {
+            throw "Invalid additional Dart define: $additionalDefine"
+        }
     }
     $stdout = Join-Path $runDir "$Phase.stdout.log"
     $stderr = Join-Path $runDir "$Phase.stderr.log"
@@ -1430,6 +1440,9 @@ function Invoke-IntegrationPhase(
         "--dart-define=E2E_DEVICE_PROFILE=$DeviceProfile",
         "--dart-define=E2E_DURATION_SECONDS=$Seconds"
     )
+    if ($AdditionalDartDefines.Count -gt 0) {
+        $arguments += $AdditionalDartDefines
+    }
     "phase_start=$Phase at=$([DateTime]::UtcNow.ToString('o'))" | Add-Content -LiteralPath $runLog
     $runTokenArgument = @($arguments | Where-Object { $_ -like '--dart-define=E2E_ACCEPTANCE_RUN_TOKEN=*' })[0]
     $runToken = $runTokenArgument.Substring('--dart-define=E2E_ACCEPTANCE_RUN_TOKEN='.Length)
@@ -1476,7 +1489,9 @@ function Invoke-IntegrationPhase(
             if (-not $readyActionDone -and (Test-OutputContainsMarker $output $ReadyMarker)) {
                 & $OnReady $output
                 $readyActionDone = $true
-                if ($AllowExpectedDriverDisconnect) { $interruptionAt = [DateTime]::UtcNow.AddSeconds(60) }
+                if ($AllowExpectedDriverDisconnect) {
+                    $interruptionAt = [DateTime]::UtcNow.AddSeconds($ExpectedDisconnectGraceSeconds)
+                }
             }
             if ($readyActionDone -and $null -ne $OnRunningPoll -and [DateTime]::UtcNow -ge $nextRunningPollAt) {
                 $pollOutput = if ($null -eq $output) { '' } else { [string]$output }
@@ -1584,9 +1599,100 @@ function Ensure-AcceptancePackageInstalled {
     "permission_bootstrap_install=success apk=$apk" | Add-Content -LiteralPath $runLog
 }
 
+function Get-AppTaskId {
+    $activityDump = @(& $adb -P 5041 -s $serial shell dumpsys activity activities 2>&1)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not read activity tasks from ${serial}: $($activityDump -join ' ')"
+    }
+    $taskText = $activityDump -join "`n"
+    $taskHeaders = @([regex]::Matches($taskText, '(?m)^\s*\* Task\{(?<header>[^\r\n]*)\r?\n'))
+    $matchingTasks = @()
+    for ($index = 0; $index -lt $taskHeaders.Count; $index++) {
+        $header = $taskHeaders[$index].Groups['header'].Value
+        if ($header -notmatch '(?:visible|visibleRequested)=true') { continue }
+        $segmentStart = $taskHeaders[$index].Index
+        $segmentEnd = if ($index + 1 -lt $taskHeaders.Count) {
+            $taskHeaders[$index + 1].Index
+        } else {
+            $taskText.Length
+        }
+        $segment = $taskText.Substring($segmentStart, $segmentEnd - $segmentStart)
+        if ($segment -notmatch [regex]::Escape($packageName)) { continue }
+        $taskMatch = [regex]::Match($header, '#(?<id>\d+)')
+        if ($taskMatch.Success) {
+            $matchingTasks += [int]$taskMatch.Groups['id'].Value
+        }
+    }
+    $uniqueTasks = @($matchingTasks | Select-Object -Unique)
+    if ($uniqueTasks.Count -ne 1) {
+        throw "Expected exactly one activity task for $packageName, found $($uniqueTasks -join ',')."
+    }
+    return $uniqueTasks[0]
+}
+
+function Assert-AppTaskAbsent([int]$TaskId) {
+    $taskDump = @(& $adb -P 5041 -s $serial shell dumpsys activity activities 2>&1)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not verify task removal from ${serial}: $($taskDump -join ' ')"
+    }
+    $taskText = $taskDump -join "`n"
+    if ($taskText -match "(?m)^\s*\* Task\{[^#\r\n]*#$TaskId(?:\s|,)") {
+        throw "Removed app task $TaskId is still present in activity state."
+    }
+}
+
+function Remove-AppTaskFromRecents([int]$TaskId) {
+    $sizeOutput = @(& $adb -P 5041 -s $serial shell wm size 2>&1)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not read display size from ${serial}: $($sizeOutput -join ' ')"
+    }
+    $sizeMatch = [regex]::Match(($sizeOutput -join "`n"), 'Physical size:\s*(?<width>\d+)x(?<height>\d+)')
+    if (-not $sizeMatch.Success) {
+        throw "Could not parse display size from ${serial}: $($sizeOutput -join ' ')"
+    }
+    $width = [int]$sizeMatch.Groups['width'].Value
+    $height = [int]$sizeMatch.Groups['height'].Value
+    $centerX = [int][math]::Round($width / 2)
+    $startY = [int][math]::Round($height * 0.58)
+    $endY = [int][math]::Round($height * 0.04)
+
+    $lastError = $null
+    for ($attempt = 1; $attempt -le 5; $attempt++) {
+        & $adb -P 5041 -s $serial shell input keyevent 187 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'Could not open the Android recent tasks screen.' }
+        Start-Sleep -Seconds 2
+        & $adb -P 5041 -s $serial shell input swipe $centerX $startY $centerX $endY 150 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'Could not swipe the app task out of Android recents.' }
+        Start-Sleep -Seconds 2
+        try {
+            Assert-AppTaskAbsent $TaskId
+            & $adb -P 5041 -s $serial shell input keyevent 3 | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'Could not return to the Android home screen.' }
+            "recents_swipe_attempts=$attempt task_id=$TaskId" | Add-Content -LiteralPath $runLog
+            return
+        } catch {
+            $lastError = $_.Exception.Message
+        }
+    }
+
+    try {
+        $taskDump = @(& $adb -P 5041 -s $serial shell dumpsys activity activities 2>&1)
+        Set-Content -LiteralPath (Join-Path $runDir 'recents-failure-activities.txt') -Value ($taskDump -join "`n") -Encoding utf8
+        & $adb -P 5041 -s $serial shell input keyevent 187 | Out-Null
+        Start-Sleep -Seconds 2
+        & $adb -P 5041 -s $serial shell screencap -p /sdcard/recents-failure.png | Out-Null
+        & $adb -P 5041 -s $serial pull /sdcard/recents-failure.png (Join-Path $runDir 'recents-failure.png') | Out-Null
+        & $adb -P 5041 -s $serial shell rm /sdcard/recents-failure.png | Out-Null
+    } catch {
+        "recents_failure_evidence=unavailable error=$($_.Exception.Message)" | Add-Content -LiteralPath $runLog
+    }
+    throw "Recent-task swipe did not remove task ${TaskId}: $lastError"
+}
+
 $manageNotificationState = $Scenario -in @(
     'longrun',
     'force_stop_recovery',
+    'recents_swipe_recovery',
     'activity_recreate',
     'service_interrupted',
     'service_timeout',
@@ -1684,14 +1790,25 @@ if ($Scenario -eq 'secretary_matrix') {
     }
     foreach ($caseId in $passedIds) { "SEC_CASE_RESULT|$caseId|passed" | Add-Content -LiteralPath $runLog }
     "secretary_matrix_passed=$($passedIds.Count)" | Add-Content -LiteralPath $runLog
-} elseif ($Scenario -eq 'force_stop_recovery') {
-    $prepare = Invoke-IntegrationPhase -Phase 'prepare_force_stop' -Seconds $DurationSeconds -ReadyMarker 'AGENT_FORCE_STOP_READY|' -AllowExpectedDriverDisconnect -OnReady {
+} elseif ($Scenario -in @('force_stop_recovery', 'recents_swipe_recovery')) {
+    $terminationMode = if ($Scenario -eq 'recents_swipe_recovery') { 'recents_swipe' } else { 'force_stop' }
+    $additionalDefines = @("--dart-define=E2E_TERMINATION_MODE=$terminationMode")
+    $disconnectGraceSeconds = if ($terminationMode -eq 'recents_swipe') { 5 } else { 60 }
+    $prepare = Invoke-IntegrationPhase -Phase 'prepare_force_stop' -Seconds $DurationSeconds -ReadyMarker 'AGENT_FORCE_STOP_READY|' -AllowExpectedDriverDisconnect -ExpectedDisconnectGraceSeconds $disconnectGraceSeconds -AdditionalDartDefines $additionalDefines -OnReady {
         param($output)
-        & $adb -P 5041 -s $serial shell am force-stop $packageName | Out-Null
-        if ($LASTEXITCODE -ne 0) { throw 'ADB force-stop failed.' }
-        'force_stop_applied_after_persisted_ready_marker; prepare phase is interrupted, not passed' | Add-Content -LiteralPath $runLog
+        if ($terminationMode -eq 'recents_swipe') {
+            $taskId = Get-AppTaskId
+            Remove-AppTaskFromRecents $taskId
+            "recents_swipe_applied task_id=$taskId gesture=swipe_up after_persisted_ready_marker=true; prepare phase is interrupted, not passed" | Add-Content -LiteralPath $runLog
+        } else {
+            & $adb -P 5041 -s $serial shell am force-stop $packageName | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'ADB force-stop failed.' }
+            'force_stop_applied_after_persisted_ready_marker; prepare phase is interrupted, not passed' | Add-Content -LiteralPath $runLog
+        }
     }
-    if (-not $prepare.interrupted) { throw 'Force-stop prepare did not reach the recorded recovery boundary.' }
+    if (-not $prepare.interrupted) {
+        throw "$Scenario prepare did not reach the recorded recovery boundary."
+    }
     $deviceReadyDeadline = [DateTime]::UtcNow.AddSeconds(90)
     $deviceReady = $false
     do {
@@ -1710,8 +1827,8 @@ if ($Scenario -eq 'secretary_matrix') {
     if (-not $deviceReady) {
         throw "Device $serial did not return online and boot-complete within 90 seconds after force-stop."
     }
-    "force_stop_recovery_device_ready serial=$serial boot_completed=$bootCompleted wait_seconds=$([math]::Round(90 - ($deviceReadyDeadline - [DateTime]::UtcNow).TotalSeconds, 1))" | Add-Content -LiteralPath $runLog
-    $recovery = Invoke-IntegrationPhase -Phase 'recover_after_force_stop' -Seconds $DurationSeconds
+    "recovery_device_ready scenario=$Scenario serial=$serial boot_completed=$bootCompleted wait_seconds=$([math]::Round(90 - ($deviceReadyDeadline - [DateTime]::UtcNow).TotalSeconds, 1))" | Add-Content -LiteralPath $runLog
+    $recovery = Invoke-IntegrationPhase -Phase 'recover_after_force_stop' -Seconds $DurationSeconds -AdditionalDartDefines $additionalDefines
 } elseif ($Scenario -eq 'longrun') {
     $stayOnBefore = (Invoke-CheckedAdb -Label 'longrun_read_stay_on' -Arguments @('-P', '5041', '-s', $serial, 'shell', 'settings', 'get', 'global', 'stay_on_while_plugged_in')).Trim()
     if ($stayOnBefore -notmatch '^\d+$') { throw "Could not read stay_on_while_plugged_in before longrun: '$stayOnBefore'." }

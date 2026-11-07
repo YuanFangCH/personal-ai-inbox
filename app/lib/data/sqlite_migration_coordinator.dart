@@ -42,9 +42,10 @@ class SqliteMigrationCoordinator implements MigrationCoordinator {
     if (await stateFile.exists()) {
       final state = jsonDecode(await stateFile.readAsString());
       if (state is! Map<String, dynamic> ||
-          !const {1, _migrationStateSchemaVersion}.contains(
-            state['schema_version'],
-          )) {
+          !const {
+            1,
+            _migrationStateSchemaVersion,
+          }.contains(state['schema_version'])) {
         throw StateError('本地数据库迁移状态损坏；应用保持停止，备份文件已保留。');
       }
       if (!const {
@@ -121,9 +122,7 @@ class SqliteMigrationCoordinator implements MigrationCoordinator {
       });
     }
     final fileSnapshots = <Map<String, Object?>>[];
-    for (var index = 0;
-        index < normalizedAdditionalFilePaths.length;
-        index++) {
+    for (var index = 0; index < normalizedAdditionalFilePaths.length; index++) {
       final sourcePath = normalizedAdditionalFilePaths[index];
       final sourceFile = File(sourcePath);
       final exists = await sourceFile.exists();
@@ -134,10 +133,8 @@ class SqliteMigrationCoordinator implements MigrationCoordinator {
           backupRoot.path,
           'file-$index-${p.basename(sourcePath)}',
         );
-        await File(backupPath).writeAsBytes(
-          await sourceFile.readAsBytes(),
-          flush: true,
-        );
+        await File(backupPath)
+            .writeAsBytes(await sourceFile.readAsBytes(), flush: true);
         backupHash = await _sha256File(backupPath);
       }
       fileSnapshots.add({
@@ -391,9 +388,7 @@ class SqliteMigrationCoordinator implements MigrationCoordinator {
         await _sha256File(settingsPath) != settingsBackupHash) {
       throw StateError('端配置迁移备份缺失或校验失败；应用保持停止，备份文件已保留。');
     }
-    final decodedSettings = jsonDecode(
-      await File(settingsPath).readAsString(),
-    );
+    final decodedSettings = jsonDecode(await File(settingsPath).readAsString());
     if (decodedSettings is! Map<String, dynamic>) {
       throw StateError('端配置迁移备份损坏；应用保持停止，备份文件已保留。');
     }
@@ -457,9 +452,7 @@ class SqliteMigrationCoordinator implements MigrationCoordinator {
     final seenPaths = <String>{};
     final snapshots = <Map>[];
     for (final raw in rawDatabases) {
-      if (raw is! Map ||
-          raw['path'] is! String ||
-          raw['existed'] is! bool) {
+      if (raw is! Map || raw['path'] is! String || raw['existed'] is! bool) {
         throw StateError('迁移数据库备份清单损坏；应用保持停止，备份文件已保留。');
       }
       final databasePath = p.normalize(raw['path'] as String);
@@ -520,9 +513,7 @@ class SqliteMigrationCoordinator implements MigrationCoordinator {
     }
     final seenPaths = <String>{};
     for (final raw in rawFiles) {
-      if (raw is! Map ||
-          raw['path'] is! String ||
-          raw['existed'] is! bool) {
+      if (raw is! Map || raw['path'] is! String || raw['existed'] is! bool) {
         throw StateError('迁移文件备份清单损坏；应用保持停止，备份文件已保留。');
       }
       final sourcePath = p.normalize(raw['path'] as String);

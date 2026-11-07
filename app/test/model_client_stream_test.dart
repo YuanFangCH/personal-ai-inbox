@@ -8,84 +8,76 @@ import 'package:personal_ai_inbox/services/model_client.dart';
 import 'package:personal_ai_inbox/services/model_capabilities.dart';
 
 void main() {
-  test(
-    'terminal completes the outer stream before HTTP body cancellation finishes',
-    () async {
-      final bodyCancellationStarted = Completer<void>();
-      final bodyCancellationGate = Completer<void>();
-      final bodyCancellationFinished = Completer<void>();
-      final terminalReceived = Completer<ChatStreamTermination?>();
-      final outerStreamDone = Completer<void>();
-      final body = StreamController<List<int>>(
-        onCancel: () async {
-          if (!bodyCancellationStarted.isCompleted) {
-            bodyCancellationStarted.complete();
-          }
-          await bodyCancellationGate.future;
-          if (!bodyCancellationFinished.isCompleted) {
-            bodyCancellationFinished.complete();
-          }
-        },
-      );
-      final model = ModelClient(
-        client: MockClient.streaming((request, requestBody) async {
-          await requestBody.bytesToString();
-          return http.StreamedResponse(body.stream, 200);
-        }),
-      );
-      model
-          .streamChat(
-            messages: const [
-              ChatRequestMessage(role: 'user', text: 'continue'),
-            ],
-            configuration: const ModelConfiguration(
-              baseUrl: 'https://example.com',
-              model: 'test-model',
-              apiKey: 'test-key',
-            ),
-            now: DateTime(2026, 11, 5),
-          )
-          .listen(
-            (delta) {
-              if (delta.termination != null &&
-                  !terminalReceived.isCompleted) {
-                terminalReceived.complete(delta.termination);
-              }
-            },
-            onDone: () {
-              if (!outerStreamDone.isCompleted) outerStreamDone.complete();
-            },
-          );
-
-      body.add(
-        utf8.encode(
-          'data: {"choices":[{"delta":{"content":"complete"},"finish_reason":"stop"}]}\n\n',
-        ),
-      );
-
-      try {
-        expect(
-          await terminalReceived.future.timeout(const Duration(seconds: 1)),
-          ChatStreamTermination.completed,
+  test('terminal completes the outer stream before HTTP body cancellation finishes', () async {
+    final bodyCancellationStarted = Completer<void>();
+    final bodyCancellationGate = Completer<void>();
+    final bodyCancellationFinished = Completer<void>();
+    final terminalReceived = Completer<ChatStreamTermination?>();
+    final outerStreamDone = Completer<void>();
+    final body = StreamController<List<int>>(
+      onCancel: () async {
+        if (!bodyCancellationStarted.isCompleted) {
+          bodyCancellationStarted.complete();
+        }
+        await bodyCancellationGate.future;
+        if (!bodyCancellationFinished.isCompleted) {
+          bodyCancellationFinished.complete();
+        }
+      },
+    );
+    final model = ModelClient(
+      client: MockClient.streaming((request, requestBody) async {
+        await requestBody.bytesToString();
+        return http.StreamedResponse(body.stream, 200);
+      }),
+    );
+    model
+        .streamChat(
+          messages: const [ChatRequestMessage(role: 'user', text: 'continue')],
+          configuration: const ModelConfiguration(
+            baseUrl: 'https://example.com',
+            model: 'test-model',
+            apiKey: 'test-key',
+          ),
+          now: DateTime(2026, 11, 5),
+        )
+        .listen(
+          (delta) {
+            if (delta.termination != null && !terminalReceived.isCompleted) {
+              terminalReceived.complete(delta.termination);
+            }
+          },
+          onDone: () {
+            if (!outerStreamDone.isCompleted) outerStreamDone.complete();
+          },
         );
-        await bodyCancellationStarted.future.timeout(
+
+    body.add(
+      utf8.encode(
+        'data: {"choices":[{"delta":{"content":"complete"},"finish_reason":"stop"}]}\n\n',
+      ),
+    );
+
+    try {
+      expect(
+        await terminalReceived.future.timeout(const Duration(seconds: 1)),
+        ChatStreamTermination.completed,
+      );
+      await bodyCancellationStarted.future.timeout(const Duration(seconds: 1));
+      expect(bodyCancellationFinished.isCompleted, isFalse);
+      await outerStreamDone.future.timeout(const Duration(seconds: 1));
+      expect(bodyCancellationFinished.isCompleted, isFalse);
+    } finally {
+      if (!bodyCancellationGate.isCompleted) bodyCancellationGate.complete();
+      if (bodyCancellationStarted.isCompleted) {
+        await bodyCancellationFinished.future.timeout(
           const Duration(seconds: 1),
         );
-        expect(bodyCancellationFinished.isCompleted, isFalse);
-        await outerStreamDone.future.timeout(const Duration(seconds: 1));
-        expect(bodyCancellationFinished.isCompleted, isFalse);
-      } finally {
-        if (!bodyCancellationGate.isCompleted) bodyCancellationGate.complete();
-        if (bodyCancellationStarted.isCompleted) {
-          await bodyCancellationFinished.future.timeout(
-            const Duration(seconds: 1),
-          );
-        }
-        await body.close();
-        model.close();
       }
-    },
-  );
+      await body.close();
+      model.close();
+    }
+  });
 
   test(
     'cancelling streamed model deltas cancels the HTTP response body',

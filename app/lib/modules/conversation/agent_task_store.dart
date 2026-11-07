@@ -344,9 +344,8 @@ class VaultAgentTaskStore implements AgentTaskStore {
       final checkpoint = AgentTaskCheckpoint.fromJson(decoded);
       if (decoded is Map && decoded['schema_version'] == 1) {
         await _preserveLegacySource(raw);
-        final upgraded = const JsonEncoder.withIndent('  ').convert(
-          checkpoint.toJson(),
-        );
+        final upgraded = const JsonEncoder.withIndent('  ')
+            .convert(checkpoint.toJson());
         try {
           await _vault.write(relativePath, upgraded);
         } on Object catch (error, stackTrace) {
@@ -413,9 +412,7 @@ class VaultAgentTaskStore implements AgentTaskStore {
     if (existingBackup == null) {
       await _vault.write(backupPath, source);
     } else if (existingBackup != source) {
-      throw StateError(
-        'Agent v1 备份与待升级检查点不一致；保留两份文件并停止启动。',
-      );
+      throw StateError('Agent v1 备份与待升级检查点不一致；保留两份文件并停止启动。');
     }
   }
 
@@ -424,9 +421,7 @@ class VaultAgentTaskStore implements AgentTaskStore {
     if (primary != null) return primary;
     for (final suffix in const ['.tmp', '.restore.tmp', '.v1.backup']) {
       if (await _vault.read('$relativePath$suffix') != null) {
-        throw StateError(
-          'Agent 任务检查点缺失但恢复侧文件存在；保留原文件并停止启动。',
-        );
+        throw StateError('Agent 任务检查点缺失但恢复侧文件存在；保留原文件并停止启动。');
       }
     }
     return null;

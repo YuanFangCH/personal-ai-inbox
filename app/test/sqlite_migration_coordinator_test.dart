@@ -17,16 +17,11 @@ void main() {
     'rollback restores task checkpoint bytes from the migration group',
     () async {
       final directory = await Directory.systemTemp.createTemp(
-        'inbox-task-checkpoint-migration',
+        'inbox-migration-checkpoint-bytes',
       );
       addTearDown(() => directory.delete(recursive: true));
       final checkpoint = File(
-        p.join(
-          directory.path,
-          'vault',
-          '.local',
-          'agent-task-checkpoint.json',
-        ),
+        p.join(directory.path, 'vault', '.local', 'agent-task-checkpoint.json'),
       );
       final missingBeforeMigration = File(
         p.join(directory.path, 'vault', '.local', 'new-checkpoint.json'),
@@ -79,72 +74,70 @@ void main() {
     },
   );
 
-  test(
-    'rollback validates every backup before restoring database or earlier files',
-    () async {
-      final directory = await Directory.systemTemp.createTemp(
-        'inbox-migration-prevalidate-all-backups',
-      );
-      addTearDown(() => directory.delete(recursive: true));
-      final indexPath = p.join(directory.path, 'index.sqlite3');
-      final conversationPath = p.join(directory.path, 'conversations.sqlite3');
-      _markMigrated(indexPath, version: 10);
-      _markMigrated(conversationPath, version: 5);
+  test('rollback validates every backup before restoring database or earlier files', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'inbox-migration-prevalidate-all-backups',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final indexPath = p.join(directory.path, 'index.sqlite3');
+    final conversationPath = p.join(directory.path, 'conversations.sqlite3');
+    _markMigrated(indexPath, version: 10);
+    _markMigrated(conversationPath, version: 5);
 
-      final firstFile = File(
-        p.join(directory.path, 'vault', '.local', 'first-checkpoint.json'),
-      );
-      final secondFile = File(
-        p.join(directory.path, 'vault', '.local', 'second-checkpoint.json'),
-      );
-      await firstFile.parent.create(recursive: true);
-      await firstFile.writeAsString('first-before', flush: true);
-      await secondFile.writeAsString('second-before', flush: true);
-      final settings = _MigrationSettings({'device_id': 'before'});
-      final migration = SqliteMigrationCoordinator(
-        supportPath: directory.path,
-        settings: settings,
-        additionalFilePaths: [firstFile.path, secondFile.path],
-      );
-      addTearDown(() async {
-        try {
-          await migration.rollback();
-        } on Object {
-          // A deliberately corrupted backup keeps the durable manifest pending.
-        }
-      });
-      await migration.prepare();
+    final firstFile = File(
+      p.join(directory.path, 'vault', '.local', 'first-checkpoint.json'),
+    );
+    final secondFile = File(
+      p.join(directory.path, 'vault', '.local', 'second-checkpoint.json'),
+    );
+    await firstFile.parent.create(recursive: true);
+    await firstFile.writeAsString('first-before', flush: true);
+    await secondFile.writeAsString('second-before', flush: true);
+    final settings = _MigrationSettings({'device_id': 'before'});
+    final migration = SqliteMigrationCoordinator(
+      supportPath: directory.path,
+      settings: settings,
+      additionalFilePaths: [firstFile.path, secondFile.path],
+    );
+    addTearDown(() async {
+      try {
+        await migration.rollback();
+      } on Object {
+        // A deliberately corrupted backup keeps the durable manifest pending.
+      }
+    });
+    await migration.prepare();
 
-      final stateFile = File(p.join(directory.path, '.migration-state.json'));
-      final state = jsonDecode(await stateFile.readAsString())
-          as Map<String, dynamic>;
-      final fileSnapshots = (state['files'] as List<dynamic>)
-          .cast<Map<String, dynamic>>();
-      final firstBackup = fileSnapshots.first['backup'] as String;
-      final secondBackup = fileSnapshots.last['backup'] as String;
+    final stateFile = File(p.join(directory.path, '.migration-state.json'));
+    final state =
+        jsonDecode(await stateFile.readAsString()) as Map<String, dynamic>;
+    final fileSnapshots = (state['files'] as List<dynamic>)
+        .cast<Map<String, dynamic>>();
+    final firstBackup = fileSnapshots.first['backup'] as String;
+    final secondBackup = fileSnapshots.last['backup'] as String;
 
-      _markMigrated(indexPath, version: 99);
-      _markMigrated(conversationPath, version: 99);
-      await firstFile.writeAsString('first-after', flush: true);
-      await secondFile.writeAsString('second-after', flush: true);
-      settings.values['device_id'] = 'after';
-      await File(secondBackup).writeAsString('corrupt backup', flush: true);
+    _markMigrated(indexPath, version: 99);
+    _markMigrated(conversationPath, version: 99);
+    await firstFile.writeAsString('first-after', flush: true);
+    await secondFile.writeAsString('second-after', flush: true);
+    settings.values['device_id'] = 'after';
+    await File(secondBackup).writeAsString('corrupt backup', flush: true);
 
-      await expectLater(migration.rollback(), throwsStateError);
+    await expectLater(migration.rollback(), throwsStateError);
 
-      expect(_readVersion(indexPath), 99);
-      expect(_readVersion(conversationPath), 99);
-      expect(await firstFile.readAsString(), 'first-after');
-      expect(await secondFile.readAsString(), 'second-after');
-      expect(settings.values['device_id'], 'after');
-      expect(
-        (jsonDecode(await stateFile.readAsString()) as Map<String, dynamic>)['status'],
-        'pending',
-      );
-      expect(await File(firstBackup).exists(), isTrue);
-      expect(await File(secondBackup).readAsString(), 'corrupt backup');
-    },
-  );
+    expect(_readVersion(indexPath), 99);
+    expect(_readVersion(conversationPath), 99);
+    expect(await firstFile.readAsString(), 'first-after');
+    expect(await secondFile.readAsString(), 'second-after');
+    expect(settings.values['device_id'], 'after');
+    expect(
+      (jsonDecode(await stateFile.readAsString())
+          as Map<String, dynamic>)['status'],
+      'pending',
+    );
+    expect(await File(firstBackup).exists(), isTrue);
+    expect(await File(secondBackup).readAsString(), 'corrupt backup');
+  });
 
   for (final (name, corruptFiles) in [
     ('missing entries', (List<dynamic> files) => <dynamic>[]),
@@ -174,11 +167,9 @@ void main() {
         await originalMigration.prepare();
         await originalMigration.rollback();
 
-        final stateFile = File(
-          p.join(directory.path, '.migration-state.json'),
-        );
-        final state = jsonDecode(await stateFile.readAsString())
-            as Map<String, dynamic>;
+        final stateFile = File(p.join(directory.path, '.migration-state.json'));
+        final state =
+            jsonDecode(await stateFile.readAsString()) as Map<String, dynamic>;
         expect(state['schema_version'], 2);
         final fileEntries = (state['files'] as List<dynamic>);
         final backupPath =
@@ -200,8 +191,8 @@ void main() {
         addTearDown(recovery.rollback);
         await expectLater(recovery.prepare(), throwsStateError);
 
-        final retained = jsonDecode(await stateFile.readAsString())
-            as Map<String, dynamic>;
+        final retained =
+            jsonDecode(await stateFile.readAsString()) as Map<String, dynamic>;
         expect(retained['status'], 'pending');
         if (corruptedFiles == null) {
           expect(retained.containsKey('files'), isFalse);
@@ -217,44 +208,47 @@ void main() {
     );
   }
 
-  test('legacy pending migration manifest without files remains readable', () async {
-    final directory = await Directory.systemTemp.createTemp(
-      'inbox-legacy-migration-manifest',
-    );
-    addTearDown(() => directory.delete(recursive: true));
-    final checkpoint = File(
-      p.join(directory.path, 'vault', '.local', 'checkpoint.json'),
-    );
-    await checkpoint.parent.create(recursive: true);
-    await checkpoint.writeAsString('{"legacy":true}', flush: true);
-    final settings = _MigrationSettings({'device_id': 'before'});
-    final migration = SqliteMigrationCoordinator(
-      supportPath: directory.path,
-      settings: settings,
-      additionalFilePaths: [checkpoint.path],
-    );
-    await migration.prepare();
-    await migration.rollback();
+  test(
+    'legacy pending migration manifest without files remains readable',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'inbox-legacy-migration-manifest',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final checkpoint = File(
+        p.join(directory.path, 'vault', '.local', 'checkpoint.json'),
+      );
+      await checkpoint.parent.create(recursive: true);
+      await checkpoint.writeAsString('{"legacy":true}', flush: true);
+      final settings = _MigrationSettings({'device_id': 'before'});
+      final migration = SqliteMigrationCoordinator(
+        supportPath: directory.path,
+        settings: settings,
+        additionalFilePaths: [checkpoint.path],
+      );
+      await migration.prepare();
+      await migration.rollback();
 
-    final stateFile = File(p.join(directory.path, '.migration-state.json'));
-    final state = jsonDecode(await stateFile.readAsString())
-        as Map<String, dynamic>;
-    state
-      ..['schema_version'] = 1
-      ..['status'] = 'pending'
-      ..remove('files');
-    await stateFile.writeAsString(jsonEncode(state), flush: true);
+      final stateFile = File(p.join(directory.path, '.migration-state.json'));
+      final state =
+          jsonDecode(await stateFile.readAsString()) as Map<String, dynamic>;
+      state
+        ..['schema_version'] = 1
+        ..['status'] = 'pending'
+        ..remove('files');
+      await stateFile.writeAsString(jsonEncode(state), flush: true);
 
-    final recovery = SqliteMigrationCoordinator(
-      supportPath: directory.path,
-      settings: settings,
-      additionalFilePaths: [checkpoint.path],
-    );
-    addTearDown(recovery.rollback);
-    await expectLater(recovery.prepare(), completes);
-    await recovery.rollback();
-    expect(await checkpoint.readAsString(), '{"legacy":true}');
-  });
+      final recovery = SqliteMigrationCoordinator(
+        supportPath: directory.path,
+        settings: settings,
+        additionalFilePaths: [checkpoint.path],
+      );
+      addTearDown(recovery.rollback);
+      await expectLater(recovery.prepare(), completes);
+      await recovery.rollback();
+      expect(await checkpoint.readAsString(), '{"legacy":true}');
+    },
+  );
 
   test('v10 index upgrade rollback restores the entire database group and backup hashes', () async {
     final directory = await Directory.systemTemp.createTemp(
