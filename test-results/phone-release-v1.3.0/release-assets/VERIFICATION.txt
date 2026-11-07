@@ -1,0 +1,15 @@
+release=https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.3.0
+prerelease=true
+main_ci_run=42403931513 success
+android_release_run=42403946155 success
+android_release_job=128497527923 success
+release_commit=11de92600c5cac25bb1a5b5b7b494d74da6578f1
+apk=personal-ai-inbox-v1.3.0-android.apk
+apk_bytes=90731435
+apk_sha256=a81c32f7382d194e42151a9ba59816ddaf9a3e91fdc417cb3afe4b95c9754fbb
+versionName=1.3.0
+versionCode=10
+minSdk=24
+targetSdk=36
+certificate_sha256=51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816
+signature_scheme_v2=true

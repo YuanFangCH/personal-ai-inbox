@@ -10,14 +10,14 @@
 | 最后更新时间 | 2026-11-08 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | 正式实现已提交为 `111f996`；按用户要求收敛为 Android 手机 v1.3.0 预发布。手机最终设备矩阵、A31–A33、900 秒长测、长历史/生命周期回归及新增“最近任务划掉”场景已通过。首轮 Android Release `42403556704` 因发行说明路径错误在 tag 校验失败，修复后移动同一标签重跑 |
+| 当前阶段 | Android 手机 `v1.3.0+10` 预发布已完成。`phone-v1.3.0` Release、长期签名 APK 与 `SHA256SUMS.txt` 已发布，公开 APK 的哈希、证书、版本、API 和权限复核通过；main CI 与 Android Release 均 success |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.3.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
 
-2026-11-08 按用户要求只完成 Android 手机交付：正式实现已提交为 `111f996`，发布准备提交为 `e507c13`，版本升至 `1.3.0+10`。手机长历史、生命周期和“最近任务划掉→冷启动→显式继续”场景通过；main CI `42403280116` 成功。Android Release 首轮仅因发行说明路径缺少 `v` 在 tag 校验失败，修复后继续使用 `phone-v1.3.0` 重跑。
+2026-11-08 按用户要求只完成 Android 手机交付：`v1.3.0+10` 已发布为 GitHub pre-release `phone-v1.3.0`。最终发布提交 `11de926`；main CI `42403931513` 与 Android Release `42403946155` 均 success。公开 APK SHA-256 `a81c32f7382d194e42151a9ba59816ddaf9a3e91fdc417cb3afe4b95c9754fbb`，长期证书指纹 `51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816`，版本 `1.3.0+10`。平板、Windows 与 A01–A30/A34–A35 延期。
 
-最新手机发布结论见 `test-results/phone-release-v1.3.0/VALIDATION.md`，既有最终设备验证见 `test-results/secretary-agent-implementation/final-device-20261107/VALIDATION.md`。上一公开版本为 v1.2.1+9；v1.3.0 仅使用 Android 专用发布入口。
+最新手机发布结论见 `test-results/phone-release-v1.3.0/VALIDATION.md`，既有最终设备验证见 `test-results/secretary-agent-implementation/final-device-20261107/VALIDATION.md`。公开下载：`https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.3.0`。
 ## 3. 当前目标与范围
 
 - 当前任务：完成 Android 手机 v1.3.0 可交付发布。复用已通过手机矩阵、A31–A33 和 900 秒长测证据，只收敛长历史/生命周期及最近任务划掉等手机直接影响项；A01–A30、A34–A35 与平板/Windows UI 验收延期。
@@ -68,6 +68,8 @@
 
 ## 6. 当前进度与验证
 
+- 2026-11-08 Android 手机 v1.3.0 发布完成：Release `phone-v1.3.0`（pre-release）；main CI `42403931513` success，Android Release `42403946155` / job `128497527923` success。资产为 `personal-ai-inbox-v1.3.0-android.apk`（90,731,435 bytes）和 `SHA256SUMS.txt`。
+- 2026-11-08 公开 APK 独立复核：SHA-256 `a81c32f7382d194e42151a9ba59816ddaf9a3e91fdc417cb3afe4b95c9754fbb` 与 Release 清单一致；`versionName=1.3.0`、`versionCode=10`、minSdk 24、targetSdk 36；必要权限齐全；`apksigner` v2 通过，长期证书 SHA-256 `51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816`。详见 `test-results/phone-release-v1.3.0/VALIDATION.md`。
 - 2026-11-08 Android Release 失败修正：run `42403556704` 在 `Validate phone release tag` 失败，原因是工作流查找 `docs/releases/1.3.0.md`，实际文件为 `docs/releases/v1.3.0.md`。该轮未读取签名密钥、未构建 APK、未创建 Release；路径已修正。
 - 2026-11-08 Android 手机发布准备：版本升至 `1.3.0+10`；新增 `.github/workflows/android-release.yml`，仅响应 `phone-v*` 标签，校验版本、API 24/36、必要权限和长期证书后发布 Universal APK 与 `SHA256SUMS.txt`，不构建 Windows。
 - 2026-11-08 手机回归：`conversation_lifecycle_test.dart` 4/4、`conversation_large_history_ui_test.dart` 1/1；长历史覆盖 220 条消息、滚到最早位置、流式长回复、停止后保留草稿，生命周期延迟关停计时器在测试卸载后推进完成。
@@ -207,13 +209,19 @@
 
 ### 下一步
 
-1. 完成 Android 手机发布门的定向 format/analyze/test、PowerShell AST 和 diff-check，创建一个原子发布准备提交。
-2. 快进合并到 `main`，推送 `main` 与 `phone-v1.3.0` 标签；等待 main CI 和 Android Release workflow，确认长期签名与版本校验通过。
-3. 从公开 GitHub Release 下载 APK，复核 SHA-256、签名、versionCode/versionName、API 24/36 与权限，并记录发布验证提交。
-4. A01–A30、A34–A35 的遗留主机组合以后续 Android 手机审计任务处理；本轮不扩大范围。
-5. Windows 与平板验收、云盘同步和到点提醒继续单独规划。
+1. 用户可在 Android 7.0 及以上备份现有数据后，从 `phone-v1.3.0` Release 安装或覆盖升级。
+2. A01–A30、A34–A35 的遗留主机组合以后续 Android 手机审计任务处理；本轮不扩大范围。
+3. Windows 与平板验收、云盘同步和到点提醒继续单独规划。
 
 ## 8. 变更记录
+
+### 2026-11-08 / 发布 Android 手机 v1.3.0 预发布
+
+- 任务：完成 Android 手机专用 GitHub 发布并核验公开资产。
+- 变更：README、发布验证和交接记录真实 workflow run、APK 哈希、签名、版本、API、权限和下载链接。
+- 验证：Release `phone-v1.3.0` 为 pre-release；main CI `42403931513` success，Android Release `42403946155` / job `128497527923` success。APK 90,731,435 bytes，SHA-256 `a81c32f7382d194e42151a9ba59816ddaf9a3e91fdc417cb3afe4b95c9754fbb`，长期证书指纹匹配，v2 验签通过。
+- 状态：Android 手机发布完成；工作区提交后应保持干净。
+- 风险/下一步：未做平板/Windows UI、A01–A30/A34–A35 剩余组合和真实资料迁移；OneDrive/百度网盘同步仍未接入。
 
 ### 2026-11-08 / 修正 Android Release 发行说明路径
 

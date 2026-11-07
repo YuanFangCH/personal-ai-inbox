@@ -12,7 +12,7 @@
 - Windows 11 x64 继续使用上一版全平台预发布中的安装包或便携 ZIP。
 - 发布页同时提供 `SHA256SUMS.txt`，下载后应校验文件哈希。
 
-Android 手机预览版使用 `phone-v1.3.0` 标签和 Android 专用流水线，只提供通用 APK 与 `SHA256SUMS.txt`；发布页见 [GitHub Releases](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.3.0)。`v1.2.1` 继续作为上一版全平台预发布保留。升级前请完整备份应用数据与 Markdown 主库，并先阅读对应发行说明；真实资料迁移需要在应用内确认。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
+Android 手机 `v1.3.0` 预览版已发布，使用 `phone-v1.3.0` 标签，只提供通用 APK 与 `SHA256SUMS.txt`：[GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.3.0)。APK SHA-256 为 `a81c32f7382d194e42151a9ba59816ddaf9a3e91fdc417cb3afe4b95c9754fbb`。`v1.2.1` 继续作为上一版全平台预发布保留。升级前请完整备份应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.3.0.md)；真实资料迁移需要在应用内确认。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
 
 ## 核心能力
 
@@ -33,7 +33,7 @@ Android 手机预览版使用 `phone-v1.3.0` 标签和 Android 专用流水线�
 
 ## 当前进展
 
-专用秘书 Agent A–F 的最终设备验收主闭环已完成，正式实现提交为 `111f996`。当前按用户要求只推进 Android 手机交付：版本升至 `1.3.0+10`，新增 `phone-v1.3.0` Android 专用预发布流水线；平板和 Windows 不参与本次发布门禁。最终设备 manifest `c283f93b19703686ab7caa0da802e43ff8bb5c557051156c070c9e94f07f49bd` 已通过 phone 50/50、phone A31/A32/A33 和 900 秒生产业务长测，47 条唯一写入与回执核对通过。A01–A30、A34–A35 的遗留主机组合延期。详见 [RM_HANDOFF.md](RM_HANDOFF.md)、[v1.3.0 发行说明](docs/releases/v1.3.0.md) 和 `test-results/secretary-agent-implementation/final-device-20261107/VALIDATION.md`。
+专用秘书 Agent A–F 的最终设备验收主闭环已完成，正式实现提交为 `111f996`。按用户要求只推进 Android 手机交付：`v1.3.0+10` 已通过 Android 专用预发布流程发布，平板和 Windows 不参与本次发布门禁。最终设备 manifest `c283f93b19703686ab7caa0da802e43ff8bb5c557051156c070c9e94f07f49bd` 已通过 phone 50/50、phone A31/A32/A33 和 900 秒生产业务长测，47 条唯一写入与回执核对通过；公开 APK 的哈希、长期签名、版本、API 和权限已复核。A01–A30、A34–A35 的遗留主机组合延期。详见 [RM_HANDOFF.md](RM_HANDOFF.md)、[v1.3.0 发行说明](docs/releases/v1.3.0.md) 和[发布验证](test-results/phone-release-v1.3.0/VALIDATION.md)。
 
 手机发布新增回归通过：`conversation_lifecycle_test.dart` 4/4，修复生命周期延迟关停计时器的测试收尾；`conversation_large_history_ui_test.dart` 1/1，覆盖 220 条历史、滚到最早消息、长流渲染、停止后保留草稿。新增“最近任务划掉”两阶段设备场景通过：任务被真实滑动移除后冷启动不自动请求，显式继续复用原任务、条目和写入回执。详见 `test-results/phone-release-v1.3.0/VALIDATION.md`。
 
