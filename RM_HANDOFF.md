@@ -10,7 +10,7 @@
 | 最后更新时间 | 2026-11-08 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | Android 手机 `v1.3.0+10` 预发布已完成。`phone-v1.3.0` Release、长期签名 APK 与 `SHA256SUMS.txt` 已发布，公开 APK 的哈希、证书、版本、API 和权限复核通过；main CI 与 Android Release 均 success |
+| 当前阶段 | AI Harness 升级已实现并通过定向主机与 Android 手机 AVD 验证；Android 手机 `v1.3.0+10` 预发布保持为上一发布基线 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.3.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
@@ -20,7 +20,7 @@
 最新手机发布结论见 `test-results/phone-release-v1.3.0/VALIDATION.md`，既有最终设备验证见 `test-results/secretary-agent-implementation/final-device-20261107/VALIDATION.md`。公开下载：`https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.3.0`。
 ## 3. 当前目标与范围
 
-- 当前任务：完成 Android 手机 v1.3.0 可交付发布。复用已通过手机矩阵、A31–A33 和 900 秒长测证据，只收敛长历史/生命周期及最近任务划掉等手机直接影响项；A01–A30、A34–A35 与平板/Windows UI 验收延期。
+- 当前任务：Flutter 原生单 Agent Harness 升级。取消所有模式的应用层累计请求/活动时长预算，完全权限覆盖全部表数据、回收站和收纳目标；A01–A30、A34–A35 与平板/Windows UI 验收继续按各自范围处理。
 
 - Android 手机、Android 平板和 Windows 作为独立客户端运行。
 - 每个成果保存为一个 Markdown 文件；本地索引由 SQLite 管理。
@@ -68,6 +68,7 @@
 
 ## 6. 当前进度与验证
 
+- 2026-11-08 AI Harness 升级：所有权限模式取消 2 小时/240 次请求累计预算和追加额度；用量账本升级为 v3，仅记录请求、工具和活动时长。完全权限新增回收站列表/预览/恢复与收纳目标读取，查重无法证明同一对象时新建并标记待核对；只读工具并行、写工具独占屏障，重复工具只提醒不硬暂停。`dart analyze lib test integration_test` 0 issue，定向主机 149/149，Android 15 AVD `table_ai_android_test.dart` 1/1 通过。详见 `test-results/harness-unbounded-full-access/VALIDATION.md` 与 [ADR 0025](docs/adr/0025-unbounded-flutter-agent-harness.md)。
 - 2026-11-08 Android 手机 v1.3.0 发布完成：Release `phone-v1.3.0`（pre-release）；main CI `42403931513` success，Android Release `42403946155` / job `128497527923` success。资产为 `personal-ai-inbox-v1.3.0-android.apk`（90,731,435 bytes）和 `SHA256SUMS.txt`。
 - 2026-11-08 公开 APK 独立复核：SHA-256 `a81c32f7382d194e42151a9ba59816ddaf9a3e91fdc417cb3afe4b95c9754fbb` 与 Release 清单一致；`versionName=1.3.0`、`versionCode=10`、minSdk 24、targetSdk 36；必要权限齐全；`apksigner` v2 通过，长期证书 SHA-256 `51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816`。详见 `test-results/phone-release-v1.3.0/VALIDATION.md`。
 - 2026-11-08 Android Release 失败修正：run `42403556704` 在 `Validate phone release tag` 失败，原因是工作流查找 `docs/releases/1.3.0.md`，实际文件为 `docs/releases/v1.3.0.md`。该轮未读取签名密钥、未构建 APK、未创建 Release；路径已修正。
@@ -169,6 +170,7 @@
 
 ### 风险与边界
 
+- 2026-11-08 Harness 无累计任务预算不等于无限请求超时或无限上下文：单请求响应头/流空闲/总期限、网络重试、上下文压缩、CAS、幂等、写日志和 Android 生命周期限制继续有效。完全权限仍不包含 API Key、任意文件、SQL、Root/OS 权限或修改自身授权。
 - Windows 当前 TCP 排除范围包含 `6172–6271`，因此最终设备验收使用未排除的 `5620/5621` 与独立 ADB 5041，serial 为 `emulator-5620`。phone/tablet 最终矩阵、双端恢复场景和双端900秒长测均已通过；若系统排除范围或 Emulator 版本变化，先重跑端口/AVD预检再执行设备验收。
 - A26 `conversation_workspace.dart` 后续有源码变化，旧20项测试的源绑定过期。本轮重跑当前源码下 retry recovery 3/3、A32 文件后端恢复 1/1，并对 Workspace 及两份测试 analyze 无诊断；详情与当前 SHA 见 `test-results/secretary-agent-implementation/a26-pending-intent/VALIDATION.md` 和 `a32-file-backed-recovery/VALIDATION.md`。完整20项组合与设备进程终止仍未复验。
 
@@ -214,6 +216,14 @@
 3. Windows 与平板验收、云盘同步和到点提醒继续单独规划。
 
 ## 8. 变更记录
+
+### 2026-11-08 / 升级 Flutter 原生无预算 Harness
+
+- 任务：按用户要求学习当前 `dsh-mobile-apk` 与钉住上游 `deepseek-harness 66491b05`，升级单 Agent Harness 并取消累计任务预算。
+- 变更：新增 `AgentToolRegistry`、`AgentToolExecutor`、`AgentContextManager`、`AgentUsageMeter`；任务检查点 v3；完全权限新增回收站与收纳目标工具；查重冲突自动新建并标记待核对；状态卡移除追加额度。
+- 验证：`dart analyze lib test integration_test` 0 issue；定向主机 149/149；Android 15 AVD `emulator-5620` 的 `table_ai_android_test.dart` 1/1；格式与 diff-check 通过。详见 `test-results/harness-unbounded-full-access/VALIDATION.md`。
+- 状态：实现、文档和交接完成，准备原子提交。
+- 风险/下一步：未运行全量、平板/Windows、真实模型、真实资料迁移、真实同步或本轮 900 秒长测；旧长测证据不替代本轮结论。
 
 ### 2026-11-08 / 发布 Android 手机 v1.3.0 预发布
 

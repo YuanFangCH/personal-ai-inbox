@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../../core/agent_usage.dart';
 import '../../data/vault_store.dart';
 
 enum AgentTurnQueueKind {
@@ -37,76 +38,6 @@ enum AgentTurnCheckpointStatus {
   }
 }
 
-class AgentBudgetCheckpoint {
-  const AgentBudgetCheckpoint({
-    this.usedRequests = 0,
-    this.usedActiveMillis = 0,
-    this.grantedRequests = 240,
-    this.grantedActiveMillis = Duration.millisecondsPerHour * 2,
-  });
-
-  final int usedRequests;
-  final int usedActiveMillis;
-  final int grantedRequests;
-  final int grantedActiveMillis;
-
-  Duration get usedActive => Duration(milliseconds: usedActiveMillis);
-
-  Duration get grantedActive => Duration(milliseconds: grantedActiveMillis);
-
-  Duration get remainingActive {
-    final remainingMilliseconds = grantedActiveMillis - usedActiveMillis;
-    return Duration(
-      milliseconds: remainingMilliseconds > 0 ? remainingMilliseconds : 0,
-    );
-  }
-
-  int get remainingRequests {
-    final remaining = grantedRequests - usedRequests;
-    return remaining > 0 ? remaining : 0;
-  }
-
-  bool get exhausted =>
-      remainingRequests <= 0 || remainingActive <= Duration.zero;
-
-  AgentBudgetCheckpoint copyWith({
-    int? usedRequests,
-    int? usedActiveMillis,
-    int? grantedRequests,
-    int? grantedActiveMillis,
-  }) => AgentBudgetCheckpoint(
-    usedRequests: usedRequests ?? this.usedRequests,
-    usedActiveMillis: usedActiveMillis ?? this.usedActiveMillis,
-    grantedRequests: grantedRequests ?? this.grantedRequests,
-    grantedActiveMillis: grantedActiveMillis ?? this.grantedActiveMillis,
-  );
-
-  Map<String, Object?> toJson() => {
-    'used_requests': usedRequests,
-    'used_active_ms': usedActiveMillis,
-    'granted_requests': grantedRequests,
-    'granted_active_ms': grantedActiveMillis,
-  };
-
-  static AgentBudgetCheckpoint fromJson(Object? value) {
-    if (value is! Map) throw const FormatException('Agent 预算必须是对象');
-    int read(String key) {
-      final raw = value[key];
-      if (raw is! int || raw < 0) {
-        throw FormatException('Agent 预算字段 $key 类型错误');
-      }
-      return raw;
-    }
-
-    return AgentBudgetCheckpoint(
-      usedRequests: read('used_requests'),
-      usedActiveMillis: read('used_active_ms'),
-      grantedRequests: read('granted_requests'),
-      grantedActiveMillis: read('granted_active_ms'),
-    );
-  }
-}
-
 class AgentTurnCheckpoint {
   const AgentTurnCheckpoint({
     required this.taskId,
@@ -118,12 +49,12 @@ class AgentTurnCheckpoint {
     this.assistantMessageId,
     this.thinkingEnabled = false,
     this.excludedMessageIds = const {},
-    this.budgetRunId,
+    this.runId,
   });
 
   final String taskId;
-  final String? budgetRunId;
-  String get effectiveBudgetRunId => budgetRunId ?? taskId;
+  final String? runId;
+  String get effectiveRunId => runId ?? taskId;
   final String conversationId;
   final String userMessageId;
   final AgentTurnQueueKind kind;
@@ -139,7 +70,7 @@ class AgentTurnCheckpoint {
     String? assistantMessageId,
   }) => AgentTurnCheckpoint(
     taskId: taskId,
-    budgetRunId: budgetRunId,
+    runId: runId,
     conversationId: conversationId,
     userMessageId: userMessageId,
     kind: kind ?? this.kind,
@@ -152,7 +83,7 @@ class AgentTurnCheckpoint {
 
   Map<String, Object?> toJson() => {
     'task_id': taskId,
-    'budget_run_id': effectiveBudgetRunId,
+    'run_id': effectiveRunId,
     'conversation_id': conversationId,
     'user_message_id': userMessageId,
     'kind': kind.wireName,
@@ -183,9 +114,11 @@ class AgentTurnCheckpoint {
     }
     return AgentTurnCheckpoint(
       taskId: requiredString('task_id'),
-      budgetRunId: value['budget_run_id'] == null
-          ? null
-          : requiredString('budget_run_id'),
+      runId: switch (value['run_id'] ?? value['budget_run_id']) {
+        null => null,
+        final raw when raw is String && raw.trim().isNotEmpty => raw,
+        _ => throw const FormatException('Agent turn 字段 run_id 类型错误'),
+      },
       conversationId: requiredString('conversation_id'),
       userMessageId: requiredString('user_message_id'),
       kind: AgentTurnQueueKind.parse(requiredString('kind')),
@@ -202,18 +135,18 @@ class AgentTurnCheckpoint {
 
 class AgentTaskCheckpoint {
   const AgentTaskCheckpoint({
-    this.budget = const AgentBudgetCheckpoint(),
+    this.usage = const AgentUsage(),
     this.turns = const [],
-    this.runBudgets = const {},
-    this.activeBudgetRunId,
+    this.runUsage = const {},
+    this.activeRunId,
   });
 
-  static const currentSchemaVersion = 2;
+  static const currentSchemaVersion = 3;
   static const storagePath = '.local/agent-task-checkpoint.json';
 
-  final AgentBudgetCheckpoint budget;
-  final Map<String, AgentBudgetCheckpoint> runBudgets;
-  final String? activeBudgetRunId;
+  final AgentUsage usage;
+  final Map<String, AgentUsage> runUsage;
+  final String? activeRunId;
   final List<AgentTurnCheckpoint> turns;
 
   bool get needsReview =>
@@ -221,23 +154,21 @@ class AgentTaskCheckpoint {
 
   Map<String, Object?> toJson() => {
     'schema_version': currentSchemaVersion,
-    'budget': budget.toJson(),
-    'run_budgets': runBudgets.map(
-      (id, budget) => MapEntry(id, budget.toJson()),
-    ),
-    if (activeBudgetRunId != null) 'active_budget_run_id': activeBudgetRunId,
+    'usage': usage.toJson(),
+    'run_usage': runUsage.map((id, usage) => MapEntry(id, usage.toJson())),
+    if (activeRunId != null) 'active_run_id': activeRunId,
     'turns': turns.map((turn) => turn.toJson()).toList(growable: false),
   };
 
   static AgentTaskCheckpoint fromJson(Object? value) {
     if (value is! Map) throw const FormatException('Agent 任务检查点必须是对象');
     final version = value['schema_version'];
-    if (version != 1 && version != currentSchemaVersion) {
+    if (version != 1 && version != 2 && version != currentSchemaVersion) {
       throw FormatException('不支持 Agent 任务检查点版本：$version');
     }
     final rawTurns = value['turns'];
     if (rawTurns is! List) throw const FormatException('Agent turns 必须是列表');
-    final turns =
+    var turns =
         rawTurns
             .map(
               (raw) => AgentTurnCheckpoint.fromJson(
@@ -254,43 +185,85 @@ class AgentTaskCheckpoint {
         throw FormatException('Agent turn taskId 重复：${turn.taskId}');
       }
     }
-    final budget = AgentBudgetCheckpoint.fromJson(value['budget']);
-    final rawBudgets = value['run_budgets'];
-    if (version == 2 && rawBudgets is! Map) {
-      throw const FormatException('任务预算必须是对象');
+    final legacy = version != currentSchemaVersion;
+    final rawUsage = legacy
+        ? value['budget'] ?? value['usage']
+        : value['usage'];
+    final usage = _usageFromJson(rawUsage);
+    final rawRunUsage = legacy ? value['run_budgets'] : value['run_usage'];
+    if (!legacy && rawRunUsage is! Map) {
+      throw const FormatException('任务用量必须是对象');
     }
-    final budgets = version == 1
-        ? <String, AgentBudgetCheckpoint>{
-            if (turns.isNotEmpty) 'legacy': budget,
-          }
-        : Map<String, AgentBudgetCheckpoint>.fromEntries(
-            (rawBudgets as Map).entries.map((entry) {
+    final runUsage = version == 1
+        ? <String, AgentUsage>{if (turns.isNotEmpty) 'legacy': usage}
+        : Map<String, AgentUsage>.fromEntries(
+            (rawRunUsage as Map).entries.map((entry) {
               if (entry.key is! String || (entry.key as String).isEmpty) {
-                throw const FormatException('任务预算ID无效');
+                throw const FormatException('任务用量 ID 无效');
               }
-              return MapEntry(
-                entry.key as String,
-                AgentBudgetCheckpoint.fromJson(entry.value),
-              );
+              return MapEntry(entry.key as String, _usageFromJson(entry.value));
             }),
           );
     final activeRunId = version == 1
         ? (turns.isEmpty ? null : 'legacy')
-        : value['active_budget_run_id'];
+        : value[legacy ? 'active_budget_run_id' : 'active_run_id'];
     if (activeRunId != null &&
-        (activeRunId is! String || !budgets.containsKey(activeRunId))) {
-      throw const FormatException('当前任务预算引用无效');
+        (activeRunId is! String || !runUsage.containsKey(activeRunId))) {
+      throw const FormatException('当前任务用量引用无效');
     }
-    if (version == 2 &&
-        turns.any((turn) => !budgets.containsKey(turn.effectiveBudgetRunId))) {
-      throw const FormatException('任务预算缺失');
+    if (version != 1 &&
+        turns.any((turn) => !runUsage.containsKey(turn.effectiveRunId))) {
+      throw const FormatException('任务用量缺失');
+    }
+    if (legacy && _legacyBudgetExhausted(value['budget'])) {
+      turns = [
+        for (final turn in turns)
+          turn.status == AgentTurnCheckpointStatus.paused
+              ? turn.copyWith(status: AgentTurnCheckpointStatus.queued)
+              : turn,
+      ];
     }
     return AgentTaskCheckpoint(
-      budget: budget,
-      runBudgets: Map.unmodifiable(budgets),
-      activeBudgetRunId: activeRunId as String?,
+      usage: usage,
+      runUsage: Map.unmodifiable(runUsage),
+      activeRunId: activeRunId as String?,
       turns: List.unmodifiable(turns),
     );
+  }
+
+  static AgentUsage _usageFromJson(Object? value) {
+    if (value is! Map) throw const FormatException('Agent 用量必须是对象');
+    final requests = value['used_requests'];
+    final activeMillis = value['used_active_ms'];
+    final toolCalls = value['used_tool_calls'] ?? 0;
+    if (requests is! int ||
+        requests < 0 ||
+        activeMillis is! int ||
+        activeMillis < 0 ||
+        toolCalls is! int ||
+        toolCalls < 0) {
+      throw const FormatException('Agent 用量字段类型错误');
+    }
+    return AgentUsage(
+      usedRequests: requests,
+      usedActiveMillis: activeMillis,
+      usedToolCalls: toolCalls,
+    );
+  }
+
+  static bool _legacyBudgetExhausted(Object? value) {
+    if (value is! Map) return false;
+    final usedRequests = value['used_requests'];
+    final grantedRequests = value['granted_requests'];
+    final usedActive = value['used_active_ms'];
+    final grantedActive = value['granted_active_ms'];
+    if (usedRequests is! int ||
+        grantedRequests is! int ||
+        usedActive is! int ||
+        grantedActive is! int) {
+      return false;
+    }
+    return usedRequests >= grantedRequests || usedActive >= grantedActive;
   }
 }
 
@@ -342,7 +315,9 @@ class VaultAgentTaskStore implements AgentTaskStore {
       }
       final decoded = jsonDecode(raw);
       final checkpoint = AgentTaskCheckpoint.fromJson(decoded);
-      if (decoded is Map && decoded['schema_version'] == 1) {
+      if (decoded is Map &&
+          decoded['schema_version'] !=
+              AgentTaskCheckpoint.currentSchemaVersion) {
         await _preserveLegacySource(raw);
         final upgraded = const JsonEncoder.withIndent('  ')
             .convert(checkpoint.toJson());
@@ -393,7 +368,8 @@ class VaultAgentTaskStore implements AgentTaskStore {
         // Refuse to replace corrupt or newer state and retain the original v1
         // snapshot before the first upgrade write.
         AgentTaskCheckpoint.fromJson(decoded);
-        if ((decoded as Map)['schema_version'] == 1) {
+        if ((decoded as Map)['schema_version'] !=
+            AgentTaskCheckpoint.currentSchemaVersion) {
           await _preserveLegacySource(previous);
         }
       }

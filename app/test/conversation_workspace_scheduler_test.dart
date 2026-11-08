@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:personal_ai_inbox/core/agent_usage.dart';
 import 'package:personal_ai_inbox/core/chat_models.dart';
 import 'package:personal_ai_inbox/core/deterministic_parser.dart';
 import 'package:personal_ai_inbox/core/models.dart';
@@ -145,7 +146,7 @@ void main() {
     expect(missingGenerationScript.requests, isEmpty);
   });
 
-  test('request reservation is invisible until persistence succeeds', () async {
+  test('auxiliary usage is serialized with task checkpoints', () async {
     final store = _BlockingTaskStore();
     final script = _ScriptedChatClient();
     final harness = await _SchedulerHarness.create(
@@ -161,17 +162,15 @@ void main() {
     await script.waitForRequest(0);
     final gate = Completer<void>();
     store.gate = gate;
-    final reserved = harness.workspace.reserveAuxiliaryModelRequest();
+    final reserved = harness.workspace.recordAuxiliaryModelRequest();
     await Future<void>.delayed(Duration.zero);
-    final visibleCount = harness.workspace.agentBudget.usedRequests;
     gate.complete();
     expect(await reserved, isTrue);
     script.complete(0, '完成');
     await sending;
-    expect(visibleCount, 1);
-    expect(harness.workspace.agentBudget.usedRequests, 2);
+    expect(harness.workspace.agentUsage.usedRequests, 2);
   });
-  test('failed request budget checkpoint prevents model dispatch', () async {
+  test('usage checkpoint failure is visible after model dispatch', () async {
     final store = _FailingRequestReservationStore();
     final script = _ScriptedChatClient();
     final harness = await _SchedulerHarness.create(
@@ -181,13 +180,15 @@ void main() {
     addTearDown(harness.close);
     final conversation = await harness.workspace.createConversation();
 
-    await harness.workspace
-        .sendChatMessage(conversation.id, text: '预算落盘失败时不得发送请求')
-        .timeout(const Duration(seconds: 2));
+    final sending = harness.workspace.sendChatMessage(
+      conversation.id,
+      text: '用量落盘失败仍继续',
+    );
+    await script.waitForRequest(0);
+    script.complete(0, '已继续');
+    await sending.timeout(const Duration(seconds: 2));
 
-    expect(script.requests, isEmpty);
-    expect(harness.workspace.agentBudget.usedRequests, 0);
-    expect(store.checkpoint.budget.usedRequests, 0);
+    expect(script.requests, hasLength(1));
     expect(
       harness.workspace.messagesFor(conversation.id).last.status,
       ChatMessageStatus.failed,
@@ -288,7 +289,7 @@ void main() {
       isTrue,
     );
   });
-  test('independent tasks have separate request budgets', () async {
+  test('independent tasks have separate usage ledgers', () async {
     final script = _ScriptedChatClient();
     final store = MemoryAgentTaskStore();
     final harness = await _SchedulerHarness.create(
@@ -303,14 +304,13 @@ void main() {
         text: '独立任务$i',
       );
       await script.waitForRequest(i);
-      expect(harness.workspace.agentBudget.usedRequests, 1);
       script.complete(i, '完成$i');
       await sending;
     }
     final decoded = AgentTaskCheckpoint.fromJson(store.checkpoint.toJson());
-    expect(decoded.runBudgets, hasLength(2));
+    expect(decoded.runUsage, hasLength(2));
     expect(
-      decoded.runBudgets.values.map((budget) => budget.usedRequests),
+      decoded.runUsage.values.map((budget) => budget.usedRequests),
       everyElement(1),
     );
   });
@@ -333,10 +333,10 @@ void main() {
       await script.waitForRequest(0);
       await Future<void>.delayed(const Duration(milliseconds: 45));
 
-      expect(store.checkpoint.budget.usedActiveMillis, greaterThan(0));
-      expect(store.checkpoint.runBudgets.values, isNotEmpty);
+      expect(store.checkpoint.usage.usedActiveMillis, greaterThan(0));
+      expect(store.checkpoint.runUsage.values, isNotEmpty);
       expect(
-        store.checkpoint.runBudgets.values.first.usedActiveMillis,
+        store.checkpoint.runUsage.values.first.usedActiveMillis,
         greaterThan(0),
       );
 
@@ -344,58 +344,6 @@ void main() {
       await sending.timeout(const Duration(seconds: 2));
     },
   );
-  test(
-    'concurrent budget clicks grant once and later click grants again',
-    () async {
-      final store = MemoryAgentTaskStore();
-      final harness = await _SchedulerHarness.create(
-        _ScriptedChatClient().modelClient,
-        taskStore: store,
-      );
-      addTearDown(harness.close);
-      await Future.wait([
-        harness.workspace.addTaskBudget(additionalRequests: 240),
-        harness.workspace.addTaskBudget(additionalRequests: 240),
-      ]);
-      expect(harness.workspace.agentBudget.grantedRequests, 480);
-      expect(store.checkpoint.budget.grantedRequests, 480);
-      await harness.workspace.addTaskBudget(additionalRequests: 240);
-      expect(harness.workspace.agentBudget.grantedRequests, 720);
-    },
-  );
-  for (final resume in [false, true]) {
-    test(
-      'failed budget save preserves authorization (resume=$resume)',
-      () async {
-        final store = _FailingTaskStore();
-        final harness = await _SchedulerHarness.create(
-          _ScriptedChatClient().modelClient,
-          taskStore: store,
-        );
-        addTearDown(harness.close);
-        final original = harness.workspace.agentBudget;
-        store.failSave = true;
-        Future<void> grant() => resume
-            ? harness.workspace.resumeTasks(additionalRequests: 240)
-            : harness.workspace.addTaskBudget(additionalRequests: 240);
-        await expectLater(grant(), throwsStateError);
-        expect(
-          harness.workspace.agentBudget.grantedRequests,
-          original.grantedRequests,
-        );
-        store.failSave = false;
-        await grant();
-        expect(
-          harness.workspace.agentBudget.grantedRequests,
-          original.grantedRequests + 240,
-        );
-        expect(
-          store.checkpoint.budget.grantedRequests,
-          original.grantedRequests + 240,
-        );
-      },
-    );
-  }
   test('same-conversation input becomes steering without cancelling', () async {
     final script = _ScriptedChatClient();
     final harness = await _SchedulerHarness.create(script.modelClient);
@@ -438,7 +386,7 @@ void main() {
       everyElement(ChatMessageStatus.complete),
     );
     expect(assistants.last.content, '已按本周范围继续处理。');
-    expect(harness.workspace.agentBudget.usedRequests, 2);
+    expect(harness.workspace.agentUsage.usedRequests, 2);
   });
 
   test(
@@ -518,10 +466,7 @@ void main() {
     expect(queuedTurn.status, AgentTurnCheckpointStatus.queued);
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(
-      store
-          .checkpoint
-          .runBudgets[queuedTurn.effectiveBudgetRunId]!
-          .usedActiveMillis,
+      store.checkpoint.runUsage[queuedTurn.effectiveRunId]!.usedActiveMillis,
       0,
       reason: 'a conversation waiting in FIFO does not consume active time',
     );
@@ -635,17 +580,12 @@ void main() {
     final pausedTurn = store.checkpoint.turns.singleWhere(
       (turn) => turn.status == AgentTurnCheckpointStatus.paused,
     );
-    final pausedActiveMillis = store
-        .checkpoint
-        .runBudgets[pausedTurn.effectiveBudgetRunId]!
-        .usedActiveMillis;
+    final pausedActiveMillis =
+        store.checkpoint.runUsage[pausedTurn.effectiveRunId]!.usedActiveMillis;
     expect(pausedActiveMillis, greaterThan(0));
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(
-      store
-          .checkpoint
-          .runBudgets[pausedTurn.effectiveBudgetRunId]!
-          .usedActiveMillis,
+      store.checkpoint.runUsage[pausedTurn.effectiveRunId]!.usedActiveMillis,
       pausedActiveMillis,
       reason: 'waiting on a paused task does not consume active time',
     );
@@ -661,7 +601,7 @@ void main() {
 
     final waiting = harness.workspace.tasksNeedingAction.single;
     expect(waiting.conversationId, firstConversation.id);
-    expect(waiting.budget.exhausted, isFalse);
+    expect(waiting.usage.usedRequests, greaterThanOrEqualTo(1));
     await harness.workspace.resumeTasks(taskId: waiting.taskIds.first);
     final resumedRequest = await script.waitForRequest(2);
     expect(resumedRequest.lastUserText, '暂停后继续其他会话');
@@ -772,80 +712,24 @@ void main() {
     },
   );
 
-  test(
-    'exhausted run pauses alone and its task card targets its own budget',
-    () async {
-      final script = _ScriptedChatClient();
-      final store = MemoryAgentTaskStore()
-        ..checkpoint = const AgentTaskCheckpoint(
-          budget: AgentBudgetCheckpoint(grantedRequests: 1),
-        );
-      final harness = await _SchedulerHarness.create(
-        script.modelClient,
-        taskStore: store,
-      );
-      addTearDown(harness.close);
-      final exhaustedConversation = await harness.workspace
-          .createConversation();
-      final independentConversation = await harness.workspace
-          .createConversation();
+  test('usage counters never pause queued turns', () async {
+    final script = _ScriptedChatClient();
+    final harness = await _SchedulerHarness.create(script.modelClient);
+    addTearDown(harness.close);
+    final conversation = await harness.workspace.createConversation();
 
-      final first = harness.workspace.sendChatMessage(
-        exhaustedConversation.id,
-        text: '先消耗唯一额度',
-      );
-      await script.waitForRequest(0);
-      final continuation = harness.workspace.sendChatMessage(
-        exhaustedConversation.id,
-        text: '同一任务继续',
-      );
-      final independent = harness.workspace.sendChatMessage(
-        independentConversation.id,
-        text: '独立任务可运行',
-      );
-      await _waitFor(
-        () =>
-            harness.workspace.isConversationSteering(
-              exhaustedConversation.id,
-            ) &&
-            harness.workspace.isConversationQueued(independentConversation.id),
-      );
-      script.complete(0, '首轮完成');
-      await first.timeout(const Duration(seconds: 2));
+    final sending = harness.workspace.sendChatMessage(
+      conversation.id,
+      text: '持续执行',
+    );
+    final request = await script.waitForRequest(0);
+    expect(request.lastUserText, '持续执行');
+    script.complete(0, '已完成');
+    await sending.timeout(const Duration(seconds: 2));
 
-      final independentRequest = await script.waitForRequest(1);
-      expect(independentRequest.lastUserText, '独立任务可运行');
-      await harness.workspace.pauseGeneration();
-      await independent.timeout(const Duration(seconds: 2));
-
-      final waiting = harness.workspace.tasksNeedingAction.firstWhere(
-        (task) => task.conversationId == exhaustedConversation.id,
-      );
-      expect(waiting.conversationId, exhaustedConversation.id);
-      expect(waiting.budget.exhausted, isTrue);
-      expect(
-        harness.workspace.tasksNeedingAction,
-        hasLength(2),
-        reason: harness.workspace.tasksNeedingAction
-            .map((task) => '${task.budgetRunId}:${task.taskIds}')
-            .join(', '),
-      );
-      expect(
-        () => harness.workspace.resumeTasks(additionalRequests: 1),
-        throwsStateError,
-        reason:
-            'with multiple budgets the caller must select the task explicitly',
-      );
-      await harness.workspace.resumeTasks(
-        taskId: waiting.taskIds.first,
-        additionalRequests: 1,
-      );
-      final resumedRequest = await script.waitForRequest(2);
-      expect(resumedRequest.lastUserText, '同一任务继续');
-      script.complete(2, '额度追加后完成');
-      await continuation.timeout(const Duration(seconds: 2));
-    },
-  );
+    expect(harness.workspace.tasksNeedingAction, isEmpty);
+    expect(harness.workspace.agentUsage.usedRequests, greaterThan(0));
+  });
 
   test(
     'background lifecycle receives start, progress, and completion',
@@ -877,7 +761,7 @@ void main() {
         'completeTask',
       ]);
       expect(background.lastTaskId, isNotEmpty);
-      expect(store.checkpoint.budget.usedRequests, greaterThanOrEqualTo(1));
+      expect(store.checkpoint.usage.usedRequests, greaterThanOrEqualTo(1));
     },
   );
 
@@ -918,7 +802,7 @@ void main() {
         'initialize',
         'requestNotificationPermission',
       ], reason: 'denial should keep this turn entirely in foreground mode');
-      expect(taskStore.checkpoint.budget.usedRequests, 1);
+      expect(taskStore.checkpoint.usage.usedRequests, 1);
     },
   );
 
@@ -1032,12 +916,12 @@ void main() {
   );
 
   test(
-    'agent adapter interfaces share policy, budget, and cancellation',
+    'agent adapter interfaces share policy, usage, and cancellation',
     () async {
       final script = _ScriptedChatClient();
       final store = MemoryAgentTaskStore()
         ..checkpoint = const AgentTaskCheckpoint(
-          budget: AgentBudgetCheckpoint(grantedRequests: 2),
+          usage: AgentUsage(usedRequests: 2),
         );
       final harness = await _SchedulerHarness.create(
         script.modelClient,
@@ -1068,11 +952,16 @@ void main() {
         AiPolicyPreset.readOnly,
       );
 
-      // The active main request has already reserved one of the two slots.
-      expect(harness.workspace.agentBudget.usedRequests, 1);
-      expect(await harness.workspace.reserveAuxiliaryModelRequest(), isTrue);
-      expect(await harness.workspace.reserveAuxiliaryModelRequest(), isFalse);
-      expect(harness.workspace.agentBudget.usedRequests, 2);
+      expect(
+        harness.workspace.agentUsage.usedRequests,
+        greaterThanOrEqualTo(1),
+      );
+      expect(await harness.workspace.recordAuxiliaryModelRequest(), isTrue);
+      expect(await harness.workspace.recordAuxiliaryModelRequest(), isTrue);
+      expect(
+        harness.workspace.agentUsage.usedRequests,
+        greaterThanOrEqualTo(3),
+      );
 
       var cancelled = false;
       final cancellation = harness.workspace.activeCancellationFuture().then(
@@ -1346,23 +1235,13 @@ class _BlockingRunningTaskStore extends MemoryAgentTaskStore {
   }
 }
 
-class _FailingTaskStore extends MemoryAgentTaskStore {
-  bool failSave = false;
-
-  @override
-  Future<void> save(AgentTaskCheckpoint checkpoint) async {
-    if (failSave) throw StateError('injected budget save failure');
-    await super.save(checkpoint);
-  }
-}
-
 class _FailingRequestReservationStore extends MemoryAgentTaskStore {
   bool _failed = false;
 
   @override
   Future<void> save(AgentTaskCheckpoint checkpoint) async {
     if (!_failed &&
-        checkpoint.budget.usedRequests > this.checkpoint.budget.usedRequests) {
+        checkpoint.usage.usedRequests > this.checkpoint.usage.usedRequests) {
       _failed = true;
       throw StateError('injected request budget checkpoint failure');
     }
@@ -1427,7 +1306,7 @@ Future<(_SchedulerHarness, _ScriptedChatClient)> _runningTurnRecoveryHarness(
   }
   final taskStore = MemoryAgentTaskStore()
     ..checkpoint = const AgentTaskCheckpoint(
-      budget: AgentBudgetCheckpoint(grantedRequests: 8, usedRequests: 1),
+      usage: AgentUsage(usedRequests: 1),
       turns: [
         AgentTurnCheckpoint(
           taskId: 'recovery-task',

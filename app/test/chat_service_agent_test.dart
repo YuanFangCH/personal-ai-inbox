@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:personal_ai_inbox/core/agent_usage.dart';
 import 'package:personal_ai_inbox/core/chat_models.dart';
 import 'package:personal_ai_inbox/core/ai_policy.dart';
 import 'package:personal_ai_inbox/core/models.dart';
@@ -269,37 +270,41 @@ void main() {
     },
   );
 
-  test('three stagnant steps get one correction and then pause', () async {
-    final fixture = await _AgentFixture.create();
-    var requests = 0;
-    final service = ChatService(
-      settings: FakeSettingsService(modelKey: 'test-key'),
-      repository: fixture.chats,
-      results: fixture.results,
-      tables: fixture.tables,
-      modelClient: ModelClient(
-        client: MockClient.streaming((_, body) async {
-          final payload = jsonDecode(await body.bytesToString()) as Map;
-          requests++;
-          if (requests == 4) {
-            expect(jsonEncode(payload['messages']), contains('连续三步'));
-          }
-          return _toolCallResponse(
-            id: 'repeat_$requests',
-            name: 'table_list',
-            arguments: {},
-          );
-        }),
-      ),
-    );
-    addTearDown(() => fixture.close(service));
-    final deltas = await (await service.streamReply(
-      conversationId: fixture.conversationId,
-    )).toList();
-    expect(requests, 4);
-    expect(deltas.map((d) => d.content).join(), contains('纠偏后仍未推进'));
-    expect(deltas.last.termination, ChatStreamTermination.incomplete);
-  });
+  test(
+    'repeated tool calls get an advisory reminder without pausing',
+    () async {
+      final fixture = await _AgentFixture.create();
+      var requests = 0;
+      final service = ChatService(
+        settings: FakeSettingsService(modelKey: 'test-key'),
+        repository: fixture.chats,
+        results: fixture.results,
+        tables: fixture.tables,
+        modelClient: ModelClient(
+          client: MockClient.streaming((_, body) async {
+            final payload = jsonDecode(await body.bytesToString()) as Map;
+            requests++;
+            if (requests == 4) {
+              expect(jsonEncode(payload['messages']), contains('连续 3 次'));
+              return _textResponse('已收到提醒并完成');
+            }
+            return _toolCallResponse(
+              id: 'repeat_$requests',
+              name: 'table_list',
+              arguments: {},
+            );
+          }),
+        ),
+      );
+      addTearDown(() => fixture.close(service));
+      final deltas = await (await service.streamReply(
+        conversationId: fixture.conversationId,
+      )).toList();
+      expect(requests, 4);
+      expect(deltas.map((d) => d.content).join(), contains('已收到提醒并完成'));
+      expect(deltas.last.termination, ChatStreamTermination.completed);
+    },
+  );
 
   test('empty response recovery is bounded to one extra request', () async {
     final fixture = await _AgentFixture.create();
@@ -517,6 +522,50 @@ void main() {
       await fixture.close(service);
     }
   });
+
+  test(
+    'full access exposes complete table tools without revision friction',
+    () async {
+      final fixture = await _AgentFixture.create();
+      await fixture.chats.setAiPolicy(
+        fixture.conversationId,
+        AiPolicy.forPreset(AiPolicyPreset.fullAccess),
+      );
+      Map<String, dynamic>? request;
+      final service = ChatService(
+        settings: FakeSettingsService(modelKey: 'test-key'),
+        repository: fixture.chats,
+        results: fixture.results,
+        tables: fixture.tables,
+        modelClient: ModelClient(
+          client: MockClient.streaming((_, body) async {
+            request =
+                jsonDecode(await body.bytesToString()) as Map<String, dynamic>;
+            return _textResponse('工具面已核对');
+          }),
+        ),
+      );
+
+      await (await service.streamReply(conversationId: fixture.conversationId))
+          .toList();
+
+      final tools = (request!['tools'] as List).cast<Map>();
+      final byName = {
+        for (final tool in tools)
+          (tool['function'] as Map)['name']: tool['function'] as Map,
+      };
+      expect(byName, contains('recovery_list'));
+      expect(byName, contains('recovery_preview'));
+      expect(byName, contains('recovery_restore'));
+      expect(byName, contains('inbox_targets_read'));
+      final update = byName['content_update']!;
+      final required = ((update['parameters'] as Map)['required'] as List)
+          .cast<String>();
+      expect(required, isNot(contains('if_revision')));
+      expect(required, isNot(contains('idempotency_key')));
+      await fixture.close(service);
+    },
+  );
 
   test(
     'continues read tool rounds until the model returns a final answer',
@@ -1085,54 +1134,10 @@ void main() {
     await fixture.close(service);
   });
 
-  test(
-    'awaits the shared request reservation before opening the network',
-    () async {
-      final fixture = await _AgentFixture.create();
-      final reservation = Completer<bool>();
-      var networkRequests = 0;
-      final budget = ChatAgentBudget(
-        maxRequests: 2,
-        requestReserver: () => reservation.future,
-      );
-      final service = ChatService(
-        settings: FakeSettingsService(modelKey: 'test-key'),
-        repository: fixture.chats,
-        results: fixture.results,
-        tables: fixture.tables,
-        modelClient: ModelClient(
-          client: MockClient.streaming((request, body) async {
-            networkRequests++;
-            return _textResponse('持久化预算后才出网。');
-          }),
-        ),
-      );
-
-      final deltasFuture = (await service.streamReply(
-        conversationId: fixture.conversationId,
-        budget: budget,
-      )).toList();
-      await Future<void>.delayed(Duration.zero);
-      expect(networkRequests, 0);
-      expect(budget.requestCount, 0);
-
-      reservation.complete(true);
-      final deltas = await deltasFuture;
-
-      expect(networkRequests, 1);
-      expect(budget.requestCount, 1);
-      expect(deltas.last.termination, ChatStreamTermination.completed);
-      await fixture.close(service);
-    },
-  );
-
-  test('rejected shared reservation prevents the network request', () async {
+  test('usage meter records requests without gating the network', () async {
     final fixture = await _AgentFixture.create();
     var networkRequests = 0;
-    final budget = ChatAgentBudget(
-      maxRequests: 2,
-      requestReserver: () async => false,
-    );
+    final usage = AgentUsageMeter();
     final service = ChatService(
       settings: FakeSettingsService(modelKey: 'test-key'),
       repository: fixture.chats,
@@ -1141,23 +1146,20 @@ void main() {
       modelClient: ModelClient(
         client: MockClient.streaming((request, body) async {
           networkRequests++;
-          return _textResponse('不应请求');
+          return _textResponse('无预算请求已完成。');
         }),
       ),
     );
 
     final deltas = await (await service.streamReply(
       conversationId: fixture.conversationId,
-      budget: budget,
+      usage: usage,
     )).toList();
 
-    expect(networkRequests, 0);
-    expect(budget.requestCount, 0);
-    expect(
-      deltas.map((delta) => delta.content).join(),
-      contains('共享模型请求预算已用尽'),
-    );
-    expect(deltas.last.termination, ChatStreamTermination.incomplete);
+    expect(networkRequests, 1);
+    expect(usage.requestCount, 1);
+    expect(deltas.map((delta) => delta.content).join(), '无预算请求已完成。');
+    expect(deltas.last.termination, ChatStreamTermination.completed);
     await fixture.close(service);
   });
 
@@ -1401,7 +1403,7 @@ void main() {
       ),
     );
     var requests = 0;
-    final budget = ChatAgentBudget();
+    final usage = AgentUsageMeter();
     final service = ChatService(
       settings: FakeSettingsService(modelKey: 'test-key'),
       repository: fixture.chats,
@@ -1418,11 +1420,11 @@ void main() {
 
     final deltas = await (await service.streamReply(
       conversationId: fixture.conversationId,
-      budget: budget,
+      usage: usage,
     )).toList();
 
     expect(requests, 0);
-    expect(budget.requestCount, 0);
+    expect(usage.requestCount, 0);
     expect(deltas.map((delta) => delta.content).join(), contains('上下文无法安全压缩'));
     expect(deltas.last.termination, ChatStreamTermination.incomplete);
     await fixture.close(service);
@@ -1433,7 +1435,7 @@ void main() {
     final waits = <Duration>[];
     final retryWaitStarted = Completer<void>();
     final releaseRetryWait = Completer<void>();
-    final budget = ChatAgentBudget();
+    final usage = AgentUsageMeter();
     var requests = 0;
     final service = ChatService(
       settings: FakeSettingsService(modelKey: 'test-key'),
@@ -1464,14 +1466,14 @@ void main() {
 
     final reply = (await service.streamReply(
       conversationId: fixture.conversationId,
-      budget: budget,
+      usage: usage,
     )).toList();
     await retryWaitStarted.future.timeout(const Duration(seconds: 2));
     await Future<void>.delayed(const Duration(milliseconds: 35));
     expect(
-      budget.activeDuration,
+      usage.activeDuration,
       greaterThanOrEqualTo(const Duration(milliseconds: 30)),
-      reason: 'retry backoff remains part of the active task time budget',
+      reason: 'retry backoff remains visible in usage telemetry',
     );
     releaseRetryWait.complete();
     final deltas = await reply;
@@ -1481,7 +1483,7 @@ void main() {
     expect(deltas.map((delta) => delta.content).join(), '重试后已完成。');
     expect(deltas.last.termination, ChatStreamTermination.completed);
     expect(
-      budget.activeDuration,
+      usage.activeDuration,
       greaterThanOrEqualTo(const Duration(milliseconds: 30)),
     );
     await fixture.close(service);
@@ -1527,49 +1529,46 @@ void main() {
     },
   );
 
-  test(
-    'automatically continues batches without resetting total budget',
-    () async {
-      final fixture = await _AgentFixture.create();
-      var requests = 0;
-      final budget = ChatAgentBudget();
-      final service = ChatService(
-        settings: FakeSettingsService(modelKey: 'test-key'),
-        repository: fixture.chats,
-        results: fixture.results,
-        tables: fixture.tables,
-        agentLoopPolicy: const ChatAgentLoopPolicy(maxRequestsPerBatch: 2),
-        modelClient: ModelClient(
-          client: MockClient.streaming((request, body) async {
-            await body.bytesToString();
-            requests++;
-            if (requests == 5) return _textResponse('已完成跨批任务');
-            return _toolCallResponse(
-              id: 'call_budget_$requests',
-              name: 'table_list',
-              arguments: {'offset': requests, 'limit': 1},
-            );
-          }),
-        ),
-      );
-
-      final deltas = await (await service.streamReply(
-        conversationId: fixture.conversationId,
-        budget: budget,
-      )).toList();
-
-      expect(requests, 5);
-      expect(budget.requestCount, 5);
-      expect(deltas.map((delta) => delta.content).join(), contains('已完成跨批任务'));
-      expect(deltas.last.termination, ChatStreamTermination.completed);
-      await fixture.close(service);
-    },
-  );
-
-  test('enforces the cumulative 240-request budget', () async {
+  test('automatically continues batches without resetting usage', () async {
     final fixture = await _AgentFixture.create();
     var requests = 0;
-    final budget = ChatAgentBudget(initialRequestCount: 239);
+    final usage = AgentUsageMeter();
+    final service = ChatService(
+      settings: FakeSettingsService(modelKey: 'test-key'),
+      repository: fixture.chats,
+      results: fixture.results,
+      tables: fixture.tables,
+      agentLoopPolicy: const ChatAgentLoopPolicy(checkpointEveryRequests: 2),
+      modelClient: ModelClient(
+        client: MockClient.streaming((request, body) async {
+          await body.bytesToString();
+          requests++;
+          if (requests == 5) return _textResponse('已完成跨批任务');
+          return _toolCallResponse(
+            id: 'call_budget_$requests',
+            name: 'table_list',
+            arguments: {'offset': requests, 'limit': 1},
+          );
+        }),
+      ),
+    );
+
+    final deltas = await (await service.streamReply(
+      conversationId: fixture.conversationId,
+      usage: usage,
+    )).toList();
+
+    expect(requests, 5);
+    expect(usage.requestCount, 5);
+    expect(deltas.map((delta) => delta.content).join(), contains('已完成跨批任务'));
+    expect(deltas.last.termination, ChatStreamTermination.completed);
+    await fixture.close(service);
+  });
+
+  test('continues beyond the former 240-request boundary', () async {
+    final fixture = await _AgentFixture.create();
+    var requests = 0;
+    final usage = AgentUsageMeter(initial: const AgentUsage(usedRequests: 239));
     final service = ChatService(
       settings: FakeSettingsService(modelKey: 'test-key'),
       repository: fixture.chats,
@@ -1579,31 +1578,31 @@ void main() {
         client: MockClient.streaming((request, body) async {
           await body.bytesToString();
           requests++;
-          return _toolCallResponse(
-            id: 'call_total_budget',
-            name: 'table_list',
-            arguments: const {'offset': 0, 'limit': 1},
-          );
+          if (requests == 1) {
+            return _toolCallResponse(
+              id: 'call_cross_boundary',
+              name: 'table_list',
+              arguments: const {'offset': 0, 'limit': 1},
+            );
+          }
+          return _textResponse('已越过旧上限并完成。');
         }),
       ),
     );
 
     final deltas = await (await service.streamReply(
       conversationId: fixture.conversationId,
-      budget: budget,
+      usage: usage,
     )).toList();
 
-    expect(requests, 1);
-    expect(budget.requestCount, 240);
-    expect(
-      deltas.map((delta) => delta.content).join(),
-      contains('累计模型请求达到 240 次'),
-    );
-    expect(deltas.last.termination, ChatStreamTermination.incomplete);
+    expect(requests, 2);
+    expect(usage.requestCount, 241);
+    expect(deltas.map((delta) => delta.content).join(), contains('已越过旧上限并完成'));
+    expect(deltas.last.termination, ChatStreamTermination.completed);
     await fixture.close(service);
   });
 
-  test('enforces the cumulative two-hour active budget', () async {
+  test('records more than two active hours without blocking', () async {
     final fixture = await _AgentFixture.create();
     var requests = 0;
     final service = ChatService(
@@ -1614,25 +1613,24 @@ void main() {
       modelClient: ModelClient(
         client: MockClient.streaming((request, body) async {
           requests++;
-          return _textResponse('不应发出请求');
+          return _textResponse('超过两小时仍完成');
         }),
       ),
     );
-    final budget = ChatAgentBudget(
-      initialActiveDuration: const Duration(hours: 2),
+    final usage = AgentUsageMeter(
+      initial: AgentUsage(
+        usedActiveMillis: const Duration(hours: 2, minutes: 1).inMilliseconds,
+      ),
     );
 
     final deltas = await (await service.streamReply(
       conversationId: fixture.conversationId,
-      budget: budget,
+      usage: usage,
     )).toList();
 
-    expect(requests, 0);
-    expect(
-      deltas.map((delta) => delta.content).join(),
-      contains('累计活动执行达到 2 小时'),
-    );
-    expect(deltas.last.termination, ChatStreamTermination.incomplete);
+    expect(requests, 1);
+    expect(deltas.map((delta) => delta.content).join(), '超过两小时仍完成');
+    expect(deltas.last.termination, ChatStreamTermination.completed);
     await fixture.close(service);
   });
 }

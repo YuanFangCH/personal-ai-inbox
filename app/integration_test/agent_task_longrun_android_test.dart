@@ -350,12 +350,12 @@ Future<void> _runFifteenMinuteBusinessTask(
             'entries=${harness.runtime.tables.entries.map((entry) => '${entry.id}:${entry.title}').join('|')}',
       );
       expect(
-        checkpoint.budget.usedRequests,
+        checkpoint.usage.usedRequests,
         inInclusiveRange(
           harness.fixture.requestCount,
           harness.fixture.requestCount + 1,
         ),
-        reason: 'Persisted budget may include the single request reserved before the fixture receives it.',
+        reason: 'Persisted usage may include the request already in flight.',
       );
       expect(
         harness.fixture.toolDeltaFrames,
@@ -366,7 +366,7 @@ Future<void> _runFifteenMinuteBusinessTask(
         'elapsed_ms': timer.elapsedMilliseconds,
         'verified_count': lastVerified,
         'entry_count': harness.runtime.tables.entries.length,
-        'used_requests': checkpoint.budget.usedRequests,
+        'used_requests': checkpoint.usage.usedRequests,
         'model_request_count': harness.fixture.requestCount,
         'tool_delta_frames': harness.fixture.toolDeltaFrames,
         'checkpoint_turns': checkpoint.turns.length,
@@ -414,7 +414,7 @@ Future<void> _runFifteenMinuteBusinessTask(
         );
         final pausedTurn = runningTurns.single;
         await harness.runtime.conversations.resumeTasks(
-          taskId: pausedTurn.effectiveBudgetRunId,
+          taskId: pausedTurn.effectiveRunId,
         );
         await _waitFor(
           tester,
@@ -441,7 +441,7 @@ Future<void> _runFifteenMinuteBusinessTask(
             '|' +
             timer.elapsedMilliseconds.toString() +
             '|' +
-            checkpoint.budget.usedRequests.toString() +
+            checkpoint.usage.usedRequests.toString() +
             '|' +
             checkpoint.turns.length.toString(),
       );
@@ -490,9 +490,9 @@ Future<void> _runFifteenMinuteBusinessTask(
   );
   final checkpoint = await harness.taskStore.load();
   expect(
-    checkpoint.budget.usedRequests,
+    checkpoint.usage.usedRequests,
     harness.fixture.requestCount,
-    reason: 'Final persisted budget must equal fixture model request count.',
+    reason: 'Final persisted usage must equal fixture model request count.',
   );
   expect(
     harness.fixture.toolDeltaFrames,
@@ -510,7 +510,7 @@ Future<void> _runFifteenMinuteBusinessTask(
     'write_receipts': harness.fixture.writeReceipts,
     'verify_tool_calls': harness.fixture.verifyToolCalls,
     'verified_entries': harness.fixture.verifiedCount,
-    'checkpoint_budget_requests': checkpoint.budget.usedRequests,
+    'checkpoint_usage_requests': checkpoint.usage.usedRequests,
     'checkpoint_turns': checkpoint.turns.length,
   });
   print(

@@ -15,7 +15,7 @@ class _AgentTaskStatusCardState extends State<AgentTaskStatusCard> {
   final Set<String> _busyRunIds = {};
 
   Future<void> _resume(AgentTaskSummary task) async {
-    if (_busyRunIds.contains(task.budgetRunId)) return;
+    if (_busyRunIds.contains(task.runId)) return;
     final workspace = widget.workspace;
     if (task.needsReview) {
       final reviewed = await showDialog<bool>(
@@ -37,13 +37,10 @@ class _AgentTaskStatusCardState extends State<AgentTaskStatusCard> {
       );
       if (reviewed != true || !mounted) return;
     }
-    setState(() => _busyRunIds.add(task.budgetRunId));
+    setState(() => _busyRunIds.add(task.runId));
     try {
-      final exhausted = task.budget.exhausted;
       await workspace.resumeTasks(
         taskId: task.taskIds.first,
-        additionalRequests: exhausted ? 240 : 0,
-        additionalActive: exhausted ? const Duration(hours: 2) : Duration.zero,
         approveUncertainEffects: task.needsReview,
       );
     } catch (error) {
@@ -52,7 +49,7 @@ class _AgentTaskStatusCardState extends State<AgentTaskStatusCard> {
             .showSnackBar(SnackBar(content: Text('任务未能继续：$error')));
       }
     } finally {
-      if (mounted) setState(() => _busyRunIds.remove(task.budgetRunId));
+      if (mounted) setState(() => _busyRunIds.remove(task.runId));
     }
   }
 
@@ -82,8 +79,8 @@ class _AgentTaskStatusCardState extends State<AgentTaskStatusCard> {
   }
 
   Widget _taskSection(AgentTaskSummary task, int index) {
-    final budget = task.budget;
-    final busy = _busyRunIds.contains(task.budgetRunId);
+    final usage = task.usage;
+    final busy = _busyRunIds.contains(task.runId);
     final conversation = widget.workspace.findConversation(task.conversationId);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -97,21 +94,16 @@ class _AgentTaskStatusCardState extends State<AgentTaskStatusCard> {
         ),
         if (conversation != null) Text(conversation.title),
         Text(
-          '已使用 ${budget.usedRequests}/${budget.grantedRequests} 次模型请求，待继续 ${task.taskIds.length} 项。',
+          '已使用 ${usage.usedRequests} 次模型请求、'
+          '${usage.usedToolCalls} 次工具调用，待继续 ${task.taskIds.length} 项。',
         ),
         const SizedBox(height: 8),
         FilledButton(
           key: index == 0
               ? const Key('resume_agent_tasks')
-              : Key('resume_agent_tasks_${task.budgetRunId}'),
+              : Key('resume_agent_tasks_${task.runId}'),
           onPressed: busy ? null : () => _resume(task),
-          child: Text(
-            budget.exhausted
-                ? '追加 2 小时与 240 次请求并继续'
-                : task.awaitingInput
-                ? '已确认或补充，继续任务'
-                : '继续任务',
-          ),
+          child: Text(task.awaitingInput ? '已确认或补充，继续任务' : '继续任务'),
         ),
       ],
     );

@@ -93,6 +93,14 @@ class _TableChatActionCard extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
+              if (action.reviewRequired) ...[
+                const SizedBox(height: 4),
+                Text(
+                  action.reviewReason ?? '此内容未能证明为重复，已新建并标记待核对。',
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: scheme.tertiary),
+                ),
+              ],
               if ((action.retryableIntake || retryPending) &&
                   action.intakeCoverageComplete == false) ...[
                 const SizedBox(height: 6),
@@ -207,6 +215,7 @@ String _actionHeading(TableChatAction action) {
     'content.move' => '已移动内容',
     'content.delete' => '已删除内容',
     'schedule.change' => '已更新日程并保留通知',
+    'recovery.restore' => '已恢复回收站内容',
     'table.create' => '已创建表',
     'table.rename' => '已重命名表',
     'table.delete' => '已删除表',

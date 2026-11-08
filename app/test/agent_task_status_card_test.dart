@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:personal_ai_inbox/core/agent_usage.dart';
 import 'package:personal_ai_inbox/bootstrap/app_runtime.dart';
 import 'package:personal_ai_inbox/core/chat_models.dart';
 import 'package:personal_ai_inbox/data/memory_conversation_store.dart';
@@ -36,13 +37,13 @@ Future<AppRuntime> restoredRuntime(AgentTurnCheckpointStatus status) async {
   );
   final tasks = MemoryAgentTaskStore()
     ..checkpoint = AgentTaskCheckpoint(
-      budget: const AgentBudgetCheckpoint(usedRequests: 240),
-      runBudgets: const {'legacy': AgentBudgetCheckpoint(usedRequests: 240)},
-      activeBudgetRunId: 'legacy',
+      usage: const AgentUsage(usedRequests: 240),
+      runUsage: const {'legacy': AgentUsage(usedRequests: 240)},
+      activeRunId: 'legacy',
       turns: [
         AgentTurnCheckpoint(
           taskId: 'task_restored_card',
-          budgetRunId: 'legacy',
+          runId: 'legacy',
           conversationId: 'conv_restored_card',
           userMessageId: 'msg_restored_card',
           kind: AgentTurnQueueKind.conversation,
@@ -62,29 +63,32 @@ Future<AppRuntime> restoredRuntime(AgentTurnCheckpointStatus status) async {
 }
 
 void main() {
-  testWidgets('restored exhausted task exposes explicit budget continuation', (
-    tester,
-  ) async {
-    final runtime = (await tester.runAsync(
-      () => restoredRuntime(AgentTurnCheckpointStatus.paused),
-    ))!;
-    try {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: AgentTaskStatusCard(workspace: runtime.conversations),
+  testWidgets(
+    'restored paused task exposes usage without budget continuation',
+    (tester) async {
+      final runtime = (await tester.runAsync(
+        () => restoredRuntime(AgentTurnCheckpointStatus.paused),
+      ))!;
+      try {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: AgentTaskStatusCard(workspace: runtime.conversations),
+            ),
           ),
-        ),
-      );
-      expect(find.text('任务已暂停'), findsOneWidget);
-      expect(find.text('追加 2 小时与 240 次请求并继续'), findsOneWidget);
-      expect(runtime.conversations.agentBudget.usedRequests, 240);
-      expect(runtime.conversations.isChatGenerating, isFalse);
-    } finally {
-      await tester.runAsync(runtime.shutdown);
-      await tester.pumpWidget(const SizedBox.shrink());
-    }
-  });
+        );
+        expect(find.text('任务已暂停'), findsOneWidget);
+        expect(find.text('继续任务'), findsOneWidget);
+        expect(find.textContaining('已使用 240 次模型请求'), findsOneWidget);
+        expect(find.textContaining('追加 2 小时'), findsNothing);
+        expect(runtime.conversations.agentUsage.usedRequests, 240);
+        expect(runtime.conversations.isChatGenerating, isFalse);
+      } finally {
+        await tester.runAsync(runtime.shutdown);
+        await tester.pumpWidget(const SizedBox.shrink());
+      }
+    },
+  );
 
   testWidgets('uncertain restored write requires review before continuation', (
     tester,
@@ -106,7 +110,7 @@ void main() {
       await tester.tap(find.text('稍后核对'));
       await tester.pumpAndSettle();
       expect(runtime.conversations.hasTasksNeedingReview, isTrue);
-      expect(runtime.conversations.agentBudget.grantedRequests, 240);
+      expect(runtime.conversations.agentUsage.usedRequests, 240);
       expect(runtime.conversations.isChatGenerating, isFalse);
     } finally {
       await tester.runAsync(runtime.shutdown);

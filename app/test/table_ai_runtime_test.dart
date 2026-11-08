@@ -862,14 +862,11 @@ void main() {
     expect(originalTask.status, AgentTurnCheckpointStatus.waitingInput);
     final waitingBudget = tasks
         .checkpoint
-        .runBudgets[originalTask.effectiveBudgetRunId]!
+        .runUsage[originalTask.effectiveRunId]!
         .usedActiveMillis;
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(
-      tasks
-          .checkpoint
-          .runBudgets[originalTask.effectiveBudgetRunId]!
-          .usedActiveMillis,
+      tasks.checkpoint.runUsage[originalTask.effectiveRunId]!.usedActiveMillis,
       waitingBudget,
       reason: 'waiting for user confirmation does not consume active time',
     );
@@ -892,9 +889,9 @@ void main() {
       responseReady.copyWith(status: GenerationStatus.responseReady),
     );
     tasks.checkpoint = AgentTaskCheckpoint(
-      budget: tasks.checkpoint.budget,
-      runBudgets: tasks.checkpoint.runBudgets,
-      activeBudgetRunId: tasks.checkpoint.activeBudgetRunId,
+      usage: tasks.checkpoint.usage,
+      runUsage: tasks.checkpoint.runUsage,
+      activeRunId: tasks.checkpoint.activeRunId,
       turns: [originalTask.copyWith(status: AgentTurnCheckpointStatus.running)],
     );
 

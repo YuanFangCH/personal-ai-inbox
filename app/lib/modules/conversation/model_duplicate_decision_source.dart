@@ -28,12 +28,10 @@ typedef DuplicateModifyPermissionCheck = Future<bool> Function(
   SemanticDuplicateRequest request,
 );
 
-/// Atomically reserves one call from the caller's shared model-request budget.
+/// Records one auxiliary model request immediately before dispatch.
 ///
-/// The callback must return false when the budget is exhausted. The adapter
-/// invokes it immediately before the outbound model request, after permission
-/// and local candidate filtering, so empty or rejected comparisons do not
-/// consume the budget.
+/// The callback is observational; returning false means the owning task was
+/// cancelled or replaced and the comparison must not cross the network.
 typedef DuplicateModelRequestBudget = Future<bool> Function(
   SemanticDuplicateRequest request,
 );
@@ -44,18 +42,11 @@ typedef DuplicateModelRequestBudget = Future<bool> Function(
 /// public model stream and aborts the pending HTTP request where supported.
 typedef DuplicateDecisionCancellationProvider = Future<void> Function();
 
-/// Returns the live active-time budget left in the current Agent task.
-///
-/// When provided, the source fails closed if no active task budget is available
-/// and caps the transport's total timeout to the remaining duration.
-typedef DuplicateActiveBudgetRemainingProvider = Duration? Function();
-
 /// Structured, model-backed semantic duplicate comparison.
 ///
 /// The adapter is deliberately vendor-neutral: it accepts the existing
 /// [ModelConfiguration] and reuses [ModelClient]. The caller remains the owner of
-/// credentials, conversation permissions, cancellation, and the shared request
-/// budget.
+/// credentials, conversation permissions and cancellation.
 class ModelSemanticDuplicateDecisionSource
     implements SemanticDuplicateDecisionSource {
   ModelSemanticDuplicateDecisionSource({
@@ -63,7 +54,6 @@ class ModelSemanticDuplicateDecisionSource
     required DuplicateReadPermissionCheck canReadCandidates,
     required DuplicateModifyPermissionCheck canModifyExisting,
     required DuplicateModelRequestBudget reserveModelRequest,
-    DuplicateActiveBudgetRemainingProvider? remainingActiveDuration,
     DuplicateDecisionCancellationProvider? cancellation,
     ModelClient? modelClient,
     ContentDuplicatePolicy policy = const ContentDuplicatePolicy(),
@@ -75,7 +65,6 @@ class ModelSemanticDuplicateDecisionSource
        _canReadCandidates = canReadCandidates,
        _canModifyExisting = canModifyExisting,
        _reserveModelRequest = reserveModelRequest,
-       _remainingActiveDuration = remainingActiveDuration,
        _cancellation = cancellation,
        _modelClient = modelClient ?? ModelClient(),
        _ownsModelClient = modelClient == null,
@@ -100,7 +89,6 @@ class ModelSemanticDuplicateDecisionSource
     required DuplicateReadPermissionCheck canReadCandidates,
     required DuplicateModifyPermissionCheck canModifyExisting,
     required DuplicateModelRequestBudget reserveModelRequest,
-    DuplicateActiveBudgetRemainingProvider? remainingActiveDuration,
     DuplicateDecisionCancellationProvider? cancellation,
     ModelClient? modelClient,
     ContentDuplicatePolicy policy = const ContentDuplicatePolicy(),
@@ -137,7 +125,6 @@ class ModelSemanticDuplicateDecisionSource
       canReadCandidates: canReadCandidates,
       canModifyExisting: canModifyExisting,
       reserveModelRequest: reserveModelRequest,
-      remainingActiveDuration: remainingActiveDuration,
       cancellation: cancellation,
       modelClient: modelClient,
       policy: policy,
@@ -149,7 +136,6 @@ class ModelSemanticDuplicateDecisionSource
   final DuplicateReadPermissionCheck _canReadCandidates;
   final DuplicateModifyPermissionCheck _canModifyExisting;
   final DuplicateModelRequestBudget _reserveModelRequest;
-  final DuplicateActiveBudgetRemainingProvider? _remainingActiveDuration;
   final DuplicateDecisionCancellationProvider? _cancellation;
   final ModelClient _modelClient;
   final bool _ownsModelClient;
@@ -213,14 +199,14 @@ class ModelSemanticDuplicateDecisionSource
       return _conflict(preBudgetPermissionFailure);
     }
 
-    final bool budgetReserved;
+    final bool requestRecorded;
     try {
-      budgetReserved = await _reserveModelRequest(request);
+      requestRecorded = await _reserveModelRequest(request);
     } catch (_) {
-      return _conflict('无法确认模型请求预算，查重比较未发送。');
+      return _conflict('无法确认当前任务状态，查重比较未发送。');
     }
-    if (!budgetReserved) {
-      return _conflict('本次任务的共享模型请求预算已用尽，查重比较未发送。');
+    if (!requestRecorded) {
+      return _conflict('当前任务已取消或替换，查重比较未发送。');
     }
 
     // Budget reservation can await durable persistence. Re-resolve the
@@ -234,28 +220,7 @@ class ModelSemanticDuplicateDecisionSource
       return _conflict('查重模型调用已取消。');
     }
 
-    var requestConfiguration = configuration;
-    final remainingActiveDurationProvider = _remainingActiveDuration;
-    if (remainingActiveDurationProvider != null) {
-      final Duration? remainingActiveDuration;
-      try {
-        remainingActiveDuration = remainingActiveDurationProvider();
-      } catch (_) {
-        return _conflict('无法确认当前任务剩余时间，查重比较未发送。');
-      }
-      if (remainingActiveDuration == null ||
-          remainingActiveDuration <= Duration.zero) {
-        return _conflict('当前任务活动时间预算已用尽，查重比较未发送。');
-      }
-      final boundedTotalTimeout =
-          remainingActiveDuration < configuration.totalTimeout
-          ? remainingActiveDuration
-          : configuration.totalTimeout;
-      requestConfiguration = _withTotalTimeout(
-        configuration,
-        boundedTotalTimeout,
-      );
-    }
+    final requestConfiguration = configuration;
 
     final userPrompt = _buildUserPrompt(request.signal, candidates);
     final deltas = <ChatStreamDelta>[];
@@ -726,20 +691,6 @@ Map<String, Object?> _fieldMap(Object? value) {
     value.map((key, item) => MapEntry(key as String, item)),
   );
 }
-
-ModelConfiguration _withTotalTimeout(
-  ModelConfiguration source,
-  Duration totalTimeout,
-) => ModelConfiguration(
-  baseUrl: source.baseUrl,
-  model: source.model,
-  apiKey: source.apiKey,
-  capabilities: source.capabilities,
-  thinkingParameterSupported: source.thinkingParameterSupported,
-  responseHeaderTimeout: source.responseHeaderTimeout,
-  streamIdleTimeout: source.streamIdleTimeout,
-  totalTimeout: totalTimeout,
-);
 
 ModelConfiguration _withoutTools(ModelConfiguration source) =>
     ModelConfiguration(

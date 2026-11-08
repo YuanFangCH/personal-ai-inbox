@@ -142,7 +142,13 @@ class TableActionProcessor {
       final effectivePolicy = conversation == null
           ? AiPolicy.forPreset(AiPolicyPreset.readOnly)
           : _policyResolver(conversation);
-      final payload = _decode(call.arguments.toString());
+      final rawPayload = _decode(call.arguments.toString());
+      final payload = await _normalizePayloadForPolicy(
+        name,
+        rawPayload,
+        effectivePolicy,
+        actionId,
+      );
       final permission =
           name == 'table.propose' &&
               payload['operation'] == 'assign_inbox_target'
@@ -177,6 +183,11 @@ class TableActionProcessor {
           'content.update' => await _update(actionId, payload, createdAt),
           'content.move' => await _move(actionId, payload, createdAt),
           'content.delete' => await _delete(actionId, payload, createdAt),
+          'recovery.restore' => await _restoreRecovery(
+            actionId,
+            payload,
+            createdAt,
+          ),
           'schedule.change' => await _changeSchedule(
             actionId,
             payload,
@@ -220,9 +231,48 @@ class TableActionProcessor {
     'content.update',
     'content.move',
     'content.delete',
+    'recovery.restore',
     'schedule.change',
     'table.propose',
   }.contains(name);
+
+  Future<Map<String, dynamic>> _normalizePayloadForPolicy(
+    String name,
+    Map<String, dynamic> payload,
+    AiPolicy policy,
+    String actionId,
+  ) async {
+    if (policy.preset != AiPolicyPreset.fullAccess) return payload;
+    final normalized = Map<String, dynamic>.from(payload);
+    normalized['idempotency_key'] ??= 'harness:$actionId';
+    switch (name) {
+      case 'content.update':
+      case 'content.move':
+      case 'content.delete':
+        final id = _optionalString(normalized, 'id');
+        final entry = id == null ? null : await _tables.readEntry(id);
+        if (entry != null) normalized['if_revision'] = entry.revision;
+        break;
+      case 'schedule.change':
+        final id = _optionalString(normalized, 'schedule_id');
+        final entry = id == null ? null : await _tables.readEntry(id);
+        if (entry != null) normalized['if_revision'] = entry.revision;
+        break;
+      case 'table.body.update':
+        final id = _optionalString(normalized, 'table_id');
+        final table = id == null ? null : await _tables.readTable(id);
+        if (table != null) normalized['if_revision'] = table.revision;
+        break;
+    }
+    if (name == 'table.propose' &&
+        normalized['operation'] != 'create' &&
+        normalized['operation'] != 'assign_inbox_target') {
+      final id = _optionalString(normalized, 'table_id');
+      final table = id == null ? null : await _tables.readTable(id);
+      if (table != null) normalized['expected_revision'] = table.revision;
+    }
+    return normalized;
+  }
 
   AiPolicyDecision _permissionFor(
     String name,
@@ -279,6 +329,8 @@ class TableActionProcessor {
           AiPermissionAction.contentDelete,
           tableIds: [?tableId],
         );
+      case 'recovery.restore':
+        return policy.decisionFor(AiPermissionAction.restore);
       case 'schedule.change':
         final scheduleId = _optionalString(payload, 'schedule_id');
         final tableId = scheduleId == null
@@ -503,6 +555,12 @@ class TableActionProcessor {
       recurrence: recurrence,
       customValues: values,
     );
+    final currentConversation = await _chatRepository.findConversation(
+      conversationId,
+    );
+    final policy = currentConversation == null
+        ? AiPolicy.forPreset(AiPolicyPreset.readOnly)
+        : _policyResolver(currentConversation);
     final request = ContentIntakeRequest(
       operationId: intakeOperationId ?? 'legacy:$actionId',
       tableId: tableId,
@@ -525,14 +583,11 @@ class TableActionProcessor {
         'idempotency:$idempotencyKey',
       ],
       requestedEntryId: 'nt_${actionId.substring(4)}',
+      conflictPolicy: policy.preset == AiPolicyPreset.fullAccess
+          ? ContentIntakeConflictPolicy.createWithReview
+          : ContentIntakeConflictPolicy.ask,
     );
     final preparation = await _contentIntake.prepare(request);
-    final currentConversation = await _chatRepository.findConversation(
-      conversationId,
-    );
-    final policy = currentConversation == null
-        ? AiPolicy.forPreset(AiPolicyPreset.readOnly)
-        : _policyResolver(currentConversation);
     if (preparation.outcome == ContentIntakeOutcome.augmented) {
       final targetId = preparation.targetId;
       final target = targetId == null
@@ -661,7 +716,7 @@ class TableActionProcessor {
                     '已检查 ${result.coverage.semanticCandidatesChecked}/'
                     '${result.coverage.semanticCandidatesTotal} 个语义候选，'
                     '仍有 ${result.coverage.semanticCandidatesRemaining} 个未检查；'
-                    '原始接收内容已保留，可在权限和额度允许后重新扫描。',
+                    '原始接收内容已保留，可在权限恢复后重新扫描。',
           proposal: Map<String, Object?>.from(proposal),
           intakeCoverageChecked: result.coverage.semanticCandidatesChecked,
           intakeCoverageTotal: result.coverage.semanticCandidatesTotal,
@@ -688,7 +743,7 @@ class TableActionProcessor {
       ContentIntakeOutcome.augmented => '已补充到既有内容，没有创建重复记录。',
       ContentIntakeOutcome.conflict => '',
     };
-    return _applied(
+    final action = _applied(
       actionId,
       'content.create',
       createdAt,
@@ -700,6 +755,13 @@ class TableActionProcessor {
           : null,
       message: message,
     );
+    return result.reviewRequired
+        ? action.copyWith(
+            reviewRequired: true,
+            reviewReason: result.reason,
+            message: result.reason ?? '未证明为同一对象，已新建独立内容并标记待核对。',
+          )
+        : action;
   }
 
   Future<TableChatAction> retryIncompleteIntake(
@@ -954,6 +1016,28 @@ class TableActionProcessor {
       entry: entry,
       recoveryBatchId: batch.id,
       undoUntil: batch.expiresAt,
+    );
+  }
+
+  Future<TableChatAction> _restoreRecovery(
+    String actionId,
+    Map<String, dynamic> payload,
+    DateTime createdAt,
+  ) async {
+    _requireKeys(payload, const {'batch_id', 'idempotency_key'});
+    final batchId = _requiredString(payload, 'batch_id');
+    final batch = await _tables.restoreRecoveryBatch(batchId, now: createdAt);
+    final table = _tables.findTable(batch.tableId);
+    if (table == null) {
+      throw StateError('恢复批次已结算，但目标表当前不可见。');
+    }
+    return _applied(
+      actionId,
+      'recovery.restore',
+      createdAt,
+      table.title,
+      table,
+      message: '恢复批次已完成。',
     );
   }
 

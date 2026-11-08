@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:personal_ai_inbox/core/agent_usage.dart';
 import 'package:personal_ai_inbox/bootstrap/app_runtime.dart';
 import 'package:personal_ai_inbox/core/chat_models.dart';
 import 'package:personal_ai_inbox/core/deterministic_parser.dart';
@@ -361,10 +362,10 @@ void main() {
           (v2Checkpoint['turns'] as List).single as Map;
       final originalTaskId = originalCheckpointTurn['task_id'];
       v2Checkpoint['schema_version'] = 1;
-      v2Checkpoint.remove('run_budgets');
-      v2Checkpoint.remove('active_budget_run_id');
+      v2Checkpoint.remove('run_usage');
+      v2Checkpoint.remove('active_run_id');
       for (final rawTurn in v2Checkpoint['turns'] as List) {
-        (rawTurn as Map).remove('budget_run_id');
+        (rawTurn as Map).remove('run_id');
       }
       final legacyCheckpoint = jsonEncode(v2Checkpoint);
       await vault.write(AgentTaskCheckpoint.storagePath, legacyCheckpoint);
@@ -379,11 +380,14 @@ void main() {
       final upgradedCheckpoint = jsonDecode(
         (await vault.read(AgentTaskCheckpoint.storagePath))!,
       ) as Map<String, dynamic>;
-      expect(upgradedCheckpoint['schema_version'], 2);
+      expect(
+        upgradedCheckpoint['schema_version'],
+        AgentTaskCheckpoint.currentSchemaVersion,
+      );
       final upgradedTurn = (upgradedCheckpoint['turns'] as List).single as Map;
       expect(upgradedTurn['task_id'], originalTaskId);
       expect(upgradedTurn['assistant_message_id'], original.id);
-      expect(runtime.conversations.agentBudget.usedRequests, 2);
+      expect(runtime.conversations.agentUsage.usedRequests, 2);
       final recoveredBeforeResume = (await chats.findMessage(original.id))!;
       expect(recoveredBeforeResume.toolTranscript, original.toolTranscript);
       final generationAfterUpgrade = await chats.findGeneration(original.id);
@@ -409,7 +413,7 @@ void main() {
         runtime.tables.entries.where((e) => e.title == '唯一内容'),
         hasLength(1),
       );
-      expect(runtime.conversations.agentBudget.usedRequests, 3);
+      expect(runtime.conversations.agentUsage.usedRequests, 3);
     },
   );
   test('setAiPolicy persists the selected action policy', () async {
@@ -518,7 +522,7 @@ void main() {
     final index = MemoryIndexDatabase();
     final background = _CountingBackgroundControl();
     final legacy = AgentTaskCheckpoint(
-      budget: const AgentBudgetCheckpoint(usedRequests: 17),
+      usage: const AgentUsage(usedRequests: 17),
       turns: const [
         AgentTurnCheckpoint(
           taskId: 'task-in-backup',

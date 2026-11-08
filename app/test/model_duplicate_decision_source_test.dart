@@ -12,7 +12,6 @@ import 'package:personal_ai_inbox/data/memory_attachment_store.dart';
 import 'package:personal_ai_inbox/data/memory_conversation_store.dart';
 import 'package:personal_ai_inbox/data/memory_index_database.dart';
 import 'package:personal_ai_inbox/data/memory_vault_store.dart';
-import 'package:personal_ai_inbox/modules/conversation/agent_task_store.dart';
 import 'package:personal_ai_inbox/modules/capture/capture_outcome.dart';
 import 'package:personal_ai_inbox/modules/conversation/content_duplicate_policy.dart';
 import 'package:personal_ai_inbox/modules/conversation/model_duplicate_decision_source.dart';
@@ -77,115 +76,6 @@ void main() {
     expect(budgetCalls, 0);
     source.close();
   });
-
-  test('does not spend budget when the shared budget is exhausted', () async {
-    var httpCalls = 0;
-    final model = _modelClient((_) async {
-      httpCalls++;
-      return _completedResponse(_decisionJson(action: 'create'));
-    });
-    addTearDown(model.close);
-    final source = _source(
-      model: model,
-      canRead: (_) async => true,
-      canModify: (_) async => true,
-      reserveBudget: (_) async => false,
-    );
-
-    final decision = await source.decide(_request());
-
-    expect(decision.action, SemanticDuplicateAction.conflict);
-    expect(decision.reason, contains('预算已用尽'));
-    expect(decision.comparisonComplete, isFalse);
-    expect(httpCalls, 0);
-    source.close();
-  });
-
-  test(
-    'bounds semantic comparison to the remaining active task budget',
-    () async {
-      var budgetRemaining = const Duration(milliseconds: 120);
-      var httpCalls = 0;
-      var budgetCalls = 0;
-      final responseCancelled = Completer<void>();
-      final model = _modelClient((_) async {
-        httpCalls++;
-        final body = StreamController<List<int>>(
-          onCancel: () {
-            if (!responseCancelled.isCompleted) responseCancelled.complete();
-          },
-        );
-        return http.StreamedResponse(
-          body.stream,
-          200,
-          headers: const {'content-type': 'text/event-stream'},
-        );
-      });
-      addTearDown(model.close);
-      const transport = ModelConfiguration(
-        baseUrl: 'https://api.deepseek.com',
-        model: 'deepseek-flash',
-        apiKey: 'test-key',
-        capabilities: ModelCapabilities.deepseekFlash,
-        responseHeaderTimeout: Duration(seconds: 5),
-        streamIdleTimeout: Duration(seconds: 5),
-        totalTimeout: Duration(seconds: 5),
-      );
-      final source = _source(
-        model: model,
-        configuration: transport,
-        remainingActiveDuration: () => budgetRemaining,
-        reserveBudget: (_) async {
-          budgetCalls++;
-          return true;
-        },
-      );
-      final stopwatch = Stopwatch()..start();
-
-      final decision = await source.decide(_request());
-
-      stopwatch.stop();
-      await responseCancelled.future.timeout(const Duration(seconds: 1));
-      expect(decision.action, SemanticDuplicateAction.conflict);
-      expect(decision.reason, contains('超时'));
-      expect(httpCalls, 1);
-      expect(budgetCalls, 1);
-      expect(stopwatch.elapsed, lessThan(const Duration(seconds: 1)));
-      expect(budgetRemaining, lessThan(transport.totalTimeout));
-      source.close();
-    },
-  );
-
-  test(
-    'does not send a semantic request after the active budget expires',
-    () async {
-      var httpCalls = 0;
-      var budgetCalls = 0;
-      var remaining = const Duration(milliseconds: 1);
-      final model = _modelClient((_) async {
-        httpCalls++;
-        return _completedResponse(_decisionJson(action: 'create'));
-      });
-      addTearDown(model.close);
-      final source = _source(
-        model: model,
-        remainingActiveDuration: () => remaining,
-        reserveBudget: (_) async {
-          budgetCalls++;
-          remaining = Duration.zero;
-          return true;
-        },
-      );
-
-      final decision = await source.decide(_request());
-
-      expect(decision.action, SemanticDuplicateAction.conflict);
-      expect(decision.reason, contains('预算'));
-      expect(httpCalls, 0);
-      expect(budgetCalls, 1);
-      source.close();
-    },
-  );
 
   test(
     'rechecks permission after budget persistence before network send',
@@ -634,151 +524,6 @@ void main() {
   );
 
   test(
-    'production semantic comparison timeout follows live task budget',
-    () async {
-      var activeElapsed = Duration.zero;
-      var chatRequests = 0;
-      var duplicateRequests = 0;
-      final bodyCancelled = Completer<void>();
-      final taskStore = MemoryAgentTaskStore()
-        ..checkpoint = const AgentTaskCheckpoint(
-          budget: AgentBudgetCheckpoint(
-            grantedRequests: 10,
-            grantedActiveMillis: 30000,
-          ),
-        );
-      late final AppRuntime runtime;
-      final modelClient = ModelClient(
-        client: MockClient.streaming((request, body) async {
-          final payload =
-              jsonDecode(await body.bytesToString()) as Map<String, dynamic>;
-          final messages = (payload['messages'] as List).cast<Map>();
-          final system = messages.first['content'] as String? ?? '';
-          if (system.contains('You compare one incoming personal-content')) {
-            duplicateRequests++;
-            expect(
-              taskStore.checkpoint.budget.usedRequests,
-              2,
-              reason: 'the main request and semantic request must both be durably reserved before dispatch',
-            );
-            activeElapsed = const Duration(seconds: 30);
-            final responseBody = StreamController<List<int>>(
-              onCancel: () {
-                if (!bodyCancelled.isCompleted) bodyCancelled.complete();
-              },
-            );
-            return http.StreamedResponse(
-              responseBody.stream,
-              200,
-              headers: const {'content-type': 'text/event-stream'},
-            );
-          }
-
-          chatRequests++;
-          expect(
-            chatRequests,
-            1,
-            reason: 'the exhausted task sends no follow-up',
-          );
-          activeElapsed = const Duration(seconds: 28);
-          final table = runtime.tables.tables.singleWhere(
-            (item) => item.role == TableRole.inboxSchedule,
-          );
-          final start = DateTime.parse('2026-11-10T09:00:00+08:00');
-          return _toolCallResponse(
-            id: 'call_budgeted_duplicate',
-            name: 'content_create',
-            arguments: {
-              'table_id': table.id,
-              'type': 'schedule',
-              'title': '期中考试',
-              'body': '第四章到第五章',
-              'start': start.toIso8601String(),
-              'end': start.add(const Duration(hours: 2)).toIso8601String(),
-              'idempotency_key': 'budgeted-semantic-duplicate',
-            },
-          );
-        }),
-      );
-      runtime = await AppRuntime.bootstrap(
-        vaultOverride: MemoryVaultStore(),
-        indexOverride: MemoryIndexDatabase(),
-        conversationStoreOverride: MemoryConversationStore(),
-        attachmentStoreOverride: MemoryAttachmentStore(),
-        agentTaskStore: taskStore,
-        activeBudgetElapsedDuration: () => activeElapsed,
-        settingsOverride: FakeSettingsService(
-          modelKey: 'budgeted-semantic-duplicate',
-        ),
-        modelClient: modelClient,
-      );
-      addTearDown(runtime.shutdown);
-      final table = runtime.tables.tables.singleWhere(
-        (item) => item.role == TableRole.inboxSchedule,
-      );
-      final start = DateTime.parse('2026-11-10T09:00:00+08:00');
-      final end = start.add(const Duration(hours: 2));
-      final evidence = semanticFactEvidenceForContent(
-        type: TableContentType.schedule,
-        start: start,
-        end: end,
-      );
-      final objectEvidence = contentObjectEvidenceKey(
-        type: TableContentType.schedule,
-        title: '期中考试',
-        start: start,
-        end: end,
-      );
-      await runtime.tables.createEntry(
-        TableEntryDocument(
-          id: 'entry_budgeted_duplicate',
-          type: TableContentType.schedule,
-          tableId: table.id,
-          title: '期中考试',
-          revision: 1,
-          createdAt: DateTime(2026, 11, 1, 9),
-          updatedAt: DateTime(2026, 11, 1, 9),
-          body: '第三章',
-          start: start,
-          end: end,
-          extensionFields: {
-            contentIntakeEvidenceExtensionKey: [...evidence, objectEvidence],
-          },
-        ),
-      );
-      final conversation = await runtime.conversations.createConversation(
-        policy: AiPolicy.forPreset(AiPolicyPreset.fullAccess),
-      );
-      final stopwatch = Stopwatch()..start();
-
-      final sending = runtime.conversations.sendChatMessage(
-        conversation.id,
-        text: '补充考试范围到第五章',
-      );
-      await bodyCancelled.future.timeout(const Duration(seconds: 4));
-      stopwatch.stop();
-      await sending.timeout(const Duration(seconds: 2));
-      expect(chatRequests, 1);
-      expect(duplicateRequests, 1);
-      expect(taskStore.checkpoint.budget.usedRequests, 2);
-      expect(runtime.conversations.agentBudget.usedRequests, 2);
-      expect(stopwatch.elapsed, lessThan(const Duration(seconds: 4)));
-      expect(
-        (await runtime.tables.readEntry('entry_budgeted_duplicate'))!.body,
-        '第三章',
-      );
-      expect(
-        runtime.tables.entries.where(
-          (entry) => entry.start?.isAtSameMomentAs(start) ?? false,
-        ),
-        hasLength(1),
-      );
-      final assistant = runtime.conversations.messagesFor(conversation.id).last;
-      expect(assistant.status, ChatMessageStatus.failed);
-    },
-  );
-
-  test(
     'bootstrap capture uses device policy and an independent model budget',
     () async {
       var duplicateRequests = 0;
@@ -892,14 +637,12 @@ ModelSemanticDuplicateDecisionSource _source({
   Future<bool> Function(SemanticDuplicateRequest)? canRead,
   Future<bool> Function(SemanticDuplicateRequest)? canModify,
   Future<bool> Function(SemanticDuplicateRequest)? reserveBudget,
-  DuplicateActiveBudgetRemainingProvider? remainingActiveDuration,
   DuplicateDecisionCancellationProvider? cancellation,
 }) => ModelSemanticDuplicateDecisionSource(
   configurationProvider: () async => configuration,
   canReadCandidates: canRead ?? (_) async => true,
   canModifyExisting: canModify ?? (_) async => true,
   reserveModelRequest: reserveBudget ?? (_) async => true,
-  remainingActiveDuration: remainingActiveDuration,
   cancellation: cancellation,
   modelClient: model,
   clock: () => DateTime.parse('2026-11-03T10:00:00+08:00'),

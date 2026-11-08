@@ -4,6 +4,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import '../../core/agent_usage.dart';
 import '../../core/chat_models.dart';
 import '../../core/models.dart';
 import '../../data/chat_repository.dart';
@@ -37,7 +38,7 @@ class ConversationWorkspace extends ChangeNotifier {
     ImageInputService? imageInputService,
     Duration streamUiBatchInterval = const Duration(milliseconds: 50),
     Duration streamPersistenceInterval = const Duration(milliseconds: 500),
-    Duration Function()? activeBudgetElapsedDuration,
+    Duration Function()? activeUsageElapsedDuration,
   }) : _repository = repository,
        _results = results,
        _chatService = chatService,
@@ -51,7 +52,7 @@ class ConversationWorkspace extends ChangeNotifier {
        _imageInputService = imageInputService ?? ImageInputService(),
        _streamUiBatchInterval = streamUiBatchInterval,
        _streamPersistenceInterval = streamPersistenceInterval,
-       _activeBudgetElapsedDuration = activeBudgetElapsedDuration;
+       _activeUsageElapsedDuration = activeUsageElapsedDuration;
 
   final ChatRepository _repository;
   final ResultLibrary _results;
@@ -65,7 +66,7 @@ class ConversationWorkspace extends ChangeNotifier {
   final ImageInputService _imageInputService;
   final Duration _streamUiBatchInterval;
   final Duration _streamPersistenceInterval;
-  final Duration Function()? _activeBudgetElapsedDuration;
+  final Duration Function()? _activeUsageElapsedDuration;
 
   List<Conversation> _conversations = const [];
   final Map<String, List<ChatMessage>> _messagesByConversation = {};
@@ -74,25 +75,24 @@ class ConversationWorkspace extends ChangeNotifier {
   final List<_ChatTurnRequest> _conversationQueue = [];
   final Queue<_ChatTurnRequest> _steeringQueue = Queue<_ChatTurnRequest>();
   _ChatTurnRequest? _activeTurn;
-  ChatAgentBudget? _activeChatBudget;
+  AgentUsageMeter? _activeUsageMeter;
   String? _runningConversationId;
   Future<void>? _turnWorker;
   Future<void> _taskPersistTail = Future<void>.value();
-  Future<void> _auxiliaryBudgetTail = Future<void>.value();
+  Future<void> _auxiliaryUsageTail = Future<void>.value();
   StreamSubscription<AgentBackgroundCommand>? _backgroundCommands;
   String? _backgroundTaskId;
   String? _backgroundWarning;
   bool _backgroundTaskStarted = false;
-  AgentBudgetCheckpoint _agentBudget = const AgentBudgetCheckpoint();
-  final Map<String, AgentBudgetCheckpoint> _runBudgets = {};
-  String? _budgetRunId;
-  bool _hasAssignedBudget = false;
+  AgentUsage _agentUsage = const AgentUsage();
+  final Map<String, AgentUsage> _runUsage = {};
+  String? _activeRunId;
+  bool _hasAssignedUsage = false;
   int _taskSequence = 0;
   bool _taskSchedulerPaused = false;
   bool _handlingIntakeRetry = false;
   final Set<String> _reviewTaskIds = {};
   final Set<String> _recoveredRunningTaskIds = {};
-  final Map<String, Future<void>> _budgetGrantInFlightByRun = {};
   bool _shuttingDown = false;
   String? _shutdownError;
   StreamSubscription<ChatStreamDelta>? _chatSubscription;
@@ -105,7 +105,7 @@ class ConversationWorkspace extends ChangeNotifier {
   final Map<String, List<TableChatAction>> _liveTableActions = {};
   Timer? _streamUiFlushTimer;
   Timer? _streamPersistenceTimer;
-  Timer? _activeBudgetCheckpointTimer;
+  Timer? _activeUsageCheckpointTimer;
   bool _cancelChatRequested = false;
   _TaskStopReason? _taskStopReason;
   String? _taskInterruptionReason;
@@ -122,9 +122,6 @@ class ConversationWorkspace extends ChangeNotifier {
 
   String? get generatingConversationId => _runningConversationId;
 
-  Duration? get activeTaskRemainingDuration =>
-      _activeChatBudget?.remainingActiveDuration;
-
   Future<AiPolicy?> currentRunningPolicy() async {
     final conversationId = _activeTurn?.conversationId;
     if (conversationId == null) return null;
@@ -132,34 +129,36 @@ class ConversationWorkspace extends ChangeNotifier {
     return conversation?.effectiveAiPolicy;
   }
 
-  Future<bool> reserveAuxiliaryModelRequest() {
+  Future<bool> recordAuxiliaryModelRequest() {
     final requestedTurn = _activeTurn;
-    final reservation = _auxiliaryBudgetTail.then((_) async {
-      if (requestedTurn == null ||
-          !identical(_activeTurn, requestedTurn) ||
-          _agentBudget.exhausted) {
+    final reservation = _auxiliaryUsageTail.then((_) async {
+      if (requestedTurn == null || !identical(_activeTurn, requestedTurn)) {
         return false;
       }
-      final candidate = _agentBudget.copyWith(
-        usedRequests: _agentBudget.usedRequests + 1,
-      );
+      final activeMeter = _activeUsageMeter;
+      activeMeter?.recordRequest();
+      final candidate =
+          activeMeter?.snapshot() ??
+          _agentUsage.copyWith(usedRequests: _agentUsage.usedRequests + 1);
       final snapshot = _taskCheckpointSnapshot();
-      await _persistTaskCheckpoint(
-        checkpoint: AgentTaskCheckpoint(
-          budget: candidate,
-          turns: snapshot.turns,
-          runBudgets: {...snapshot.runBudgets, ?_budgetRunId: candidate},
-          activeBudgetRunId: _budgetRunId,
-        ),
-      );
+      try {
+        await _persistTaskCheckpoint(
+          checkpoint: AgentTaskCheckpoint(
+            usage: candidate,
+            turns: snapshot.turns,
+            runUsage: {...snapshot.runUsage, ?_activeRunId: candidate},
+            activeRunId: _activeRunId,
+          ),
+        );
+      } catch (_) {
+        // Usage is diagnostic; a failed checkpoint must not block execution.
+      }
       if (!identical(_activeTurn, requestedTurn)) return false;
-      _agentBudget = _agentBudget.copyWith(
-        usedRequests: candidate.usedRequests,
-      );
+      _agentUsage = candidate;
       notifyListeners();
       return true;
     });
-    _auxiliaryBudgetTail = reservation.then<void>((_) {}, onError: (_, _) {});
+    _auxiliaryUsageTail = reservation.then<void>((_) {}, onError: (_, _) {});
     return reservation;
   }
 
@@ -171,7 +170,7 @@ class ConversationWorkspace extends ChangeNotifier {
   bool get hasPendingChatTurns =>
       _steeringQueue.isNotEmpty || _conversationQueue.isNotEmpty;
 
-  AgentBudgetCheckpoint get agentBudget => _agentBudget;
+  AgentUsage get agentUsage => _agentUsage;
 
   bool get hasTasksNeedingReview => _reviewTaskIds.isNotEmpty;
 
@@ -187,13 +186,13 @@ class ConversationWorkspace extends ChangeNotifier {
       if (turn.status == AgentTurnCheckpointStatus.paused ||
           turn.status == AgentTurnCheckpointStatus.waitingInput ||
           turn.status == AgentTurnCheckpointStatus.needsReview) {
-        grouped.putIfAbsent(turn.effectiveBudgetRunId, () => []).add(turn);
+        grouped.putIfAbsent(turn.effectiveRunId, () => []).add(turn);
       }
     }
     return List.unmodifiable([
       for (final entry in grouped.entries)
         AgentTaskSummary(
-          budgetRunId: entry.key,
+          runId: entry.key,
           conversationId: entry.value.first.conversation.id,
           taskIds: List.unmodifiable(entry.value.map((turn) => turn.taskId)),
           needsReview: entry.value.any(
@@ -202,19 +201,17 @@ class ConversationWorkspace extends ChangeNotifier {
           awaitingInput: entry.value.any(
             (turn) => turn.status == AgentTurnCheckpointStatus.waitingInput,
           ),
-          budget:
-              _runBudgets[entry.key] ??
-              (entry.key == _budgetRunId
-                  ? _agentBudget
-                  : const AgentBudgetCheckpoint()),
+          usage:
+              _runUsage[entry.key] ??
+              (entry.key == _activeRunId ? _agentUsage : const AgentUsage()),
         ),
     ]);
   }
 
-  AgentBudgetCheckpoint budgetForTask(String taskId) {
+  AgentUsage usageForTask(String taskId) {
     final turn = _findQueuedTask(taskId);
     if (turn == null) throw StateError('任务已不在等待队列中。');
-    return _budgetForRun(turn.effectiveBudgetRunId);
+    return _usageForRun(turn.effectiveRunId);
   }
 
   AgentTaskStore get taskStore => _taskStore;
@@ -237,70 +234,23 @@ class ConversationWorkspace extends ChangeNotifier {
 
   Future<void> resumeTasks({
     String? taskId,
-    int additionalRequests = 0,
-    Duration additionalActive = Duration.zero,
-    bool approveUncertainEffects = false,
-  }) => _grantBudgetOnce(
-    _targetBudgetRunId(taskId),
-    () => _resumeTasks(
-      taskId: taskId,
-      additionalRequests: additionalRequests,
-      additionalActive: additionalActive,
-      approveUncertainEffects: approveUncertainEffects,
-    ),
-  );
-
-  Future<void> _grantBudgetOnce(
-    String runId,
-    Future<void> Function() operation,
-  ) {
-    final pending = _budgetGrantInFlightByRun[runId];
-    if (pending != null) return pending;
-    late final Future<void> next;
-    next = _auxiliaryBudgetTail.then((_) => operation()).whenComplete(() {
-      if (identical(_budgetGrantInFlightByRun[runId], next)) {
-        _budgetGrantInFlightByRun.remove(runId);
-      }
-    });
-    _budgetGrantInFlightByRun[runId] = next;
-    _auxiliaryBudgetTail = next.then<void>((_) {}, onError: (_, _) {});
-    return next;
-  }
-
-  Future<void> _resumeTasks({
-    String? taskId,
-    int additionalRequests = 0,
-    Duration additionalActive = Duration.zero,
     bool approveUncertainEffects = false,
   }) async {
-    if (additionalRequests < 0 || additionalActive.isNegative) {
-      throw ArgumentError('追加额度不能为负数');
-    }
-    final targetRunId = _targetBudgetRunId(taskId);
+    final targetRunId = _targetRunId(taskId);
     final targetTaskIds = _taskIdsForRun(targetRunId);
     final reviewIds = _reviewTaskIds.intersection(targetTaskIds);
     if (reviewIds.isNotEmpty && !approveUncertainEffects) {
       throw AgentTaskReviewRequiredException(Set.unmodifiable(reviewIds));
     }
-    final currentBudget = _budgetForRun(targetRunId);
-    final candidateBudget = currentBudget.copyWith(
-      grantedRequests: currentBudget.grantedRequests + additionalRequests,
-      grantedActiveMillis:
-          currentBudget.grantedActiveMillis + additionalActive.inMilliseconds,
-    );
     final snapshot = _taskCheckpointSnapshot();
     await _persistTaskCheckpoint(
       checkpoint: AgentTaskCheckpoint(
-        budget: targetRunId == _defaultBudgetRunId
-            ? candidateBudget
-            : _agentBudget,
-        runBudgets: targetRunId == _defaultBudgetRunId
-            ? snapshot.runBudgets
-            : {...snapshot.runBudgets, targetRunId: candidateBudget},
-        activeBudgetRunId: _budgetRunId,
+        usage: _agentUsage,
+        runUsage: snapshot.runUsage,
+        activeRunId: _activeRunId,
         turns: [
           for (final turn in snapshot.turns)
-            if (turn.effectiveBudgetRunId == targetRunId &&
+            if (turn.effectiveRunId == targetRunId &&
                 (turn.status == AgentTurnCheckpointStatus.paused ||
                     turn.status == AgentTurnCheckpointStatus.waitingInput ||
                     (approveUncertainEffects &&
@@ -311,15 +261,9 @@ class ConversationWorkspace extends ChangeNotifier {
         ],
       ),
     );
-    if (targetRunId != _defaultBudgetRunId) {
-      _runBudgets[targetRunId] = candidateBudget;
-    }
-    if (_budgetRunId == targetRunId || targetRunId == _defaultBudgetRunId) {
-      _agentBudget = candidateBudget;
-    }
     if (approveUncertainEffects) {
       for (final turn in [..._steeringQueue, ..._conversationQueue]) {
-        if (turn.effectiveBudgetRunId == targetRunId &&
+        if (turn.effectiveRunId == targetRunId &&
             (_reviewTaskIds.contains(turn.taskId) ||
                 turn.status == AgentTurnCheckpointStatus.paused ||
                 turn.status == AgentTurnCheckpointStatus.waitingInput)) {
@@ -329,7 +273,7 @@ class ConversationWorkspace extends ChangeNotifier {
       _reviewTaskIds.removeAll(reviewIds);
     } else {
       for (final turn in [..._steeringQueue, ..._conversationQueue]) {
-        if (turn.effectiveBudgetRunId == targetRunId &&
+        if (turn.effectiveRunId == targetRunId &&
             (turn.status == AgentTurnCheckpointStatus.paused ||
                 turn.status == AgentTurnCheckpointStatus.waitingInput)) {
           turn.status = AgentTurnCheckpointStatus.queued;
@@ -338,59 +282,6 @@ class ConversationWorkspace extends ChangeNotifier {
     }
     _refreshTaskSchedulerPaused();
     _scheduleTurnWorker();
-    notifyListeners();
-  }
-
-  Future<void> addTaskBudget({
-    String? taskId,
-    int additionalRequests = 0,
-    Duration additionalActive = Duration.zero,
-  }) => _grantBudgetOnce(
-    _targetBudgetRunId(taskId),
-    () => _addTaskBudget(
-      taskId: taskId,
-      additionalRequests: additionalRequests,
-      additionalActive: additionalActive,
-    ),
-  );
-
-  Future<void> _addTaskBudget({
-    String? taskId,
-    int additionalRequests = 0,
-    Duration additionalActive = Duration.zero,
-  }) async {
-    if (additionalRequests < 0 || additionalActive.isNegative) {
-      throw ArgumentError('追加额度不能为负数');
-    }
-    final targetRunId = _targetBudgetRunId(taskId);
-    final currentBudget = _budgetForRun(targetRunId);
-    final candidateBudget = currentBudget.copyWith(
-      grantedRequests: currentBudget.grantedRequests + additionalRequests,
-      grantedActiveMillis:
-          currentBudget.grantedActiveMillis + additionalActive.inMilliseconds,
-    );
-    await _persistTaskCheckpoint(
-      checkpoint: AgentTaskCheckpoint(
-        budget:
-            _budgetRunId == targetRunId || targetRunId == _defaultBudgetRunId
-            ? candidateBudget
-            : _agentBudget,
-        runBudgets: targetRunId == _defaultBudgetRunId
-            ? _taskCheckpointSnapshot().runBudgets
-            : {
-                ..._taskCheckpointSnapshot().runBudgets,
-                targetRunId: candidateBudget,
-              },
-        activeBudgetRunId: _budgetRunId,
-        turns: _taskCheckpointSnapshot().turns,
-      ),
-    );
-    if (targetRunId != _defaultBudgetRunId) {
-      _runBudgets[targetRunId] = candidateBudget;
-    }
-    if (_budgetRunId == targetRunId || targetRunId == _defaultBudgetRunId) {
-      _agentBudget = candidateBudget;
-    }
     notifyListeners();
   }
 
@@ -404,34 +295,31 @@ class ConversationWorkspace extends ChangeNotifier {
 
   Set<String> _taskIdsForRun(String runId) => {
     for (final turn in [..._steeringQueue, ..._conversationQueue])
-      if (turn.effectiveBudgetRunId == runId) turn.taskId,
-    if (_activeTurn?.effectiveBudgetRunId == runId) _activeTurn!.taskId,
+      if (turn.effectiveRunId == runId) turn.taskId,
+    if (_activeTurn?.effectiveRunId == runId) _activeTurn!.taskId,
   };
 
-  String _targetBudgetRunId(String? taskId) {
+  String _targetRunId(String? taskId) {
     if (taskId != null) {
       final turn = _findQueuedTask(taskId);
       if (turn == null) throw StateError('任务已不在等待队列中。');
-      return turn.effectiveBudgetRunId;
+      return turn.effectiveRunId;
     }
     final actionTasks = tasksNeedingAction;
-    if (actionTasks.length == 1) return actionTasks.single.budgetRunId;
+    if (actionTasks.length == 1) return actionTasks.single.runId;
     if (actionTasks.length > 1) {
       throw StateError('有多个暂停任务，请指定要继续的任务。');
     }
-    if (_budgetRunId != null) return _budgetRunId!;
-    return _defaultBudgetRunId;
+    if (_activeRunId != null) return _activeRunId!;
+    return _defaultRunId;
   }
 
-  AgentBudgetCheckpoint _budgetForRun(String runId) =>
-      runId == _defaultBudgetRunId
-      ? _agentBudget
-      : _runBudgets[runId] ??
-            (runId == _budgetRunId
-                ? _agentBudget
-                : const AgentBudgetCheckpoint());
+  AgentUsage _usageForRun(String runId) => runId == _defaultRunId
+      ? _agentUsage
+      : _runUsage[runId] ??
+            (runId == _activeRunId ? _agentUsage : const AgentUsage());
 
-  static const _defaultBudgetRunId = '__default__';
+  static const _defaultRunId = '__default__';
 
   void _refreshTaskSchedulerPaused() {
     _taskSchedulerPaused = [..._steeringQueue, ..._conversationQueue].any(
@@ -505,10 +393,10 @@ class ConversationWorkspace extends ChangeNotifier {
       (command) => unawaited(_handleBackgroundCommand(command)),
     );
     final checkpoint = await _taskStore.load();
-    _agentBudget = checkpoint.budget;
-    _runBudgets.addAll(checkpoint.runBudgets);
-    _budgetRunId = checkpoint.activeBudgetRunId;
-    _hasAssignedBudget = _runBudgets.isNotEmpty;
+    _agentUsage = checkpoint.usage;
+    _runUsage.addAll(checkpoint.runUsage);
+    _activeRunId = checkpoint.activeRunId;
+    _hasAssignedUsage = _runUsage.isNotEmpty;
     var checkpointNeedsSave = false;
     for (final saved in checkpoint.turns) {
       final conversation = await _repository.findConversation(
@@ -541,7 +429,7 @@ class ConversationWorkspace extends ChangeNotifier {
       }
       final turn = _ChatTurnRequest(
         taskId: saved.taskId,
-        budgetRunId: saved.effectiveBudgetRunId,
+        runId: saved.effectiveRunId,
         sequence: saved.sequence,
         conversation: conversation,
         userMessageId: saved.userMessageId,
@@ -1121,7 +1009,7 @@ class ConversationWorkspace extends ChangeNotifier {
     final isSteering = _runningConversationId == conversationId;
     final turn = _ChatTurnRequest(
       taskId: _newTaskId(),
-      budgetRunId: isSteering ? _activeTurn?.effectiveBudgetRunId : null,
+      runId: isSteering ? _activeTurn?.effectiveRunId : null,
       sequence: _taskSequence++,
       conversation: updatedConversation,
       userMessageId: userMessage.id,
@@ -1180,29 +1068,13 @@ class ConversationWorkspace extends ChangeNotifier {
         notifyListeners();
         return;
       }
-      if (_budgetRunId != turn.effectiveBudgetRunId) {
-        if (_budgetRunId != null) _runBudgets[_budgetRunId!] = _agentBudget;
-        _budgetRunId = turn.effectiveBudgetRunId;
-        _agentBudget =
-            _runBudgets[_budgetRunId] ??
-            (_hasAssignedBudget ? const AgentBudgetCheckpoint() : _agentBudget);
-        _hasAssignedBudget = true;
-      }
-      if (_agentBudget.exhausted) {
-        turn.status = AgentTurnCheckpointStatus.paused;
-        _requeueTurn(turn);
-        _pauseQueuedTurnsForRun(turn.effectiveBudgetRunId);
-        _refreshTaskSchedulerPaused();
-        await _persistTaskControlMessage(
-          turn,
-          reason: _agentBudget.remainingRequests <= 0
-              ? '任务预算已用尽：累计模型请求达到 ${_agentBudget.grantedRequests} 次。追加额度后可继续。'
-              : '任务预算已用尽：累计活动执行达到 ${_agentBudget.grantedActive.inMinutes} 分钟。追加额度后可继续。',
-        );
-        await _persistTaskCheckpoint();
-        if (!turn.completion.isCompleted) turn.completion.complete();
-        notifyListeners();
-        continue;
+      if (_activeRunId != turn.effectiveRunId) {
+        if (_activeRunId != null) _runUsage[_activeRunId!] = _agentUsage;
+        _activeRunId = turn.effectiveRunId;
+        _agentUsage =
+            _runUsage[_activeRunId] ??
+            (_hasAssignedUsage ? const AgentUsage() : _agentUsage);
+        _hasAssignedUsage = true;
       }
       _runningConversationId = turn.conversation.id;
       _activeTurn = turn;
@@ -1242,7 +1114,7 @@ class ConversationWorkspace extends ChangeNotifier {
               turn.status = AgentTurnCheckpointStatus.waitingInput;
               _requeueTurn(turn);
               _pauseQueuedTurnsForRun(
-                turn.effectiveBudgetRunId,
+                turn.effectiveRunId,
                 status: AgentTurnCheckpointStatus.waitingInput,
               );
             } else {
@@ -1253,12 +1125,12 @@ class ConversationWorkspace extends ChangeNotifier {
             turn.status = AgentTurnCheckpointStatus.needsReview;
             _reviewTaskIds.add(turn.taskId);
             _requeueTurn(turn);
-            _pauseQueuedTurnsForRun(turn.effectiveBudgetRunId);
+            _pauseQueuedTurnsForRun(turn.effectiveRunId);
           case ChatMessageStatus.interrupted:
             if (_taskStopReason == _TaskStopReason.pause) {
               turn.status = AgentTurnCheckpointStatus.paused;
               _requeueTurn(turn);
-              _pauseQueuedTurnsForRun(turn.effectiveBudgetRunId);
+              _pauseQueuedTurnsForRun(turn.effectiveRunId);
             } else if (_taskStopReason == _TaskStopReason.cancel) {
               turn.settled = true;
               _reviewTaskIds.remove(turn.taskId);
@@ -1266,13 +1138,13 @@ class ConversationWorkspace extends ChangeNotifier {
               turn.status = AgentTurnCheckpointStatus.needsReview;
               _reviewTaskIds.add(turn.taskId);
               _requeueTurn(turn);
-              _pauseQueuedTurnsForRun(turn.effectiveBudgetRunId);
+              _pauseQueuedTurnsForRun(turn.effectiveRunId);
             }
           case ChatMessageStatus.streaming || null:
             turn.status = AgentTurnCheckpointStatus.needsReview;
             _reviewTaskIds.add(turn.taskId);
             _requeueTurn(turn);
-            _pauseQueuedTurnsForRun(turn.effectiveBudgetRunId);
+            _pauseQueuedTurnsForRun(turn.effectiveRunId);
         }
         _refreshTaskSchedulerPaused();
         await _persistTaskCheckpoint();
@@ -1283,7 +1155,7 @@ class ConversationWorkspace extends ChangeNotifier {
         turn.status = AgentTurnCheckpointStatus.needsReview;
         _reviewTaskIds.add(turn.taskId);
         _requeueTurn(turn);
-        _pauseQueuedTurnsForRun(turn.effectiveBudgetRunId);
+        _pauseQueuedTurnsForRun(turn.effectiveRunId);
         _refreshTaskSchedulerPaused();
         var completionError = error;
         var completionStackTrace = stackTrace;
@@ -1332,7 +1204,7 @@ class ConversationWorkspace extends ChangeNotifier {
       turn.status == AgentTurnCheckpointStatus.queued &&
       ![..._steeringQueue, ..._conversationQueue].any(
         (other) =>
-            other.effectiveBudgetRunId == turn.effectiveBudgetRunId &&
+            other.effectiveRunId == turn.effectiveRunId &&
             (other.status == AgentTurnCheckpointStatus.paused ||
                 other.status == AgentTurnCheckpointStatus.waitingInput ||
                 other.status == AgentTurnCheckpointStatus.needsReview),
@@ -1343,7 +1215,7 @@ class ConversationWorkspace extends ChangeNotifier {
     AgentTurnCheckpointStatus status = AgentTurnCheckpointStatus.paused,
   }) {
     for (final turn in [..._steeringQueue, ..._conversationQueue]) {
-      if (turn.effectiveBudgetRunId == runId &&
+      if (turn.effectiveRunId == runId &&
           turn.status == AgentTurnCheckpointStatus.queued) {
         turn.status = status;
       }
@@ -1369,7 +1241,7 @@ class ConversationWorkspace extends ChangeNotifier {
       return true;
     });
     for (final turn in promoted) {
-      turn.budgetRunId = _activeTurn?.effectiveBudgetRunId;
+      turn.runId = _activeTurn?.effectiveRunId;
       turn.kind = AgentTurnQueueKind.steering;
       turn.status = AgentTurnCheckpointStatus.queued;
       _steeringQueue.addLast(turn);
@@ -1437,15 +1309,11 @@ class ConversationWorkspace extends ChangeNotifier {
     final toolCalls = <int, ToolCallAccumulator>{};
     final reasoningContent = StringBuffer();
     final toolTranscript = <Map<String, dynamic>>[];
-    final budget = ChatAgentBudget(
-      maxRequests: _agentBudget.grantedRequests,
-      maxActiveDuration: _agentBudget.grantedActive,
-      initialRequestCount: _agentBudget.usedRequests,
-      initialActiveDuration: _agentBudget.usedActive,
-      requestReserver: reserveAuxiliaryModelRequest,
-      activeElapsedDuration: _activeBudgetElapsedDuration,
+    final usageMeter = AgentUsageMeter(
+      initial: _agentUsage,
+      activeElapsedDuration: _activeUsageElapsedDuration,
     );
-    _activeChatBudget = budget;
+    _activeUsageMeter = usageMeter;
     var persistenceDirty = false;
     ChatStreamTermination? termination;
     final done = Completer<void>();
@@ -1453,7 +1321,7 @@ class ConversationWorkspace extends ChangeNotifier {
 
     Future<void> persistSnapshot() async {
       persistenceDirty = false;
-      _syncAgentBudget(budget);
+      _syncAgentUsage(usageMeter);
       final snapshot = _withLiveToolActions(assistant);
       await _saveMessage(snapshot);
       final storedGeneration = await _repository.findGeneration(
@@ -1505,7 +1373,7 @@ class ConversationWorkspace extends ChangeNotifier {
                 assistantMessageId: assistantMessageId,
                 excludedMessageIds: excludedMessageIds,
                 thinkingEnabled: thinkingEnabled,
-                budget: budget,
+                usage: usageMeter,
                 isCancelled: () => cancellation.isCompleted,
                 cancellationSignal: cancellation.future,
                 resumeToolTranscript: assistant.toolTranscript,
@@ -1568,7 +1436,7 @@ class ConversationWorkspace extends ChangeNotifier {
               );
             }
             schedulePersistence();
-            _syncAgentBudget(budget);
+            _syncAgentUsage(usageMeter);
             _notifySoon();
             if (termination != null && !done.isCompleted) {
               done.complete();
@@ -1587,8 +1455,8 @@ class ConversationWorkspace extends ChangeNotifier {
           cancelOnError: false,
         );
         var checkpointInFlight = false;
-        _activeBudgetCheckpointTimer?.cancel();
-        _activeBudgetCheckpointTimer = Timer.periodic(
+        _activeUsageCheckpointTimer?.cancel();
+        _activeUsageCheckpointTimer = Timer.periodic(
           _streamPersistenceInterval,
           (_) {
             if (checkpointInFlight ||
@@ -1597,17 +1465,11 @@ class ConversationWorkspace extends ChangeNotifier {
               return;
             }
             checkpointInFlight = true;
-            _syncAgentBudget(budget);
+            _syncAgentUsage(usageMeter);
             unawaited(
               _persistTaskCheckpoint()
                   .catchError((Object error) {
-                    _taskInterruptionReason = '活动时间检查点保存失败：$error';
-                    unawaited(
-                      _interruptActiveGeneration(
-                        reason: _taskInterruptionReason!,
-                        finished: _chatGenerationFinished,
-                      ),
-                    );
+                    _backgroundWarning ??= '活动用量检查点保存失败：$error';
                   })
                   .whenComplete(() => checkpointInFlight = false),
             );
@@ -1697,10 +1559,11 @@ class ConversationWorkspace extends ChangeNotifier {
               updatedAt: DateTime.now(),
             );
     } finally {
-      _syncAgentBudget(budget);
-      if (identical(_activeChatBudget, budget)) _activeChatBudget = null;
-      _activeBudgetCheckpointTimer?.cancel();
-      _activeBudgetCheckpointTimer = null;
+      usageMeter.pauseActivity();
+      _syncAgentUsage(usageMeter);
+      if (identical(_activeUsageMeter, usageMeter)) _activeUsageMeter = null;
+      _activeUsageCheckpointTimer?.cancel();
+      _activeUsageCheckpointTimer = null;
       _streamPersistenceTimer?.cancel();
       _streamPersistenceTimer = null;
       try {
@@ -1825,15 +1688,14 @@ class ConversationWorkspace extends ChangeNotifier {
       for (final turn in _conversationQueue) _turnCheckpoint(turn, turn.status),
     ];
     return AgentTaskCheckpoint(
-      budget: _agentBudget,
-      activeBudgetRunId: _budgetRunId,
-      runBudgets: {
-        ..._runBudgets,
+      usage: _agentUsage,
+      activeRunId: _activeRunId,
+      runUsage: {
+        ..._runUsage,
         for (final turn in turns)
-          turn.effectiveBudgetRunId:
-              _runBudgets[turn.effectiveBudgetRunId] ??
-              const AgentBudgetCheckpoint(),
-        ?_budgetRunId: _agentBudget,
+          turn.effectiveRunId:
+              _runUsage[turn.effectiveRunId] ?? const AgentUsage(),
+        ?_activeRunId: _agentUsage,
       },
       turns: List.unmodifiable(turns),
     );
@@ -1844,7 +1706,7 @@ class ConversationWorkspace extends ChangeNotifier {
     AgentTurnCheckpointStatus status,
   ) => AgentTurnCheckpoint(
     taskId: turn.taskId,
-    budgetRunId: turn.effectiveBudgetRunId,
+    runId: turn.effectiveRunId,
     conversationId: turn.conversation.id,
     userMessageId: turn.userMessageId,
     kind: turn.kind,
@@ -2642,39 +2504,6 @@ class ConversationWorkspace extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _persistTaskControlMessage(
-    _ChatTurnRequest turn, {
-    required String reason,
-  }) async {
-    final now = DateTime.now();
-    final assistant = ChatMessage(
-      id: _repository.newMessageId(),
-      conversationId: turn.conversation.id,
-      role: ChatRole.assistant,
-      content: '',
-      status: ChatMessageStatus.interrupted,
-      createdAt: now,
-      updatedAt: now,
-      error: reason,
-    );
-    turn.assistantMessageId = assistant.id;
-    await _saveMessage(assistant);
-    _replaceMessage(assistant);
-    await _saveGeneration(
-      GenerationRun(
-        assistantMessageId: assistant.id,
-        conversationId: turn.conversation.id,
-        userMessageId: turn.userMessageId,
-        status: GenerationStatus.interrupted,
-        responseText: '',
-        toolCalls: const [],
-        createdAt: now,
-        updatedAt: now,
-        error: reason,
-      ),
-    );
-  }
-
   Future<void> _handleBackgroundCommand(AgentBackgroundCommand command) async {
     final active = _activeTurn;
     if (active == null || active.assistantMessageId != command.taskId) return;
@@ -2819,25 +2648,10 @@ class ConversationWorkspace extends ChangeNotifier {
     }
   }
 
-  double get _backgroundProgress {
-    final requestProgress = _agentBudget.grantedRequests == 0
-        ? 0.0
-        : _agentBudget.usedRequests / _agentBudget.grantedRequests;
-    final activeProgress = _agentBudget.grantedActive.inMicroseconds == 0
-        ? 0.0
-        : _agentBudget.usedActive.inMicroseconds /
-              _agentBudget.grantedActive.inMicroseconds;
-    return (requestProgress > activeProgress ? requestProgress : activeProgress)
-        .clamp(0.0, 1.0);
-  }
+  double? get _backgroundProgress => null;
 
-  void _syncAgentBudget(ChatAgentBudget budget) {
-    _agentBudget = _agentBudget.copyWith(
-      usedActiveMillis:
-          budget.activeDuration.inMilliseconds > _agentBudget.usedActiveMillis
-          ? budget.activeDuration.inMilliseconds
-          : _agentBudget.usedActiveMillis,
-    );
+  void _syncAgentUsage(AgentUsageMeter meter) {
+    _agentUsage = meter.snapshot();
   }
 
   Future<void> pauseGeneration({String reason = '用户暂停了任务。'}) async {
@@ -3149,7 +2963,7 @@ class ConversationWorkspace extends ChangeNotifier {
       intakeRetryAttempt: nextAttempt,
       intakeRetryOperationId: operationId,
       intakeRetryPending: true,
-      message: '已保存重新扫描意图，正在复核权限和预算。',
+      message: '已保存重新扫描意图，正在复核权限和任务状态。',
     );
     await _updateTableChatAction(message, pending);
     final turn = [
@@ -3186,43 +3000,35 @@ class ConversationWorkspace extends ChangeNotifier {
     (message, action) = found;
     if (!action.retryableIntake && !action.intakeRetryPending) return;
 
-    final previousRunId = _budgetRunId;
-    final previousBudget = _agentBudget;
-    if (previousRunId != null) _runBudgets[previousRunId] = previousBudget;
-    final retryRunId = turn.effectiveBudgetRunId;
-    final retryRunBudget =
-        _runBudgets[retryRunId] ??
-        (previousRunId == retryRunId
-            ? previousBudget
-            : const AgentBudgetCheckpoint());
-    _budgetRunId = retryRunId;
-    _agentBudget = retryRunBudget;
+    final previousRunId = _activeRunId;
+    final previousUsage = _agentUsage;
+    if (previousRunId != null) _runUsage[previousRunId] = previousUsage;
+    final retryRunId = turn.effectiveRunId;
+    final retryRunUsage =
+        _runUsage[retryRunId] ??
+        (previousRunId == retryRunId ? previousUsage : const AgentUsage());
+    _activeRunId = retryRunId;
+    _agentUsage = retryRunUsage;
     _activeTurn = turn;
     _runningConversationId = turn.conversationId;
     _handlingIntakeRetry = true;
-    final activeBudget = ChatAgentBudget(
-      maxRequests: _agentBudget.grantedRequests,
-      maxActiveDuration: _agentBudget.grantedActive,
-      initialRequestCount: _agentBudget.usedRequests,
-      initialActiveDuration: _agentBudget.usedActive,
-      requestReserver: reserveAuxiliaryModelRequest,
-      activeElapsedDuration: _activeBudgetElapsedDuration,
+    final activeUsage = AgentUsageMeter(
+      initial: _agentUsage,
+      activeElapsedDuration: _activeUsageElapsedDuration,
     )..beginActivity();
-    _activeChatBudget = activeBudget;
+    _activeUsageMeter = activeUsage;
     var checkpointInFlight = false;
-    var checkpointFailed = false;
-    _activeBudgetCheckpointTimer?.cancel();
-    _activeBudgetCheckpointTimer = Timer.periodic(_streamPersistenceInterval, (
+    _activeUsageCheckpointTimer?.cancel();
+    _activeUsageCheckpointTimer = Timer.periodic(_streamPersistenceInterval, (
       _,
     ) {
       if (checkpointInFlight || _cancelChatRequested) return;
       checkpointInFlight = true;
-      _syncAgentBudget(activeBudget);
+      _syncAgentUsage(activeUsage);
       unawaited(
         _persistTaskCheckpoint()
             .catchError((Object error) {
-              checkpointFailed = true;
-              _backgroundWarning ??= '接收重扫预算检查点保存失败：$error';
+              _backgroundWarning ??= '接收重扫用量检查点保存失败：$error';
             })
             .whenComplete(() => checkpointInFlight = false),
       );
@@ -3243,20 +3049,10 @@ class ConversationWorkspace extends ChangeNotifier {
         await _updateTableChatAction(message, stillPending);
         return;
       }
-      if (activeBudget.exhausted) {
-        final stillPending = pending.copyWith(
-          message: '任务预算不足以重新扫描；扫描编号仍待执行，追加额度后可继续。',
-        );
-        await _updateTableChatAction(message, stillPending);
-        return;
-      }
       final result = await processor.retryIncompleteIntake(
         pending,
         operationId: operationId,
       );
-      if (checkpointFailed) {
-        throw StateError('重扫预算检查点保存失败；保留操作编号以便安全恢复。');
-      }
       final updated = result.copyWith(
         requestFingerprint: action.requestFingerprint,
         intakeRetryAttempt: nextAttempt,
@@ -3274,21 +3070,21 @@ class ConversationWorkspace extends ChangeNotifier {
       );
       await _updateTableChatAction(message, retryable);
     } finally {
-      activeBudget.pauseActivity();
-      _syncAgentBudget(activeBudget);
-      _activeBudgetCheckpointTimer?.cancel();
-      _activeBudgetCheckpointTimer = null;
-      if (identical(_activeChatBudget, activeBudget)) _activeChatBudget = null;
+      activeUsage.pauseActivity();
+      _syncAgentUsage(activeUsage);
+      _activeUsageCheckpointTimer?.cancel();
+      _activeUsageCheckpointTimer = null;
+      if (identical(_activeUsageMeter, activeUsage)) _activeUsageMeter = null;
       _activeTurn = null;
       _runningConversationId = null;
       _handlingIntakeRetry = false;
-      _runBudgets[retryRunId] = _agentBudget;
-      _budgetRunId = previousRunId;
-      _agentBudget = previousRunId == retryRunId
-          ? _runBudgets[retryRunId]!
+      _runUsage[retryRunId] = _agentUsage;
+      _activeRunId = previousRunId;
+      _agentUsage = previousRunId == retryRunId
+          ? _runUsage[retryRunId]!
           : previousRunId == null
-          ? previousBudget
-          : _runBudgets[previousRunId] ?? previousBudget;
+          ? previousUsage
+          : _runUsage[previousRunId] ?? previousUsage;
       await _persistTaskCheckpoint();
       _scheduleTurnWorker();
       notifyListeners();
@@ -3538,12 +3334,12 @@ class _ChatTurnRequest {
     this.status = AgentTurnCheckpointStatus.queued,
     this.assistantMessageId,
     this.excludedMessageIds = const {},
-    this.budgetRunId,
+    this.runId,
   });
 
   final String taskId;
-  String? budgetRunId;
-  String get effectiveBudgetRunId => budgetRunId ?? taskId;
+  String? runId;
+  String get effectiveRunId => runId ?? taskId;
   final int sequence;
   final Conversation conversation;
   final String userMessageId;
@@ -3561,20 +3357,20 @@ class _ChatTurnRequest {
 
 class AgentTaskSummary {
   const AgentTaskSummary({
-    required this.budgetRunId,
+    required this.runId,
     required this.conversationId,
     required this.taskIds,
     required this.needsReview,
     required this.awaitingInput,
-    required this.budget,
+    required this.usage,
   });
 
-  final String budgetRunId;
+  final String runId;
   final String conversationId;
   final List<String> taskIds;
   final bool needsReview;
   final bool awaitingInput;
-  final AgentBudgetCheckpoint budget;
+  final AgentUsage usage;
 }
 
 enum _TaskStopReason { pause, cancel }

@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:personal_ai_inbox/core/agent_usage.dart';
 import 'package:personal_ai_inbox/core/ai_policy.dart';
 import 'package:personal_ai_inbox/core/chat_models.dart';
 import 'package:personal_ai_inbox/core/deterministic_parser.dart';
@@ -43,13 +44,6 @@ void main() {
         .messagesFor(harness.conversation.id)
         .singleWhere((message) => message.role == ChatRole.assistant);
     var action = assistant.tableActions.single;
-    final task = harness.taskStore.checkpoint.turns.singleWhere(
-      (turn) => turn.assistantMessageId == assistant.id,
-    );
-    await harness.workspace.addTaskBudget(
-      taskId: task.taskId,
-      additionalRequests: 2,
-    );
     harness.source.incompleteThrough = 1;
     harness.revokePolicyAtGuard = true;
     await harness.workspace.retryIncompleteIntakeAction(action.id);
@@ -126,16 +120,8 @@ void main() {
     action = assistant.tableActions.single;
     expect(action.intakeRetryOperationId, persistedRetryId);
     expect(action.intakeRetryPending, isTrue);
-    expect(action.message, contains('预算不足'));
-    expect(harness.source.calls, 1, reason: 'exhausted retry must not scan');
+    expect(action.message, isNot(contains('预算不足')));
     final pendingAssistantId = assistant.id;
-    final task = harness.taskStore.checkpoint.turns.singleWhere(
-      (turn) => turn.assistantMessageId == pendingAssistantId,
-    );
-    await harness.workspace.addTaskBudget(
-      taskId: task.taskId,
-      additionalRequests: 2,
-    );
 
     await harness.workspace.shutdown();
     await harness.chats.setAiPolicy(harness.conversation.id, _writePolicy());
@@ -298,9 +284,9 @@ void main() {
       final checkpoint = harness.taskStore.checkpoint;
       await harness.taskStore.save(
         AgentTaskCheckpoint(
-          budget: checkpoint.budget,
-          runBudgets: checkpoint.runBudgets,
-          activeBudgetRunId: checkpoint.activeBudgetRunId,
+          usage: checkpoint.usage,
+          runUsage: checkpoint.runUsage,
+          activeRunId: checkpoint.activeRunId,
           turns: [
             for (final turn in checkpoint.turns)
               turn.taskId == taskId
@@ -333,9 +319,9 @@ void main() {
       final ambiguousCheckpoint = harness.taskStore.checkpoint;
       await harness.taskStore.save(
         AgentTaskCheckpoint(
-          budget: ambiguousCheckpoint.budget,
-          runBudgets: ambiguousCheckpoint.runBudgets,
-          activeBudgetRunId: ambiguousCheckpoint.activeBudgetRunId,
+          usage: ambiguousCheckpoint.usage,
+          runUsage: ambiguousCheckpoint.runUsage,
+          activeRunId: ambiguousCheckpoint.activeRunId,
           turns: [
             for (final turn in ambiguousCheckpoint.turns)
               turn.taskId == taskId
@@ -369,9 +355,9 @@ void main() {
       final malformedCheckpoint = harness.taskStore.checkpoint;
       await harness.taskStore.save(
         AgentTaskCheckpoint(
-          budget: malformedCheckpoint.budget,
-          runBudgets: malformedCheckpoint.runBudgets,
-          activeBudgetRunId: malformedCheckpoint.activeBudgetRunId,
+          usage: malformedCheckpoint.usage,
+          runUsage: malformedCheckpoint.runUsage,
+          activeRunId: malformedCheckpoint.activeRunId,
           turns: [
             for (final turn in malformedCheckpoint.turns)
               turn.taskId == taskId
@@ -411,9 +397,9 @@ void main() {
       final duplicateCallIdCheckpoint = harness.taskStore.checkpoint;
       await harness.taskStore.save(
         AgentTaskCheckpoint(
-          budget: duplicateCallIdCheckpoint.budget,
-          runBudgets: duplicateCallIdCheckpoint.runBudgets,
-          activeBudgetRunId: duplicateCallIdCheckpoint.activeBudgetRunId,
+          usage: duplicateCallIdCheckpoint.usage,
+          runUsage: duplicateCallIdCheckpoint.runUsage,
+          activeRunId: duplicateCallIdCheckpoint.activeRunId,
           turns: [
             for (final turn in duplicateCallIdCheckpoint.turns)
               turn.taskId == taskId
@@ -547,7 +533,7 @@ class _RetryHarness {
     );
     final taskStore = MemoryAgentTaskStore()
       ..checkpoint = const AgentTaskCheckpoint(
-        budget: AgentBudgetCheckpoint(grantedRequests: 2),
+        usage: AgentUsage(usedRequests: 2),
       );
     final harness = _RetryHarness(
       vault: vault,

@@ -166,7 +166,7 @@ class SemanticDuplicateDecision {
   final Map<String, Object?> fieldAdditions;
   final String? reason;
 
-  /// False when this page could not be fully compared (permission, budget,
+  /// False when this page could not be fully compared (permission, task state,
   /// cancellation, configuration, or transport prevented a decision).
   final bool comparisonComplete;
 }

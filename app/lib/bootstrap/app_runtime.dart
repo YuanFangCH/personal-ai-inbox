@@ -65,7 +65,7 @@ final class AppRuntime {
     VoiceService? voiceService,
     AgentTaskStore? agentTaskStore,
     AgentBackgroundControl? agentBackground,
-    Duration Function()? activeBudgetElapsedDuration,
+    Duration Function()? activeUsageElapsedDuration,
   }) async {
     final vault = vaultOverride ?? await createPlatformVaultStore();
     final supportPath = vaultOverride == null
@@ -252,9 +252,7 @@ final class AppRuntime {
                   AiPolicyDecision.allow;
             },
             reserveModelRequest: (_) =>
-                conversations.reserveAuxiliaryModelRequest(),
-            remainingActiveDuration: () =>
-                conversations.activeTaskRemainingDuration,
+                conversations.recordAuxiliaryModelRequest(),
             cancellation: () => conversations.activeCancellationFuture(),
           );
       final tableActionProcessor = TableActionProcessor(
@@ -287,7 +285,7 @@ final class AppRuntime {
         taskStore: taskStore,
         backgroundAgent: backgroundAgent,
         imageInputService: ImageInputService(),
-        activeBudgetElapsedDuration: activeBudgetElapsedDuration,
+        activeUsageElapsedDuration: activeUsageElapsedDuration,
       );
       final sync = SyncWorkspace(
         engine: syncEngine,
@@ -478,18 +476,17 @@ class _CaptureScopedSemanticDecisionSource
 }
 
 class _CaptureSemanticRuntime {
-  final Set<String> _reservedScopes = {};
   final Map<String, Completer<void>> _cancellations = {};
 
   Future<bool> reserve(String scopeId) async {
-    return _reservedScopes.add(scopeId);
+    _cancellations.putIfAbsent(scopeId, Completer<void>.new);
+    return true;
   }
 
   Future<void> cancellationFor(String scopeId) =>
       _cancellations.putIfAbsent(scopeId, Completer<void>.new).future;
 
   void finish(String scopeId) {
-    _reservedScopes.remove(scopeId);
     _cancellations.remove(scopeId);
   }
 
@@ -498,6 +495,5 @@ class _CaptureSemanticRuntime {
       if (!cancellation.isCompleted) cancellation.complete();
     }
     _cancellations.clear();
-    _reservedScopes.clear();
   }
 }

@@ -679,6 +679,62 @@ void main() {
     );
   });
 
+  test('full-access conflict policy creates a separate review item', () async {
+    final harness = await _Harness.create();
+    addTearDown(harness.close);
+    final table = await harness.tables.createTable(title: '考试');
+    final bootstrap = ContentIntake(
+      tables: harness.tables,
+      entryIdFactory: (_) => 'nt_conflict_existing',
+    );
+    await bootstrap.commit(
+      await bootstrap.prepare(
+        _noteRequest(
+          operationId: 'conflict-existing',
+          tableId: table.id,
+          title: '期中考试',
+          body: '第三章',
+          evidence: const ['exam:midterm'],
+        ),
+      ),
+    );
+    final intake = ContentIntake(
+      tables: harness.tables,
+      entryIdFactory: (_) => 'nt_conflict_review',
+      semanticDecisionSource: _DecisionSource(
+        (_) async => SemanticDuplicateDecision(
+          action: SemanticDuplicateAction.conflict,
+          reason: '候选可能是同一考试，但范围不同。',
+        ),
+      ),
+    );
+    final preparation = await intake.prepare(
+      _noteRequest(
+        operationId: 'conflict-create-review',
+        tableId: table.id,
+        title: '期中考试',
+        body: '第四章',
+        evidence: const ['exam:midterm'],
+        conflictPolicy: ContentIntakeConflictPolicy.createWithReview,
+      ),
+    );
+
+    expect(preparation.outcome, ContentIntakeOutcome.created);
+    expect(preparation.reviewRequired, isTrue);
+    final result = await intake.commit(preparation);
+    expect(result.outcome, ContentIntakeOutcome.created);
+    expect(result.reviewRequired, isTrue);
+    expect(result.entryId, 'nt_conflict_review');
+    expect(
+      await harness.tables.searchEntries(
+        query: '期中考试',
+        tableId: table.id,
+        limit: 20,
+      ),
+      hasLength(2),
+    );
+  });
+
   test('local policy rejects semantic evidence it cannot verify', () async {
     final harness = await _Harness.create();
     addTearDown(harness.close);
@@ -1330,6 +1386,7 @@ ContentIntakeRequest _noteRequest({
   required String title,
   required String body,
   required List<String> evidence,
+  ContentIntakeConflictPolicy conflictPolicy = ContentIntakeConflictPolicy.ask,
 }) => ContentIntakeRequest(
   operationId: operationId,
   tableId: tableId,
@@ -1337,6 +1394,7 @@ ContentIntakeRequest _noteRequest({
   title: title,
   body: body,
   identity: ContentBusinessIdentity(evidence: evidence),
+  conflictPolicy: conflictPolicy,
 );
 
 class _Harness {

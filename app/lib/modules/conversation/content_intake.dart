@@ -15,6 +15,8 @@ enum ContentIntakeOutcome { created, reused, augmented, conflict }
 
 enum ContentIntakeWriteKind { create, augment }
 
+enum ContentIntakeConflictPolicy { ask, createWithReview }
+
 class ContentIntakeWriteAuthorization {
   const ContentIntakeWriteAuthorization({
     required this.operationId,
@@ -59,6 +61,7 @@ class ContentIntakeRequest {
     this.occurredAt,
     List<String> sourceRefs = const [],
     this.requestedEntryId,
+    this.conflictPolicy = ContentIntakeConflictPolicy.ask,
   }) : identity = identity ?? ContentBusinessIdentity(),
        tags = List.unmodifiable(tags),
        links = List.unmodifiable(links),
@@ -120,6 +123,7 @@ class ContentIntakeRequest {
   final DateTime? occurredAt;
   final List<String> sourceRefs;
   final String? requestedEntryId;
+  final ContentIntakeConflictPolicy conflictPolicy;
 }
 
 class ContentIntakeCoverage {
@@ -164,6 +168,7 @@ class ContentIntakePreparation {
     this.targetRevision,
     this.tableRevision,
     this.reason,
+    this.reviewRequired = false,
   });
 
   final String token;
@@ -174,6 +179,7 @@ class ContentIntakePreparation {
   final int? targetRevision;
   final int? tableRevision;
   final String? reason;
+  final bool reviewRequired;
 }
 
 class ContentIntakeResult {
@@ -188,6 +194,7 @@ class ContentIntakeResult {
     this.changes = const ContentIntakeChanges(),
     this.reason,
     this.replayed = false,
+    this.reviewRequired = false,
   });
 
   final String operationId;
@@ -200,6 +207,7 @@ class ContentIntakeResult {
   final ContentIntakeChanges changes;
   final String? reason;
   final bool replayed;
+  final bool reviewRequired;
 
   String? get entryId => entry?.id;
 
@@ -214,6 +222,7 @@ class ContentIntakeResult {
     changes: changes,
     reason: reason,
     replayed: replayed ?? this.replayed,
+    reviewRequired: reviewRequired,
   );
 }
 
@@ -288,6 +297,7 @@ class ContentIntake {
         targetId: result.entryId ?? result.targetId,
         targetRevision: result.newRevision,
         reason: result.reason,
+        reviewRequired: result.reviewRequired,
       );
       _preparedByToken[preparation.token] = _PreparedIntake(
         request: request,
@@ -354,23 +364,23 @@ class ContentIntake {
         evaluation.complete,
       );
       if (!evaluation.complete) {
-        preparation = ContentIntakePreparation(
+        final reason = evaluation.reason ?? '查重候选未全部检查，已暂停接收。';
+        preparation = _conflictOrCreateWithReview(
+          request: request,
           token: token,
-          operationId: request.operationId,
-          outcome: ContentIntakeOutcome.conflict,
           coverage: evaluatedCoverage,
-          targetId: evaluation.targetId,
           tableRevision: table.revision,
-          reason: evaluation.reason ?? '查重候选未全部检查，已暂停接收。',
+          targetId: evaluation.targetId,
+          reason: reason,
         );
       } else if (evaluation.conflict) {
-        preparation = ContentIntakePreparation(
+        final reason = evaluation.reason ?? '已发现同一业务证据下的候选，不能直接新建。';
+        preparation = _conflictOrCreateWithReview(
+          request: request,
           token: token,
-          operationId: request.operationId,
-          outcome: ContentIntakeOutcome.conflict,
           coverage: evaluatedCoverage,
           tableRevision: table.revision,
-          reason: evaluation.reason ?? '已发现同一业务证据下的候选，不能直接新建。',
+          reason: reason,
         );
       } else if (evaluation.augment == null) {
         preparation = ContentIntakePreparation(
@@ -389,10 +399,9 @@ class ContentIntake {
           decision: decision,
         );
         if (target == null || validationError != null) {
-          preparation = ContentIntakePreparation(
+          preparation = _conflictOrCreateWithReview(
+            request: request,
             token: token,
-            operationId: request.operationId,
-            outcome: ContentIntakeOutcome.conflict,
             coverage: evaluatedCoverage,
             targetId: decision.targetId,
             targetRevision: decision.expectedRevision,
@@ -446,6 +455,38 @@ class ContentIntake {
       preparation: preparation,
     );
     return preparation;
+  }
+
+  ContentIntakePreparation _conflictOrCreateWithReview({
+    required ContentIntakeRequest request,
+    required String token,
+    required ContentIntakeCoverage coverage,
+    required int tableRevision,
+    required String reason,
+    String? targetId,
+    int? targetRevision,
+  }) {
+    if (request.conflictPolicy == ContentIntakeConflictPolicy.ask) {
+      return ContentIntakePreparation(
+        token: token,
+        operationId: request.operationId,
+        outcome: ContentIntakeOutcome.conflict,
+        coverage: coverage,
+        targetId: targetId,
+        targetRevision: targetRevision,
+        tableRevision: tableRevision,
+        reason: reason,
+      );
+    }
+    return ContentIntakePreparation(
+      token: token,
+      operationId: request.operationId,
+      outcome: ContentIntakeOutcome.created,
+      coverage: coverage,
+      tableRevision: tableRevision,
+      reason: '未证明为同一对象，已新建独立内容并标记待核对：$reason',
+      reviewRequired: true,
+    );
   }
 
   Future<ContentIntakeResult> _commitUnlocked(
@@ -552,6 +593,7 @@ class ContentIntake {
         );
       }
       if (semanticCandidates.isNotEmpty &&
+          prepared.request.conflictPolicy == ContentIntakeConflictPolicy.ask &&
           (!preparation.coverage.semanticComparisonComplete ||
               preparation.coverage.semanticCandidatesChecked !=
                   semanticCandidates.length ||
@@ -599,6 +641,8 @@ class ContentIntake {
               coverage: preparation.coverage,
               oldRevision: 0,
               newRevision: entry.revision,
+              reason: preparation.reason,
+              reviewRequired: preparation.reviewRequired,
             ),
           ),
         );
@@ -611,6 +655,8 @@ class ContentIntake {
             entry: created,
             oldRevision: 0,
             newRevision: created.revision,
+            reason: preparation.reason,
+            reviewRequired: preparation.reviewRequired,
           ),
         );
       } on IntakeSnapshotConflict {
@@ -813,6 +859,7 @@ class ContentIntake {
     'body_appended': result.changes.bodyAppended,
     'field_changes': result.changes.fieldChanges,
     'reason': result.reason,
+    'review_required': result.reviewRequired,
     'coverage': {
       'tables': result.coverage.tablesScanned,
       'entries': result.coverage.entriesScanned,
@@ -838,6 +885,7 @@ class ContentIntake {
         fieldChanges: Map<String, Object?>.from(record['field_changes'] as Map),
       ),
       reason: record['reason'] as String?,
+      reviewRequired: record['review_required'] == true,
       coverage: ContentIntakeCoverage(
         tablesScanned: coverage['tables'] as int,
         entriesScanned: coverage['entries'] as int,
@@ -856,9 +904,9 @@ class ContentIntake {
   ) async {
     if (guard == null) return null;
     try {
-      return await guard(authorization) ? null : '写入前授权已失效，操作未执行。';
+      return await guard(authorization) ? null : '写入前权限复核失败：授权已失效，操作未执行。';
     } on Object {
-      return '写入前无法确认授权，操作未执行。';
+      return '写入前无法确认权限，操作未执行。';
     }
   }
 

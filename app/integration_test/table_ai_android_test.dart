@@ -67,11 +67,18 @@ void main() {
     );
     expect(note.tableId, homework.id);
     expect(note.type, TableContentType.note);
-    final contentAction = runtime.conversations
+    final contentActions = runtime.conversations
         .messagesFor(conversation.id)
         .last
-        .tableActions
-        .single;
+        .tableActions;
+    expect(
+      contentActions,
+      hasLength(1),
+      reason: contentActions
+          .map((action) => '${action.operation}:${action.status}:${action.id}')
+          .join(', '),
+    );
+    final contentAction = contentActions.single;
     expect(contentAction.status, TableChatActionStatus.applied);
 
     await runtime.conversations.sendChatMessage(conversation.id, text: '新建考试表');
@@ -197,6 +204,15 @@ class _ResponsePlan {
 
   Future<http.StreamedResponse> next() async {
     calls++;
+    if (calls == 2 || calls == 4 || calls == 5 || calls == 7 || calls == 9) {
+      return _stream({
+        'choices': [
+          {
+            'delta': {'content': '步骤已完成。'},
+          },
+        ],
+      }, finish: 'stop');
+    }
     if (calls == 1) {
       return _stream({
         'choices': [
@@ -223,7 +239,7 @@ class _ResponsePlan {
         ],
       }, finish: 'tool_calls');
     }
-    if (calls == 2) {
+    if (calls == 3) {
       return _stream({
         'choices': [
           {
@@ -247,7 +263,7 @@ class _ResponsePlan {
         ],
       }, finish: 'tool_calls');
     }
-    if (calls == 3) {
+    if (calls == 6) {
       final start = originalStart!;
       return _stream({
         'choices': [
@@ -278,7 +294,7 @@ class _ResponsePlan {
         ],
       }, finish: 'tool_calls');
     }
-    if (calls == 4) {
+    if (calls == 8) {
       final start = changedStart!;
       return _stream({
         'choices': [

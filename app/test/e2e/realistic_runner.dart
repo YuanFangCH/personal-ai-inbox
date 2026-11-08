@@ -1556,7 +1556,7 @@ class _Harness {
                 .map(
                   (turn) => {
                     'taskId': turn.taskId,
-                    'runId': turn.effectiveBudgetRunId,
+                    'runId': turn.effectiveRunId,
                     'status': turn.status.wireName,
                     'assistantMessageId': turn.assistantMessageId,
                     'sequence': turn.sequence,

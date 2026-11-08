@@ -85,7 +85,7 @@ class CaptureWorkflow extends ChangeNotifier {
         (canReadDuplicateCandidates == null ||
             canModifyDuplicateCandidates == null ||
             reserveDuplicateModelRequest == null)) {
-      throw ArgumentError('capture 模型查重必须提供独立的读取、修改和预算回调。');
+      throw ArgumentError('capture 模型查重必须提供独立的读取、修改和任务状态回调。');
     }
   }
 

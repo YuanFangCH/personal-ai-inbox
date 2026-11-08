@@ -94,6 +94,8 @@ class TableChatAction {
     this.intakeRetryAttempt = 0,
     this.intakeRetryOperationId,
     this.intakeRetryPending = false,
+    this.reviewRequired = false,
+    this.reviewReason,
   });
 
   final String id;
@@ -119,6 +121,8 @@ class TableChatAction {
   final int intakeRetryAttempt;
   final String? intakeRetryOperationId;
   final bool intakeRetryPending;
+  final bool reviewRequired;
+  final String? reviewReason;
 
   bool get canUndo =>
       status == TableChatActionStatus.applied &&
@@ -143,6 +147,8 @@ class TableChatAction {
     String? intakeRetryOperationId,
     bool clearIntakeRetryOperationId = false,
     bool? intakeRetryPending,
+    bool? reviewRequired,
+    String? reviewReason,
   }) => TableChatAction(
     id: id,
     operation: operation,
@@ -170,6 +176,8 @@ class TableChatAction {
         ? null
         : intakeRetryOperationId ?? this.intakeRetryOperationId,
     intakeRetryPending: intakeRetryPending ?? this.intakeRetryPending,
+    reviewRequired: reviewRequired ?? this.reviewRequired,
+    reviewReason: reviewReason ?? this.reviewReason,
   );
 
   Map<String, dynamic> toJson() => {
@@ -197,6 +205,8 @@ class TableChatAction {
     'intake_retry_attempt': intakeRetryAttempt,
     'intake_retry_operation_id': intakeRetryOperationId,
     'intake_retry_pending': intakeRetryPending,
+    'review_required': reviewRequired,
+    'review_reason': reviewReason,
   };
 
   static TableChatAction fromJson(Map<String, dynamic> json) {
@@ -240,6 +250,8 @@ class TableChatAction {
           : 0,
       intakeRetryOperationId: json['intake_retry_operation_id']?.toString(),
       intakeRetryPending: json['intake_retry_pending'] == true,
+      reviewRequired: json['review_required'] == true,
+      reviewReason: json['review_reason']?.toString(),
     );
   }
 }
