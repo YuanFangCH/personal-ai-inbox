@@ -68,6 +68,7 @@
 
 ## 6. 当前进度与验证
 
+- 2026-11-08 Android 真实模型 Harness 验证通过：`emulator-5620`（Android 15/API35，AVD `aitext_agent_c_phone`）真实 DeepSeek 用例 1/1，覆盖连接 `connection-ok`、普通回复、`table_list` 三默认表读取，以及完全权限在事件表 `content_create` 写入 `note`、操作卡 `applied` 和本地读回。设备最近 3000 行日志未发现 HTTP 400、FATAL 或未处理 Flutter 异常；临时测试已清理。详见 `test-results/android-real-model-20261108/VALIDATION.md`。
 - 2026-11-08 AI Harness 升级：所有权限模式取消 2 小时/240 次请求累计预算和追加额度；用量账本升级为 v3，仅记录请求、工具和活动时长。完全权限新增回收站列表/预览/恢复与收纳目标读取，查重无法证明同一对象时新建并标记待核对；只读工具并行、写工具独占屏障，重复工具只提醒不硬暂停。`dart analyze lib test integration_test` 0 issue，定向主机 149/149，Android 15 AVD `table_ai_android_test.dart` 1/1 通过。详见 `test-results/harness-unbounded-full-access/VALIDATION.md` 与 [ADR 0025](docs/adr/0025-unbounded-flutter-agent-harness.md)。
 - 2026-11-08 Android 手机 v1.3.0 发布完成：Release `phone-v1.3.0`（pre-release）；main CI `42403931513` success，Android Release `42403946155` / job `128497527923` success。资产为 `personal-ai-inbox-v1.3.0-android.apk`（90,731,435 bytes）和 `SHA256SUMS.txt`。
 - 2026-11-08 公开 APK 独立复核：SHA-256 `a81c32f7382d194e42151a9ba59816ddaf9a3e91fdc417cb3afe4b95c9754fbb` 与 Release 清单一致；`versionName=1.3.0`、`versionCode=10`、minSdk 24、targetSdk 36；必要权限齐全；`apksigner` v2 通过，长期证书 SHA-256 `51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816`。详见 `test-results/phone-release-v1.3.0/VALIDATION.md`。
@@ -216,6 +217,14 @@
 3. Windows 与平板验收、云盘同步和到点提醒继续单独规划。
 
 ## 8. 变更记录
+
+### 2026-11-08 / 完成 Android 真实模型 Harness 验证
+
+- 任务：使用当前提供的模型凭据在 Android 模拟器验证真实 DeepSeek 连接、普通回复、只读工具和完全权限写入链路。
+- 变更：新增真实模型验证记录；README 与交接补充当前证据入口。临时测试源和 `app/integration_test` 硬链接不进入仓库。
+- 验证：Android 15 / API35 AVD `aitext_agent_c_phone`、Flutter 设备 `emulator-5620`；目标文件 analyze 无问题，真实模型测试 1/1 通过，构建 34.6 秒、安装 1.603 秒、用例 9 秒；最近 3000 行设备日志无 HTTP 400、FATAL 或未处理 Flutter 异常。详见 `test-results/android-real-model-20261108/VALIDATION.md`。
+- 状态：验证通过；凭据未写入仓库、日志或测试记录，临时测试已清理。
+- 风险/下一步：本次不覆盖平板、Windows、真实 OneDrive、通知、跨进程恢复或 900 秒长测；这些边界保持未验收。
 
 ### 2026-11-08 / 升级 Flutter 原生无预算 Harness
 

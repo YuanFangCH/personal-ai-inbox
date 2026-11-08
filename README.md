@@ -33,7 +33,7 @@ Android 手机 `v1.3.0` 预览版已发布，使用 `phone-v1.3.0` 标签，只�
 
 ## 当前进展
 
-2026-11-08 AI Harness 升级完成：取消累计 2 小时/240 次请求预算和追加额度，新增并行只读工具、写屏障、用量账本 v3、完全权限回收站/收纳目标工具及查重自动前进。主机定向测试、Android 手机 AVD 表 AI 场景通过；详见 `test-results/harness-unbounded-full-access/VALIDATION.md` 与 [ADR 0025](docs/adr/0025-unbounded-flutter-agent-harness.md)。
+2026-11-08 AI Harness 升级完成：取消累计 2 小时/240 次请求预算和追加额度，新增并行只读工具、写屏障、用量账本 v3、完全权限回收站/收纳目标工具及查重自动前进。主机定向测试、Android 手机 AVD 表 AI 场景通过；随后在 Android 15 手机 AVD 用真实 DeepSeek 完成连接、普通回复、`table_list` 和完全权限 `content_create` 写入/读回 1/1。详见 `test-results/harness-unbounded-full-access/VALIDATION.md`、`test-results/android-real-model-20261108/VALIDATION.md` 与 [ADR 0025](docs/adr/0025-unbounded-flutter-agent-harness.md)。
 
 专用秘书 Agent A–F 的最终设备验收主闭环已完成，正式实现提交为 `111f996`。按用户要求只推进 Android 手机交付：`v1.3.0+10` 已通过 Android 专用预发布流程发布，平板和 Windows 不参与本次发布门禁。最终设备 manifest `c283f93b19703686ab7caa0da802e43ff8bb5c557051156c070c9e94f07f49bd` 已通过 phone 50/50、phone A31/A32/A33 和 900 秒生产业务长测，47 条唯一写入与回执核对通过；公开 APK 的哈希、长期签名、版本、API 和权限已复核。A01–A30、A34–A35 的遗留主机组合延期。详见 [RM_HANDOFF.md](RM_HANDOFF.md)、[v1.3.0 发行说明](docs/releases/v1.3.0.md) 和[发布验证](test-results/phone-release-v1.3.0/VALIDATION.md)。
 
