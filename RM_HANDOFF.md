@@ -68,6 +68,7 @@
 
 ## 6. 当前进度与验证
 
+- 2026-11-09 GitHub main CI 通过：run `42499993545` 在提交 `21b3e11` 上完成 Dart 格式、`flutter analyze` 和迁移/秘书定向回归，全部 success。
 - 2026-11-09 GitHub 发布：Harness 实现与真实模型验证已快进并推送到 `main`（`cbf1d9f`）。首轮 Flutter CI `42499771243` 仅在 Dart 格式门禁失败，4 个 Harness 文件已按 formatter 修正；本地全量格式检查 0 change、`flutter analyze --no-pub` 0 issue，修复提交推送后复验 CI。
 - 2026-11-08 Android 真实模型 Harness 验证通过：`emulator-5620`（Android 15/API35，AVD `aitext_agent_c_phone`）真实 DeepSeek 用例 1/1，覆盖连接 `connection-ok`、普通回复、`table_list` 三默认表读取，以及完全权限在事件表 `content_create` 写入 `note`、操作卡 `applied` 和本地读回。设备最近 3000 行日志未发现 HTTP 400、FATAL 或未处理 Flutter 异常；临时测试已清理。详见 `test-results/android-real-model-20261108/VALIDATION.md`。
 - 2026-11-08 AI Harness 升级：所有权限模式取消 2 小时/240 次请求累计预算和追加额度；用量账本升级为 v3，仅记录请求、工具和活动时长。完全权限新增回收站列表/预览/恢复与收纳目标读取，查重无法证明同一对象时新建并标记待核对；只读工具并行、写工具独占屏障，重复工具只提醒不硬暂停。`dart analyze lib test integration_test` 0 issue，定向主机 149/149，Android 15 AVD `table_ai_android_test.dart` 1/1 通过。详见 `test-results/harness-unbounded-full-access/VALIDATION.md` 与 [ADR 0025](docs/adr/0025-unbounded-flutter-agent-harness.md)。
@@ -218,6 +219,14 @@
 3. Windows 与平板验收、云盘同步和到点提醒继续单独规划。
 
 ## 8. 变更记录
+
+### 2026-11-09 / GitHub main CI 通过
+
+- 任务：确认格式修复后的 Harness 在 GitHub main CI 完整通过。
+- 变更：仅追加 CI 结果与交接状态。
+- 验证：Flutter CI run `42499993545` / job `128790458499` success，耗时 1 分 23 秒；格式、Analyze、迁移与秘书定向回归步骤均通过。
+- 状态：GitHub `main` 发布完成；本地工作区在文档收尾提交后保持干净。
+- 风险/下一步：本次只发布代码与 CI 结果，未创建新版本标签或 APK Release；版本仍为 `1.3.0+10`，现有 `phone-v1.3.0` 资产不变。
 
 ### 2026-11-09 / 修复 GitHub CI Dart 格式门禁
 
