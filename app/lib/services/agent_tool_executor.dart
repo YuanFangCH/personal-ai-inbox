@@ -3,10 +3,7 @@ import 'dart:async';
 import 'agent_tool_registry.dart';
 
 class AgentToolExecutionBatch<T> {
-  const AgentToolExecutionBatch({
-    required this.calls,
-    required this.readOnly,
-  });
+  const AgentToolExecutionBatch({required this.calls, required this.readOnly});
 
   final List<T> calls;
   final bool readOnly;

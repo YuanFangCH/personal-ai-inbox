@@ -8,10 +8,12 @@ void main() {
   const executor = AgentToolExecutor(maxParallelToolCalls: 2);
 
   test('plan groups parallel reads and isolates every write', () {
-    final batches = executor.plan(
-      const ['table_list', 'content_read', 'content_update', 'table_search'],
-      wireName: (name) => name,
-    );
+    final batches = executor.plan(const [
+      'table_list',
+      'content_read',
+      'content_update',
+      'table_search',
+    ], wireName: (name) => name);
 
     expect(batches, hasLength(3));
     expect(batches[0].readOnly, isTrue);

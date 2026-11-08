@@ -7,7 +7,7 @@
 | 字段 | 当前值 |
 |---|---|
 | 项目名称 | 懒狗秘书 |
-| 最后更新时间 | 2026-11-08 |
+| 最后更新时间 | 2026-11-09 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
 | 当前阶段 | AI Harness 升级已实现并通过定向主机与 Android 手机 AVD 验证；Android 手机 `v1.3.0+10` 预发布保持为上一发布基线 |
@@ -68,6 +68,7 @@
 
 ## 6. 当前进度与验证
 
+- 2026-11-09 GitHub 发布：Harness 实现与真实模型验证已快进并推送到 `main`（`cbf1d9f`）。首轮 Flutter CI `42499771243` 仅在 Dart 格式门禁失败，4 个 Harness 文件已按 formatter 修正；本地全量格式检查 0 change、`flutter analyze --no-pub` 0 issue，修复提交推送后复验 CI。
 - 2026-11-08 Android 真实模型 Harness 验证通过：`emulator-5620`（Android 15/API35，AVD `aitext_agent_c_phone`）真实 DeepSeek 用例 1/1，覆盖连接 `connection-ok`、普通回复、`table_list` 三默认表读取，以及完全权限在事件表 `content_create` 写入 `note`、操作卡 `applied` 和本地读回。设备最近 3000 行日志未发现 HTTP 400、FATAL 或未处理 Flutter 异常；临时测试已清理。详见 `test-results/android-real-model-20261108/VALIDATION.md`。
 - 2026-11-08 AI Harness 升级：所有权限模式取消 2 小时/240 次请求累计预算和追加额度；用量账本升级为 v3，仅记录请求、工具和活动时长。完全权限新增回收站列表/预览/恢复与收纳目标读取，查重无法证明同一对象时新建并标记待核对；只读工具并行、写工具独占屏障，重复工具只提醒不硬暂停。`dart analyze lib test integration_test` 0 issue，定向主机 149/149，Android 15 AVD `table_ai_android_test.dart` 1/1 通过。详见 `test-results/harness-unbounded-full-access/VALIDATION.md` 与 [ADR 0025](docs/adr/0025-unbounded-flutter-agent-harness.md)。
 - 2026-11-08 Android 手机 v1.3.0 发布完成：Release `phone-v1.3.0`（pre-release）；main CI `42403931513` success，Android Release `42403946155` / job `128497527923` success。资产为 `personal-ai-inbox-v1.3.0-android.apk`（90,731,435 bytes）和 `SHA256SUMS.txt`。
@@ -217,6 +218,14 @@
 3. Windows 与平板验收、云盘同步和到点提醒继续单独规划。
 
 ## 8. 变更记录
+
+### 2026-11-09 / 修复 GitHub CI Dart 格式门禁
+
+- 任务：将已验证的无预算 Harness 发布到 GitHub，并处理首轮 main CI 失败。
+- 变更：按 Dart formatter 修正 `agent_usage.dart`、`agent_context_manager.dart`、`agent_tool_executor.dart` 与 `agent_tool_executor_test.dart`；同步更新交接状态。
+- 验证：`dart format --output=none --set-exit-if-changed lib test integration_test tool` 265 文件 0 change；`flutter analyze --no-pub` 0 issue；diff whitespace 检查通过。
+- 状态：格式修复完成，提交后推送触发 GitHub CI 复验。
+- 风险/下一步：首轮 CI `42499771243` 的后续 analyze 与定向测试步骤因格式门禁未执行；以修复后的新 run 为准。
 
 ### 2026-11-08 / 完成 Android 真实模型 Harness 验证
 

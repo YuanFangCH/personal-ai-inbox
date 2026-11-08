@@ -71,8 +71,7 @@ class AgentUsageMeter {
   int get toolCallCount => _usedToolCalls;
 
   Duration get activeDuration =>
-      _initialActive +
-      (_activeElapsedDuration?.call() ?? _activeClock.elapsed);
+      _initialActive + (_activeElapsedDuration?.call() ?? _activeClock.elapsed);
 
   AgentUsage snapshot() => AgentUsage(
     usedRequests: _usedRequests,

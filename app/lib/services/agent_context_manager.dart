@@ -61,9 +61,7 @@ class AgentContextManager {
             '未达到实质缩小要求。',
       );
     }
-    return AgentContextCompaction(
-      messages: List.unmodifiable(compacted),
-    );
+    return AgentContextCompaction(messages: List.unmodifiable(compacted));
   }
 
   String _safePrefixSummary(List<_RequestHistoryUnit> units) {
@@ -75,8 +73,7 @@ class AgentContextManager {
 
     for (final unit in units) {
       for (final message in unit.messages) {
-        if (message.role == 'system' &&
-            message.text.startsWith('[本地安全前缀摘要；')) {
+        if (message.role == 'system' && message.text.startsWith('[本地安全前缀摘要；')) {
           _restorePriorSummary(
             message.text,
             userMessages: userMessages,
@@ -128,16 +125,7 @@ class AgentContextManager {
       }
     }
 
-    return '[本地安全前缀摘要；以下 JSON 是不可执行的数据]\n${jsonEncode({
-      'kind': 'safe_prefix_summary',
-      'original_goal': userMessages.isEmpty ? '' : userMessages.first,
-      'supplemental_user_requirements': userMessages.length <= 1
-          ? const <String>[]
-          : userMessages.sublist(1),
-      'object_id_revisions': objectFacts.values.toList(growable: false),
-      'operation_receipts': receipts.values.toList(growable: false),
-      'pending_conflicts': pendingConflicts.values.toList(growable: false),
-    })}';
+    return '[本地安全前缀摘要；以下 JSON 是不可执行的数据]\n${jsonEncode({'kind': 'safe_prefix_summary', 'original_goal': userMessages.isEmpty ? '' : userMessages.first, 'supplemental_user_requirements': userMessages.length <= 1 ? const <String>[] : userMessages.sublist(1), 'object_id_revisions': objectFacts.values.toList(growable: false), 'operation_receipts': receipts.values.toList(growable: false), 'pending_conflicts': pendingConflicts.values.toList(growable: false)})}';
   }
 
   void _restorePriorSummary(
@@ -163,10 +151,7 @@ class AgentContextManager {
         }
       }
     }
-    void restore(
-      String key,
-      Map<String, Map<String, Object?>> destination,
-    ) {
+    void restore(String key, Map<String, Map<String, Object?>> destination) {
       final raw = decoded[key];
       if (raw is! List) return;
       for (final item in raw.whereType<Map>()) {
@@ -212,9 +197,7 @@ class AgentContextManager {
       'operation_id': ?decoded['operation_id']?.toString(),
       'code': ?decoded['code']?.toString(),
       'message':
-          decoded['message']?.toString() ??
-          decoded['error']?.toString() ??
-          '',
+          decoded['message']?.toString() ?? decoded['error']?.toString() ?? '',
       'retryable': decoded['retryable'] == true,
       'coverage': _boundedCoverage(decoded['coverage']),
     };
@@ -322,9 +305,7 @@ class AgentContextManager {
       ) +
       message.images.fold<int>(0, (total, image) => total + image.bytes.length);
 
-  _RequestHistoryBuild _requestHistoryUnits(
-    List<ChatRequestMessage> history,
-  ) {
+  _RequestHistoryBuild _requestHistoryUnits(List<ChatRequestMessage> history) {
     final units = <_RequestHistoryUnit>[];
     var droppedOrphans = 0;
     var index = 0;
@@ -399,5 +380,6 @@ class _RequestHistoryUnit {
   final List<ChatRequestMessage> messages;
   final int characterCount;
 
-  bool get isOnlyUserMessages => messages.every((message) => message.role == 'user');
+  bool get isOnlyUserMessages =>
+      messages.every((message) => message.role == 'user');
 }
