@@ -10,14 +10,14 @@
 | 最后更新时间 | 2026-11-09 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.4.0+11` Android 手机预发布准备中：Flutter 原生无预算 Harness、完全权限全量表工具和真实模型验证已进入发布候选 |
+| 当前阶段 | `v1.4.0+11` Android 手机预发布已发布：Flutter 原生无预算 Harness、完全权限全量表工具和真实模型验证已交付 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.4.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
 
-2026-11-09 按用户要求发布 Android 手机 `v1.4.0+11` 新版本：纳入 Flutter 原生无预算 Harness、完全权限全量表工具、回收站/收纳目标、并行只读/写屏障和真实 DeepSeek AVD 验证。版本号与 `versionCode=11` 已写入 `pubspec.yaml`，Android Release 工作流从版本字段动态校验 build，并加入 Harness 定向回归。平板、Windows 与 A01–A30/A34–A35 延期。
+2026-11-09 按用户要求发布 Android 手机 `v1.4.0+11` 新版本：Flutter 原生无预算 Harness、完全权限全量表工具、回收站/收纳目标、并行只读/写屏障和真实 DeepSeek AVD 验证已进入 GitHub pre-release `phone-v1.4.0`。发布提交 `630afaf`；main CI `42539611481` 与 Android Release `42539816724` 均 success。公开 APK SHA-256 `68b8656703019b2628857540bcc2dfd64b69c2c961f6760a74f956a4a2677255`，长期证书指纹 `51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816`，版本 `1.4.0+11`。平板、Windows 与 A01–A30/A34–A35 延期。
 
-最新手机发布结论见 `test-results/phone-release-v1.3.0/VALIDATION.md`，既有最终设备验证见 `test-results/secretary-agent-implementation/final-device-20261107/VALIDATION.md`。公开下载：`https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.3.0`。
+最新手机发布结论见 `test-results/phone-release-v1.4.0/VALIDATION.md`，既有最终设备验证见 `test-results/secretary-agent-implementation/final-device-20261107/VALIDATION.md`。公开下载：`https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.4.0`。
 ## 3. 当前目标与范围
 
 - 当前任务：Flutter 原生单 Agent Harness 升级。取消所有模式的应用层累计请求/活动时长预算，完全权限覆盖全部表数据、回收站和收纳目标；A01–A30、A34–A35 与平板/Windows UI 验收继续按各自范围处理。
@@ -68,6 +68,7 @@
 
 ## 6. 当前进度与验证
 
+- 2026-11-09 Android 手机 v1.4.0 发布完成：Release `phone-v1.4.0`（pre-release）；main CI `42539611481` / job `128911389363` success，Android Release `42539816724` / job `128912007915` success。公开 APK 90,764,203 bytes，SHA-256 `68b8656703019b2628857540bcc2dfd64b69c2c961f6760a74f956a4a2677255`，版本 `1.4.0+11`，API 24/36、必要权限、v2 签名和长期证书均复核通过。详见 `test-results/phone-release-v1.4.0/VALIDATION.md`。
 - 2026-11-09 `v1.4.0+11` Android 手机发布准备：新增 `docs/releases/v1.4.0.md`；版本升至 `1.4.0+11`；main CI 与 Android Release 定向门禁加入 Harness 测试；Android Release 改为从 `pubspec.yaml` 动态读取 build 号。待推送、打 `phone-v1.4.0` 标签并核验公开资产。
 - 2026-11-09 GitHub main CI 通过：run `42499993545` 在提交 `21b3e11` 上完成 Dart 格式、`flutter analyze` 和迁移/秘书定向回归，全部 success。
 - 2026-11-09 GitHub 发布：Harness 实现与真实模型验证已快进并推送到 `main`（`cbf1d9f`）。首轮 Flutter CI `42499771243` 仅在 Dart 格式门禁失败，4 个 Harness 文件已按 formatter 修正；本地全量格式检查 0 change、`flutter analyze --no-pub` 0 issue，修复提交推送后复验 CI。
@@ -215,11 +216,19 @@
 
 ### 下一步
 
-1. 用户可在 Android 7.0 及以上备份现有数据后，从 `phone-v1.3.0` Release 安装或覆盖升级。
+1. 用户可在 Android 7.0 及以上备份现有数据后，从 `phone-v1.4.0` Release 安装或覆盖升级。
 2. A01–A30、A34–A35 的遗留主机组合以后续 Android 手机审计任务处理；本轮不扩大范围。
 3. Windows 与平板验收、云盘同步和到点提醒继续单独规划。
 
 ## 8. 变更记录
+
+### 2026-11-09 / 发布 Android 手机 v1.4.0 预发布
+
+- 任务：发布包含无预算 Harness 的 Android 手机新版本并核验公开资产。
+- 变更：版本升至 `1.4.0+11`；新增 `docs/releases/v1.4.0.md`；main CI 与 Android Release 加入 Harness 定向回归；Android Release 从 `pubspec.yaml` 动态读取 build 号并校验 APK `versionCode`；README 与本交接记录公开下载、哈希和验证结论。
+- 验证：main CI `42539611481` success；Android Release `42539816724` success，耗时 15 分 20 秒；格式、Analyze、189 项定向回归、秘密扫描、APK 构建、版本/API/权限、v2 签名和长期证书均通过。公开 APK SHA-256 `68b8656703019b2628857540bcc2dfd64b69c2c961f6760a74f956a4a2677255`，与 `SHA256SUMS.txt` 一致。
+- 状态：Android 手机发布完成；GitHub Release 为 `phone-v1.4.0` pre-release。
+- 风险/下一步：本次只发布 Android 手机资产，未构建新的 Windows/平板/全平台资产；未执行全量测试、真实资料迁移、真实云同步或提醒验收。
 
 ### 2026-11-09 / 准备 Android 手机 v1.4.0 预发布
 
