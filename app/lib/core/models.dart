@@ -5,7 +5,7 @@ export 'ai_policy.dart';
 enum ThemePreference { system, light, dark }
 
 class AppSettings {
-  static const currentSchemaVersion = 5;
+  static const currentSchemaVersion = 6;
 
   const AppSettings({
     required this.deviceId,
@@ -27,6 +27,7 @@ class AppSettings {
     this.imageLimit = 8,
     AiPermissions defaultAiPermissions = const AiPermissions(),
     this.defaultAiPolicy,
+    this.fullAgentMode = false,
     this.homeTableOrder = const [],
     this.calendarVisibleTableIds = const ['*'],
   }) : _legacyDefaultAiPermissions = defaultAiPermissions;
@@ -49,6 +50,7 @@ class AppSettings {
   final int imageMessageLimit;
   final int imageLimit;
   final AiPermissions _legacyDefaultAiPermissions;
+  final bool fullAgentMode;
 
   /// Action-level defaults for conversations created on this device.
   ///
@@ -136,6 +138,7 @@ class AppSettings {
     int? imageLimit,
     AiPermissions? defaultAiPermissions,
     Object? defaultAiPolicy = _unchangedDefaultAiPolicy,
+    bool? fullAgentMode,
     List<String>? homeTableOrder,
     List<String>? calendarVisibleTableIds,
   }) {
@@ -174,6 +177,7 @@ class AppSettings {
       imageLimit: imageLimit ?? this.imageLimit,
       defaultAiPermissions: nextPermissions,
       defaultAiPolicy: nextPolicy,
+      fullAgentMode: fullAgentMode ?? this.fullAgentMode,
       homeTableOrder: homeTableOrder ?? this.homeTableOrder,
       calendarVisibleTableIds:
           calendarVisibleTableIds ?? this.calendarVisibleTableIds,

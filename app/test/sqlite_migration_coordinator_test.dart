@@ -446,7 +446,7 @@ void main() {
       await expectLater(migration.complete(), throwsA(isA<StateError>()));
       _markMigrated(conversationPath, version: 5);
       await expectLater(migration.complete(), throwsA(isA<StateError>()));
-      _markMigrated(conversationPath, version: 6);
+      _markMigrated(conversationPath, version: 7);
       await migration.complete();
 
       final state = jsonDecode(

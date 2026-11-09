@@ -33,6 +33,7 @@ class ConversationWorkspace extends ChangeNotifier {
     TableActionProcessor? tableActionProcessor,
     AiPermissions Function()? defaultPermissions,
     AiPolicy Function()? defaultPolicy,
+    bool Function()? fullAgentMode,
     AgentTaskStore? taskStore,
     AgentBackgroundControl? backgroundAgent,
     ImageInputService? imageInputService,
@@ -47,6 +48,7 @@ class ConversationWorkspace extends ChangeNotifier {
        _defaultPermissions =
            defaultPermissions ?? (() => const AiPermissions()),
        _defaultPolicy = defaultPolicy,
+       _fullAgentMode = fullAgentMode ?? (() => false),
        _taskStore = taskStore ?? MemoryAgentTaskStore(),
        _backgroundAgent = backgroundAgent ?? DisabledAgentBackgroundControl(),
        _imageInputService = imageInputService ?? ImageInputService(),
@@ -61,6 +63,7 @@ class ConversationWorkspace extends ChangeNotifier {
   final TableActionProcessor? _tableActionProcessor;
   final AiPermissions Function() _defaultPermissions;
   final AiPolicy Function()? _defaultPolicy;
+  final bool Function() _fullAgentMode;
   final AgentTaskStore _taskStore;
   final AgentBackgroundControl _backgroundAgent;
   final ImageInputService _imageInputService;
@@ -120,13 +123,55 @@ class ConversationWorkspace extends ChangeNotifier {
 
   bool get isChatGenerating => _isChatGenerating;
 
+  bool get fullAgentMode => _fullAgentMode();
+
+  AiPolicy effectivePolicyFor(Conversation? conversation) {
+    if (fullAgentMode) return AiPolicy.forPreset(AiPolicyPreset.fullAccess);
+    return conversation?.effectiveAiPolicy ??
+        _defaultPolicy?.call() ??
+        AiPolicy.fromLegacyPermissions(_defaultPermissions());
+  }
+
+  void notifyPolicySettingsChanged() {
+    notifyListeners();
+  }
+
+  Future<void> reconcilePendingActionsForFullAgentMode() async {
+    if (!fullAgentMode) return;
+    final pendingActionIds = <String>[];
+    for (final conversation in await _repository.listConversations()) {
+      for (final message in await _repository.listMessages(conversation.id)) {
+        for (final action in message.tableActions) {
+          if (action.status == TableChatActionStatus.pendingConfirmation) {
+            pendingActionIds.add(action.id);
+          }
+        }
+      }
+    }
+    for (final actionId in pendingActionIds) {
+      if (!fullAgentMode) return;
+      await confirmTableStructureAction(actionId);
+    }
+    for (final candidate in _results.globalKnowledgeCandidates) {
+      if (!fullAgentMode) return;
+      if (candidate.status != GlobalKnowledgeCandidateStatus.pending) continue;
+      await _results.confirmGlobalKnowledgeChange(
+        candidate.id,
+        displayedDigest: candidate.digest,
+        authorizationSource: GlobalKnowledgeAuthorizationSource.policy,
+        authorizationGuard: () async => fullAgentMode,
+      );
+    }
+    notifyListeners();
+  }
+
   String? get generatingConversationId => _runningConversationId;
 
   Future<AiPolicy?> currentRunningPolicy() async {
     final conversationId = _activeTurn?.conversationId;
     if (conversationId == null) return null;
     final conversation = await _repository.findConversation(conversationId);
-    return conversation?.effectiveAiPolicy;
+    return conversation == null ? null : effectivePolicyFor(conversation);
   }
 
   Future<bool> recordAuxiliaryModelRequest() {
@@ -383,8 +428,53 @@ class ConversationWorkspace extends ChangeNotifier {
     await _initializeTaskInfrastructure();
     await _recoverPendingGenerations();
     await _settleRecoveredCompletedTurns();
+    await _autoResumeSafeFullAgentTurns();
     await _repository.deleteEmptyConversations();
     await refresh();
+  }
+
+  Future<void> _autoResumeSafeFullAgentTurns() async {
+    if (!fullAgentMode) return;
+    var changed = false;
+    for (final turn in [..._steeringQueue, ..._conversationQueue]) {
+      final assistantMessageId = turn.assistantMessageId;
+      if (assistantMessageId == null) continue;
+      final assistant = await _repository.findMessage(assistantMessageId);
+      final generation = await _repository.findGeneration(assistantMessageId);
+      if (assistant == null ||
+          generation == null ||
+          assistant.status != ChatMessageStatus.interrupted ||
+          generation.status != GenerationStatus.interrupted ||
+          generation.toolCalls.isNotEmpty ||
+          !_isRecoverableAppInterruption(assistant.error, generation.error)) {
+        continue;
+      }
+      await _repository.saveMessage(
+        assistant.copyWith(
+          content: '',
+          reasoningContent: '',
+          toolTranscript: const [],
+          updatedAt: DateTime.now(),
+          error: null,
+        ),
+      );
+      turn.status = AgentTurnCheckpointStatus.queued;
+      _reviewTaskIds.remove(turn.taskId);
+      changed = true;
+    }
+    if (!changed) return;
+    _refreshTaskSchedulerPaused();
+    await _persistTaskCheckpoint();
+    _scheduleTurnWorker();
+    notifyListeners();
+  }
+
+  bool _isRecoverableAppInterruption(String? assistantError, String? runError) {
+    const markers = ['应用在模型响应完成前关闭', '应用正在关闭'];
+    final errors = [assistantError ?? '', runError ?? ''];
+    return errors.any(
+      (error) => markers.any((marker) => error.contains(marker)),
+    );
   }
 
   Future<void> _initializeTaskInfrastructure() async {
@@ -833,6 +923,16 @@ class ConversationWorkspace extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> refreshAgentManagedState() async {
+    await refresh();
+    for (final conversationId in _messagesByConversation.keys.toList()) {
+      _messagesByConversation[conversationId] = await _repository.listMessages(
+        conversationId,
+      );
+    }
+    notifyListeners();
+  }
+
   Future<Conversation> createConversation({
     AiPermissions? permissions,
     AiPolicy? policy,
@@ -891,8 +991,9 @@ class ConversationWorkspace extends ChangeNotifier {
   }
 
   Future<List<ChatAttachmentInput>> pickImagesFromGallery({
-    int limit = ImageInputService.maxImagesPerMessage,
-  }) => _imageInputService.pickFromGallery(limit: limit);
+    int? limit = ImageInputService.maxImagesPerMessage,
+    bool unbounded = false,
+  }) => _imageInputService.pickFromGallery(limit: limit, unbounded: unbounded);
 
   Future<List<ChatAttachmentInput>> pickImageFromCamera() =>
       _imageInputService.pickFromCamera();
@@ -926,7 +1027,7 @@ class ConversationWorkspace extends ChangeNotifier {
 
   Future<void> deleteConversation(String id) async {
     await cancelGeneration(conversationId: id);
-    await _repository.deleteConversation(id);
+    await _repository.trashConversation(id);
     _messagesByConversation.remove(id);
     if (_activeConversationId == id) {
       _activeConversationId = null;
@@ -939,7 +1040,10 @@ class ConversationWorkspace extends ChangeNotifier {
       return;
     }
     final rawImages = await payload.readImages();
-    final images = await _imageInputService.fromBytes(rawImages);
+    final images = await _imageInputService.fromBytes(
+      rawImages,
+      unbounded: fullAgentMode,
+    );
     final conversation = await createConversation();
     _pendingOpenConversationIds.addLast(conversation.id);
     unawaited(
@@ -2017,10 +2121,8 @@ class ConversationWorkspace extends ChangeNotifier {
     final targetId = arguments['target_id'] is String
         ? arguments['target_id'] as String
         : null;
-    final decision = conversation.effectiveAiPolicy.decisionFor(
-      permission,
-      knowledgeId: targetId,
-    );
+    final decision = effectivePolicyFor(conversation)
+        .decisionFor(permission, knowledgeId: targetId);
     if (decision == AiPolicyDecision.deny) {
       return _ToolActionResult(
         receipt: ChatWriteToolReceipt.rejected(
@@ -2067,11 +2169,11 @@ class ConversationWorkspace extends ChangeNotifier {
       final latestConversation = await _repository.findConversation(
         conversation.id,
       );
-      final latestDecision = latestConversation?.effectiveAiPolicy.decisionFor(
-        permission,
-        knowledgeId: targetId,
-      );
-      if (latestDecision == null || latestDecision == AiPolicyDecision.deny) {
+      final latestDecision = latestConversation == null
+          ? AiPolicyDecision.deny
+          : effectivePolicyFor(latestConversation)
+                .decisionFor(permission, knowledgeId: targetId);
+      if (latestDecision == AiPolicyDecision.deny) {
         return _ToolActionResult(
           receipt: ChatWriteToolReceipt.rejected(
             code: 'policy_denied',
@@ -2133,11 +2235,11 @@ class ConversationWorkspace extends ChangeNotifier {
                 final current = await _repository.findConversation(
                   conversation.id,
                 );
-                return current?.effectiveAiPolicy.decisionFor(
-                      permission,
-                      knowledgeId: targetId,
-                    ) ==
-                    AiPolicyDecision.allow;
+                return current == null
+                    ? false
+                    : effectivePolicyFor(current)
+                              .decisionFor(permission, knowledgeId: targetId) ==
+                          AiPolicyDecision.allow;
               }
             : null,
       );
@@ -2394,6 +2496,7 @@ class ConversationWorkspace extends ChangeNotifier {
   String _terminationMessage(ChatStreamTermination? termination) {
     return switch (termination) {
       ChatStreamTermination.empty => '模型返回了空回复（可能只有心跳或隐藏推理），本轮没有可展示内容；请重试。',
+      ChatStreamTermination.length => '模型响应达到单次输出上限，未形成完整答复。',
       ChatStreamTermination.disconnected => '连接在模型确认完成前中断，本轮没有继续执行后续工具；请重试。',
       ChatStreamTermination.cancelled => '生成已取消；本轮没有继续派发新的工具。',
       ChatStreamTermination.incomplete ||
@@ -2912,7 +3015,7 @@ class ConversationWorkspace extends ChangeNotifier {
     };
     final decision = permission == null || conversation == null
         ? AiPolicyDecision.deny
-        : conversation.effectiveAiPolicy.decisionFor(
+        : effectivePolicyFor(conversation).decisionFor(
             permission,
             tableIds: [
               ?(action.tableId),
@@ -3038,10 +3141,12 @@ class ConversationWorkspace extends ChangeNotifier {
       final conversation = await _repository.findConversation(
         message.conversationId,
       );
-      final decision = conversation?.effectiveAiPolicy.decisionFor(
-        AiPermissionAction.contentCreate,
-        tableIds: [?(action.tableId)],
-      );
+      final decision = conversation == null
+          ? AiPolicyDecision.deny
+          : effectivePolicyFor(conversation).decisionFor(
+              AiPermissionAction.contentCreate,
+              tableIds: [?(action.tableId)],
+            );
       if (decision != AiPolicyDecision.allow) {
         final stillPending = pending.copyWith(
           message: '当前会话权限尚未允许重新扫描；扫描编号仍待执行，未创建或补写内容。',

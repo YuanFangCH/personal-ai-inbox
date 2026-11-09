@@ -15,7 +15,8 @@ class ImageInputService {
   final ImagePicker _picker;
 
   Future<List<ChatAttachmentInput>> pickFromGallery({
-    int limit = maxImagesPerMessage,
+    int? limit = maxImagesPerMessage,
+    bool unbounded = false,
   }) async {
     final files = await _picker.pickMultiImage(
       imageQuality: 95,
@@ -23,7 +24,10 @@ class ImageInputService {
       maxHeight: _maxImageDimension.toDouble(),
       limit: limit,
     );
-    return _normalizeAll(files.take(limit));
+    return _normalizeAll(
+      limit == null ? files : files.take(limit),
+      unbounded: unbounded,
+    );
   }
 
   Future<List<ChatAttachmentInput>> pickFromCamera() async {
@@ -40,8 +44,9 @@ class ImageInputService {
   }
 
   Future<List<ChatAttachmentInput>> fromBytes(
-    Iterable<({Uint8List bytes, String fileName, String mimeType})> values,
-  ) {
+    Iterable<({Uint8List bytes, String fileName, String mimeType})> values, {
+    bool unbounded = false,
+  }) {
     return _normalizeAll(
       values.map(
         (value) => XFile.fromData(
@@ -50,13 +55,17 @@ class ImageInputService {
           mimeType: value.mimeType,
         ),
       ),
+      unbounded: unbounded,
     );
   }
 
-  Future<List<ChatAttachmentInput>> _normalizeAll(Iterable<XFile> files) async {
+  Future<List<ChatAttachmentInput>> _normalizeAll(
+    Iterable<XFile> files, {
+    bool unbounded = false,
+  }) async {
     final result = <ChatAttachmentInput>[];
     for (final file in files) {
-      final normalized = await _normalize(file);
+      final normalized = await _normalize(file, unbounded: unbounded);
       if (normalized != null) {
         result.add(normalized);
       }
@@ -64,7 +73,10 @@ class ImageInputService {
     return result;
   }
 
-  Future<ChatAttachmentInput?> _normalize(XFile file) async {
+  Future<ChatAttachmentInput?> _normalize(
+    XFile file, {
+    required bool unbounded,
+  }) async {
     final sourceBytes = await file.readAsBytes();
     if (sourceBytes.isEmpty) {
       return null;
@@ -90,7 +102,7 @@ class ImageInputService {
       fileName = '${_baseName(file.name)}.jpg';
     }
 
-    if (bytes.length > _maxImageBytes) {
+    if (!unbounded && bytes.length > _maxImageBytes) {
       return null;
     }
     return ChatAttachmentInput(

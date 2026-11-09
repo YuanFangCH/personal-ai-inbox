@@ -402,6 +402,24 @@ void main() {
     expect(jsonEncode(blocked), contains('检索调用上限'));
   });
 
+  test('full-agent retrieval has no cumulative search-call boundary', () async {
+    final retrieval = LocalRetrieval(
+      conversationId: current.id,
+      permissions: const AiPermissions(),
+      chats: chats,
+      results: results,
+      unbounded: true,
+    );
+
+    for (var index = 0; index < LocalRetrieval.maxSearches + 5; index++) {
+      final result = jsonMap(
+        await retrieval.searchResults(query: 'unbounded_no_match_$index'),
+      );
+      expect(result['status'], 'ok');
+    }
+    expect(retrieval.searchCalls, LocalRetrieval.maxSearches + 5);
+  });
+
   test(
     'verify checks explicit target revision and fields with coverage',
     () async {

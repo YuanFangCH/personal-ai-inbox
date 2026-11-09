@@ -158,6 +158,7 @@ class SettingsService {
     bool? allowImageEgress,
     AiPermissions? defaultAiPermissions,
     AiPolicy? defaultAiPolicy,
+    bool? fullAgentMode,
     ModelCapabilityOverrides? capabilityOverrides,
     int? responseHeaderTimeoutSeconds,
     int? streamIdleTimeoutSeconds,
@@ -175,6 +176,7 @@ class SettingsService {
       calendarMonthDetailed: calendarMonthDetailed,
       allowImageEgress: allowImageEgress,
       defaultAiPermissions: defaultAiPermissions,
+      fullAgentMode: fullAgentMode,
       capabilityOverrides: capabilityOverrides,
       responseHeaderTimeoutSeconds: responseHeaderTimeoutSeconds,
       streamIdleTimeoutSeconds: streamIdleTimeoutSeconds,
@@ -244,7 +246,7 @@ class SettingsService {
   Future<Map<String, Object?>> exportPortableSettings() async {
     final settings = await load();
     return {
-      'portable_schema_version': 1,
+      'portable_schema_version': 2,
       'theme_mode': _themeName(settings.themeMode),
       'model_base_url': settings.modelBaseUrl,
       'model_name': settings.modelName,
@@ -253,6 +255,7 @@ class SettingsService {
       'allow_image_egress': settings.allowImageEgress,
       'default_ai_permissions': settings.defaultAiPermissions.toJson(),
       'default_ai_policy': settings.effectiveDefaultAiPolicy.toJson(),
+      'full_agent_mode': settings.fullAgentMode,
       'capability_overrides': {
         'vision': settings.capabilityOverrides.vision,
         'tool_calls': settings.capabilityOverrides.toolCalls,
@@ -281,6 +284,7 @@ class SettingsService {
       'allow_image_egress',
       'default_ai_permissions',
       'default_ai_policy',
+      'full_agent_mode',
       'capability_overrides',
       'response_header_timeout_seconds',
       'stream_idle_timeout_seconds',
@@ -293,7 +297,8 @@ class SettingsService {
     if (unknown.isNotEmpty) {
       throw FormatException('设置文件包含不支持的字段：${unknown.join('、')}');
     }
-    if (values['portable_schema_version'] != 1) {
+    final portableVersion = values['portable_schema_version'];
+    if (portableVersion != 1 && portableVersion != 2) {
       throw const FormatException('设置文件版本不受支持');
     }
     final current = await load();
@@ -312,6 +317,9 @@ class SettingsService {
       allowImageEgress: _requiredBool(values, 'allow_image_egress'),
       defaultAiPermissions: defaultAiPermissions,
       defaultAiPolicy: defaultAiPolicy,
+      fullAgentMode: portableVersion == 2
+          ? _requiredBool(values, 'full_agent_mode')
+          : false,
       capabilityOverrides: ModelCapabilityOverrides(
         vision: _nullableBool(capabilities, 'vision'),
         toolCalls: _nullableBool(capabilities, 'tool_calls'),
@@ -370,6 +378,7 @@ class SettingsService {
       calendarMonthDetailed: true,
       allowImageEgress: true,
       defaultAiPolicy: AiPolicy.forPreset(AiPolicyPreset.standard),
+      fullAgentMode: false,
     );
     return saveConfiguration(defaults);
   }
@@ -431,6 +440,7 @@ class SettingsService {
       settings.effectiveDefaultAiPolicy,
     ).toJson(),
     'default_ai_policy': settings.effectiveDefaultAiPolicy.toJson(),
+    'full_agent_mode': settings.fullAgentMode,
     'capability_overrides': {
       'vision': settings.capabilityOverrides.vision,
       'tool_calls': settings.capabilityOverrides.toolCalls,
@@ -469,6 +479,7 @@ class SettingsService {
       allowImageEgress: _boolValue(map, 'allow_image_egress') ?? true,
       defaultAiPermissions: permissions,
       defaultAiPolicy: _readAiPolicy(map, permissions),
+      fullAgentMode: _boolValue(map, 'full_agent_mode') ?? false,
       schemaVersion: map['schema_version'] as int,
       modelKeySlotId: modelKeySlotId as String?,
       capabilityOverrides: ModelCapabilityOverrides(

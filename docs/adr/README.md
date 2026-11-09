@@ -29,6 +29,7 @@
 | [0023](0023-clean-migrated-legacy-sources.md) | 迁移后清理非全局旧源，保留校验备份及可续跑的完成凭据 | accepted |
 | [0024](0024-secretary-agent-permissions-and-deduplication.md) | 专用秘书采用可恢复任务、可选应用内完全权限、可删除预置表与写前查重；完全权限下全局知识免逐项确认 | accepted（已随 v1.4.0 Android 手机发布；A01–A30、A34–A35 等剩余审计延期） |
 | [0025](0025-unbounded-flutter-agent-harness.md) | Flutter 原生单 Agent Harness 取消累计任务预算，完全权限覆盖全部表数据，冲突自动新建并标记待核对 | accepted |
+| [0026](0026-device-full-agent-mode.md) | 设置页完全体模式作为全局应用内授权覆盖层，取消应用层累计上限并保留凭据、系统权限与本地正确性边界 | accepted |
 
 相关文档：
 

@@ -9,6 +9,8 @@ class ModelCapabilities {
     this.jsonOutput = false,
     this.thinking = false,
     this.webSearch = false,
+    this.contextWindowTokens,
+    this.maxOutputTokens,
   });
 
   static const textOnly = ModelCapabilities();
@@ -17,12 +19,16 @@ class ModelCapabilities {
     toolCalls: true,
     jsonOutput: true,
     thinking: true,
+    contextWindowTokens: 1000000,
+    maxOutputTokens: 384000,
   );
 
   final bool vision;
   final bool toolCalls;
   final bool jsonOutput;
   final bool thinking;
+  final int? contextWindowTokens;
+  final int? maxOutputTokens;
 
   /// Built-in web search is unavailable on this app's Chat Completions route.
   final bool webSearch;
@@ -47,6 +53,8 @@ class ModelCapabilities {
       thinking:
           overrides.thinking ?? (knownDeepSeekEndpoint && defaults.thinking),
       webSearch: defaults.webSearch,
+      contextWindowTokens: defaults.contextWindowTokens,
+      maxOutputTokens: defaults.maxOutputTokens,
     );
   }
 }

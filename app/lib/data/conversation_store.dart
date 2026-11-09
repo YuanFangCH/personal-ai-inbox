@@ -37,5 +37,13 @@ abstract interface class ConversationStore {
 
   Future<AutoRecordAction?> findAutoRecordAction(String id);
 
+  Future<void> saveTrashEntry(LocalTrashEntry entry);
+
+  Future<List<LocalTrashEntry>> listTrashEntries();
+
+  Future<LocalTrashEntry?> findTrashEntry(String id);
+
+  Future<void> deleteTrashEntry(String id);
+
   Future<void> clear();
 }

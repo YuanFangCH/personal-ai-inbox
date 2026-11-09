@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_ai_inbox/app.dart';
@@ -5,10 +6,87 @@ import 'package:personal_ai_inbox/bootstrap/app_runtime.dart';
 import 'package:personal_ai_inbox/core/models.dart';
 import 'package:personal_ai_inbox/data/memory_index_database.dart';
 import 'package:personal_ai_inbox/data/memory_vault_store.dart';
+import 'package:personal_ai_inbox/services/agent_background_service.dart';
 
 import 'test_support.dart';
 
 void main() {
+  testWidgets(
+    'full-agent switch overrides existing and new conversations then restores',
+    (tester) async {
+      final runtime = await AppRuntime.bootstrap(
+        vaultOverride: MemoryVaultStore(),
+        indexOverride: MemoryIndexDatabase(),
+        settingsOverride: FakeSettingsService(deviceId: 'full-agent-page'),
+      );
+      addTearDown(runtime.dispose);
+      final existing = await runtime.conversations.createConversation(
+        policy: AiPolicy.forPreset(AiPolicyPreset.standard),
+      );
+      await tester.pumpWidget(
+        PersonalAiInboxApp(
+          runtime: runtime,
+          backgroundAgent: _NoopBackgroundPort(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('nav_more')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('sheet_nav_settings')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('settings_full_agent_mode')));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(runtime.preferences.settings.fullAgentMode, isTrue);
+      expect(
+        find.byKey(const Key('settings_ai_preset_standard')),
+        findsNothing,
+      );
+      expect(
+        runtime.conversations
+            .effectivePolicyFor(
+              runtime.conversations.findConversation(existing.id),
+            )
+            .preset,
+        AiPolicyPreset.fullAccess,
+      );
+      expect(
+        runtime.conversations.findConversation(existing.id)!.aiPolicy!.preset,
+        AiPolicyPreset.standard,
+      );
+
+      final createdInFullMode = await runtime.conversations
+          .createConversation();
+      expect(createdInFullMode.aiPolicy!.preset, AiPolicyPreset.standard);
+      expect(
+        runtime.conversations.effectivePolicyFor(createdInFullMode).preset,
+        AiPolicyPreset.fullAccess,
+      );
+
+      await tester.tap(find.byKey(const Key('settings_full_agent_mode')));
+      await tester.pumpAndSettle();
+      expect(runtime.preferences.settings.fullAgentMode, isFalse);
+      expect(
+        runtime.conversations
+            .effectivePolicyFor(
+              runtime.conversations.findConversation(existing.id),
+            )
+            .preset,
+        AiPolicyPreset.standard,
+      );
+      expect(
+        runtime.conversations
+            .effectivePolicyFor(
+              runtime.conversations.findConversation(createdInFullMode.id),
+            )
+            .preset,
+        AiPolicyPreset.standard,
+      );
+      await _disposeApp(tester);
+    },
+  );
+
   testWidgets(
     'permission defaults update settings without mutating existing conversations',
     (tester) async {
@@ -21,7 +99,12 @@ void main() {
       final existing = await runtime.conversations.createConversation(
         policy: AiPolicy.forPreset(AiPolicyPreset.standard),
       );
-      await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+      await tester.pumpWidget(
+        PersonalAiInboxApp(
+          runtime: runtime,
+          backgroundAgent: _NoopBackgroundPort(),
+        ),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('nav_more')));
       await tester.pumpAndSettle();
@@ -60,6 +143,7 @@ void main() {
             .preset,
         AiPolicyPreset.standard,
       );
+      await _disposeApp(tester);
     },
   );
 
@@ -75,7 +159,13 @@ void main() {
         indexOverride: MemoryIndexDatabase(),
         settingsOverride: FakeSettingsService(deviceId: 'settings-page-test'),
       );
-      await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+      addTearDown(runtime.dispose);
+      await tester.pumpWidget(
+        PersonalAiInboxApp(
+          runtime: runtime,
+          backgroundAgent: _NoopBackgroundPort(),
+        ),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('nav_more')));
       await tester.pumpAndSettle();
@@ -105,6 +195,7 @@ void main() {
         runtime.preferences.settings.modelBaseUrl,
         'https://api.deepseek.com',
       );
+      await _disposeApp(tester);
     },
   );
 
@@ -121,7 +212,13 @@ void main() {
       settingsOverride: FakeSettingsService(deviceId: 'settings-policy-phone'),
     );
     addTearDown(runtime.dispose);
-    await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+    addTearDown(runtime.dispose);
+    await tester.pumpWidget(
+      PersonalAiInboxApp(
+        runtime: runtime,
+        backgroundAgent: _NoopBackgroundPort(),
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('nav_more')));
     await tester.pumpAndSettle();
@@ -144,7 +241,13 @@ void main() {
       expect(find.byKey(Key('settings_ai_group_$group')), findsOneWidget);
     }
     expect(tester.takeException(), isNull);
+    await _disposeApp(tester);
   });
+}
+
+Future<void> _disposeApp(WidgetTester tester) async {
+  await tester.pumpWidget(const SizedBox.shrink());
+  await tester.pump(const Duration(seconds: 2));
 }
 
 void _scrollToTop(WidgetTester tester) {
@@ -154,4 +257,19 @@ void _scrollToTop(WidgetTester tester) {
       state.position.jumpTo(0);
     }
   }
+}
+
+class _NoopBackgroundPort implements AgentBackgroundPort {
+  final ValueNotifier<AgentBackgroundSnapshot> _status = ValueNotifier(
+    const AgentBackgroundSnapshot.initial(),
+  );
+
+  @override
+  Stream<AgentBackgroundCommand> get commands => const Stream.empty();
+
+  @override
+  ValueListenable<AgentBackgroundSnapshot> get status => _status;
+
+  @override
+  Future<void> initialize() async {}
 }

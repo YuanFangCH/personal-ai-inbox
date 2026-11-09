@@ -5,6 +5,7 @@ class MemoryConversationStore implements ConversationStore {
   final Map<String, Conversation> _conversations = {};
   final Map<String, ChatMessage> _messages = {};
   final Map<String, GenerationRun> _generations = {};
+  final Map<String, LocalTrashEntry> _trash = {};
 
   @override
   Future<void> open() async {}
@@ -122,9 +123,28 @@ class MemoryConversationStore implements ConversationStore {
   }
 
   @override
+  Future<void> saveTrashEntry(LocalTrashEntry entry) async {
+    _trash[entry.id] = entry;
+  }
+
+  @override
+  Future<List<LocalTrashEntry>> listTrashEntries() async {
+    return _trash.values.toList(growable: false);
+  }
+
+  @override
+  Future<LocalTrashEntry?> findTrashEntry(String id) async => _trash[id];
+
+  @override
+  Future<void> deleteTrashEntry(String id) async {
+    _trash.remove(id);
+  }
+
+  @override
   Future<void> clear() async {
     _conversations.clear();
     _messages.clear();
     _generations.clear();
+    _trash.clear();
   }
 }

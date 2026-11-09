@@ -2,6 +2,8 @@
 
 设计日期：2026-11-03；实施状态更新：2026-11-08。设计已确认，实现提交为 `111f996`，当前由 v1.3.0 Android 手机预发布承载；剩余审计边界以 RM_HANDOFF.md 与 test-results/secretary-agent-implementation/ACCEPTANCE.md 为准。
 
+> 2026-11-09 增补：[ADR 0026](adr/0026-device-full-agent-mode.md) 实现设置页设备级完全体模式。开关通过全局覆盖而非批量改写会话策略生效；关闭后恢复各会话原策略。该模式取消应用层累计上下文、检索、附件和瞬时故障重试上限，增加整段会话/附件回收站与应用管理工具；单条消息和工具回执仍不可改写，凭据、模型控制面和系统权限继续隔离。
+
 本文件完整替代本聊天上一版 Agent 草案。完全权限、预置表可删除、全局知识免逐项确认及自动合并规则以 [ADR 0024](adr/0024-secretary-agent-permissions-and-deduplication.md) 为基础；2026-11-08 起累计任务预算和查重冲突暂停由 [ADR 0025](adr/0025-unbounded-flutter-agent-harness.md) 取代。相关运行能力已进入提交 `111f996` 和 v1.3.0 Android 手机候选。研究事实和来源见 [DSH 研究](research/04-dsh-agent-permissions-and-runtime.md)，术语见 [CONTEXT](../CONTEXT.md)。
 
 ## 1. 用户已确认的目标

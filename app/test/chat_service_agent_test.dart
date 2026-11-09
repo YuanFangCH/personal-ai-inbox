@@ -149,7 +149,7 @@ void main() {
     );
     expect(systemPrompt(fullAccess), contains('按当前策略直接执行'));
     expect(systemPrompt(fullAccess), contains('向用户报告结果'));
-    expect(systemPrompt(fullAccess), contains('已有待确认候选不会因策略切换自动批准'));
+    expect(systemPrompt(fullAccess), contains('设置页完全体模式启动时会重新校验并自动处理'));
     expect(systemPrompt(fullAccess), isNot(contains('全局知识仅能提议')));
     expect(
       knowledgeTool(fullAccess)['function']['description'],

@@ -196,10 +196,17 @@ mixin _ConversationPageActions on State<ConversationPage> {
       final files = List<ExtractedFileText>.from(_fileTexts);
       var conversationId = _conversationId;
       if (conversationId == null) {
+        final fullAgentMode = AppScope.preferences(context)
+            .settings
+            .fullAgentMode;
         final conversation = await app.createConversation(
-          permissions: _temporaryAiPolicy.legacyCompatibilityPermissions,
+          permissions: fullAgentMode
+              ? null
+              : _temporaryAiPolicy.legacyCompatibilityPermissions,
         );
-        await app.setAiPolicy(conversation.id, _temporaryAiPolicy);
+        if (!fullAgentMode) {
+          await app.setAiPolicy(conversation.id, _temporaryAiPolicy);
+        }
         conversationId = conversation.id;
         if (mounted) {
           setState(() => _conversationId = conversationId);
@@ -245,13 +252,16 @@ mixin _ConversationPageActions on State<ConversationPage> {
   }
 
   Future<void> _pickGallery() async {
+    final fullAgentMode = AppScope.preferences(context).settings.fullAgentMode;
     final remaining =
         ImageInputService.maxImagesPerMessage - _imageInputs.length;
-    if (remaining <= 0) {
+    if (!fullAgentMode && remaining <= 0) {
       return;
     }
-    final values = await AppScope.conversations(context)
-        .pickImagesFromGallery(limit: remaining);
+    final values = await AppScope.conversations(context).pickImagesFromGallery(
+      limit: fullAgentMode ? null : remaining,
+      unbounded: fullAgentMode,
+    );
     if (!mounted || values.isEmpty) {
       return;
     }
@@ -259,7 +269,8 @@ mixin _ConversationPageActions on State<ConversationPage> {
   }
 
   Future<void> _pickCamera() async {
-    if (_imageInputs.length >= ImageInputService.maxImagesPerMessage) {
+    if (!AppScope.preferences(context).settings.fullAgentMode &&
+        _imageInputs.length >= ImageInputService.maxImagesPerMessage) {
       return;
     }
     final values = await AppScope.conversations(context).pickImageFromCamera();
@@ -307,13 +318,14 @@ mixin _ConversationPageActions on State<ConversationPage> {
   }
 
   Future<void> _pickFile() async {
+    final fullAgentMode = AppScope.preferences(context).settings.fullAgentMode;
     const maxMessageChars = 24000;
     final used = _fileTexts.fold<int>(
       0,
       (total, file) => total + file.text.runes.length,
     );
     final remaining = maxMessageChars - used;
-    if (remaining <= 0 || _fileTexts.length >= 3) {
+    if (!fullAgentMode && (remaining <= 0 || _fileTexts.length >= 3)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('每条消息最多添加 3 个文件、共 24,000 个字符。')),
       );
@@ -321,9 +333,12 @@ mixin _ConversationPageActions on State<ConversationPage> {
     }
     try {
       final file = await AppScope.fileInput(context).pickAndExtract(
-        maxTextChars: remaining < FileInputService.maxFileTextChars
+        maxTextChars: fullAgentMode
+            ? null
+            : remaining < FileInputService.maxFileTextChars
             ? remaining
             : FileInputService.maxFileTextChars,
+        unbounded: fullAgentMode,
       );
       if (!mounted || file == null) return;
       setState(() => _fileTexts.add(file));
@@ -381,9 +396,8 @@ mixin _ConversationPageActions on State<ConversationPage> {
     if (widget.isRoot) {
       setState(() {
         _conversationId = null;
-        _temporaryAiPolicy = AiPolicy.fromLegacyPermissions(
-          AppScope.preferences(context).settings.defaultAiPermissions,
-        );
+        _temporaryAiPolicy = AppScope.conversations(context)
+            .effectivePolicyFor(null);
         _textController.clear();
         _imageInputs.clear();
         _fileTexts.clear();
@@ -724,13 +738,16 @@ mixin _ConversationPageActions on State<ConversationPage> {
     });
   }
 
-  AiPolicy _currentAiPolicy(Conversation? conversation) =>
-      conversation?.effectiveAiPolicy ?? _temporaryAiPolicy;
+  AiPolicy _currentAiPolicy(Conversation? conversation) => conversation == null
+      ? _temporaryAiPolicy
+      : AppScope.conversations(context).effectivePolicyFor(conversation);
 
   Future<void> _showPermissions(Conversation? conversation) async {
+    final locked = AppScope.preferences(context).settings.fullAgentMode;
     final selected = await showConversationPermissionSheet(
       context: context,
       initialPolicy: _currentAiPolicy(conversation),
+      locked: locked,
     );
     if (selected == null || !mounted) return;
     if (conversation == null) {
@@ -796,9 +813,8 @@ mixin _ConversationPageActions on State<ConversationPage> {
     if (mounted && conversation.id == _conversationId && widget.isRoot) {
       setState(() {
         _conversationId = null;
-        _temporaryAiPolicy = AiPolicy.fromLegacyPermissions(
-          AppScope.preferences(context).settings.defaultAiPermissions,
-        );
+        _temporaryAiPolicy = AppScope.conversations(context)
+            .effectivePolicyFor(null);
         _lastMessageCount = 0;
         _textController.clear();
         _imageInputs.clear();

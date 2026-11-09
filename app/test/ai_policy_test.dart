@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:personal_ai_inbox/core/chat_models.dart';
 import 'package:personal_ai_inbox/core/models.dart';
 
 void main() {
@@ -34,6 +35,8 @@ void main() {
       standard.decisionFor(AiPermissionAction.globalKnowledgeUpdate),
       AiPolicyDecision.ask,
     );
+    expect(AppSettings.aiPermissionsForPolicy(standard), const AiPermissions());
+    expect(standard.legacyCompatibilityPermissions, const AiPermissions());
 
     expect(fullAccess.preset, AiPolicyPreset.fullAccess);
     for (final action in AiPermissionAction.values) {

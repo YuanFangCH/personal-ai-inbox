@@ -116,7 +116,12 @@ enum AiPermissionAction {
   globalKnowledgeUpdate('global_knowledge_update'),
   globalKnowledgeDelete('global_knowledge_delete'),
   conversationHistorySearch('conversation_history_search'),
-  conversationHistoryRead('conversation_history_read');
+  conversationHistoryRead('conversation_history_read'),
+  conversationManage('conversation_manage'),
+  attachmentRead('attachment_read'),
+  attachmentManage('attachment_manage'),
+  appSettingsRead('app_settings_read'),
+  appSettingsUpdate('app_settings_update');
 
   const AiPermissionAction(this.wireName);
 
@@ -137,6 +142,8 @@ enum AiPermissionAction {
     AiPermissionAction.globalKnowledgeSearch,
     AiPermissionAction.conversationHistorySearch,
     AiPermissionAction.conversationHistoryRead,
+    AiPermissionAction.attachmentRead,
+    AiPermissionAction.appSettingsRead,
   }.contains(this);
 
   bool get requiresTableScope => const {
@@ -349,7 +356,9 @@ class AiPolicy {
             AiPermissionAction.globalKnowledgeRead ||
             AiPermissionAction.globalKnowledgeSearch ||
             AiPermissionAction.conversationHistorySearch ||
-            AiPermissionAction.conversationHistoryRead =>
+            AiPermissionAction.conversationHistoryRead ||
+            AiPermissionAction.attachmentRead ||
+            AiPermissionAction.appSettingsRead =>
               permissions.read ? AiPolicyDecision.allow : AiPolicyDecision.deny,
             AiPermissionAction.contentCreate =>
               permissions.create
@@ -374,7 +383,10 @@ class AiPolicy {
                   : AiPolicyDecision.deny,
             AiPermissionAction.globalKnowledgeCreate ||
             AiPermissionAction.globalKnowledgeUpdate ||
-            AiPermissionAction.globalKnowledgeDelete =>
+            AiPermissionAction.globalKnowledgeDelete ||
+            AiPermissionAction.conversationManage ||
+            AiPermissionAction.attachmentManage ||
+            AiPermissionAction.appSettingsUpdate =>
               permissions.create || permissions.modifyDelete
                   ? AiPolicyDecision.ask
                   : AiPolicyDecision.deny,
@@ -468,7 +480,7 @@ class AiPolicy {
     if (rawActions is! Map) {
       throw const FormatException('AI 策略 actions 类型错误');
     }
-    final decisions = <AiPermissionAction, AiPolicyDecision>{
+    final decodedDecisions = <AiPermissionAction, AiPolicyDecision>{
       for (final entry in rawActions.entries)
         if (entry.key is String && entry.value is String)
           AiPermissionAction.parse(entry.key as String): AiPolicyDecision.parse(
@@ -476,11 +488,9 @@ class AiPolicy {
           ),
     };
     final preset = AiPolicyPreset.parse(rawPreset);
-    if (preset != AiPolicyPreset.custom) {
-      if (decisions.length != AiPermissionAction.values.length) {
-        throw const FormatException('AI 预设策略 action 不完整');
-      }
-    }
+    final decisions = preset == AiPolicyPreset.custom
+        ? decodedDecisions
+        : {...AiPolicy.forPreset(preset).decisions, ...decodedDecisions};
     return AiPolicy._(
       version: rawVersion,
       preset: preset,
@@ -516,6 +526,11 @@ class AiPolicy {
     AiPermissionAction.globalKnowledgeDelete: AiPolicyDecision.deny,
     AiPermissionAction.conversationHistorySearch: AiPolicyDecision.allow,
     AiPermissionAction.conversationHistoryRead: AiPolicyDecision.allow,
+    AiPermissionAction.conversationManage: AiPolicyDecision.deny,
+    AiPermissionAction.attachmentRead: AiPolicyDecision.allow,
+    AiPermissionAction.attachmentManage: AiPolicyDecision.deny,
+    AiPermissionAction.appSettingsRead: AiPolicyDecision.allow,
+    AiPermissionAction.appSettingsUpdate: AiPolicyDecision.deny,
   };
 
   static const _standardDecisions = <AiPermissionAction, AiPolicyDecision>{
@@ -539,6 +554,11 @@ class AiPolicy {
     AiPermissionAction.globalKnowledgeDelete: AiPolicyDecision.ask,
     AiPermissionAction.conversationHistorySearch: AiPolicyDecision.allow,
     AiPermissionAction.conversationHistoryRead: AiPolicyDecision.allow,
+    AiPermissionAction.conversationManage: AiPolicyDecision.deny,
+    AiPermissionAction.attachmentRead: AiPolicyDecision.allow,
+    AiPermissionAction.attachmentManage: AiPolicyDecision.deny,
+    AiPermissionAction.appSettingsRead: AiPolicyDecision.allow,
+    AiPermissionAction.appSettingsUpdate: AiPolicyDecision.deny,
   };
 
   static const _fullAccessDecisions = <AiPermissionAction, AiPolicyDecision>{
@@ -562,6 +582,11 @@ class AiPolicy {
     AiPermissionAction.globalKnowledgeDelete: AiPolicyDecision.allow,
     AiPermissionAction.conversationHistorySearch: AiPolicyDecision.allow,
     AiPermissionAction.conversationHistoryRead: AiPolicyDecision.allow,
+    AiPermissionAction.conversationManage: AiPolicyDecision.allow,
+    AiPermissionAction.attachmentRead: AiPolicyDecision.allow,
+    AiPermissionAction.attachmentManage: AiPolicyDecision.allow,
+    AiPermissionAction.appSettingsRead: AiPolicyDecision.allow,
+    AiPermissionAction.appSettingsUpdate: AiPolicyDecision.allow,
   };
 }
 

@@ -5,6 +5,7 @@ import '../../../core/ai_policy.dart';
 Future<AiPolicy?> showConversationPermissionSheet({
   required BuildContext context,
   required AiPolicy initialPolicy,
+  bool locked = false,
 }) {
   return showModalBottomSheet<AiPolicy>(
     context: context,
@@ -13,15 +14,22 @@ Future<AiPolicy?> showConversationPermissionSheet({
     sheetAnimationStyle: MediaQuery.disableAnimationsOf(context)
         ? AnimationStyle.noAnimation
         : null,
-    builder: (context) =>
-        ConversationPermissionSheet(initialPolicy: initialPolicy),
+    builder: (context) => ConversationPermissionSheet(
+      initialPolicy: initialPolicy,
+      locked: locked,
+    ),
   );
 }
 
 class ConversationPermissionSheet extends StatefulWidget {
-  const ConversationPermissionSheet({super.key, required this.initialPolicy});
+  const ConversationPermissionSheet({
+    super.key,
+    required this.initialPolicy,
+    this.locked = false,
+  });
 
   final AiPolicy initialPolicy;
+  final bool locked;
 
   @override
   State<ConversationPermissionSheet> createState() =>
@@ -100,6 +108,48 @@ class _ConversationPermissionSheetState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    if (widget.locked) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text('当前对话权限', style: theme.textTheme.titleLarge),
+                  ),
+                  IconButton(
+                    key: const Key('conversation_permissions_close'),
+                    tooltip: '关闭',
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('完全体模式已接管'),
+                    SizedBox(height: 6),
+                    Text('所有现有和新对话统一使用完全权限；关闭设置页的完全体模式后恢复各对话原策略。'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return SafeArea(
       child: ConstrainedBox(
         constraints: BoxConstraints(
@@ -311,6 +361,8 @@ const _readActions = {
   AiPermissionAction.globalKnowledgeSearch,
   AiPermissionAction.conversationHistorySearch,
   AiPermissionAction.conversationHistoryRead,
+  AiPermissionAction.attachmentRead,
+  AiPermissionAction.appSettingsRead,
 };
 
 const _customGroups = [
@@ -358,6 +410,16 @@ const _customGroups = [
       AiPermissionAction.globalKnowledgeCreate,
       AiPermissionAction.globalKnowledgeUpdate,
       AiPermissionAction.globalKnowledgeDelete,
+    },
+  ),
+  _CustomDecisionGroup(
+    id: 'app',
+    title: '应用管理',
+    subtitle: '整段会话、附件回收站与普通界面设置',
+    actions: {
+      AiPermissionAction.conversationManage,
+      AiPermissionAction.attachmentManage,
+      AiPermissionAction.appSettingsUpdate,
     },
   ),
 ];

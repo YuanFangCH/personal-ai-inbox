@@ -113,6 +113,30 @@ class AgentToolRegistry {
       parallelSafe: true,
     ),
     AgentToolSpec(
+      operationName: 'conversation.list',
+      wireName: 'conversation_list',
+      access: AgentToolAccess.read,
+      parallelSafe: true,
+    ),
+    AgentToolSpec(
+      operationName: 'attachment.search',
+      wireName: 'attachment_search',
+      access: AgentToolAccess.read,
+      parallelSafe: true,
+    ),
+    AgentToolSpec(
+      operationName: 'attachment.read',
+      wireName: 'attachment_read',
+      access: AgentToolAccess.read,
+      parallelSafe: true,
+    ),
+    AgentToolSpec(
+      operationName: 'app.settings.read',
+      wireName: 'app_settings_read',
+      access: AgentToolAccess.read,
+      parallelSafe: true,
+    ),
+    AgentToolSpec(
       operationName: 'content.create',
       wireName: 'content_create',
       access: AgentToolAccess.write,
@@ -181,6 +205,24 @@ class AgentToolRegistry {
     AgentToolSpec(
       operationName: 'delete_result',
       wireName: 'delete_result',
+      access: AgentToolAccess.write,
+      parallelSafe: false,
+    ),
+    AgentToolSpec(
+      operationName: 'conversation.manage',
+      wireName: 'conversation_manage',
+      access: AgentToolAccess.write,
+      parallelSafe: false,
+    ),
+    AgentToolSpec(
+      operationName: 'attachment.manage',
+      wireName: 'attachment_manage',
+      access: AgentToolAccess.write,
+      parallelSafe: false,
+    ),
+    AgentToolSpec(
+      operationName: 'app.settings.update',
+      wireName: 'app_settings_update',
       access: AgentToolAccess.write,
       parallelSafe: false,
     ),

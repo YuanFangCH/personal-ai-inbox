@@ -4,6 +4,24 @@ import 'package:personal_ai_inbox/core/ai_policy.dart';
 import 'package:personal_ai_inbox/ui/pages/conversation/conversation_permission_sheet.dart';
 
 void main() {
+  testWidgets('full-agent mode locks conversation-level permission editing', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const _PermissionSheetHarness(locked: true));
+    await tester.tap(find.byKey(const Key('open_permissions')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('完全体模式已接管'), findsOneWidget);
+    expect(
+      find.byKey(const Key('permission_preset_full_access')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('conversation_permissions_apply')),
+      findsNothing,
+    );
+  });
+
   testWidgets('selects and returns full access after explicit confirmation', (
     tester,
   ) async {
@@ -109,7 +127,9 @@ void main() {
 }
 
 class _PermissionSheetHarness extends StatefulWidget {
-  const _PermissionSheetHarness();
+  const _PermissionSheetHarness({this.locked = false});
+
+  final bool locked;
 
   @override
   State<_PermissionSheetHarness> createState() =>
@@ -132,6 +152,7 @@ class _PermissionSheetHarnessState extends State<_PermissionSheetHarness> {
                   final selected = await showConversationPermissionSheet(
                     context: context,
                     initialPolicy: AiPolicy.forPreset(AiPolicyPreset.standard),
+                    locked: widget.locked,
                   );
                   if (mounted && selected != null) {
                     setState(() => result = selected);

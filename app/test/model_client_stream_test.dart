@@ -8,6 +8,44 @@ import 'package:personal_ai_inbox/services/model_client.dart';
 import 'package:personal_ai_inbox/services/model_capabilities.dart';
 
 void main() {
+  test('surfaces finish_reason length for full-agent continuation', () async {
+    final model = ModelClient(
+      client: MockClient.streaming((request, requestBody) async {
+        await requestBody.bytesToString();
+        return http.StreamedResponse(
+          Stream.fromIterable([
+            utf8.encode(
+              'data: {"choices":[{"delta":{"content":"partial"},"finish_reason":"length"}]}\n\n',
+            ),
+          ]),
+          200,
+          headers: const {'content-type': 'text/event-stream'},
+        );
+      }),
+    );
+    addTearDown(model.close);
+
+    final terminations =
+        (await model
+                .streamChat(
+                  messages: const [
+                    ChatRequestMessage(role: 'user', text: 'long'),
+                  ],
+                  configuration: const ModelConfiguration(
+                    baseUrl: 'https://example.com',
+                    model: 'test-model',
+                    apiKey: 'test-key',
+                  ),
+                  now: DateTime(2026, 11, 9),
+                )
+                .map((delta) => delta.termination)
+                .toList())
+            .whereType<ChatStreamTermination>()
+            .toList();
+
+    expect(terminations, [ChatStreamTermination.length]);
+  });
+
   test('terminal completes the outer stream before HTTP body cancellation finishes', () async {
     final bodyCancellationStarted = Completer<void>();
     final bodyCancellationGate = Completer<void>();
@@ -341,7 +379,7 @@ void main() {
           .toList();
 
       expect(deltas.any((delta) => delta.toolCallIndex != null), isTrue);
-      expect(deltas.last.termination, ChatStreamTermination.incomplete);
+      expect(deltas.last.termination, ChatStreamTermination.length);
       model.close();
     },
   );

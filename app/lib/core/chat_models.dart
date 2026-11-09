@@ -376,6 +376,40 @@ class Conversation {
       aiPolicy: nextAiPolicy,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt.toIso8601String(),
+    'auto_title': autoTitle,
+    'preview': preview,
+    'ai_permissions': aiPermissions.toJson(),
+    'ai_policy': aiPolicy?.toJson(),
+  };
+
+  static Conversation fromJson(Map<String, dynamic> json) {
+    final rawPermissions = json['ai_permissions'];
+    final rawPolicy = json['ai_policy'];
+    return Conversation(
+      id: json['id'].toString(),
+      title: json['title']?.toString() ?? '',
+      createdAt:
+          DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+          DateTime.now(),
+      updatedAt:
+          DateTime.tryParse(json['updated_at']?.toString() ?? '') ??
+          DateTime.now(),
+      autoTitle: json['auto_title'] == true,
+      preview: json['preview']?.toString() ?? '',
+      aiPermissions: rawPermissions is Map
+          ? AiPermissions.fromJson(Map<String, dynamic>.from(rawPermissions))
+          : const AiPermissions(),
+      aiPolicy: rawPolicy is Map
+          ? AiPolicy.fromJson(Map<String, dynamic>.from(rawPolicy))
+          : null,
+    );
+  }
 }
 
 /// Projects an action-level policy into the legacy three-boolean API.
@@ -610,6 +644,79 @@ class ChatMessage {
       toolTranscript: toolTranscript ?? this.toolTranscript,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'conversation_id': conversationId,
+    'role': role.wireName,
+    'content': content,
+    'status': status.wireName,
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt.toIso8601String(),
+    'attachments': attachments.map((item) => item.toJson()).toList(),
+    'actions': actions.map((item) => item.toJson()).toList(),
+    'table_actions': tableActions.map((item) => item.toJson()).toList(),
+    'error': error,
+    'reasoning_content': reasoningContent,
+    'tool_transcript': toolTranscript,
+  };
+
+  static ChatMessage fromJson(Map<String, dynamic> json) {
+    final attachments = json['attachments'];
+    final actions = json['actions'];
+    final tableActions = json['table_actions'];
+    final transcript = json['tool_transcript'];
+    return ChatMessage(
+      id: json['id'].toString(),
+      conversationId: json['conversation_id'].toString(),
+      role: ChatRole.parse(json['role']?.toString() ?? ''),
+      content: json['content']?.toString() ?? '',
+      status: ChatMessageStatus.parse(json['status']?.toString() ?? ''),
+      createdAt:
+          DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+          DateTime.now(),
+      updatedAt:
+          DateTime.tryParse(json['updated_at']?.toString() ?? '') ??
+          DateTime.now(),
+      attachments: attachments is List
+          ? attachments
+                .whereType<Map>()
+                .map(
+                  (item) =>
+                      ChatAttachment.fromJson(Map<String, dynamic>.from(item)),
+                )
+                .toList(growable: false)
+          : const [],
+      actions: actions is List
+          ? actions
+                .whereType<Map>()
+                .where((item) => item['kind'] != 'table')
+                .map(
+                  (item) => AutoRecordAction.fromJson(
+                    Map<String, dynamic>.from(item),
+                  ),
+                )
+                .toList(growable: false)
+          : const [],
+      tableActions: tableActions is List
+          ? tableActions
+                .whereType<Map>()
+                .map(
+                  (item) =>
+                      TableChatAction.fromJson(Map<String, dynamic>.from(item)),
+                )
+                .toList(growable: false)
+          : const [],
+      error: json['error']?.toString(),
+      reasoningContent: json['reasoning_content']?.toString() ?? '',
+      toolTranscript: transcript is List
+          ? transcript
+                .whereType<Map>()
+                .map((item) => Map<String, dynamic>.from(item))
+                .toList(growable: false)
+          : const [],
+    );
+  }
 }
 
 class ChatAttachmentInput {
@@ -622,6 +729,42 @@ class ChatAttachmentInput {
   final Uint8List bytes;
   final String fileName;
   final String mimeType;
+}
+
+class LocalTrashEntry {
+  const LocalTrashEntry({
+    required this.id,
+    required this.kind,
+    required this.expiresAt,
+    required this.payload,
+  });
+
+  final String id;
+  final String kind;
+  final DateTime expiresAt;
+  final Map<String, dynamic> payload;
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'kind': kind,
+    'expires_at': expiresAt.toIso8601String(),
+    'payload': payload,
+  };
+
+  static LocalTrashEntry fromJson(Map<String, dynamic> json) {
+    final rawPayload = json['payload'];
+    if (rawPayload is! Map) {
+      throw const FormatException('回收站条目 payload 格式错误');
+    }
+    return LocalTrashEntry(
+      id: json['id'].toString(),
+      kind: json['kind']?.toString() ?? '',
+      expiresAt:
+          DateTime.tryParse(json['expires_at']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      payload: Map<String, dynamic>.from(rawPayload),
+    );
+  }
 }
 
 const Object _unset = Object();

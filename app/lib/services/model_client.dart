@@ -80,6 +80,7 @@ class ChatStreamDelta {
 
 enum ChatStreamTermination {
   completed,
+  length,
   incomplete,
   empty,
   disconnected,
@@ -385,6 +386,7 @@ class ModelClient {
               _ChatTerminal.completedWithContent => ChatStreamTermination.empty,
               _ChatTerminal.completedToolCalls =>
                 ChatStreamTermination.completed,
+              _ChatTerminal.length => ChatStreamTermination.length,
               _ChatTerminal.incomplete => ChatStreamTermination.incomplete,
             },
           );
@@ -536,6 +538,7 @@ class ModelClient {
       null => null,
       'stop' => _ChatTerminal.completedWithContent,
       'tool_calls' => _ChatTerminal.completedToolCalls,
+      'length' => _ChatTerminal.length,
       _ => _ChatTerminal.incomplete,
     };
     if (delta == null) {
@@ -938,7 +941,12 @@ class _SseEventAssembler {
   }
 }
 
-enum _ChatTerminal { completedWithContent, completedToolCalls, incomplete }
+enum _ChatTerminal {
+  completedWithContent,
+  completedToolCalls,
+  length,
+  incomplete,
+}
 
 class _ChatEvent {
   const _ChatEvent({

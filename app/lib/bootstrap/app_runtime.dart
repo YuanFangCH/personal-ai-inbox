@@ -44,6 +44,7 @@ import '../services/chat_service.dart';
 import '../services/image_input_service.dart';
 import '../services/file_input_service.dart';
 import '../services/agent_background_service.dart';
+import '../services/agent_execution_profile.dart';
 import '../services/voice_service.dart';
 import '../services/model_client.dart';
 
@@ -179,7 +180,9 @@ final class AppRuntime {
           );
         },
         canReadDuplicateCandidates: (request) {
-          final policy = preferences.settings.effectiveDefaultAiPolicy;
+          final settings = preferences.settings;
+          final policy = AgentExecutionProfile.fromSettings(settings)
+              .policyFor(null, settings);
           final tableIds = request.candidates
               .map((candidate) => candidate.entry.tableId)
               .toSet();
@@ -192,7 +195,9 @@ final class AppRuntime {
           );
         },
         canModifyDuplicateCandidates: (request) {
-          final policy = preferences.settings.effectiveDefaultAiPolicy;
+          final settings = preferences.settings;
+          final policy = AgentExecutionProfile.fromSettings(settings)
+              .policyFor(null, settings);
           final tableIds = request.candidates
               .map((candidate) => candidate.entry.tableId)
               .toSet();
@@ -208,7 +213,9 @@ final class AppRuntime {
         // capture-scoped budget through the factory above.
         reserveDuplicateModelRequest: (_) async => false,
         contentWriteAuthorization: (authorization) {
-          final policy = preferences.settings.effectiveDefaultAiPolicy;
+          final settings = preferences.settings;
+          final policy = AgentExecutionProfile.fromSettings(settings)
+              .policyFor(null, settings);
           final action = authorization.kind == ContentIntakeWriteKind.create
               ? AiPermissionAction.contentCreate
               : AiPermissionAction.contentUpdate;
@@ -255,11 +262,14 @@ final class AppRuntime {
                 conversations.recordAuxiliaryModelRequest(),
             cancellation: () => conversations.activeCancellationFuture(),
           );
+      ConversationWorkspace? policySource;
       final tableActionProcessor = TableActionProcessor(
         chatRepository: chatRepository,
         tables: tables,
         semanticDuplicateDecisionSource: semanticDuplicateDecisionSource,
-        policyResolver: (conversation) => conversation.effectiveAiPolicy,
+        policyResolver: (conversation) =>
+            policySource?.effectivePolicyFor(conversation) ??
+            conversation.effectiveAiPolicy,
       );
       final chatService = ChatService(
         settings: settingsService,
@@ -268,6 +278,10 @@ final class AppRuntime {
         tables: tables,
         modelClient: modelClient,
         writeToolExecutor: (call) => conversations.executeWriteTool(call),
+        refreshSettings: preferences.initialize,
+        refreshConversationState: () async {
+          await policySource?.refreshAgentManagedState();
+        },
       );
       final backgroundAgent =
           agentBackground ??
@@ -282,11 +296,13 @@ final class AppRuntime {
         tableActionProcessor: tableActionProcessor,
         defaultPermissions: () => preferences.settings.defaultAiPermissions,
         defaultPolicy: () => preferences.settings.effectiveDefaultAiPolicy,
+        fullAgentMode: () => preferences.settings.fullAgentMode,
         taskStore: taskStore,
         backgroundAgent: backgroundAgent,
         imageInputService: ImageInputService(),
         activeUsageElapsedDuration: activeUsageElapsedDuration,
       );
+      policySource = conversations;
       final sync = SyncWorkspace(
         engine: syncEngine,
         repository: repository,

@@ -10,6 +10,7 @@ class FakeSettingsService extends SettingsService {
     String? modelKey,
     AiPermissions defaultAiPermissions = const AiPermissions(),
     AiPolicy? defaultAiPolicy,
+    bool fullAgentMode = false,
   }) : _settings = AppSettings(
          deviceId: deviceId,
          themeMode: themeMode,
@@ -21,6 +22,7 @@ class FakeSettingsService extends SettingsService {
          allowImageEgress: true,
          defaultAiPermissions: defaultAiPermissions,
          defaultAiPolicy: defaultAiPolicy,
+         fullAgentMode: fullAgentMode,
        ),
        _modelKey = modelKey;
 
@@ -65,6 +67,7 @@ class FakeSettingsService extends SettingsService {
     bool? allowImageEgress,
     AiPermissions? defaultAiPermissions,
     AiPolicy? defaultAiPolicy,
+    bool? fullAgentMode,
     ModelCapabilityOverrides? capabilityOverrides,
     int? responseHeaderTimeoutSeconds,
     int? streamIdleTimeoutSeconds,
@@ -81,6 +84,7 @@ class FakeSettingsService extends SettingsService {
       calendarMonthDetailed: calendarMonthDetailed,
       allowImageEgress: allowImageEgress,
       defaultAiPermissions: defaultAiPermissions,
+      fullAgentMode: fullAgentMode,
       capabilityOverrides: capabilityOverrides,
       responseHeaderTimeoutSeconds: responseHeaderTimeoutSeconds,
       streamIdleTimeoutSeconds: streamIdleTimeoutSeconds,

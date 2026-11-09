@@ -55,6 +55,7 @@ class DevicePreferences extends ChangeNotifier {
     int? imageLimit,
     AiPermissions? defaultAiPermissions,
     AiPolicy? defaultAiPolicy,
+    bool? fullAgentMode,
     List<String>? homeTableOrder,
     List<String>? calendarVisibleTableIds,
   }) {
@@ -75,6 +76,7 @@ class DevicePreferences extends ChangeNotifier {
         imageMessageLimit: imageMessageLimit,
         imageLimit: imageLimit,
         defaultAiPermissions: defaultAiPermissions,
+        fullAgentMode: fullAgentMode,
         homeTableOrder: homeTableOrder,
         calendarVisibleTableIds: calendarVisibleTableIds,
       );
@@ -210,6 +212,7 @@ abstract interface class DevicePreferencesAdapter {
     bool? allowImageEgress,
     AiPermissions? defaultAiPermissions,
     AiPolicy? defaultAiPolicy,
+    bool? fullAgentMode,
   });
 
   Future<String?> readModelKey();
@@ -248,6 +251,7 @@ final class SettingsServiceDevicePreferencesAdapter
     bool? allowImageEgress,
     AiPermissions? defaultAiPermissions,
     AiPolicy? defaultAiPolicy,
+    bool? fullAgentMode,
   }) {
     return _settingsService.saveGeneral(
       themeMode: themeMode,
@@ -258,6 +262,7 @@ final class SettingsServiceDevicePreferencesAdapter
       allowImageEgress: allowImageEgress,
       defaultAiPermissions: defaultAiPermissions,
       defaultAiPolicy: defaultAiPolicy,
+      fullAgentMode: fullAgentMode,
     );
   }
 

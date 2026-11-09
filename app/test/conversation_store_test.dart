@@ -281,6 +281,10 @@ void main() {
       tableScope: AiResourceScope.selected(const ['tb_v5']),
       knowledgeReadScope: const AiResourceScope.none(),
     );
+    expect(
+      legacy.copyWith(aiPolicy: standard).aiPermissions,
+      const AiPermissions(create: false),
+    );
     await migrated.upsertConversation(legacy.copyWith(aiPolicy: standard));
     await migrated.close();
 
@@ -300,12 +304,18 @@ void main() {
     await reopened.close();
 
     final database = sqlite3.open(path);
-    expect(database.select('PRAGMA user_version').single['user_version'], 6);
+    expect(database.select('PRAGMA user_version').single['user_version'], 7);
     expect(
       database
           .select('PRAGMA table_info(conversations)')
           .map((row) => row['name']),
       contains('ai_policy_json'),
+    );
+    expect(
+      database
+          .select('PRAGMA table_info(agent_trash_entries)')
+          .map((row) => row['name']),
+      containsAll(['id', 'kind', 'expires_at', 'payload_json']),
     );
     final stored = database.select(
       'SELECT ai_permissions_json FROM conversations WHERE id = ?',
@@ -313,7 +323,7 @@ void main() {
     ).single;
     expect(jsonDecode(stored['ai_permissions_json'] as String), {
       'read': true,
-      'create': true,
+      'create': false,
       'modify_delete': true,
     });
     database.close();

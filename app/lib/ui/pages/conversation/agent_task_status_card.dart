@@ -68,6 +68,10 @@ class _AgentTaskStatusCardState extends State<AgentTaskStatusCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (workspace.fullAgentMode) ...[
+              const Text('完全体模式运行中', key: Key('agent_full_agent_mode_status')),
+              const SizedBox(height: 6),
+            ],
             for (var index = 0; index < tasks.length; index++) ...[
               if (index > 0) const Divider(),
               _taskSection(tasks[index], index),

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:crypto/crypto.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'package:xml/xml.dart';
@@ -56,19 +57,20 @@ class FileInputService {
   final PickFileBytes? pickFileBytes;
 
   Future<ExtractedFileText?> pickAndExtract({
-    int maxTextChars = maxFileTextChars,
+    int? maxTextChars = maxFileTextChars,
+    bool unbounded = false,
   }) async {
     final picker = pickFileBytes;
     late final PickedFileBytes selected;
     if (picker == null) {
       final file = await FilePicker.pickFile(
         dialogTitle: '选择要分析的文件',
-        type: FileType.custom,
-        allowedExtensions: allowedExtensions,
+        type: unbounded ? FileType.any : FileType.custom,
+        allowedExtensions: unbounded ? null : allowedExtensions,
       );
       if (file == null) return null;
       final size = await file.length();
-      if (size != null && size > maxFileBytes) {
+      if (!unbounded && size != null && size > maxFileBytes) {
         throw const FileInputException('文件超过 8 MiB 大小限制。');
       }
       selected = PickedFileBytes(
@@ -80,38 +82,42 @@ class FileInputService {
       if (value == null) return null;
       selected = value;
     }
-    if (selected.bytes.length > maxFileBytes) {
+    if (!unbounded && selected.bytes.length > maxFileBytes) {
       throw const FileInputException('文件超过 8 MiB 大小限制。');
     }
     return extractBytes(
       fileName: selected.fileName,
       bytes: selected.bytes,
       maxTextChars: maxTextChars,
+      unbounded: unbounded,
     );
   }
 
   Future<ExtractedFileText> extractBytes({
     required String fileName,
     required Uint8List bytes,
-    int maxTextChars = maxFileTextChars,
+    int? maxTextChars = maxFileTextChars,
+    bool unbounded = false,
   }) async {
-    if (bytes.length > maxFileBytes) {
+    if (!unbounded && bytes.length > maxFileBytes) {
       throw const FileInputException('文件超过 8 MiB 大小限制。');
     }
-    if (maxTextChars < 1) {
+    if (!unbounded && (maxTextChars == null || maxTextChars < 1)) {
       throw const FileInputException('本条消息的文件文字预算已用完。');
     }
     final extension = _extension(fileName);
-    if (!allowedExtensions.contains(extension)) {
+    if (!unbounded && !allowedExtensions.contains(extension)) {
       throw FileInputException('暂不支持 .$extension 文件。');
     }
     late final String extracted;
     try {
       extracted = switch (extension) {
         'txt' || 'md' || 'csv' => _decodeUtf8(bytes),
-        'docx' => _extractDocx(bytes),
-        'xlsx' => _extractXlsx(bytes),
-        'pdf' => await _extractPdf(bytes, fileName),
+        'docx' => _extractDocx(bytes, unbounded: unbounded),
+        'xlsx' => _extractXlsx(bytes, unbounded: unbounded),
+        'pdf' => await _extractPdf(bytes, fileName, unbounded: unbounded),
+        'zip' => _extractZip(bytes, fileName),
+        _ when unbounded => _extractUnbounded(bytes, fileName, extension),
         _ => throw FileInputException('暂不支持 .$extension 文件。'),
       };
     } on FileInputException {
@@ -123,16 +129,59 @@ class FileInputService {
     if (text.isEmpty) {
       throw const FileInputException('文件中没有可提取的文字。');
     }
+    final limit = maxTextChars;
     final runes = text.runes;
-    final truncated = runes.length > maxTextChars;
-    final bounded = truncated
-        ? String.fromCharCodes(runes.take(maxTextChars))
-        : text;
+    final truncated = !unbounded && limit != null && runes.length > limit;
+    final bounded = truncated ? String.fromCharCodes(runes.take(limit)) : text;
     return ExtractedFileText(
       fileName: fileName,
       text: bounded,
       truncated: truncated,
     );
+  }
+
+  String _extractUnbounded(Uint8List bytes, String fileName, String extension) {
+    final text = _tryDecodeUtf8(bytes);
+    if (text != null) return text;
+    final digest = sha256.convert(bytes);
+    final preview = bytes
+        .take(24)
+        .map((value) => value.toRadixString(16).padLeft(2, '0'))
+        .join();
+    return '[二进制附件：$fileName]\n'
+        '大小：${bytes.length} bytes\n'
+        '扩展名：${extension.isEmpty ? '无' : '.$extension'}\n'
+        'SHA-256：$digest\n'
+        '文件头：$preview';
+  }
+
+  String _extractZip(Uint8List bytes, String fileName) {
+    final archive = ZipDecoder().decodeBytes(bytes, verify: false);
+    final output = StringBuffer()
+      ..writeln('[压缩包：$fileName]')
+      ..writeln('[条目数：${archive.files.length}]');
+    for (final file in archive.files) {
+      if (!file.isFile) continue;
+      output.writeln('[文件：${file.name}；大小：${file.size} bytes]');
+      final content = file.readBytes();
+      if (content == null) continue;
+      final text = _tryDecodeUtf8(content);
+      if (text != null && text.trim().isNotEmpty) {
+        output.writeln(text);
+      } else {
+        output.writeln('SHA-256：${sha256.convert(content)}');
+      }
+    }
+    return output.toString();
+  }
+
+  String? _tryDecodeUtf8(Uint8List bytes) {
+    try {
+      final text = utf8.decode(bytes, allowMalformed: false);
+      return text.startsWith('\uFEFF') ? text.substring(1) : text;
+    } on FormatException {
+      return null;
+    }
   }
 
   String _decodeUtf8(Uint8List bytes) {
@@ -144,8 +193,8 @@ class FileInputService {
     }
   }
 
-  String _extractDocx(Uint8List bytes) {
-    final archive = _decodeOfficeArchive(bytes);
+  String _extractDocx(Uint8List bytes, {required bool unbounded}) {
+    final archive = _decodeOfficeArchive(bytes, unbounded: unbounded);
     final documentFile = _archiveFile(archive, 'word/document.xml');
     if (documentFile == null) {
       throw const FileInputException('DOCX 文件缺少正文内容，或文件已损坏。');
@@ -179,8 +228,8 @@ class FileInputService {
     return output.toString();
   }
 
-  String _extractXlsx(Uint8List bytes) {
-    final archive = _decodeOfficeArchive(bytes);
+  String _extractXlsx(Uint8List bytes, {required bool unbounded}) {
+    final archive = _decodeOfficeArchive(bytes, unbounded: unbounded);
     final sharedStringsFile = _archiveFile(archive, 'xl/sharedStrings.xml');
     final sharedStrings = sharedStringsFile == null
         ? const <String>[]
@@ -229,7 +278,7 @@ class FileInputService {
     if (sheets.isEmpty) {
       throw const FileInputException('XLSX 文件中没有可读取的工作表。');
     }
-    if (sheets.length > maxSpreadsheetSheets) {
+    if (!unbounded && sheets.length > maxSpreadsheetSheets) {
       throw const FileInputException('XLSX 工作表超过 12 个的解析上限。');
     }
 
@@ -241,13 +290,13 @@ class FileInputService {
       final xml = XmlDocument.parse(utf8.decode(sheet.readBytes()!));
       var rowCount = 0;
       for (final row in _elements(xml, 'row')) {
-        if (rowCount++ >= maxSpreadsheetRows) {
+        if (!unbounded && rowCount++ >= maxSpreadsheetRows) {
           output.writeln('[工作表其余行已省略]');
           break;
         }
         final cells = <String>[];
         for (final cell in _elements(row, 'c')) {
-          if (++cellCount > maxSpreadsheetCells) {
+          if (!unbounded && ++cellCount > maxSpreadsheetCells) {
             output.writeln('[工作簿其余单元格已省略]');
             return output.toString();
           }
@@ -282,7 +331,11 @@ class FileInputService {
     return output.toString();
   }
 
-  Future<String> _extractPdf(Uint8List bytes, String fileName) async {
+  Future<String> _extractPdf(
+    Uint8List bytes,
+    String fileName, {
+    required bool unbounded,
+  }) async {
     final extractor = pdfTextExtractor;
     if (extractor != null) {
       final text = await extractor(bytes, fileName);
@@ -302,7 +355,7 @@ class FileInputService {
       if (document.isEncrypted) {
         throw const FileInputException('PDF 已加密，暂不支持提取。');
       }
-      if (document.pages.length > maxPdfPages) {
+      if (!unbounded && document.pages.length > maxPdfPages) {
         throw const FileInputException('PDF 页数超过 50 页的解析上限。');
       }
       final output = StringBuffer();
@@ -327,17 +380,20 @@ class FileInputService {
     }
   }
 
-  Archive _decodeOfficeArchive(Uint8List bytes) {
+  Archive _decodeOfficeArchive(Uint8List bytes, {required bool unbounded}) {
     final archive = ZipDecoder().decodeBytes(bytes, verify: false);
-    if (archive.files.length > maxZipEntries) {
+    if (!unbounded && archive.files.length > maxZipEntries) {
       throw const FileInputException('Office 文档包含过多压缩条目。');
     }
     final expandedBytes = archive.files.fold<int>(
       0,
       (total, file) => total + (file.isFile ? file.size : 0),
     );
-    if (expandedBytes > maxZipExpandedBytes ||
-        archive.files.any((file) => file.isFile && file.size > maxFileBytes)) {
+    if (!unbounded &&
+        (expandedBytes > maxZipExpandedBytes ||
+            archive.files.any(
+              (file) => file.isFile && file.size > maxFileBytes,
+            ))) {
       throw const FileInputException('Office 文档解压后的内容超过安全上限。');
     }
     return archive;

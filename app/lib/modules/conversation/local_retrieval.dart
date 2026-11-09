@@ -18,6 +18,7 @@ class LocalRetrieval {
     required ChatRepository chats,
     required ResultLibrary results,
     TableLibrary? tables,
+    this.unbounded = false,
   }) : assert(permissions != null || policy != null),
        _policy =
            policy ??
@@ -49,6 +50,7 @@ class LocalRetrieval {
   final ChatRepository _chats;
   final ResultLibrary _results;
   final TableLibrary? _tables;
+  final bool unbounded;
   final Map<String, _CachedResponse> _cache = {};
   var _searchCalls = 0;
   var _detailCalls = 0;
@@ -60,6 +62,8 @@ class LocalRetrieval {
   int get searchRounds => _searchCalls == 0 ? 0 : ((_searchCalls - 1) ~/ 2) + 1;
 
   AiPolicy get policy => _policy;
+
+  int get _turnCharLimit => unbounded ? 4000000 : maxTurnChars;
 
   void beginNextBatch() {
     _searchCalls = 0;
@@ -106,7 +110,7 @@ class LocalRetrieval {
       'type': type?.wireName,
       'globalKnowledgeOnly': globalKnowledgeOnly,
     });
-    final safeLimit = limit.clamp(1, maxHitsPerSearch);
+    final safeLimit = limit.clamp(1, unbounded ? 1000 : maxHitsPerSearch);
     try {
       offset = _cursorOffset(
         cursor: cursor,
@@ -234,7 +238,7 @@ class LocalRetrieval {
     final queryToken = retrievalDigest({
       'query': normalizeRetrievalText(query),
     });
-    final safeLimit = limit.clamp(1, maxHitsPerSearch);
+    final safeLimit = limit.clamp(1, unbounded ? 1000 : maxHitsPerSearch);
     try {
       offset = _cursorOffset(
         cursor: cursor,
@@ -361,7 +365,9 @@ class LocalRetrieval {
     }
     final sourceToken = _tableSourceToken(includeEntries: false);
     final queryToken = retrievalDigest({'role': roleName});
-    final safeLimit = limit?.clamp(1, maxTablePageSize).toInt();
+    final safeLimit = limit
+        ?.clamp(1, unbounded ? 1000 : maxTablePageSize)
+        .toInt();
     try {
       offset = _cursorOffset(
         cursor: cursor,
@@ -466,7 +472,7 @@ class LocalRetrieval {
     final queryToken = retrievalDigest({
       'query': normalizeRetrievalText(query),
     });
-    final safeLimit = limit.clamp(1, maxHitsPerSearch);
+    final safeLimit = limit.clamp(1, unbounded ? 1000 : maxHitsPerSearch);
     try {
       offset = _cursorOffset(
         cursor: cursor,
@@ -627,7 +633,7 @@ class LocalRetrieval {
       'through': through?.toIso8601String(),
       'fields': fieldFilters,
     });
-    final safeLimit = limit.clamp(1, maxHitsPerSearch);
+    final safeLimit = limit.clamp(1, unbounded ? 1000 : maxHitsPerSearch);
     try {
       offset = _cursorOffset(
         cursor: cursor,
@@ -1562,7 +1568,7 @@ class LocalRetrieval {
 
   _CacheDecision _beginSearch(String key, String sourceToken) {
     _searchCalls++;
-    if (_searchCalls > maxSearches) {
+    if (!unbounded && _searchCalls > maxSearches) {
       return _CacheDecision(
         proceed: false,
         response: _budgetBoundary('已达到本轮检索调用上限；请保存覆盖范围后继续。'),
@@ -1583,7 +1589,7 @@ class LocalRetrieval {
     required String sourceToken,
   }) {
     _detailCalls++;
-    if (_detailCalls > maxDetails) {
+    if (!unbounded && _detailCalls > maxDetails) {
       return _CacheDecision(
         proceed: false,
         response: _budgetBoundary('已达到本轮详情读取调用上限；请保存覆盖范围后继续。'),
@@ -1632,7 +1638,7 @@ class LocalRetrieval {
     String? nextCursor,
     List<String> warnings = const [],
   }) {
-    final remaining = maxTurnChars - _resultChars;
+    final remaining = _turnCharLimit - _resultChars;
     final envelope = <String, Object?>{
       'status': status,
       'data': data,
@@ -1640,7 +1646,7 @@ class LocalRetrieval {
       'nextCursor': nextCursor,
       'warnings': warnings,
       'budget': {
-        'limitChars': maxTurnChars,
+        'limitChars': _turnCharLimit,
         'usedChars': _resultChars,
         'remainingChars': remaining,
         'searchCalls': _searchCalls,
@@ -1667,12 +1673,15 @@ class LocalRetrieval {
       'nextCursor': nextCursor,
       'warnings': ['请保存检查点并在追加额度后从游标继续。'],
       'budget': {
-        'limitChars': maxTurnChars,
+        'limitChars': _turnCharLimit,
         'usedChars': _resultChars,
-        'remainingChars': (maxTurnChars - _resultChars).clamp(0, maxTurnChars),
+        'remainingChars': (_turnCharLimit - _resultChars).clamp(
+          0,
+          _turnCharLimit,
+        ),
       },
     });
-    final remaining = maxTurnChars - _resultChars;
+    final remaining = _turnCharLimit - _resultChars;
     if (_runeLength(response) <= remaining) {
       _resultChars += _runeLength(response);
     }
@@ -1681,7 +1690,7 @@ class LocalRetrieval {
 
   String _reuseCached(String response) {
     final length = _runeLength(response);
-    if (_resultChars + length <= maxTurnChars) {
+    if (_resultChars + length <= _turnCharLimit) {
       _resultChars += length;
       return response;
     }
@@ -1720,9 +1729,12 @@ class LocalRetrieval {
       'nextCursor': null,
       'warnings': [message],
       'budget': {
-        'limitChars': maxTurnChars,
+        'limitChars': _turnCharLimit,
         'usedChars': _resultChars,
-        'remainingChars': (maxTurnChars - _resultChars).clamp(0, maxTurnChars),
+        'remainingChars': (_turnCharLimit - _resultChars).clamp(
+          0,
+          _turnCharLimit,
+        ),
         'searchCalls': _searchCalls,
         'detailCalls': _detailCalls,
       },
@@ -1747,15 +1759,18 @@ class LocalRetrieval {
       'nextCursor': null,
       'warnings': [message],
       'budget': {
-        'limitChars': maxTurnChars,
+        'limitChars': _turnCharLimit,
         'usedChars': _resultChars,
-        'remainingChars': (maxTurnChars - _resultChars).clamp(0, maxTurnChars),
+        'remainingChars': (_turnCharLimit - _resultChars).clamp(
+          0,
+          _turnCharLimit,
+        ),
         'searchCalls': _searchCalls,
         'detailCalls': _detailCalls,
       },
     });
     if (consumeBudget) {
-      final remaining = maxTurnChars - _resultChars;
+      final remaining = _turnCharLimit - _resultChars;
       if (_runeLength(response) <= remaining) {
         _resultChars += _runeLength(response);
       }

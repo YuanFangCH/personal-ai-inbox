@@ -33,6 +33,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool? _jsonOutputOverride;
   bool? _thinkingOverride;
   bool _allowImageEgress = true;
+  bool _fullAgentMode = false;
   AiPolicy _defaultAiPolicy = AiPolicy.forPreset(AiPolicyPreset.standard);
   bool _initialized = false;
   bool _apiKeyChanged = false;
@@ -71,6 +72,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _thinkingOverride = settings.capabilityOverrides.thinking;
     _themeMode = materialThemeMode(settings.themeMode);
     _allowImageEgress = settings.allowImageEgress;
+    _fullAgentMode = settings.fullAgentMode;
     _defaultAiPolicy = settings.effectiveDefaultAiPolicy;
     final invalidSettings = settings.validate();
     if (invalidSettings.isNotEmpty) {
@@ -116,6 +118,18 @@ class _SettingsPageState extends State<SettingsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          SurfacePanel(
+            padding: EdgeInsets.zero,
+            child: SwitchListTile(
+              key: const Key('settings_full_agent_mode'),
+              value: _fullAgentMode,
+              onChanged: _saving ? null : _setFullAgentMode,
+              secondary: const Icon(Icons.all_inclusive),
+              title: const Text('完全体模式'),
+              subtitle: const Text('全局完全权限、无累计预算、自动续跑'),
+            ),
+          ),
+          const SizedBox(height: 16),
           SurfacePanel(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -171,37 +185,47 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SectionHeading(title: 'AI 权限默认值'),
                 const SizedBox(height: 4),
                 Text(
-                  '只决定新对话的初始权限；已有对话保留自己的设置。',
+                  _fullAgentMode
+                      ? '完全体模式已接管全部会话；关闭后恢复各会话原有策略。'
+                      : '只决定新对话的初始权限；已有对话保留自己的设置。',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final preset in AiPolicyPreset.values)
-                      ChoiceChip(
-                        key: Key('settings_ai_preset_${preset.wireName}'),
-                        label: Text(_aiPresetLabel(preset)),
-                        selected: _defaultAiPolicy.preset == preset,
-                        onSelected: (_) => _selectDefaultAiPreset(preset),
+                if (_fullAgentMode)
+                  const StatusPill(
+                    label: '完全权限已启用',
+                    icon: Icons.lock_open,
+                    tone: StatusTone.warning,
+                  )
+                else ...[
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final preset in AiPolicyPreset.values)
+                        ChoiceChip(
+                          key: Key('settings_ai_preset_${preset.wireName}'),
+                          label: Text(_aiPresetLabel(preset)),
+                          selected: _defaultAiPolicy.preset == preset,
+                          onSelected: (_) => _selectDefaultAiPreset(preset),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  _AiPresetSummary(preset: _defaultAiPolicy.preset),
+                  if (_defaultAiPolicy.preset == AiPolicyPreset.custom) ...[
+                    const SizedBox(height: 12),
+                    for (final group in _settingsPolicyGroups)
+                      _SettingsPolicyGroupTile(
+                        group: group,
+                        decision: _policyGroupDecision(
+                          _defaultAiPolicy,
+                          group.actions,
+                        ),
+                        onChanged: (decision) =>
+                            _setDefaultDecisionGroup(group.actions, decision),
                       ),
                   ],
-                ),
-                const SizedBox(height: 10),
-                _AiPresetSummary(preset: _defaultAiPolicy.preset),
-                if (_defaultAiPolicy.preset == AiPolicyPreset.custom) ...[
-                  const SizedBox(height: 12),
-                  for (final group in _settingsPolicyGroups)
-                    _SettingsPolicyGroupTile(
-                      group: group,
-                      decision: _policyGroupDecision(
-                        _defaultAiPolicy,
-                        group.actions,
-                      ),
-                      onChanged: (decision) =>
-                          _setDefaultDecisionGroup(group.actions, decision),
-                    ),
                 ],
               ],
             ),
@@ -327,9 +351,16 @@ class _SettingsPageState extends State<SettingsPage> {
                   _numberField(_headerTimeout, '响应头等待（5–120 秒）'),
                   _numberField(_idleTimeout, '流空闲期限（10–180 秒）'),
                   _numberField(_totalTimeout, '请求总时限（30–600 秒）'),
-                  _numberField(_contextLimit, '上下文消息数（2–20）'),
-                  _numberField(_imageMessageLimit, '含图历史消息数（0–4）'),
-                  _numberField(_imageLimit, '图片总数（0–8）'),
+                  if (_fullAgentMode)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 12),
+                      child: Text('完全体模式会按模型容量自动装载上下文和附件，不使用上述累计上限。'),
+                    )
+                  else ...[
+                    _numberField(_contextLimit, '上下文消息数（2–20）'),
+                    _numberField(_imageMessageLimit, '含图历史消息数（0–4）'),
+                    _numberField(_imageLimit, '图片总数（0–8）'),
+                  ],
                 ],
               ),
             ),
@@ -411,6 +442,7 @@ class _SettingsPageState extends State<SettingsPage> {
         modelName: _model.text,
         apiKey: _apiKeyChanged ? _apiKey.text : null,
         allowImageEgress: _allowImageEgress,
+        fullAgentMode: _fullAgentMode,
         defaultAiPolicy: _defaultAiPolicy,
         capabilityOverrides: ModelCapabilityOverrides(
           vision: _visionOverride,
@@ -524,6 +556,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _model.text = settings.modelName;
     _themeMode = materialThemeMode(settings.themeMode);
     _allowImageEgress = settings.allowImageEgress;
+    _fullAgentMode = settings.fullAgentMode;
     _defaultAiPolicy = settings.effectiveDefaultAiPolicy;
     _visionOverride = settings.capabilityOverrides.vision;
     _toolCallsOverride = settings.capabilityOverrides.toolCalls;
@@ -535,6 +568,41 @@ class _SettingsPageState extends State<SettingsPage> {
     _contextLimit.text = '${settings.contextMessageLimit}';
     _imageMessageLimit.text = '${settings.imageMessageLimit}';
     _imageLimit.text = '${settings.imageLimit}';
+  }
+
+  Future<void> _setFullAgentMode(bool value) async {
+    final previous = _fullAgentMode;
+    setState(() {
+      _fullAgentMode = value;
+      _saveError = null;
+    });
+    try {
+      await AppScope.preferences(context).update(fullAgentMode: value);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _fullAgentMode = previous;
+        _saveError = _failureMessage(error);
+      });
+      return;
+    }
+    if (!mounted) return;
+    final conversations = AppScope.conversations(context);
+    conversations.notifyPolicySettingsChanged();
+    String? reconcileWarning;
+    if (value) {
+      try {
+        await conversations.reconcilePendingActionsForFullAgentMode();
+      } catch (error) {
+        reconcileWarning = '旧待确认操作未能全部自动处理：${_failureMessage(error)}';
+      }
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(reconcileWarning ?? (value ? '完全体模式已启用' : '完全体模式已关闭')),
+      ),
+    );
   }
 
   Future<void> _testConnection() async {
@@ -932,6 +1000,8 @@ const _settingsPolicyGroups = [
       AiPermissionAction.globalKnowledgeSearch,
       AiPermissionAction.conversationHistorySearch,
       AiPermissionAction.conversationHistoryRead,
+      AiPermissionAction.attachmentRead,
+      AiPermissionAction.appSettingsRead,
     },
   ),
   _SettingsPolicyGroup(
@@ -972,6 +1042,16 @@ const _settingsPolicyGroups = [
       AiPermissionAction.globalKnowledgeCreate,
       AiPermissionAction.globalKnowledgeUpdate,
       AiPermissionAction.globalKnowledgeDelete,
+    },
+  ),
+  _SettingsPolicyGroup(
+    id: 'app',
+    title: '应用管理',
+    subtitle: '整段会话、附件回收站与普通界面设置',
+    actions: {
+      AiPermissionAction.conversationManage,
+      AiPermissionAction.attachmentManage,
+      AiPermissionAction.appSettingsUpdate,
     },
   ),
 ];

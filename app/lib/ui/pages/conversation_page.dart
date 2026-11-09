@@ -65,9 +65,8 @@ class _ConversationPageState extends State<ConversationPage>
     super.didChangeDependencies();
     _conversationWorkspaceForCleanup = AppScope.conversations(context);
     if (!_temporaryPolicyInitialized) {
-      _temporaryAiPolicy = AiPolicy.fromLegacyPermissions(
-        AppScope.preferences(context).settings.defaultAiPermissions,
-      );
+      _temporaryAiPolicy = AppScope.conversations(context)
+          .effectivePolicyFor(null);
       _temporaryPolicyInitialized = true;
     }
   }
@@ -143,6 +142,7 @@ class _ConversationPageState extends State<ConversationPage>
   Widget _buildConversation(BuildContext context) {
     final app = AppScope.conversations(context);
     final settings = AppScope.preferences(context).settings;
+    final fullAgentMode = settings.fullAgentMode;
     final results = AppScope.results(context);
     if (!_didResolveInitialConversation) {
       _didResolveInitialConversation = true;
@@ -381,9 +381,11 @@ class _ConversationPageState extends State<ConversationPage>
           actions: [
             IconButton(
               key: const Key('conversation_permissions'),
-              tooltip: '当前对话权限',
+              tooltip: fullAgentMode ? '完全体模式已启用，在设置中管理' : '当前对话权限',
               onPressed: () => _showPermissions(conversation),
-              icon: const Icon(Icons.tune_outlined),
+              icon: Icon(
+                fullAgentMode ? Icons.all_inclusive : Icons.tune_outlined,
+              ),
             ),
             IconButton(
               key: Key(

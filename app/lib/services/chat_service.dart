@@ -13,6 +13,7 @@ import '../modules/conversation/local_retrieval.dart';
 import '../modules/results/result_library.dart';
 import '../modules/tables/table_library.dart';
 import 'agent_context_manager.dart';
+import 'agent_execution_profile.dart';
 import 'agent_tool_contracts.dart';
 import 'agent_tool_executor.dart';
 import 'agent_tool_registry.dart';
@@ -58,6 +59,8 @@ class ChatService {
     ChatAgentLoopPolicy agentLoopPolicy = const ChatAgentLoopPolicy(),
     AgentToolRegistry toolRegistry = const AgentToolRegistry(),
     ChatWriteToolExecutor? writeToolExecutor,
+    Future<void> Function()? refreshSettings,
+    Future<void> Function()? refreshConversationState,
     Future<void> Function(Duration)? retryWait,
   }) : _settings = settings,
        _repository = repository,
@@ -72,6 +75,8 @@ class ChatService {
          maxParallelToolCalls: agentLoopPolicy.maxParallelToolCalls,
        ),
        _writeToolExecutor = writeToolExecutor,
+       _refreshSettings = refreshSettings,
+       _refreshConversationState = refreshConversationState,
        _retryWait = retryWait;
 
   final SettingsService _settings;
@@ -85,6 +90,8 @@ class ChatService {
   final AgentToolExecutor _toolExecutor;
   final AgentContextManager _contextManager = const AgentContextManager();
   final ChatWriteToolExecutor? _writeToolExecutor;
+  final Future<void> Function()? _refreshSettings;
+  final Future<void> Function()? _refreshConversationState;
   final Future<void> Function(Duration)? _retryWait;
   int _turnSequence = 0;
 
@@ -126,8 +133,12 @@ class ChatService {
       history: conversationHistory,
       imagesAllowed: imagesAllowed,
       imageBlockReason: settings.allowImageEgress ? '当前模型不支持图片' : '图片出网已关闭',
-      messageLimit: settings.contextMessageLimit,
-      imageMessageLimit: settings.imageMessageLimit,
+      messageLimit: settings.fullAgentMode
+          ? null
+          : settings.contextMessageLimit,
+      imageMessageLimit: settings.fullAgentMode
+          ? null
+          : settings.imageMessageLimit,
       excludedMessageIds: {...excludedMessageIds, ?assistantMessageId},
     );
     if (plan.blockedReason != null) {
@@ -137,7 +148,7 @@ class ChatService {
       plan.messages,
       imageMessageIds: plan.imageMessageIds,
       includeImages: plan.imagesAllowed,
-      imageLimit: settings.imageLimit,
+      imageLimit: settings.fullAgentMode ? null : settings.imageLimit,
       includeReasoningContent: capabilities.thinking,
       includeToolTranscript: capabilities.toolCalls,
     );
@@ -161,7 +172,8 @@ class ChatService {
       totalTimeout: Duration(seconds: settings.totalTimeoutSeconds),
     );
     final now = DateTime.now();
-    final initialPolicy = conversation.effectiveAiPolicy;
+    final executionProfile = AgentExecutionProfile.fromSettings(settings);
+    final initialPolicy = executionProfile.policyFor(conversation, settings);
     final retrieval = _results == null
         ? null
         : LocalRetrieval(
@@ -170,6 +182,7 @@ class ChatService {
             chats: _repository,
             results: _results,
             tables: _tables,
+            unbounded: settings.fullAgentMode,
           );
     final tableMode = _tables != null;
     String? streamingAssistantMessageId;
@@ -197,6 +210,7 @@ class ChatService {
       isCancelled: isCancelled,
       cancellationSignal: cancellationSignal,
       usage: usage ?? AgentUsageMeter(),
+      maxRequestContextChars: _requestContextChars(settings, capabilities),
     );
   }
 
@@ -215,6 +229,7 @@ class ChatService {
     persistToolTranscript,
     required bool Function()? isCancelled,
     required Future<void>? cancellationSignal,
+    required int maxRequestContextChars,
   }) async* {
     final history = List<ChatRequestMessage>.of(messages);
     final deferredActions = <_PendingChatToolCall>[];
@@ -278,7 +293,7 @@ class ChatService {
         }
         final compaction = _contextManager.compact(
           history,
-          maxChars: _agentLoopPolicy.maxRequestContextChars,
+          maxChars: maxRequestContextChars,
         );
         if (compaction.blockedReason != null) {
           yield ChatStreamDelta(
@@ -326,6 +341,8 @@ class ChatService {
         ChatStreamTermination? termination;
         var retryCount = 0;
         var roundHasVisibleContent = false;
+        var fullAgentMode = false;
+        final roundVisibleContent = StringBuffer();
         final recoveringCalls = pendingRound;
         if (recoveringCalls != null) {
           for (var index = 0; index < recoveringCalls.length; index++) {
@@ -354,9 +371,11 @@ class ChatService {
           final currentConversation = await _repository.findConversation(
             conversationId,
           );
-          final currentPolicy =
-              currentConversation?.effectiveAiPolicy ??
-              AiPolicy.forPreset(AiPolicyPreset.readOnly);
+          final currentSettings = await _settings.load();
+          fullAgentMode = currentSettings.fullAgentMode;
+          final currentPolicy = AgentExecutionProfile.fromSettings(
+            currentSettings,
+          ).policyFor(currentConversation, currentSettings);
           retrieval?.setPolicy(currentPolicy);
           final roundTools =
               configuration.capabilities.toolCalls && retrieval != null
@@ -399,6 +418,7 @@ class ChatService {
           );
           calls = <int, _PendingChatToolCall>{};
           reasoningContent = StringBuffer();
+          roundVisibleContent.clear();
           termination = null;
           var sawTransportPayload = false;
           try {
@@ -407,6 +427,7 @@ class ChatService {
                 sawTransportPayload = true;
                 sawUserVisibleContent = true;
                 roundHasVisibleContent = true;
+                roundVisibleContent.write(delta.content);
                 yield delta;
               }
               if (delta.reasoningContent.isNotEmpty) {
@@ -433,13 +454,54 @@ class ChatService {
               final decision = await _waitForRetry(
                 retryCount: retryCount,
                 retryAfter: null,
+                unlimited: currentSettings.fullAgentMode,
+                cancellationSignal: cancellationSignal,
               );
               if (decision) {
                 retryCount++;
                 continue;
               }
             }
+            if (fullAgentMode &&
+                calls.isEmpty &&
+                roundVisibleContent.isNotEmpty) {
+              _appendPartialContinuation(
+                history,
+                roundVisibleContent.toString(),
+                reason: '上一次流式回答因超时中断。',
+              );
+              retryCount = 0;
+              continue;
+            }
             yield ChatStreamDelta(content: '\n\n本次模型请求超时，任务已暂停；可从此处继续。');
+            yield const ChatStreamDelta(
+              termination: ChatStreamTermination.incomplete,
+            );
+            return;
+          } on ModelStreamProtocolException catch (error) {
+            if (fullAgentMode) {
+              if (calls.isEmpty && roundVisibleContent.isNotEmpty) {
+                _appendPartialContinuation(
+                  history,
+                  roundVisibleContent.toString(),
+                  reason: '上一次流式回答因协议中断未结束。',
+                );
+                retryCount = 0;
+              } else {
+                final decision = await _waitForRetry(
+                  retryCount: retryCount,
+                  retryAfter: null,
+                  unlimited: true,
+                  cancellationSignal: cancellationSignal,
+                );
+                if (decision) {
+                  retryCount++;
+                  continue;
+                }
+              }
+              continue;
+            }
+            yield ChatStreamDelta(content: '\n\n模型响应格式异常：${error.message}');
             yield const ChatStreamDelta(
               termination: ChatStreamTermination.incomplete,
             );
@@ -450,6 +512,8 @@ class ChatService {
               final decision = await _waitForRetry(
                 retryCount: retryCount,
                 retryAfter: error.retryAfter,
+                unlimited: currentSettings.fullAgentMode,
+                cancellationSignal: cancellationSignal,
               );
               if (decision) {
                 retryCount++;
@@ -466,11 +530,24 @@ class ChatService {
               final decision = await _waitForRetry(
                 retryCount: retryCount,
                 retryAfter: null,
+                unlimited: currentSettings.fullAgentMode,
+                cancellationSignal: cancellationSignal,
               );
               if (decision) {
                 retryCount++;
                 continue;
               }
+            }
+            if (fullAgentMode &&
+                calls.isEmpty &&
+                roundVisibleContent.isNotEmpty) {
+              _appendPartialContinuation(
+                history,
+                roundVisibleContent.toString(),
+                reason: '上一次流式回答因网络中断未结束。',
+              );
+              retryCount = 0;
+              continue;
             }
             yield const ChatStreamDelta(content: '\n\n网络连接中断，任务已暂停；可从此处继续重试。');
             yield const ChatStreamDelta(
@@ -481,6 +558,17 @@ class ChatService {
           break;
         }
 
+        if (termination == ChatStreamTermination.length &&
+            fullAgentMode &&
+            calls.isEmpty &&
+            roundVisibleContent.isNotEmpty) {
+          _appendPartialContinuation(
+            history,
+            roundVisibleContent.toString(),
+            reason: '上一条回答达到单次输出上限。',
+          );
+          continue;
+        }
         if (termination != ChatStreamTermination.completed &&
             termination != ChatStreamTermination.empty) {
           yield ChatStreamDelta(
@@ -548,9 +636,10 @@ class ChatService {
             return;
           }
           final current = await _repository.findConversation(conversationId);
-          final currentPolicy =
-              current?.effectiveAiPolicy ??
-              AiPolicy.forPreset(AiPolicyPreset.readOnly);
+          final currentSettings = await _settings.load();
+          final currentPolicy = AgentExecutionProfile.fromSettings(
+            currentSettings,
+          ).policyFor(current, currentSettings);
           retrieval?.setPolicy(currentPolicy);
           if (batch.readOnly) {
             final readCalls =
@@ -592,6 +681,7 @@ class ChatService {
                         name,
                         item.arguments,
                         retrieval,
+                        conversationId: conversationId,
                         operationReceipts: operationReceipts,
                       );
               },
@@ -647,8 +737,18 @@ class ChatService {
                     name,
                     arguments,
                     retrieval,
+                    conversationId: conversationId,
                     operationReceipts: operationReceipts,
                   );
+          } else if (_isAppManagementWriteTool(name)) {
+            reply = await _executeAppManagementTool(
+              name,
+              arguments,
+              currentConversationId: conversationId,
+              policy: currentPolicy,
+            );
+            await _refreshConversationState?.call();
+            await _refreshSettings?.call();
           } else if (globalKnowledgeProposal && _writeToolExecutor == null) {
             reply = await _proposeGlobalKnowledge(
               arguments,
@@ -846,24 +946,60 @@ class ChatService {
         '再选择不同参数、不同工具或结束任务。调用摘要：$clipped';
   }
 
+  String _shortText(String value, int maxChars) {
+    final runes = value.runes;
+    if (runes.length <= maxChars) return value;
+    return '${String.fromCharCodes(runes.take(maxChars - 1))}…';
+  }
+
+  void _appendPartialContinuation(
+    List<ChatRequestMessage> history,
+    String partial, {
+    required String reason,
+  }) {
+    history
+      ..add(ChatRequestMessage(role: 'assistant', text: partial))
+      ..add(
+        ChatRequestMessage(
+          role: 'system',
+          text: '$reason 请从该回答结尾继续，直接续写缺失内容，不要重复已有段落，也不要重新开始回答。',
+        ),
+      );
+  }
+
   Future<bool> _waitForRetry({
     required int retryCount,
     required Duration? retryAfter,
+    required bool unlimited,
+    required Future<void>? cancellationSignal,
   }) async {
-    if (retryCount >= _agentLoopPolicy.retryDelays.length) {
+    if (!unlimited && retryCount >= _agentLoopPolicy.retryDelays.length) {
       return false;
     }
-    final configured = _agentLoopPolicy.retryDelays[retryCount];
+    final configured = unlimited
+        ? Duration(seconds: 1 << retryCount.clamp(0, 6))
+        : _agentLoopPolicy.retryDelays[retryCount];
     final delay = retryAfter != null && retryAfter > configured
         ? retryAfter
         : configured;
+    if (cancellationSignal != null) {
+      final cancelled = await Future.any<bool>([
+        _performRetryWait(delay).then((_) => false),
+        cancellationSignal.then((_) => true),
+      ]);
+      return !cancelled;
+    }
+    await _performRetryWait(delay);
+    return true;
+  }
+
+  Future<void> _performRetryWait(Duration delay) async {
     final wait = _retryWait;
     if (wait == null) {
       await Future<void>.delayed(delay);
     } else {
       await wait(delay);
     }
-    return true;
   }
 
   bool _isRetryableModelStatus(int statusCode) =>
@@ -882,6 +1018,23 @@ class ChatService {
 
   Duration _minimumDuration(Duration left, Duration right) =>
       left <= right ? left : right;
+
+  int _requestContextChars(
+    AppSettings settings,
+    ModelCapabilities capabilities,
+  ) {
+    if (!settings.fullAgentMode) {
+      return _agentLoopPolicy.maxRequestContextChars;
+    }
+    final tokens = capabilities.contextWindowTokens;
+    if (tokens == null || tokens <= 0) {
+      return _agentLoopPolicy.maxRequestContextChars;
+    }
+    final capacity = (tokens * 4 * 0.8).floor();
+    return capacity < _agentLoopPolicy.maxRequestContextChars
+        ? _agentLoopPolicy.maxRequestContextChars
+        : capacity;
+  }
 
   AiPolicyDecision _writeToolPolicyDecision(
     String name,
@@ -951,9 +1104,24 @@ class ChatService {
         },
         knowledgeId: arguments['target_id']?.toString(),
       ),
+      'conversation.manage' => policy.decisionFor(
+        AiPermissionAction.conversationManage,
+      ),
+      'attachment.manage' => policy.decisionFor(
+        AiPermissionAction.attachmentManage,
+      ),
+      'app.settings.update' => policy.decisionFor(
+        AiPermissionAction.appSettingsUpdate,
+      ),
       _ => AiPolicyDecision.deny,
     };
   }
+
+  bool _isAppManagementWriteTool(String name) => const {
+    'conversation.manage',
+    'attachment.manage',
+    'app.settings.update',
+  }.contains(name);
 
   bool _writeToolDispatchAllowed(String name, AiPolicyDecision decision) {
     if (decision == AiPolicyDecision.allow) return true;
@@ -985,9 +1153,14 @@ class ChatService {
     String name,
     Map<String, dynamic> arguments,
     LocalRetrieval retrieval, {
+    required String conversationId,
     required Map<String, ChatWriteToolReceipt> operationReceipts,
   }) {
     return switch (name) {
+      'conversation.list' => _listConversationsForAgent(arguments),
+      'attachment.search' => _searchAttachmentsForAgent(arguments),
+      'attachment.read' => _readAttachmentForAgent(arguments),
+      'app.settings.read' => _readAppSettingsForAgent(),
       'content.verify' => _verifyContent(
         arguments,
         retrieval,
@@ -1067,6 +1240,449 @@ class ChatService {
         ),
       _ => Future.value(_toolError('未知读取工具。')),
     };
+  }
+
+  Future<String> _listConversationsForAgent(
+    Map<String, dynamic> arguments,
+  ) async {
+    final query = arguments['query']?.toString().trim().toLowerCase() ?? '';
+    final offset = ((arguments['offset'] as num?)?.toInt() ?? 0).clamp(
+      0,
+      1 << 30,
+    );
+    final limit = ((arguments['limit'] as num?)?.toInt() ?? 50).clamp(1, 1000);
+    final matches = (await _repository.listConversations())
+        .where(
+          (conversation) =>
+              query.isEmpty ||
+              conversation.title.toLowerCase().contains(query) ||
+              conversation.preview.toLowerCase().contains(query),
+        )
+        .toList(growable: false);
+    final page = matches.skip(offset).take(limit).toList(growable: false);
+    return _toolJson({
+      'status': 'ok',
+      'data': {
+        'items': [
+          for (final conversation in page)
+            {
+              'id': conversation.id,
+              'title': conversation.title,
+              'preview': _shortText(conversation.preview, 300),
+              'created_at': conversation.createdAt.toIso8601String(),
+              'updated_at': conversation.updatedAt.toIso8601String(),
+            },
+        ],
+        'trash': [
+          for (final entry in await _repository.listTrash(kind: 'conversation'))
+            {
+              'trash_id': entry.id,
+              'expires_at': entry.expiresAt.toIso8601String(),
+              'title':
+                  (entry.payload['conversation'] as Map?)?['title']
+                      ?.toString() ??
+                  '',
+            },
+        ],
+      },
+      'coverage': {
+        'complete': offset + page.length >= matches.length,
+        'matched': matches.length,
+        'returned': page.length,
+        'next_offset': offset + page.length < matches.length
+            ? offset + page.length
+            : null,
+      },
+    });
+  }
+
+  Future<String> _searchAttachmentsForAgent(
+    Map<String, dynamic> arguments,
+  ) async {
+    final query = arguments['query']?.toString().trim().toLowerCase() ?? '';
+    final conversationId = arguments['conversation_id']?.toString();
+    final offset = ((arguments['offset'] as num?)?.toInt() ?? 0).clamp(
+      0,
+      1 << 30,
+    );
+    final limit = ((arguments['limit'] as num?)?.toInt() ?? 50).clamp(1, 1000);
+    final matches = <Map<String, Object?>>[];
+    for (final conversation in await _repository.listConversations()) {
+      if (conversationId != null && conversation.id != conversationId) continue;
+      for (final message in await _repository.listMessages(conversation.id)) {
+        for (final attachment in message.attachments) {
+          if (query.isNotEmpty &&
+              !attachment.fileName.toLowerCase().contains(query) &&
+              !attachment.mimeType.toLowerCase().contains(query)) {
+            continue;
+          }
+          matches.add({
+            'attachment_id': attachment.id,
+            'conversation_id': conversation.id,
+            'conversation_title': conversation.title,
+            'message_id': message.id,
+            'file_name': attachment.fileName,
+            'mime_type': attachment.mimeType,
+            'created_at': attachment.createdAt.toIso8601String(),
+            'width': attachment.width,
+            'height': attachment.height,
+          });
+        }
+      }
+    }
+    final page = matches.skip(offset).take(limit).toList(growable: false);
+    return _toolJson({
+      'status': 'ok',
+      'data': {
+        'items': page,
+        'trash': [
+          for (final entry in await _repository.listTrash(kind: 'attachment'))
+            {
+              'trash_id': entry.id,
+              'expires_at': entry.expiresAt.toIso8601String(),
+              'file_name':
+                  (entry.payload['attachment'] as Map?)?['file_name']
+                      ?.toString() ??
+                  '',
+            },
+        ],
+      },
+      'coverage': {
+        'complete': offset + page.length >= matches.length,
+        'matched': matches.length,
+        'returned': page.length,
+        'next_offset': offset + page.length < matches.length
+            ? offset + page.length
+            : null,
+      },
+    });
+  }
+
+  Future<String> _executeAppManagementTool(
+    String name,
+    Map<String, dynamic> arguments, {
+    required String currentConversationId,
+    required AiPolicy policy,
+  }) async {
+    switch (name) {
+      case 'conversation.manage':
+        final operation = arguments['operation']?.toString() ?? '';
+        switch (operation) {
+          case 'create':
+            var conversation = await _repository.createConversation(
+              aiPolicy: policy,
+              aiPermissions: policy.legacyCompatibilityPermissions,
+            );
+            final title = arguments['title']?.toString().trim() ?? '';
+            if (title.isNotEmpty) {
+              conversation = await _repository.saveConversation(
+                conversation.copyWith(
+                  title: title,
+                  autoTitle: false,
+                  updatedAt: DateTime.now(),
+                ),
+              );
+            }
+            return _toolJson({
+              'status': 'ok',
+              'data': {
+                'conversation_id': conversation.id,
+                'title': conversation.title,
+              },
+            });
+          case 'rename':
+            final id = arguments['target_id']?.toString().trim() ?? '';
+            final title = arguments['title']?.toString().trim() ?? '';
+            if (id.isEmpty || title.isEmpty) {
+              return _toolError('rename 需要 target_id 和 title。');
+            }
+            final conversation = await _repository.findConversation(id);
+            if (conversation == null) {
+              return _toolJson({'status': 'not_found', 'target_id': id});
+            }
+            final updated = await _repository.saveConversation(
+              conversation.copyWith(
+                title: title,
+                autoTitle: false,
+                updatedAt: DateTime.now(),
+              ),
+            );
+            return _toolJson({
+              'status': 'ok',
+              'data': {'conversation_id': updated.id, 'title': updated.title},
+            });
+          case 'delete':
+            final id = arguments['target_id']?.toString().trim() ?? '';
+            if (id.isEmpty) return _toolError('delete 需要 target_id。');
+            if (id == currentConversationId) {
+              return _toolJson({
+                'status': 'blocked',
+                'code': 'current_conversation_active',
+                'message': '当前正在执行任务的会话不能在本回合删除；可在任务结束后再次请求。',
+              });
+            }
+            final entry = await _repository.trashConversation(id);
+            return _toolJson({
+              'status': 'ok',
+              'data': {
+                'trash_id': entry.id,
+                'expires_at': entry.expiresAt.toIso8601String(),
+              },
+            });
+          case 'restore':
+            final trashId = arguments['trash_id']?.toString().trim() ?? '';
+            if (trashId.isEmpty) return _toolError('restore 需要 trash_id。');
+            final conversation = await _repository.restoreConversation(trashId);
+            return _toolJson({
+              'status': 'ok',
+              'data': {
+                'conversation_id': conversation.id,
+                'title': conversation.title,
+              },
+            });
+          default:
+            return _toolError(
+              'conversation.manage operation 仅支持 create/rename/delete/restore。',
+            );
+        }
+      case 'attachment.manage':
+        final operation = arguments['operation']?.toString() ?? '';
+        switch (operation) {
+          case 'delete':
+            final conversationId =
+                arguments['conversation_id']?.toString().trim() ?? '';
+            final messageId = arguments['message_id']?.toString().trim() ?? '';
+            final attachmentId =
+                arguments['attachment_id']?.toString().trim() ?? '';
+            if (conversationId.isEmpty ||
+                messageId.isEmpty ||
+                attachmentId.isEmpty) {
+              return _toolError(
+                'delete 需要 conversation_id、message_id 和 attachment_id。',
+              );
+            }
+            final entry = await _repository.trashAttachment(
+              conversationId: conversationId,
+              messageId: messageId,
+              attachmentId: attachmentId,
+            );
+            return _toolJson({
+              'status': 'ok',
+              'data': {
+                'trash_id': entry.id,
+                'expires_at': entry.expiresAt.toIso8601String(),
+              },
+            });
+          case 'restore':
+            final trashId = arguments['trash_id']?.toString().trim() ?? '';
+            if (trashId.isEmpty) return _toolError('restore 需要 trash_id。');
+            final attachment = await _repository.restoreAttachment(trashId);
+            return _toolJson({
+              'status': 'ok',
+              'data': {
+                'attachment_id': attachment.id,
+                'file_name': attachment.fileName,
+              },
+            });
+          default:
+            return _toolError(
+              'attachment.manage operation 仅支持 delete/restore。',
+            );
+        }
+      case 'app.settings.update':
+        const protectedKeys = {
+          'model_base_url',
+          'model_name',
+          'api_key',
+          'allow_image_egress',
+          'capability_overrides',
+          'default_ai_policy',
+          'full_agent_mode',
+          'import_export_reset',
+        };
+        final provided = arguments.keys.toSet();
+        final protectedAttempt = provided.intersection(protectedKeys);
+        if (protectedAttempt.isNotEmpty) {
+          return _toolError('拒绝修改受保护设置：${protectedAttempt.join('、')}。');
+        }
+        const allowedKeys = {
+          'theme_mode',
+          'show_completed_todos',
+          'calendar_month_detailed',
+          'home_table_order',
+          'calendar_visible_table_ids',
+        };
+        final unknown = provided.difference(allowedKeys);
+        if (unknown.isNotEmpty) {
+          return _toolError('不支持的设置字段：${unknown.join('、')}。');
+        }
+        final settings = await _settings.load();
+        ThemePreference? themeMode;
+        if (arguments.containsKey('theme_mode')) {
+          themeMode = switch (arguments['theme_mode']) {
+            'system' => ThemePreference.system,
+            'light' => ThemePreference.light,
+            'dark' => ThemePreference.dark,
+            _ => null,
+          };
+          if (themeMode == null) return _toolError('theme_mode 值无效。');
+        }
+        bool? showCompletedTodos;
+        if (arguments.containsKey('show_completed_todos')) {
+          final value = arguments['show_completed_todos'];
+          if (value is! bool) return _toolError('show_completed_todos 必须是布尔值。');
+          showCompletedTodos = value;
+        }
+        bool? calendarMonthDetailed;
+        if (arguments.containsKey('calendar_month_detailed')) {
+          final value = arguments['calendar_month_detailed'];
+          if (value is! bool) {
+            return _toolError('calendar_month_detailed 必须是布尔值。');
+          }
+          calendarMonthDetailed = value;
+        }
+        List<String>? homeTableOrder;
+        if (arguments.containsKey('home_table_order')) {
+          final value = arguments['home_table_order'];
+          if (value is! List || value.any((item) => item is! String)) {
+            return _toolError('home_table_order 必须是字符串列表。');
+          }
+          homeTableOrder = value.cast<String>();
+        }
+        List<String>? calendarVisibleTableIds;
+        if (arguments.containsKey('calendar_visible_table_ids')) {
+          final value = arguments['calendar_visible_table_ids'];
+          if (value is! List || value.any((item) => item is! String)) {
+            return _toolError('calendar_visible_table_ids 必须是字符串列表。');
+          }
+          calendarVisibleTableIds = value.cast<String>();
+        }
+        final next = settings.copyWith(
+          themeMode: themeMode,
+          showCompletedTodos: showCompletedTodos,
+          calendarMonthDetailed: calendarMonthDetailed,
+          homeTableOrder: homeTableOrder,
+          calendarVisibleTableIds: calendarVisibleTableIds,
+        );
+        await _settings.saveConfiguration(next);
+        return _toolJson({
+          'status': 'ok',
+          'data': {
+            'theme_mode': next.themeMode.name,
+            'show_completed_todos': next.showCompletedTodos,
+            'calendar_month_detailed': next.calendarMonthDetailed,
+            'home_table_order': next.homeTableOrder,
+            'calendar_visible_table_ids': next.calendarVisibleTableIds,
+          },
+        });
+      default:
+        return _toolError('未知应用管理工具。');
+    }
+  }
+
+  Future<String> _readAttachmentForAgent(Map<String, dynamic> arguments) async {
+    final messageId = arguments['message_id']?.toString() ?? '';
+    final attachmentId = arguments['attachment_id']?.toString() ?? '';
+    final offset = ((arguments['offset'] as num?)?.toInt() ?? 0).clamp(
+      0,
+      1 << 30,
+    );
+    final length = ((arguments['length'] as num?)?.toInt() ?? 12000).clamp(
+      1,
+      1000000,
+    );
+    final message = await _repository.findMessage(messageId);
+    ChatAttachment? attachment;
+    for (final candidate in message?.attachments ?? const <ChatAttachment>[]) {
+      if (candidate.id == attachmentId) {
+        attachment = candidate;
+        break;
+      }
+    }
+    if (attachment == null) {
+      return _toolJson({
+        'status': 'not_found',
+        'message_id': messageId,
+        'attachment_id': attachmentId,
+      });
+    }
+    final bytes = await _repository.readAttachment(attachment);
+    if (bytes == null) {
+      return _toolJson({
+        'status': 'not_found',
+        'attachment_id': attachmentId,
+        'message': '附件文件缺失。',
+      });
+    }
+    String? text;
+    try {
+      text = utf8.decode(bytes, allowMalformed: false);
+    } on FormatException {
+      text = null;
+    }
+    if (text == null) {
+      return _toolJson({
+        'status': 'ok',
+        'data': {
+          'attachment_id': attachment.id,
+          'file_name': attachment.fileName,
+          'mime_type': attachment.mimeType,
+          'bytes': bytes.length,
+          'binary': true,
+          'header_hex': bytes
+              .take(32)
+              .map((value) => value.toRadixString(16).padLeft(2, '0'))
+              .join(),
+        },
+        'coverage': {'complete': true},
+      });
+    }
+    final runes = text.runes.toList(growable: false);
+    final end = (offset + length).clamp(0, runes.length);
+    final safeStart = offset.clamp(0, runes.length);
+    final slice = String.fromCharCodes(runes.sublist(safeStart, end));
+    return _toolJson({
+      'status': 'ok',
+      'data': {
+        'attachment_id': attachment.id,
+        'file_name': attachment.fileName,
+        'mime_type': attachment.mimeType,
+        'offset': safeStart,
+        'length': end - safeStart,
+        'text': slice,
+      },
+      'coverage': {
+        'complete': end >= runes.length,
+        'total_chars': runes.length,
+        'next_offset': end < runes.length ? end : null,
+      },
+    });
+  }
+
+  Future<String> _readAppSettingsForAgent() async {
+    final settings = await _settings.load();
+    return _toolJson({
+      'status': 'ok',
+      'data': {
+        'theme_mode': settings.themeMode.name,
+        'show_completed_todos': settings.showCompletedTodos,
+        'calendar_month_detailed': settings.calendarMonthDetailed,
+        'home_table_order': settings.homeTableOrder,
+        'calendar_visible_table_ids': settings.calendarVisibleTableIds,
+        'full_agent_mode': settings.fullAgentMode,
+        'protected': [
+          'model_base_url',
+          'model_name',
+          'api_key',
+          'allow_image_egress',
+          'capability_overrides',
+          'default_ai_policy',
+          'full_agent_mode',
+          'import_export_reset',
+        ],
+      },
+      'coverage': {'complete': true},
+    });
   }
 
   Future<String> _searchTableEntries(
@@ -1558,7 +2174,7 @@ ${_globalKnowledgePolicyInstructions(policy)}不得声称未执行或待确认�
       };
       return '$label全局知识：$instruction。';
     }).join();
-    return '$instructions 已有待确认候选不会因策略切换自动批准。';
+    return '$instructions 普通会话策略切换不会自动批准已有候选；设置页完全体模式启动时会重新校验并自动处理。';
   }
 
   String _tableStructurePolicyInstructions(AiPolicy policy) {
@@ -1581,7 +2197,7 @@ ${_globalKnowledgePolicyInstructions(policy)}不得声称未执行或待确认�
       };
       return '$label：$instruction。';
     }).join();
-    return '表结构操作遵循各操作的当前策略；已有待确认的结构操作不会因策略切换自动批准。$instructions';
+    return '表结构操作遵循各操作的当前策略；普通会话策略切换不会自动批准旧结构动作，设置页完全体模式启动时会重新校验并自动处理。$instructions';
   }
 
   AiPolicyDecision _structureDecisionForUnboundTarget(
@@ -1681,6 +2297,18 @@ ${_globalKnowledgePolicyInstructions(policy)}不得声称未执行或待确认�
     })) {
       tools.add(_globalKnowledgeProposalTool(policy));
     }
+    tools.addAll(
+      _appManagementReadTools.where((tool) => _readToolVisible(tool, policy)),
+    );
+    if (_policyToolVisible(policy, AiPermissionAction.conversationManage)) {
+      tools.add(_conversationManageToolDefinition);
+    }
+    if (_policyToolVisible(policy, AiPermissionAction.attachmentManage)) {
+      tools.add(_attachmentManageToolDefinition);
+    }
+    if (_policyToolVisible(policy, AiPermissionAction.appSettingsUpdate)) {
+      tools.add(_appSettingsUpdateToolDefinition);
+    }
     return [for (final tool in tools) _relaxFullAccessSchema(tool, policy)];
   }
 
@@ -1699,13 +2327,34 @@ ${_globalKnowledgePolicyInstructions(policy)}不得声称未执行或待确认�
         .whereType<String>()
         .where((name) => name != 'idempotency_key' && name != 'if_revision')
         .toList(growable: false);
+    final properties = parameters['properties'];
+    final relaxedProperties = properties is Map
+        ? {
+            for (final entry in properties.entries)
+              entry.key: _relaxFullAgentProperty(entry.value),
+          }
+        : properties;
+    final relaxedParameters = <String, dynamic>{
+      ...parameters.cast<String, dynamic>(),
+      'required': required,
+    };
+    if (relaxedProperties != null) {
+      relaxedParameters['properties'] = relaxedProperties;
+    }
     return {
       ...tool,
-      'function': {
-        ...function,
-        'parameters': {...parameters, 'required': required},
-      },
+      'function': {...function, 'parameters': relaxedParameters},
     };
+  }
+
+  Object? _relaxFullAgentProperty(Object? value) {
+    if (value is! Map) return value;
+    final relaxed = <Object?, Object?>{};
+    for (final entry in value.entries) {
+      if (entry.key == 'maximum' || entry.key == 'maxItems') continue;
+      relaxed[entry.key] = entry.value;
+    }
+    return relaxed;
   }
 
   bool _readToolVisible(Map<String, dynamic> tool, AiPolicy policy) {
@@ -1741,6 +2390,10 @@ ${_globalKnowledgePolicyInstructions(policy)}不得声称未执行或待确认�
         AiPermissionAction.contentRead,
         AiPermissionAction.globalKnowledgeSearch,
       },
+      'conversation_list' => const {AiPermissionAction.conversationHistoryRead},
+      'attachment_search' => const {AiPermissionAction.attachmentRead},
+      'attachment_read' => const {AiPermissionAction.attachmentRead},
+      'app_settings_read' => const {AiPermissionAction.appSettingsRead},
       _ => const <AiPermissionAction>{},
     };
     return _anyPolicyToolVisible(policy, actions);
@@ -1919,6 +2572,105 @@ ${_globalKnowledgePolicyInstructions(policy)}不得声称未执行或待确认�
       ['message_id'],
     ),
   ];
+
+  List<Map<String, dynamic>> get _appManagementReadTools => [
+    _functionTool('conversation_list', '列出本机会话及 30 天回收站中的会话。', {
+      'query': {'type': 'string'},
+      'offset': {'type': 'integer', 'minimum': 0},
+      'limit': {'type': 'integer', 'minimum': 1},
+    }, const []),
+    _functionTool('attachment_search', '搜索本机会话附件及 30 天回收站中的附件。', {
+      'query': {'type': 'string'},
+      'conversation_id': {
+        'type': ['string', 'null'],
+      },
+      'offset': {'type': 'integer', 'minimum': 0},
+      'limit': {'type': 'integer', 'minimum': 1},
+    }, const []),
+    _functionTool(
+      'attachment_read',
+      '按消息 ID 和附件 ID 分段读取文本附件；二进制附件返回类型、大小和文件头。',
+      {
+        'message_id': {'type': 'string'},
+        'attachment_id': {'type': 'string'},
+        'offset': {'type': 'integer', 'minimum': 0},
+        'length': {'type': 'integer', 'minimum': 1},
+      },
+      ['message_id', 'attachment_id'],
+    ),
+    _functionTool('app_settings_read', '读取可安全修改的界面设置。', const {}, const []),
+  ];
+
+  Map<String, dynamic> get _conversationManageToolDefinition => _functionTool(
+    'conversation_manage',
+    '创建、改名、删除到回收站或恢复整段会话。单条消息保持不可改写。',
+    {
+      'operation': {
+        'type': 'string',
+        'enum': ['create', 'rename', 'delete', 'restore'],
+      },
+      'target_id': {
+        'type': ['string', 'null'],
+      },
+      'title': {
+        'type': ['string', 'null'],
+      },
+      'trash_id': {
+        'type': ['string', 'null'],
+      },
+    },
+    ['operation'],
+  );
+
+  Map<String, dynamic> get _attachmentManageToolDefinition => _functionTool(
+    'attachment_manage',
+    '将附件删除到 30 天回收站，或恢复回收站中的附件。',
+    {
+      'operation': {
+        'type': 'string',
+        'enum': ['delete', 'restore'],
+      },
+      'conversation_id': {
+        'type': ['string', 'null'],
+      },
+      'message_id': {
+        'type': ['string', 'null'],
+      },
+      'attachment_id': {
+        'type': ['string', 'null'],
+      },
+      'trash_id': {
+        'type': ['string', 'null'],
+      },
+    },
+    ['operation'],
+  );
+
+  Map<String, dynamic> get _appSettingsUpdateToolDefinition => _functionTool(
+    'app_settings_update',
+    '修改主题、首页表顺序和日历筛选等普通界面设置；授权与模型配置不可修改。',
+    {
+      'theme_mode': {
+        'type': ['string', 'null'],
+        'enum': ['system', 'light', 'dark', null],
+      },
+      'show_completed_todos': {
+        'type': ['boolean', 'null'],
+      },
+      'calendar_month_detailed': {
+        'type': ['boolean', 'null'],
+      },
+      'home_table_order': {
+        'type': ['array', 'null'],
+        'items': {'type': 'string'},
+      },
+      'calendar_visible_table_ids': {
+        'type': ['array', 'null'],
+        'items': {'type': 'string'},
+      },
+    },
+    const [],
+  );
 
   Map<String, dynamic> get _contentVerifyToolDefinition => _functionTool(
     'content_verify',
@@ -2358,7 +3110,7 @@ ${_globalKnowledgePolicyInstructions(policy)}不得声称未执行或待确认�
     List<ChatMessage> selected, {
     required Set<String> imageMessageIds,
     required bool includeImages,
-    required int imageLimit,
+    required int? imageLimit,
     required bool includeReasoningContent,
     required bool includeToolTranscript,
   }) async {
@@ -2378,7 +3130,7 @@ ${_globalKnowledgePolicyInstructions(policy)}不得声称未执行或待确认�
       final images = <ChatRequestImage>[];
       if (includeImages && imageMessageIds.contains(message.id)) {
         for (final attachment in message.attachments) {
-          if (imageCount >= imageLimit) {
+          if (imageLimit != null && imageCount >= imageLimit) {
             break;
           }
           final resolved = await _repository.readAttachment(attachment);

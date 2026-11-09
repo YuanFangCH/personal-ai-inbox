@@ -164,4 +164,33 @@ void main() {
       throwsA(isA<FileInputException>()),
     );
   });
+
+  test(
+    'full-agent input bypasses fixed caps and indexes unknown binary',
+    () async {
+      const service = FileInputService();
+      final largeText = await service.extractBytes(
+        fileName: 'large.any',
+        bytes: Uint8List.fromList(
+          utf8.encode('无上限输入' * (FileInputService.maxFileTextChars ~/ 2)),
+        ),
+        maxTextChars: null,
+        unbounded: true,
+      );
+      expect(largeText.truncated, isFalse);
+      expect(
+        largeText.text.runes.length,
+        greaterThan(FileInputService.maxFileTextChars),
+      );
+
+      final binary = await service.extractBytes(
+        fileName: 'unknown.bin',
+        bytes: Uint8List.fromList([0xff, 0xfe, 0xfd]),
+        maxTextChars: null,
+        unbounded: true,
+      );
+      expect(binary.text, contains('二进制附件'));
+      expect(binary.text, contains('SHA-256'));
+    },
+  );
 }

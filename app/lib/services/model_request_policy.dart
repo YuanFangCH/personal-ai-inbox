@@ -13,8 +13,8 @@ class ModelRequestPolicy {
     required List<ChatMessage> history,
     required bool imagesAllowed,
     required String imageBlockReason,
-    int messageLimit = ModelRequestPolicy.messageLimit,
-    int imageMessageLimit = ModelRequestPolicy.imageMessageLimit,
+    int? messageLimit = ModelRequestPolicy.messageLimit,
+    int? imageMessageLimit = ModelRequestPolicy.imageMessageLimit,
     Set<String> excludedMessageIds = const {},
   }) {
     final complete = history
@@ -28,7 +28,7 @@ class ModelRequestPolicy {
                   message.attachments.isNotEmpty),
         )
         .toList(growable: false);
-    final start = complete.length > messageLimit
+    final start = messageLimit != null && complete.length > messageLimit
         ? complete.length - messageLimit
         : 0;
     final selected = complete.sublist(start);
@@ -56,7 +56,8 @@ class ModelRequestPolicy {
               .where((message) => message.attachments.isNotEmpty)
               .toList(growable: false)
         : const <ChatMessage>[];
-    final imageStart = imageMessages.length > imageMessageLimit
+    final imageStart =
+        imageMessageLimit != null && imageMessages.length > imageMessageLimit
         ? imageMessages.length - imageMessageLimit
         : 0;
     return ModelRequestPlan(

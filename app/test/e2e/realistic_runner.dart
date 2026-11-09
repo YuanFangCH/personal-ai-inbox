@@ -3220,9 +3220,10 @@ class _MatrixImageInputService extends ImageInputService {
 
   @override
   Future<List<ChatAttachmentInput>> pickFromGallery({
-    int limit = ImageInputService.maxImagesPerMessage,
+    int? limit = ImageInputService.maxImagesPerMessage,
+    bool unbounded = false,
   }) async => [
-    for (var index = 0; index < 2 && index < limit; index++)
+    for (var index = 0; index < 2 && (limit == null || index < limit); index++)
       ChatAttachmentInput(
         bytes: _pngBytes,
         fileName: 'matrix_$index.png',

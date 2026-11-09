@@ -29,8 +29,8 @@ class SqliteConversationStore implements ConversationStore {
         ..execute('PRAGMA foreign_keys = ON');
       final version =
           _database.select('PRAGMA user_version').single['user_version'] as int;
-      if (version > 6) {
-        throw StateError('会话数据库版本 $version 高于此应用支持的版本 6');
+      if (version > 7) {
+        throw StateError('会话数据库版本 $version 高于此应用支持的版本 7');
       }
       _database.execute('BEGIN EXCLUSIVE');
       _database
@@ -83,6 +83,14 @@ class SqliteConversationStore implements ConversationStore {
             REFERENCES conversations(id) ON DELETE CASCADE,
           FOREIGN KEY (assistant_message_id)
             REFERENCES chat_messages(id) ON DELETE CASCADE
+        )
+      ''')
+        ..execute('''
+        CREATE TABLE IF NOT EXISTS agent_trash_entries (
+          id TEXT PRIMARY KEY,
+          kind TEXT NOT NULL,
+          expires_at TEXT NOT NULL,
+          payload_json TEXT NOT NULL
         )
       ''');
       if (version < 2) {
@@ -144,7 +152,7 @@ class SqliteConversationStore implements ConversationStore {
           );
         }
       }
-      _database.execute('PRAGMA user_version = 6');
+      _database.execute('PRAGMA user_version = 7');
       _database.execute('COMMIT');
     } catch (_) {
       try {
@@ -460,11 +468,64 @@ class SqliteConversationStore implements ConversationStore {
   }
 
   @override
+  Future<void> saveTrashEntry(LocalTrashEntry entry) async {
+    _database.execute(
+      '''
+      INSERT OR REPLACE INTO agent_trash_entries
+        (id, kind, expires_at, payload_json)
+      VALUES (?, ?, ?, ?)
+      ''',
+      [
+        entry.id,
+        entry.kind,
+        entry.expiresAt.toIso8601String(),
+        jsonEncode(entry.payload),
+      ],
+    );
+  }
+
+  @override
+  Future<List<LocalTrashEntry>> listTrashEntries() async {
+    final rows = _database.select(
+      'SELECT * FROM agent_trash_entries ORDER BY expires_at ASC',
+    );
+    return rows.map(_trashFromRow).toList(growable: false);
+  }
+
+  @override
+  Future<LocalTrashEntry?> findTrashEntry(String id) async {
+    final rows = _database.select(
+      'SELECT * FROM agent_trash_entries WHERE id = ?',
+      [id],
+    );
+    return rows.isEmpty ? null : _trashFromRow(rows.first);
+  }
+
+  @override
+  Future<void> deleteTrashEntry(String id) async {
+    _database.execute('DELETE FROM agent_trash_entries WHERE id = ?', [id]);
+  }
+
+  @override
   Future<void> clear() async {
     _database
       ..execute('DELETE FROM chat_messages_fts')
       ..execute('DELETE FROM chat_messages')
-      ..execute('DELETE FROM conversations');
+      ..execute('DELETE FROM conversations')
+      ..execute('DELETE FROM agent_trash_entries');
+  }
+
+  LocalTrashEntry _trashFromRow(Row row) {
+    final decoded = jsonDecode(row['payload_json'] as String);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('回收站 payload 不是对象');
+    }
+    return LocalTrashEntry(
+      id: row['id'] as String,
+      kind: row['kind'] as String,
+      expiresAt: DateTime.parse(row['expires_at'] as String),
+      payload: decoded,
+    );
   }
 
   Conversation _conversationFromRow(Row row) {

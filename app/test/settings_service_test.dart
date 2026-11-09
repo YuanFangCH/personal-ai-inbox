@@ -194,6 +194,31 @@ void main() {
     expect(await service.readModelKey(), 'local-secret');
   });
 
+  test(
+    'persists full-agent mode and imports v1 portability disabled',
+    () async {
+      final service = SettingsService(
+        preferenceStore: _MemoryPreferencesStore({'device_id': 'device-full'}),
+        keyStore: _MemorySecureKeyStore(),
+      );
+      final initial = await service.load();
+      final enabled = await service.saveConfiguration(
+        initial.copyWith(fullAgentMode: true),
+      );
+
+      expect(enabled.fullAgentMode, isTrue);
+      expect(enabled.schemaVersion, AppSettings.currentSchemaVersion);
+      final portable = await service.exportPortableSettings();
+      expect(portable['portable_schema_version'], 2);
+      expect(portable['full_agent_mode'], isTrue);
+
+      final legacy = {...portable, 'portable_schema_version': 1}
+        ..remove('full_agent_mode');
+      final imported = await service.importPortableSettings(legacy);
+      expect(imported.fullAgentMode, isFalse);
+    },
+  );
+
   test('legacy portable settings enable all AI permission defaults', () async {
     final service = SettingsService(
       preferenceStore: _MemoryPreferencesStore({'device_id': 'device-import'}),
@@ -282,7 +307,7 @@ void main() {
     final settings = await service.load();
     final policy = settings.effectiveDefaultAiPolicy;
 
-    expect(settings.schemaVersion, 5);
+    expect(settings.schemaVersion, 6);
     expect(policy.preset, AiPolicyPreset.custom);
     expect(
       policy.decisionFor(AiPermissionAction.tableRead),
@@ -299,7 +324,7 @@ void main() {
     final persisted = jsonDecode(
       preferences.strings['settings_snapshot']!,
     ) as Map<String, dynamic>;
-    expect(persisted['schema_version'], 5);
+    expect(persisted['schema_version'], 6);
     expect(persisted['default_ai_policy'], isA<Map>());
   });
 
