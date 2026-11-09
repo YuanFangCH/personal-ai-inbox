@@ -33,7 +33,7 @@ Android 手机 `v1.4.0` 预览版已发布，使用 `phone-v1.4.0` 标签，只�
 
 ## 当前进展
 
-2026-11-09 修复 AI 页面超大工具回合无法压缩的问题：最新完整工具调用/结果对会保留，但超出请求窗口的工具结果正文按剩余字符预算压缩，完整 transcript 仍保存在本机。真机确认原失败为 `49,557` 字符超过 `48,000` 字符窗口；主机定向回归 29/29 和静态检查通过。当前手机 `v1.4.0+11` 仍为旧包，需同签名新包覆盖后才能在真机恢复旧任务。详见 `test-results/ai-page-context-compaction-20261109/VALIDATION.md`。
+2026-11-09 修复 AI 页面超大工具回合无法压缩的问题：最新完整工具调用/结果对会保留，但超出请求窗口的工具结果正文按剩余字符预算压缩，完整 transcript 仍保存在本机。真机确认原失败为 `49,557` 字符超过 `48,000` 字符窗口；主机定向回归 29/29 和静态检查通过。手机已改为安装包含修复的 Debug 包，并通过应用内迁移从 `2026-10-21` 实机备份恢复 46 条内容、4 张表；迁移后完整数据包和 APK 保存在 `D:\Dsk\aitext-backups\phone-debug-20261109`。系统本地备份实际为空，`2026-10-21` 之后的数据未恢复；API Key 未包含在旧备份中，需在新包设置页重新输入。详见 `test-results/ai-page-context-compaction-20261109/VALIDATION.md`。
 
 2026-11-09 `v1.4.0+11` Android 手机预览版已发布：纳入 Flutter 原生无预算 Harness、完全权限全量表工具、回收站/收纳目标能力、并行只读与写屏障，以及真实 DeepSeek Android AVD 验证。Android Release `42539816724` 与 main CI `42539611481` 均 success；公开 APK SHA-256 为 `68b8656703019b2628857540bcc2dfd64b69c2c961f6760a74f956a4a2677255`。详见[发行说明](docs/releases/v1.4.0.md)与[发布验证](test-results/phone-release-v1.4.0/VALIDATION.md)。
 

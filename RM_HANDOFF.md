@@ -10,17 +10,17 @@
 | 最后更新时间 | 2026-11-09 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.4.0+11` Android 手机预发布已发布；AI 超大工具回合压缩修复已在源码与主机定向验证完成，待同签名新包真机覆盖 |
+| 当前阶段 | Android 手机已安装含 AI 压缩修复的 Debug 包；旧实机备份已通过应用内迁移恢复 46 条内容和 4 张表，等待重新输入 API Key 后在真机复验 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.4.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
 
-2026-11-09 按用户要求发布 Android 手机 `v1.4.0+11` 新版本：Flutter 原生无预算 Harness、完全权限全量表工具、回收站/收纳目标、并行只读/写屏障和真实 DeepSeek AVD 验证已进入 GitHub pre-release `phone-v1.4.0`。同时已定位并修复发布包真机 AI 页面的超大工具回合压缩阻断：最新完整工具调用/结果对保留，超限工具正文按预算压缩，完整 transcript 留在本机。源码与主机定向验证完成；当前手机仍为旧 `1.4.0+11` 包，需同签名新包覆盖后复验旧任务恢复。发布提交 `630afaf`；main CI `42539611481` 与 Android Release `42539816724` 均 success。公开 APK SHA-256 `68b8656703019b2628857540bcc2dfd64b69c2c961f6760a74f956a4a2677255`，长期证书指纹 `51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816`，版本 `1.4.0+11`。平板、Windows 与 A01–A30/A34–A35 延期。
+2026-11-09 按用户要求发布 Android 手机 `v1.4.0+11` 新版本，并继续处理真机 AI 页面：已定位并修复超大工具回合压缩阻断，最新完整工具调用/结果对保留、超限工具正文按预算压缩、完整 transcript 留在本机。手机已卸载旧包并安装含修复的 Debug 包；Honor 系统本地备份实际为空，未能恢复最新数据，随后使用 `2026-10-21` 实机备份通过应用内迁移恢复 46 条内容和 4 张表。迁移后完整数据包、Debug APK 和校验值保存在 `D:\Dsk\aitext-backups\phone-debug-20261109`。API Key 未被旧备份包含，需在设置页重新输入。源码修复提交 `b36325e`；公开 `v1.4.0+11` 发布提交 `630afaf`，main CI `42539611481` 与 Android Release `42539816724` 均 success。平板、Windows 与 A01–A30/A34–A35 延期。
 
 最新手机发布结论见 `test-results/phone-release-v1.4.0/VALIDATION.md`，既有最终设备验证见 `test-results/secretary-agent-implementation/final-device-20261107/VALIDATION.md`。公开下载：`https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.4.0`。
 ## 3. 当前目标与范围
 
-- 当前任务：修复 `v1.4.0+11` 真机 AI 页面在最新工具回合超过 `48,000` 字符窗口时无法压缩、任务反复暂停的问题；源码与主机回归已完成，等待同签名新包真机覆盖。A01–A30、A34–A35 与平板/Windows UI 验收继续按各自范围处理。
+- 当前任务：在含压缩修复的 Debug 包中重新配置 API Key，复验 AI 连接、普通回复、工具回合和旧失败路径；同时确认迁移后的 46 条内容持久化。A01–A30、A34–A35 与平板/Windows UI 验收继续按各自范围处理。
 
 - Android 手机、Android 平板和 Windows 作为独立客户端运行。
 - 每个成果保存为一个 Markdown 文件；本地索引由 SQLite 管理。
@@ -69,6 +69,7 @@
 ## 6. 当前进度与验证
 
 - 2026-11-09 AI 页面超大工具回合压缩修复：真机 `HONOR REA-AN00` / Android 15 / `1.4.0+11` 确认设置连接成功且新短对话可返回 `OK`，旧会话失败原因是安全前缀摘要与完整工具回合共 `49,557` 字符超过 `48,000` 字符窗口。`AgentContextManager` 现保留最新工具调用/结果配对，并对超限工具正文按剩余预算压缩；状态、operation ID、对象 ID/revision、回执与 coverage 保留，完整 transcript 仍本地持久化。新增纯压缩回归与 ChatService 恢复工具回合集成回归，定向 29/29、目标 analyze 0 issue。详见 `test-results/ai-page-context-compaction-20261109/VALIDATION.md`。
+- 2026-11-09 真机 Debug 数据恢复：用户授权卸载重装。Honor 系统本地 restore set 显示恢复完成但实际为空；重新安装后确认 `files/` 只有默认空表。随后导入 `H90y-v1.1.1-20261021` 实机备份，应用迁移门识别 `47` 条旧资料并创建 `1` 张表、`46` 条内容。迁移后 `items/*.md` 为 `46`、`tables/*.md` 为 `4`，首页重新显示原待办。完整 `files/`、`shared_prefs/`、`app_flutter/` 已导出为 `D:\Dsk\aitext-backups\phone-debug-20261109\aitext-full-data-20261109.tar`，SHA-256 `74581ca778e4a1037d0167e78fb7a1e0fc8285278e40b0eb991a807cb9eb184f`；同目录保存 Debug APK 和 `SHA256SUMS.txt`。
 - 2026-11-09 Android 手机 v1.4.0 发布完成：Release `phone-v1.4.0`（pre-release）；main CI `42539611481` / job `128911389363` success，Android Release `42539816724` / job `128912007915` success。公开 APK 90,764,203 bytes，SHA-256 `68b8656703019b2628857540bcc2dfd64b69c2c961f6760a74f956a4a2677255`，版本 `1.4.0+11`，API 24/36、必要权限、v2 签名和长期证书均复核通过。详见 `test-results/phone-release-v1.4.0/VALIDATION.md`。
 - 2026-11-09 `v1.4.0+11` Android 手机发布准备：新增 `docs/releases/v1.4.0.md`；版本升至 `1.4.0+11`；main CI 与 Android Release 定向门禁加入 Harness 测试；Android Release 改为从 `pubspec.yaml` 动态读取 build 号。待推送、打 `phone-v1.4.0` 标签并核验公开资产。
 - 2026-11-09 GitHub main CI 通过：run `42499993545` 在提交 `21b3e11` 上完成 Dart 格式、`flutter analyze` 和迁移/秘书定向回归，全部 success。
@@ -176,7 +177,7 @@
 
 ### 风险与边界
 
-- 2026-11-09 当前手机安装的 `1.4.0+11` 不包含本轮压缩修复；本机没有该公开包使用的长期 release keystore，不能生成同签名覆盖包直接安装。未卸载应用或清除用户数据。需在可读取发布密钥的发布流程生成下一版同签名 APK 后，先覆盖安装再对旧“任务中断，等待核对”卡片执行继续任务，确认压缩后的工具回合完成并消失。
+- 2026-11-09 当前手机安装的是 Android Debug 签名包，不是公开长期签名包；后续正式版覆盖安装需要先处理签名差异，不能直接假定可平滑升级。Honor 系统本地备份此前恢复为空，因此 `2026-10-21` 之后的会话、附件、设置及新增/修改内容未恢复，旧备份也未包含 API Key。设置页当前停在 API Key 输入位置且显示“模型未配置”，需用户重新输入 Key。
 - 2026-11-08 Harness 无累计任务预算不等于无限请求超时或无限上下文：单请求响应头/流空闲/总期限、网络重试、上下文压缩、CAS、幂等、写日志和 Android 生命周期限制继续有效。完全权限仍不包含 API Key、任意文件、SQL、Root/OS 权限或修改自身授权。
 - Windows 当前 TCP 排除范围包含 `6172–6271`，因此最终设备验收使用未排除的 `5620/5621` 与独立 ADB 5041，serial 为 `emulator-5620`。phone/tablet 最终矩阵、双端恢复场景和双端900秒长测均已通过；若系统排除范围或 Emulator 版本变化，先重跑端口/AVD预检再执行设备验收。
 - A26 `conversation_workspace.dart` 后续有源码变化，旧20项测试的源绑定过期。本轮重跑当前源码下 retry recovery 3/3、A32 文件后端恢复 1/1，并对 Workspace 及两份测试 analyze 无诊断；详情与当前 SHA 见 `test-results/secretary-agent-implementation/a26-pending-intent/VALIDATION.md` 和 `a32-file-backed-recovery/VALIDATION.md`。完整20项组合与设备进程终止仍未复验。
@@ -218,11 +219,20 @@
 
 ### 下一步
 
-1. 通过持有长期 release keystore 的发布流程构建下一版同签名 Android 包，覆盖安装到当前手机并验证旧失败任务可继续完成。
+1. 在手机设置页重新输入 API Key 并保存，然后验证连接、普通回复、工具调用及超大工具结果压缩路径；验证后再决定正式包签名迁移方案。
 2. A01–A30、A34–A35 的遗留主机组合以后续 Android 手机审计任务处理；本轮不扩大范围。
 3. Windows 与平板验收、云盘同步和到点提醒继续单独规划。
 
 ## 8. 变更记录
+
+### 2026-11-09 / 真机卸载重装与 10-21 数据恢复
+
+- 任务：按用户授权导出数据、卸载旧包、安装含压缩修复的 Debug 包并恢复可用数据。
+- 诊断：Honor 系统本地 restore set `1` 的 `bmgr restore` 返回 `restoreFinished: 0`，但新包 `files/` 仅有默认空表；`adb backup` 只生成 47 字节空包，系统本地备份不能作为恢复依据。
+- 变更：安装 Debug APK；导入 `D:\Dsk\aitext-backups\H90y-v1.1.1-20261021\prepared-v1.1.4\vault` 旧格式数据，经应用迁移门创建 1 张表和 46 条内容。迁移后保存完整私有数据 tar、Debug APK 与 SHA-256 清单到 `D:\Dsk\aitext-backups\phone-debug-20261109`。
+- 验证：迁移预检显示 47 条旧资料、1 张表、46 条内容；迁移后 `items/*.md` 46 个、`tables/*.md` 4 个，首页显示恢复的待办。数据 tar 为 131,865,088 字节，内容清单可读取；Debug APK SHA-256 `9092072da04becc1f2e266374b3756c8a4c8ecab9eb866ba7a28fe7a7cc888fe`。
+- 状态：数据恢复和 Debug 安装完成；API Key 缺失，AI 页面显示“模型未配置”，等待用户输入后复验。
+- 风险/下一步：10-21 之后的真实数据无法从本次空系统备份恢复；正式长期签名包覆盖仍需另行处理。当前设备临时息屏时间已恢复为 60 秒，设备内临时导入 tar 已删除。
 
 ### 2026-11-09 / 修复 AI 页面超大工具回合压缩阻断
 
