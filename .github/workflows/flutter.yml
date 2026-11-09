@@ -40,4 +40,25 @@ jobs:
         run: flutter analyze
 
       - name: Test migration and secretary regressions
-        run: flutter test --reporter expanded test/table_migration_service_test.dart test/table_migration_gate_test.dart test/table_migration_io_test.dart test/app_runtime_test.dart test/chat_service_tools_test.dart test/table_ai_runtime_test.dart test/table_action_processor_test.dart test/secretary_conversation_ui_test.dart
+        run: >
+          flutter test --reporter expanded
+          test/agent_tool_executor_test.dart
+          test/agent_task_store_test.dart
+          test/agent_task_status_card_test.dart
+          test/agent_budget_file_recovery_test.dart
+          test/chat_service_agent_test.dart
+          test/conversation_workspace_scheduler_test.dart
+          test/conversation_workspace_agent_runtime_test.dart
+          test/content_intake_test.dart
+          test/model_duplicate_decision_source_test.dart
+          test/table_action_processor_test.dart
+          test/table_ai_runtime_test.dart
+          test/chat_service_tools_test.dart
+          test/conversation_lifecycle_test.dart
+          test/conversation_large_history_ui_test.dart
+          test/secretary_conversation_ui_test.dart
+          test/app_background_lifecycle_test.dart
+          test/table_migration_service_test.dart
+          test/table_migration_gate_test.dart
+          test/table_migration_io_test.dart
+          test/app_runtime_test.dart

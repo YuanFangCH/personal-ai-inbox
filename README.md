@@ -8,11 +8,11 @@
 
 首个预发布版本从 [GitHub Releases](https://github.com/YuanFangCH/personal-ai-inbox/releases) 下载：
 
-- 本次 `v1.3.0`：Android 7.0 及以上安装通用 APK，不提供新的 Windows 资产。
+- 本次 `v1.4.0`：Android 7.0 及以上安装通用 APK，不提供新的 Windows 资产。
 - Windows 11 x64 继续使用上一版全平台预发布中的安装包或便携 ZIP。
 - 发布页同时提供 `SHA256SUMS.txt`，下载后应校验文件哈希。
 
-Android 手机 `v1.3.0` 预览版已发布，使用 `phone-v1.3.0` 标签，只提供通用 APK 与 `SHA256SUMS.txt`：[GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.3.0)。APK SHA-256 为 `a81c32f7382d194e42151a9ba59816ddaf9a3e91fdc417cb3afe4b95c9754fbb`。`v1.2.1` 继续作为上一版全平台预发布保留。升级前请完整备份应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.3.0.md)；真实资料迁移需要在应用内确认。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
+Android 手机 `v1.4.0` 预览版使用 `phone-v1.4.0` 标签，只提供通用 APK 与 `SHA256SUMS.txt`：[GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.4.0)。APK SHA-256 以 Release 页与 `SHA256SUMS.txt` 为准。`v1.3.0` 继续作为上一版 Android 手机预发布保留，`v1.2.1` 是上一版全平台预发布。升级前请完整备份应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.4.0.md)；真实资料迁移需要在应用内确认。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
 
 ## 核心能力
 
@@ -32,6 +32,8 @@ Android 手机 `v1.3.0` 预览版已发布，使用 `phone-v1.3.0` 标签，只�
 每次在本项目开启新对话，先读本 README，再读 [RM_HANDOFF.md](RM_HANDOFF.md) 获取最新交接状态，并遵守 [AGENTS.md](AGENTS.md)。项目内正式修改同步更新 RM_HANDOFF。
 
 ## 当前进展
+
+2026-11-09 `v1.4.0+11` Android 手机预发布准备：纳入 Flutter 原生无预算 Harness、完全权限全量表工具、回收站/收纳目标能力、并行只读与写屏障，以及真实 DeepSeek Android AVD 验证。发布流水线同步加入 Harness 定向回归并从 `pubspec.yaml` 读取 `versionCode`；发行说明见 `docs/releases/v1.4.0.md`。
 
 2026-11-08 AI Harness 升级完成：取消累计 2 小时/240 次请求预算和追加额度，新增并行只读工具、写屏障、用量账本 v3、完全权限回收站/收纳目标工具及查重自动前进。主机定向测试、Android 手机 AVD 表 AI 场景通过；随后在 Android 15 手机 AVD 用真实 DeepSeek 完成连接、普通回复、`table_list` 和完全权限 `content_create` 写入/读回 1/1。详见 `test-results/harness-unbounded-full-access/VALIDATION.md`、`test-results/android-real-model-20261108/VALIDATION.md` 与 [ADR 0025](docs/adr/0025-unbounded-flutter-agent-harness.md)。
 

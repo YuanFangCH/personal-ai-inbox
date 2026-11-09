@@ -51,9 +51,7 @@ jobs:
           if ($Matches.version -ne $tagVersion) {
               throw "Release tag $tag does not match app version $($Matches.version)."
           }
-          if ($Matches.build -ne '10') {
-              throw "Expected Android versionCode 10, found $($Matches.build)."
-          }
+          $buildNumber = $Matches.build
 
           $notesPath = Join-Path (Resolve-Path '..').Path "docs\releases\v$tagVersion.md"
           if (-not (Test-Path -LiteralPath $notesPath -PathType Leaf)) {
@@ -61,6 +59,7 @@ jobs:
           }
 
           "RELEASE_VERSION=$tagVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "RELEASE_BUILD=$buildNumber" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "RELEASE_NOTES=$notesPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Install Dart dependencies
@@ -79,6 +78,15 @@ jobs:
         working-directory: app
         run: >
           flutter test --reporter expanded
+          test/agent_tool_executor_test.dart
+          test/agent_task_store_test.dart
+          test/agent_task_status_card_test.dart
+          test/agent_budget_file_recovery_test.dart
+          test/chat_service_agent_test.dart
+          test/conversation_workspace_scheduler_test.dart
+          test/conversation_workspace_agent_runtime_test.dart
+          test/content_intake_test.dart
+          test/model_duplicate_decision_source_test.dart
           test/conversation_lifecycle_test.dart
           test/conversation_large_history_ui_test.dart
           test/secretary_conversation_ui_test.dart
@@ -128,8 +136,8 @@ jobs:
           $apk = Resolve-Path 'build\app\outputs\flutter-apk\app-release.apk'
           $badging = & (Join-Path $buildTools.FullName 'aapt2.exe') dump badging $apk | Out-String
           if ($LASTEXITCODE -ne 0) { throw 'aapt2 could not inspect the APK.' }
-          if ($badging -notmatch "versionCode='10'") {
-              throw 'APK versionCode is not 10.'
+          if ($badging -notmatch "versionCode='$env:RELEASE_BUILD'") {
+              throw "APK versionCode does not match $env:RELEASE_BUILD."
           }
           if ($badging -notmatch "versionName='$env:RELEASE_VERSION'") {
               throw "APK versionName does not match $env:RELEASE_VERSION."
