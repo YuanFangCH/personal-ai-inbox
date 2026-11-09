@@ -1,0 +1,77 @@
+candidate_source_manifest_sha256=dd432a13a3a160f3e41bcf13dc5c605a20f1a63c6d9fb1a9f4788cd2fc5366da
+candidate=dd432a13a3a160f3e41bcf13dc5c605a20f1a63c6d9fb1a9f4788cd2fc5366da profile=phone scenario=longrun serial=emulator-5620 avd=aitext_agent_c_phone
+device_preflight serial=emulator-5620 avd=aitext_agent_c_phone boot_completed=1 api_level=35 emulator_version=Android emulator version 37.2.12.0 (build_id 16428233) (CL:N/A) command_line="E:\DevTools\Android\Sdk\emulator\emulator.exe" -avd aitext_agent_c_phone -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -port 5620
+flutter=D:\Flutter-recovery-3.47.6\sdk\flutter\bin\flutter.bat
+adb=D:\Dsk\timelock\.local\android-sdk\platform-tools\adb.exe server_port=5041 build_sdk=D:\Flutter-recovery-3.47.6\ui-fix-review-20261025\android-sdk runtime_sdk=D:\Dsk\timelock\.local\android-sdk
+notification_permission_read_attempt=1 field_count=1 raw_lines=      android.permission.POST_NOTIFICATIONS ||         android.permission.POST_NOTIFICATIONS: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+scenario=longrun notification_permission_before=denied notification_permission_flags_before=not-captured notification_permission_target=granted appop_uid_before=ignore appop_package_before=default appop_effective_before=ignore appop_raw_before=appops_get=[Uid mode: POST_NOTIFICATION: ignore] appops_dump=[    Package com.yuanfang.aitext.personal_ai_inbox:
+      ACCESS_RESTRICTED_SETTINGS (default):
+]
+notification_permission_read_attempt=1 field_count=1 raw_lines=      android.permission.POST_NOTIFICATIONS ||         android.permission.POST_NOTIFICATIONS: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+notification_permission_read_attempt=1 field_count=1 raw_lines=      android.permission.POST_NOTIFICATIONS ||         android.permission.POST_NOTIFICATIONS: granted=true, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+notification_permission_appop_readback permission_write_exit=0 expected_permission=granted actual_permission=granted expected_uid=default expected_package=default expected_effective=default actual_uid=default actual_package=default actual_effective=default
+notification_permission_setup=complete permission=granted appop_uid=default appop_package=default appop_effective=default appop_write=false
+adb_action=longrun_read_stay_on exit=0 output=1
+adb_action=longrun_enable_stay_on exit=0 output=
+adb_action=longrun_wake_before_startup exit=0 output=
+adb_action=longrun_dismiss_keyguard_before_startup exit=0 output=
+display_lock_read=power exit=0
+display_lock_read=window_policy exit=0
+display_lock_state=screen:ON,interactive_state:AWAKE,interactive:True,screen_on:True,keyguard:False
+longrun_stay_on_before=1 temporary_value=3 screen_on_before_startup=true
+phase_start=longrun at=2026-11-09T07:35:46.3998830Z
+phase_startup_timeout_minutes=8 phase=longrun business_timeout_minutes=20 business_start_marker=AGENT_LONGTASK_STARTED|
+phase_process_observed root_pid=4584 pid=11936 name=pwsh.exe creation=11/09/2026 15:35:46 cmd=pwsh  -ExecutionPolicy Bypass -NoProfile -Command "Unblock-File -Path 'D:\Flutter-recovery-3.47.6\sdk\flutter\bin\internal\update_engine_version.ps1'; & 'D:\Flutter-recovery-3.47.6\sdk\flutter\bin\internal\update_engine_version.ps1'; exit $LASTEXITCODE;"
+phase_process_observed root_pid=4584 pid=23544 name=conhost.exe creation=11/09/2026 15:35:46 cmd=\??\C:\Windows\system32\conhost.exe 0x4
+phase_process_observed root_pid=4584 pid=7692 name=dartvm.exe creation=11/09/2026 15:35:47 cmd=D:\Flutter-recovery-3.47.6\sdk\flutter\bin\cache\dart-sdk\bin\dartvm.exe --resolved_executable_name=D:\Flutter-recovery-3.47.6\sdk\flutter\bin\cache\dart-sdk\bin\dart.exe --executable_name=D:\Flutter-recovery-3.47.6\sdk\flutter\bin\cache\dart-sdk\bin\dart.exe --packages=D:\Flutter-recovery-3.47.6\sdk\flutter\packages\flutter_tools\.dart_tool\package_config.json D:\Flutter-recovery-3.47.6\sdk\flutter\bin\cache\flutter_tools.snapshot test integration_test/agent_task_longrun_android_test.dart -d emulator-5620 --no-pub --dart-define=E2E_AGENT_PHASE=longrun --dart-define=E2E_ACCEPTANCE_RUN_TOKEN=8f6968001d204cb3b4e8cfbe702b4283 --dart-define=E2E_DEVICE_PROFILE=phone --dart-define=E2E_DURATION_SECONDS=900
+phase_process_observed root_pid=4584 pid=19588 name=dart.exe creation=11/09/2026 15:35:47 cmd="D:\Flutter-recovery-3.47.6\sdk\flutter\bin\cache\dart-sdk\bin\dart.exe"  --packages="D:\Flutter-recovery-3.47.6\sdk\flutter\packages\flutter_tools\.dart_tool\package_config.json"  "D:\Flutter-recovery-3.47.6\sdk\flutter\bin\cache\flutter_tools.snapshot" test integration_test/agent_task_longrun_android_test.dart -d emulator-5620 --no-pub --dart-define=E2E_AGENT_PHASE=longrun --dart-define=E2E_ACCEPTANCE_RUN_TOKEN=8f6968001d204cb3b4e8cfbe702b4283 --dart-define=E2E_DEVICE_PROFILE=phone --dart-define=E2E_DURATION_SECONDS=900
+phase_process_observed root_pid=4584 pid=6104 name=aapt.exe creation=11/09/2026 15:35:49 cmd=D:\Flutter-recovery-3.47.6\ui-fix-review-20261025\android-sdk\build-tools\36.0.0\aapt.EXE dump xmltree D:\Dsk\aitext\app\build\app\outputs\flutter-apk\app-debug.apk AndroidManifest.xml
+phase_process_observed root_pid=4584 pid=23204 name=cmd.exe creation=11/09/2026 15:35:49 cmd=C:\Windows\system32\cmd.exe /c D:\Dsk\aitext\app\android\gradlew.bat -q -PskipDependencyChecks=true -Ptarget-platform=android-x64 -Ptarget=C:\Users\18377\AppData\Local\Temp\flutter_tools.abec0dc4\flutter_test_listener.a59c7f42/listener.dart -Pbase-application-name=android.app.Application -Pdart-defines=RTJFX0FHRU5UX1BIQVNFPWxvbmdydW4=,RTJFX0FDQ0VQVEFOQ0VfUlVOX1RPS0VOPThmNjk2ODAwMWQyMDRjYjNiNGU4Y2ZiZTcwMmI0Mjgz,RTJFX0RFVklDRV9QUk9GSUxFPXBob25l,RTJFX0RVUkFUSU9OX1NFQ09ORFM9OTAw,RkxVVFRFUl9CVUlMRF9OQU1FPTEuNC4w,RkxVVFRFUl9CVUlMRF9OVU1CRVI9MTE=,RkxVVFRFUl9WRVJTSU9OPTMuNDcuNg==,RkxVVFRFUl9DSEFOTkVMPXN0YWJsZQ==,RkxVVFRFUl9HSVRfVVJMPWh0dHBzOi8vZ2l0aHViLmNvbS9mbHV0dGVyL2ZsdXR0ZXIuZ2l0,RkxVVFRFUl9GUkFNRVdPUktfUkVWSVNJT049NWZjMzQ2ODM5Yg==,RkxVVFRFUl9FTkdJTkVfUkVWSVNJT049NjkyMTM2Y2I2NQ==,RkxVVFRFUl9EQVJUX1ZFUlNJT049My4xMy41,SU5URUdSQVRJT05fVEVTVF9TSE9VTERfUkVQT1JUX1JFU1VMVFNfVE9fTkFUSVZFPWZhbHNl -Pdart-obfuscation=false -Ptrack-widget-creation=true -Ptree-shake-icons=false -Pflutter.androidSdkRoot=D:\Flutter-recovery-3.47.6\ui-fix-review-20261025\android-sdk -Pflutter.installedNdkVersions=28.2.13676358 -Pflutter.sdkManagerPath=D:\Flutter-recovery-3.47.6\ui-fix-review-20261025\android-sdk\cmdline-tools\latest\bin\sdkmanager.bat assembleDebug
+phase_process_observed root_pid=4584 pid=9852 name=conhost.exe creation=11/09/2026 15:35:49 cmd=\??\C:\Windows\system32\conhost.exe 0x4
+phase_process_observed root_pid=4584 pid=11412 name=java.exe creation=11/09/2026 15:35:49 cmd="C:\Program Files\Java\jdk-17.0.2/bin/java.exe"     "-Dorg.gradle.appname=gradlew" -classpath "D:\Dsk\aitext\app\android\\gradle\wrapper\gradle-wrapper.jar" org.gradle.wrapper.GradleWrapperMain -q -PskipDependencyChecks=true -Ptarget-platform=android-x64 -Ptarget=C:\Users\18377\AppData\Local\Temp\flutter_tools.abec0dc4\flutter_test_listener.a59c7f42/listener.dart -Pbase-application-name=android.app.Application -Pdart-defines=RTJFX0FHRU5UX1BIQVNFPWxvbmdydW4=,RTJFX0FDQ0VQVEFOQ0VfUlVOX1RPS0VOPThmNjk2ODAwMWQyMDRjYjNiNGU4Y2ZiZTcwMmI0Mjgz,RTJFX0RFVklDRV9QUk9GSUxFPXBob25l,RTJFX0RVUkFUSU9OX1NFQ09ORFM9OTAw,RkxVVFRFUl9CVUlMRF9OQU1FPTEuNC4w,RkxVVFRFUl9CVUlMRF9OVU1CRVI9MTE=,RkxVVFRFUl9WRVJTSU9OPTMuNDcuNg==,RkxVVFRFUl9DSEFOTkVMPXN0YWJsZQ==,RkxVVFRFUl9HSVRfVVJMPWh0dHBzOi8vZ2l0aHViLmNvbS9mbHV0dGVyL2ZsdXR0ZXIuZ2l0,RkxVVFRFUl9GUkFNRVdPUktfUkVWSVNJT049NWZjMzQ2ODM5Yg==,RkxVVFRFUl9FTkdJTkVfUkVWSVNJT049NjkyMTM2Y2I2NQ==,RkxVVFRFUl9EQVJUX1ZFUlNJT049My4xMy41,SU5URUdSQVRJT05fVEVTVF9TSE9VTERfUkVQT1JUX1JFU1VMVFNfVE9fTkFUSVZFPWZhbHNl -Pdart-obfuscation=false -Ptrack-widget-creation=true -Ptree-shake-icons=false -Pflutter.androidSdkRoot=D:\Flutter-recovery-3.47.6\ui-fix-review-20261025\android-sdk -Pflutter.installedNdkVersions=28.2.13676358 -Pflutter.sdkManagerPath=D:\Flutter-recovery-3.47.6\ui-fix-review-20261025\android-sdk\cmdline-tools\latest\bin\sdkmanager.bat assembleDebug
+phase_process_observed root_pid=4584 pid=5864 name=conhost.exe creation=11/09/2026 15:36:32 cmd=\??\C:\Windows\system32\conhost.exe 0x4
+phase_process_observed root_pid=4584 pid=19492 name=adb.exe creation=11/09/2026 15:36:31 cmd=D:\Flutter-recovery-3.47.6\ui-fix-review-20261025\android-sdk\platform-tools\adb.exe -s emulator-5620 install -t -r D:\Dsk\aitext\app\build\app\outputs\flutter-apk\app-debug.apk
+phase_process_observed root_pid=4584 pid=19352 name=conhost.exe creation=11/09/2026 15:36:33 cmd=
+phase_process_observed root_pid=4584 pid=13692 name=adb.exe creation=11/09/2026 15:36:33 cmd=
+phase_process_observed root_pid=4584 pid=14568 name=conhost.exe creation=11/09/2026 15:36:33 cmd=\??\C:\Windows\system32\conhost.exe 0x4
+phase_process_observed root_pid=4584 pid=8316 name=conhost.exe creation=11/09/2026 15:36:34 cmd=\??\C:\Windows\system32\conhost.exe 0x4
+phase_process_observed root_pid=4584 pid=9868 name=adb.exe creation=11/09/2026 15:36:33 cmd=D:\Flutter-recovery-3.47.6\ui-fix-review-20261025\android-sdk\platform-tools\adb.exe -s emulator-5620 shell am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -f 0x20000000 --ez enable-dart-profiling true --ez enable-checked-mode true --ez verify-entry-points true com.yuanfang.aitext.personal_ai_inbox/com.yuanfang.aitext.personal_ai_inbox.MainActivity
+phase_process_observed root_pid=4584 pid=18040 name=adb.exe creation=11/09/2026 15:36:33 cmd=D:\Flutter-recovery-3.47.6\ui-fix-review-20261025\android-sdk\platform-tools\adb.exe -s emulator-5620 shell -x logcat -v time -T "'11-09 07:36:32.910'"
+phase_process_observed root_pid=4584 pid=13272 name=dart.exe creation=11/09/2026 15:36:37 cmd=D:\Flutter-recovery-3.47.6\sdk\flutter\bin\cache\dart-sdk\bin\dart.exe development-service --vm-service-uri=http://127.0.0.1:12214/Jlm_OOQOSgM=/ --bind-address=127.0.0.1 --bind-port=0 --serve-devtools "--app-name=Kind: Flutter - Device: sdk gphone64 x86 64 - Package: app-debug.apk"
+phase_business_started=longrun marker=AGENT_LONGTASK_STARTED| at=2026-11-09T07:36:50.3404661Z startup_elapsed_seconds=63.716 business_deadline=2026-11-09T07:56:50.3404661Z
+phase_process_observed root_pid=4584 pid=18496 name=conhost.exe creation=11/09/2026 15:37:15 cmd=\??\C:\Windows\system32\conhost.exe 0x4
+phase_process_observed root_pid=4584 pid=8792 name=adb.exe creation=11/09/2026 15:37:15 cmd=D:\Flutter-recovery-3.47.6\ui-fix-review-20261025\android-sdk\platform-tools\adb.exe -s emulator-5620 uninstall com.yuanfang.aitext.personal_ai_inbox
+phase_exit=longrun code= at=2026-11-09T07:37:16.8201864Z
+phase_business_elapsed_seconds=26.482 phase=longrun marker=AGENT_LONGTASK_STARTED|
+longrun_failure_archive_export=failed error=Expected exactly one longrun archive begin/end marker pair; found begin=0 end=0. original_failure=
+longrun_fallback_snapshot_file=failed path=files/secretary-agent-acceptance/phone/agent-events.jsonl error=Device package data was unavailable for files/secretary-agent-acceptance/phone/agent-events.jsonl.
+longrun_fallback_snapshot_file=failed path=files/secretary-agent-acceptance/phone/vault/.local/agent-task-checkpoint.json error=Device package data was unavailable for files/secretary-agent-acceptance/phone/vault/.local/agent-task-checkpoint.json.
+longrun_fallback_snapshot_saved=0 directory=D:\Dsk\aitext\test-results\secretary-agent-implementation\luna-c\20261109T073543Z-phone-longrun\failure-evidence
+phase_failure_evidence_capture=longrun success=False stage=nonzero_exit
+phase_process_already_exited phase=longrun pid=18040
+phase_process_already_exited phase=longrun pid=23544
+phase_process_already_exited phase=longrun pid=18496
+phase_process_already_exited phase=longrun pid=7692
+phase_process_already_exited phase=longrun pid=23204
+phase_process_already_exited phase=longrun pid=8792
+phase_process_already_exited phase=longrun pid=19352
+phase_process_already_exited phase=longrun pid=5864
+phase_process_already_exited phase=longrun pid=19492
+phase_process_already_exited phase=longrun pid=11412
+phase_process_already_exited phase=longrun pid=14568
+phase_process_already_exited phase=longrun pid=19588
+phase_process_already_exited phase=longrun pid=9868
+phase_process_already_exited phase=longrun pid=13272
+phase_process_already_exited phase=longrun pid=9852
+phase_process_already_exited phase=longrun pid=6104
+phase_process_already_exited phase=longrun pid=8316
+phase_process_already_exited phase=longrun pid=13692
+phase_process_already_exited phase=longrun pid=11936
+phase_process_cleanup_verified phase=longrun root_pid=4584 observed_descendants=19 live=0
+adb_action=longrun_restore_stay_on exit=0 output=
+longrun_stay_on_restored=1
+abnormal_phase_app_force_stop=success
+post_phase_package=absent pm_path= dumpsys_package=Unable to find package: com.yuanfang.aitext.personal_ai_inbox permission_appop_comparison=skipped_after_uninstall
+post_test_service_lines=none
+post_test_wakelock_lines= current_wakelock_header=
+cleanup_failures=none

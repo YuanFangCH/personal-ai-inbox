@@ -1,0 +1,6 @@
+candidate_source_manifest_sha256=dd432a13a3a160f3e41bcf13dc5c605a20f1a63c6d9fb1a9f4788cd2fc5366da
+candidate=dd432a13a3a160f3e41bcf13dc5c605a20f1a63c6d9fb1a9f4788cd2fc5366da profile=phone scenario=longrun serial=emulator-5620 avd=aitext_agent_c_phone
+device_preflight serial=emulator-5620 avd=aitext_agent_c_phone boot_completed=1 api_level=35 emulator_version=Android emulator version 37.2.12.0 (build_id 16428233) (CL:N/A) command_line="E:\DevTools\Android\Sdk\emulator\emulator.exe" -avd aitext_agent_c_phone -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -port 5620
+flutter=D:\Flutter-recovery-3.47.6\sdk\flutter\bin\flutter.bat
+adb=D:\Dsk\timelock\.local\android-sdk\platform-tools\adb.exe server_port=5041 build_sdk=D:\Flutter-recovery-3.47.6\ui-fix-review-20261025\android-sdk runtime_sdk=D:\Dsk\timelock\.local\android-sdk
+permission_bootstrap_build_exit= stdout=D:\Dsk\aitext\test-results\secretary-agent-implementation\luna-c\20261109T073328Z-phone-longrun\permission-bootstrap-build.stdout.log stderr=D:\Dsk\aitext\test-results\secretary-agent-implementation\luna-c\20261109T073328Z-phone-longrun\permission-bootstrap-build.stderr.log

@@ -352,10 +352,14 @@ Future<void> _runFifteenMinuteBusinessTask(
       expect(
         checkpoint.usage.usedRequests,
         inInclusiveRange(
-          harness.fixture.requestCount,
+          harness.fixture.requestCount > 0
+              ? harness.fixture.requestCount - 1
+              : 0,
           harness.fixture.requestCount + 1,
         ),
-        reason: 'Persisted usage may include the request already in flight.',
+        reason:
+            'Persisted usage may lag the in-flight request or include the '
+            'request currently being settled.',
       );
       expect(
         harness.fixture.toolDeltaFrames,

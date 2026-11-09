@@ -1,0 +1,69 @@
+00:00 +0: loading D:/Dsk/aitext/app/integration_test/agent_task_longrun_android_test.dart
+Running Gradle task 'assembleDebug'...
+WARNING: Your app uses the following plugins that apply Kotlin Gradle Plugin (KGP): flutter_tts
+Future versions of Flutter will fail to build if your app uses plugins that apply KGP.
+
+Please check the changelogs of these plugins and upgrade to a version that supports Built-in Kotlin.
+If no such version exists, report the issue to the plugin. If necessary, here is a guide on filing
+an issue against a plugin: https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-app-developers#report-incompatible-kotlin-gradle-plugin-usage-to-plugin-authors
+
+If you are a plugin author, please migrate your plugin to Built-in Kotlin using this guide: https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-plugin-authors
+Warning: SDK processing. This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+Running Gradle task 'assembleDebug'...                             53.6s
+√ Built build\app\outputs\flutter-apk\app-debug.apk
+Installing build\app\outputs\flutter-apk\app-debug.apk...          966ms
+00:00 +0: production agent device acceptance: phone / longrun
+AGENT_HARNESS_OPEN|support_dir
+AGENT_HARNESS_OPEN|root_ready
+AGENT_HARNESS_OPEN|index_open
+AGENT_HARNESS_OPEN|runtime_ready
+AGENT_HARNESS_OPEN|model_server_ready
+AGENT_TEST_SETUP|harness_open
+AGENT_TEST_SETUP|pump_widget_start
+AGENT_TEST_SETUP|pump_widget_done
+AGENT_TEST_SETUP|pump_start
+AGENT_TEST_SETUP|pump_done
+AGENT_TEST_READY|phone|longrun
+AGENT_LONGTASK_STARTED|phone|cnv_ff7fe60b-d975-47ea-8140-5782c497391c|2026-11-09T07:39:29.260157
+AGENT_BACKGROUND_LOCK_READY|phone|222096
+AGENT_LONGTASK_PROGRESS|phone|1|222096|3|1
+AGENT_LONGTASK_PROGRESS|phone|2|223221|4|1
+AGENT_LONGTASK_PROGRESS|phone|3|242136|7|1
+AGENT_LONGTASK_PROGRESS|phone|4|259573|10|1
+AGENT_LONGTASK_PROGRESS|phone|5|279051|13|1
+AGENT_LONGTASK_PROGRESS|phone|6|297569|16|1
+AGENT_LONGTASK_PROGRESS|phone|7|316035|19|1
+AGENT_LONGTASK_PROGRESS|phone|8|335505|22|1
+AGENT_LONGTASK_PROGRESS|phone|9|354022|25|1
+AGENT_LONGTASK_PROGRESS|phone|10|373517|28|1
+AGENT_LONGTASK_PROGRESS|phone|11|392020|31|1
+AGENT_LONGTASK_PROGRESS|phone|12|411516|34|1
+AGENT_LONGTASK_PROGRESS|phone|13|431060|38|1
+AGENT_LONGTASK_PROGRESS|phone|14|449597|42|1
+AGENT_LONGTASK_PROGRESS|phone|15|469137|46|1
+AGENT_LONGTASK_PROGRESS|phone|16|488664|50|1
+AGENT_LONGTASK_PROGRESS|phone|17|508253|54|1
+AGENT_LONGTASK_PROGRESS|phone|18|527861|58|1
+AGENT_LONGTASK_PROGRESS|phone|19|547498|62|1
+AGENT_LONGTASK_PROGRESS|phone|20|566120|66|1
+AGENT_LONGTASK_PROGRESS|phone|21|585699|70|1
+AGENT_LONGTASK_PROGRESS|phone|22|605316|74|1
+AGENT_LONGTASK_PROGRESS|phone|23|624941|79|1
+AGENT_LONGTASK_PROGRESS|phone|24|644605|84|1
+AGENT_LONGTASK_PROGRESS|phone|25|664394|89|1
+AGENT_LONGTASK_PROGRESS|phone|26|685118|94|1
+AGENT_LONGTASK_PROGRESS|phone|27|704798|99|1
+AGENT_LONGTASK_PROGRESS|phone|28|724457|104|1
+AGENT_LONGTASK_PROGRESS|phone|29|744115|109|1
+AGENT_LONGTASK_PROGRESS|phone|30|764823|114|1
+AGENT_LONGTASK_PROGRESS|phone|31|784545|119|1
+AGENT_LONGTASK_PROGRESS|phone|32|804222|124|1
+AGENT_LONGTASK_PROGRESS|phone|33|824969|130|1
+AGENT_LONGTASK_PROGRESS|phone|34|844685|136|1
+AGENT_LONGTASK_PROGRESS|phone|35|865421|142|1
+AGENT_LONGTASK_PROGRESS|phone|36|885132|148|1
+AGENT_LONGRUN_FIXTURE_DELTA_SENT|合成资料已写入
+AGENT_LONGTASK_PROGRESS|phone|37|907611|154|0
+AGENT_LONGTASK_RESULT|phone|passed|907|37
+15:14 +1: (tearDownAll)
+15:15 +1: All tests passed!

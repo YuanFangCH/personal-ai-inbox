@@ -10,17 +10,17 @@
 | 最后更新时间 | 2026-11-09 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | 完全体模式、全局应用内权限覆盖、无累计执行/检索/输入、自动续跑与会话附件回收站已完成实现；主机定向 179/179 与 Android AVD 开关场景 1/1 通过 |
+| 当前阶段 | 完全体模式已完成手机验收：真实 DeepSeek 工具往返 1/1、手机矩阵 50/50、900 秒长测 907 秒/37 条/154 次请求通过；等待测试断言修复提交 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.4.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
 
-2026-11-09 已实现设置页“完全体模式”：默认关闭，开启后以全局覆盖让全部现有和新会话使用应用内完全权限，关闭后恢复各会话原策略。完全体模式下取消应用层上下文消息、检索批次、附件数量和瞬时故障重试累计上限，支持输出长度续写、启动时安全续跑、整段会话/附件 30 天回收站和普通界面设置工具；API Key、模型控制面、权限策略、图片出网和开关自身不可由 AI 修改。此前 Android `v1.4.0+11` 已发布，手机 Debug 包与 `2026-10-21` 恢复数据仍保留，API Key 仍待手机用户输入。
+2026-11-09 完全体模式已完成 Android AVD 验收：从上一轮本机会话读取测试 Key，真实 DeepSeek `table_list` 工具往返 1/1；手机矩阵 50/50；900 秒长测完成 907 秒、37 条写入/读回和 154 次请求，并覆盖切后台、锁屏 12 秒、唤醒恢复及最终流式答复。测试 Key 未写入仓库或日志。长测检查点用量断言已允许一拍滞后，修正后完整通过。
 
 最新手机发布结论见 `test-results/phone-release-v1.4.0/VALIDATION.md`，既有最终设备验证见 `test-results/secretary-agent-implementation/final-device-20261107/VALIDATION.md`。公开下载：`https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.4.0`。
 ## 3. 当前目标与范围
 
-- 当前任务：完成完全体模式源码提交；Android AVD 的开关、自动恢复和后台交互复验仍待执行。手机 API Key 重配及迁移后 46 条内容持久化复验继续保留。
+- 当前任务：提交本轮长测断言稳定性修复和验证记录。手机 API Key 重配及迁移后 46 条内容持久化复验继续保留。
 
 - Android 手机、Android 平板和 Windows 作为独立客户端运行。
 - 每个成果保存为一个 Markdown 文件；本地索引由 SQLite 管理。
@@ -69,6 +69,7 @@
 
 ## 6. 当前进度与验证
 
+- 2026-11-09 手机 50 例、真实模型与 900 秒长测通过：`SEC-001`–`SEC-100` 中手机适用 50/50，4 分 08 秒；标准 `integration_test` 路径真实 DeepSeek 完全体模式 `table_list` 工具往返 1/1；900 秒业务实际 907 秒，完成 37 条写入与读回、154 次模型请求，后台任务在切后台、锁屏 12 秒、唤醒重开应用后继续并完成最终答复。首次长测暴露检查点用量断言不允许 fixture 请求数领先一拍，已修正为容许 `requestCount ± 1`。未执行全量测试、平板、Windows 或物理手机。详见 `test-results/phone-50-longrun-20261109/VALIDATION.md`。
 - 2026-11-09 完全体模式实现：设置快照升级到 v6、可移植设置 v2、会话库 v7；新增全局策略覆盖、启动安全检查点续跑、`finish_reason=length` 自动续写、瞬时故障无限退避重试、无累计本地检索、完整文件/压缩包输入、批量图片输入、会话/附件 30 天回收站、整段会话与普通设置工具。受保护控制面继续拒绝 API Key、模型端点/名称、图片出网、权限策略和完全体开关。`flutter analyze --no-pub` 0 issue，主机定向 179/179，Android AVD `full_agent_android_test.dart` 1/1；详见 `test-results/full-agent-mode-20261109/VALIDATION.md` 与 [ADR 0026](docs/adr/0026-device-full-agent-mode.md)。
 - 2026-11-09 AI 页面超大工具回合压缩修复：真机 `HONOR REA-AN00` / Android 15 / `1.4.0+11` 确认设置连接成功且新短对话可返回 `OK`，旧会话失败原因是安全前缀摘要与完整工具回合共 `49,557` 字符超过 `48,000` 字符窗口。`AgentContextManager` 现保留最新工具调用/结果配对，并对超限工具正文按剩余预算压缩；状态、operation ID、对象 ID/revision、回执与 coverage 保留，完整 transcript 仍本地持久化。新增纯压缩回归与 ChatService 恢复工具回合集成回归，定向 29/29、目标 analyze 0 issue。详见 `test-results/ai-page-context-compaction-20261109/VALIDATION.md`。
 - 2026-11-09 真机 Debug 数据恢复：用户授权卸载重装。Honor 系统本地 restore set 显示恢复完成但实际为空；重新安装后确认 `files/` 只有默认空表。随后导入 `H90y-v1.1.1-20261021` 实机备份，应用迁移门识别 `47` 条旧资料并创建 `1` 张表、`46` 条内容。迁移后 `items/*.md` 为 `46`、`tables/*.md` 为 `4`，首页重新显示原待办。完整 `files/`、`shared_prefs/`、`app_flutter/` 已导出为 `D:\Dsk\aitext-backups\phone-debug-20261109\aitext-full-data-20261109.tar`，SHA-256 `74581ca778e4a1037d0167e78fb7a1e0fc8285278e40b0eb991a807cb9eb184f`；同目录保存 Debug APK 和 `SHA256SUMS.txt`。
@@ -222,11 +223,20 @@
 
 ### 下一步
 
-1. 提交完全体模式原子变更前完成最终定向测试、格式和文档链接检查；有可用 Android AVD 时补充 320/800/1280 设置页、自动续跑和后台交互验证。
-2. 在手机设置页重新输入 API Key 并保存，然后验证连接、普通回复、工具调用及超大工具结果压缩路径；验证后再决定正式包签名迁移方案。
+1. 提交本轮长测断言稳定性修复与测试记录，随后确认工作区干净。
+2. 在物理手机设置页重新输入 API Key 并保存，然后验证真实设备连接、普通回复、工具调用及超大工具结果压缩路径；验证后再决定正式包签名迁移方案。
 3. A01–A30、A34–A35、Windows 与平板验收、云盘同步和到点提醒继续单独处理。
 
 ## 8. 变更记录
+
+### 2026-11-09 / 完成手机 50 例、真实模型和 900 秒长测
+
+- 任务：使用上一轮测试 Key，在 Android AVD 执行手机 50 例矩阵、真实 DeepSeek 工具冒烟和 15 分钟长测。
+- 环境：Flutter 3.47.6，`aitext_agent_c_phone` / Android 15 / API 35，Emulator 37.2.12，隔离 ADB server 5041。
+- 变更：长测检查点用量断言由“fixture 请求数到 +1”放宽为“fixture 请求数 ±1”，覆盖检查点先于或滞后一次在途请求结算；未修改产品业务逻辑。
+- 验证：真实 DeepSeek 完全体模式 `table_list` 工具往返 1/1；手机矩阵 50/50，4 分 08 秒；900 秒长测 907 秒、37 条写入/读回、154 次模型请求，切后台、锁屏 12 秒、唤醒、重开应用和最终流式答复通过。测试 Key 未进入日志，秘密特征扫描 0 命中。详见 `test-results/phone-50-longrun-20261109/VALIDATION.md`。
+- 状态：验证完成，待原子提交测试修复与交接记录。
+- 风险/下一步：50 例矩阵使用脚本化模型，真实模型只覆盖普通回复与 `table_list` 工具轮；平板、Windows、物理手机和全量测试仍未执行。
 
 ### 2026-11-09 / 实现设备级完全体模式
 
