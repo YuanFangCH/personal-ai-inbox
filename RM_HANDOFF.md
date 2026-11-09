@@ -10,17 +10,17 @@
 | 最后更新时间 | 2026-11-09 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.5.0+12` Android 手机预览版已发布并完成公开资产复核；完全体模式验收、main CI 与 Android Release 均通过 |
+| 当前阶段 | `v1.5.0+12` Android 手机预览版已发布，物理手机已从 Debug 签名包无损迁移到正式长期签名包；等待重新输入 API Key 和物理手机 AI 复验 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.5.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
 
-2026-11-09 按用户要求发布 Android 手机 `v1.5.0+12` 新预览版：设置页新增默认关闭的完全体模式，并对全部现有和新会话提供可逆的应用内完全权限覆盖；取消应用层累计上下文、检索、附件和瞬时故障重试上限，补齐输出续写、安全恢复、会话/附件回收站与普通设置工具。main CI `42585275215` 与 Android Release `42585293796` 均 success；公开 APK `90,977,347` 字节、SHA-256 `e4bd3d65e3b02a05258670e9d8fc6e545dbc758456102f18d0030788c578a71b`。
+2026-11-09 物理手机签名迁移完成：确认原安装包为 `1.4.0+11` Debug 签名（证书 `f026fcff...3b775aff`），与正式长期签名 `51b5e2f3...523f4816` 不兼容。已归档 179 个私有文件，构建同正式签名的可调试迁移包恢复数据，再覆盖安装公开 `v1.5.0+12`；最终设备 APK 哈希 `e4bd3d65...c578a71b` 与公开资产一致，非 Debuggable，首页和表数据保留。
 
-当前手机发布结论见 `test-results/phone-release-v1.5.0/VALIDATION.md`，完全体模式验收见 `test-results/full-agent-mode-20261109/VALIDATION.md` 与 `test-results/phone-50-longrun-20261109/VALIDATION.md`。公开下载：`https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.5.0`。
+当前手机发布结论见 `test-results/phone-release-v1.5.0/VALIDATION.md`，签名迁移见 `test-results/phone-signature-migration-20261109/VALIDATION.md`，完全体模式验收见 `test-results/full-agent-mode-20261109/VALIDATION.md` 与 `test-results/phone-50-longrun-20261109/VALIDATION.md`。公开下载：`https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.5.0`。
 ## 3. 当前目标与范围
 
-- 当前任务：`v1.5.0+12` Android 手机发布已完成。手机 API Key 重配及迁移后 46 条内容持久化复验继续保留。
+- 当前任务：物理手机已运行正式 `v1.5.0+12`，原有表与内容保留。手机 API Key 重配和真实设备 AI 复验继续保留。
 
 - Android 手机、Android 平板和 Windows 作为独立客户端运行。
 - 每个成果保存为一个 Markdown 文件；本地索引由 SQLite 管理。
@@ -69,6 +69,7 @@
 
 ## 6. 当前进度与验证
 
+- 2026-11-09 物理手机签名迁移完成：`HONOR REA-AN00` / Android 15 原安装 `1.4.0+11` Debug 包；设备安装证书 `f026fcff0c43fb75287ba91a64cea8cf0aaba071aa07f532a12dd26f3b775aff`，正式长期签名证书 `51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816`。完整快照含 179 个文件、SHA-256 `0bd72320ed10a686a7f4c14037b71c029f13bf03ae60980e8c1fbfcc2c43d2d8`；恢复时排除 3 个卸载后失效的 Keystore 凭据文件，最终 176 个文件恢复。正式覆盖安装成功，设备 APK 哈希 `e4bd3d65e3b02a05258670e9d8fc6e545dbc758456102f18d0030788c578a71b` 与公开 Release 完全一致，非 Debuggable，通知权限已恢复，首页无迁移门且原待办可见。详见 `test-results/phone-signature-migration-20261109/VALIDATION.md`。
 - 2026-11-09 Android 手机 v1.5.0 发布完成：Release `phone-v1.5.0`（pre-release）；main CI `42585275215` / job `129053480590` success，Android Release `42585293796` / job `129053543183` success。公开 APK `90,977,347` 字节，SHA-256 `e4bd3d65e3b02a05258670e9d8fc6e545dbc758456102f18d0030788c578a71b`，版本 `1.5.0+12`，API 24/36、必要权限、v2 签名和长期证书均复核通过。详见 `test-results/phone-release-v1.5.0/VALIDATION.md`。
 - 2026-11-09 `v1.5.0+12` Android 手机发布准备：版本升至 `1.5.0+12`；新增 `docs/releases/v1.5.0.md`；main CI 与 Android Release 定向门禁加入完全体模式设置、迁移、重试、恢复、附件、回收站和上下文测试。待推送、打 `phone-v1.5.0` 标签并核验公开资产。
 - 2026-11-09 手机 50 例、真实模型与 900 秒长测通过：`SEC-001`–`SEC-100` 中手机适用 50/50，4 分 08 秒；标准 `integration_test` 路径真实 DeepSeek 完全体模式 `table_list` 工具往返 1/1；900 秒业务实际 907 秒，完成 37 条写入与读回、154 次模型请求，后台任务在切后台、锁屏 12 秒、唤醒重开应用后继续并完成最终答复。首次长测暴露检查点用量断言不允许 fixture 请求数领先一拍，已修正为容许 `requestCount ± 1`。未执行全量测试、平板、Windows 或物理手机。详见 `test-results/phone-50-longrun-20261109/VALIDATION.md`。
@@ -225,11 +226,20 @@
 
 ### 下一步
 
-1. 提交并推送 v1.5.0 发布完成记录，确认工作区干净。
-2. 在物理手机设置页重新输入 API Key 并保存，然后验证真实设备连接、普通回复、工具调用及超大工具结果压缩路径。
+1. 在物理手机设置页重新输入 API Key 并保存，然后验证真实设备连接、普通回复、工具调用及超大工具结果压缩路径。
+2. 检查 46 条迁移内容和 4 张表在正式包中的新增、编辑、重启持久化。
 3. A01–A30、A34–A35、Windows 与平板验收、云盘同步和到点提醒继续单独处理。
 
 ## 8. 变更记录
+
+### 2026-11-09 / 物理手机从 Debug 签名迁移到正式长期签名
+
+- 任务：解释并解决物理手机无法用正式 `v1.5.0` 覆盖旧版本的问题，保留已恢复的表、内容和会话数据。
+- 诊断：设备原安装 `1.4.0+11`，包属性含 `DEBUGGABLE`，证书 `f026fcff...3b775aff`；公开 `v1.1.4`、`v1.4.0`、`v1.5.0` 均使用 `51b5e2f3...523f4816`，正式发布签名没有变化。
+- 变更：完整归档应用私有数据；构建正式长期签名且可调试的临时迁移 APK，恢复 176 个非凭据文件；覆盖安装公开 `v1.5.0+12` 后核验设备 APK 与公开资产哈希一致，并恢复通知权限。
+- 验证：迁移包和正式包均冷启动成功，首页显示原待办，无迁移只读门和 Flutter/SQLite 异常；正式包非 Debuggable，证书及 APK SHA-256 正确。备份、迁移包、截图和 SHA256SUMS 位于 `D:\Dsk\aitext-backups\phone-signature-migration-20261109`。
+- 状态：物理手机签名迁移完成；API Key 因 Keystore 凭据随旧包卸载失效而未恢复，需要重新输入。
+- 风险/下一步：迁移包仅用于本机签名切换，不应公开发布；继续验证 API Key、真实 AI 调用和正式包中的内容持久化。
 
 ### 2026-11-09 / 发布 Android 手机 v1.5.0 预发布
 
