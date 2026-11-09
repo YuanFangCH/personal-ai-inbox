@@ -34,6 +34,8 @@ Android 手机 `v1.5.1` 补丁版已发布，使用 `phone-v1.5.1` 标签，只�
 
 ## 当前进展
 
+Android 多表桌面小组件已冻结[首版接口合同](docs/home-widget-contract.md)，正式接入和设备验收状态见 [RM_HANDOFF.md](RM_HANDOFF.md)。
+
 2026-11-09 `v1.5.1+13` Android 补丁版已发布：修复任务中断后“已核对，继续”仍反复卡住的问题。当最新工具回合因工具参数或结果过大无法保持完整时，上下文压缩现在回退到包含用户目标、对象版本、操作回执和待核对冲突的安全摘要；只要结果低于模型上下文硬上限即可继续，不再被额外的 10% 余量要求阻断。物理手机复验中，原任务已从 `needs_review` 恢复为 `running`，请求数和工具调用持续增加，并显示多批“已移动内容”回执。main CI `42600289991` 与 Android Release `42600311129` 均 success；详见[发行说明](docs/releases/v1.5.1.md)与[发布验证](test-results/ai-context-stuck-recovery-20261109/VALIDATION.md)。
 
 2026-11-09 物理手机签名切换完成：`HONOR REA-AN00` 原安装 `1.4.0+11` Debug 包，因 Debug 证书与正式长期证书不同无法覆盖升级。已完整归档应用私有数据（179 文件），使用同正式签名的可调试迁移包恢复数据，再覆盖安装公开 `v1.5.0+12`；最终设备端 APK 哈希与 Release 资产完全一致，证书 `51b5e2f3...523f4816`，文件为数 176（排除卸载后失效的 Keystore 凭据），首页数据和表内容保留。备份位于 `D:\Dsk\aitext-backups\phone-signature-migration-20261109`。

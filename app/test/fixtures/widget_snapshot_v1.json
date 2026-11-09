@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "cards": [
+    {
+      "card_id": "card_fixture",
+      "revision": 1,
+      "title": "学习总览",
+      "theme": "system",
+      "state": "ready",
+      "generated_at_ms": 1794268800000,
+      "data_day": "2026-11-10",
+      "rows": [
+        {"kind": "section", "table_id": "tb_work", "title": "作业", "count": 1},
+        {"kind": "entry", "table_id": "tb_work", "entry_id": "todo_fixture", "title": "提交练习", "detail": "未完成"},
+        {"kind": "section", "table_id": "tb_exam", "title": "考试", "count": 1},
+        {"kind": "entry", "table_id": "tb_exam", "entry_id": "schedule_fixture", "title": "模拟考试"}
+      ],
+      "has_more": false
+    }
+  ]
+}
