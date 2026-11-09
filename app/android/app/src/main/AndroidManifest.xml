@@ -51,6 +51,32 @@
                 <data android:mimeType="text/plain"/>
             </intent-filter>
         </activity>
+        <activity
+            android:name=".HomeWidgetOpenActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:theme="@style/HomeWidgetBridgeTheme" />
+        <activity
+            android:name=".HomeWidgetConfigureActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:theme="@style/HomeWidgetConfigureTheme" />
+        <receiver
+            android:name=".HomeWidgetPinReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".HomeWidgetProvider"
+            android:exported="false"
+            android:label="@string/home_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+                <action android:name="android.appwidget.action.APPWIDGET_RESTORED"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/home_widget_info" />
+        </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

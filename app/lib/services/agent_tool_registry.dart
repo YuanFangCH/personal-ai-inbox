@@ -137,6 +137,18 @@ class AgentToolRegistry {
       parallelSafe: true,
     ),
     AgentToolSpec(
+      operationName: 'widget.list',
+      wireName: 'widget_list',
+      access: AgentToolAccess.read,
+      parallelSafe: true,
+    ),
+    AgentToolSpec(
+      operationName: 'widget.get',
+      wireName: 'widget_get',
+      access: AgentToolAccess.read,
+      parallelSafe: true,
+    ),
+    AgentToolSpec(
       operationName: 'content.create',
       wireName: 'content_create',
       access: AgentToolAccess.write,
@@ -223,6 +235,12 @@ class AgentToolRegistry {
     AgentToolSpec(
       operationName: 'app.settings.update',
       wireName: 'app_settings_update',
+      access: AgentToolAccess.write,
+      parallelSafe: false,
+    ),
+    AgentToolSpec(
+      operationName: 'widget.manage',
+      wireName: 'widget_manage',
       access: AgentToolAccess.write,
       parallelSafe: false,
     ),

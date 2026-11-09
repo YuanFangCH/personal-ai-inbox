@@ -16,6 +16,8 @@ class MainActivity : FlutterActivity() {
     private val channelName = "com.yuanfang.aitext.personal_ai_inbox/share"
     private var pendingSharedPayload: Map<String, Any?>? = null
     private var channel: MethodChannel? = null
+    private var homeWidgetChannel: MethodChannel? = null
+    private var homeWidgetChannelHandler: HomeWidgetChannelHandler? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         captureSharedPayload(intent)
@@ -44,17 +46,35 @@ class MainActivity : FlutterActivity() {
                 result.notImplemented()
             }
         }
+        HomeWidgetChannelHandler(this).also { handler ->
+            homeWidgetChannelHandler = handler
+            homeWidgetChannel =
+                MethodChannel(flutterEngine.dartExecutor.binaryMessenger, HomeWidgetChannelHandler.CHANNEL_NAME)
+                    .also { widgetChannel ->
+                        widgetChannel.setMethodCallHandler(handler::handle)
+                        window.decorView.post {
+                            handler.announceIfPending(widgetChannel)
+                        }
+                    }
+        }
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
         channel?.setMethodCallHandler(null)
         channel = null
+        homeWidgetChannel?.setMethodCallHandler(null)
+        homeWidgetChannel = null
+        homeWidgetChannelHandler?.dispose()
+        homeWidgetChannelHandler = null
         super.cleanUpFlutterEngine(flutterEngine)
     }
 
     override fun onResume() {
         super.onResume()
         AitextApplication.from(this).backgroundController.attachActivity(this)
+        homeWidgetChannel?.let { widgetChannel ->
+            homeWidgetChannelHandler?.announceIfPending(widgetChannel)
+        }
     }
 
     override fun onDestroy() {
@@ -80,8 +100,13 @@ class MainActivity : FlutterActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         captureSharedPayload(intent)
-        channel?.invokeMethod("sharedPayload", pendingSharedPayload)
-        pendingSharedPayload = null
+        pendingSharedPayload?.let { payload ->
+            channel?.invokeMethod("sharedPayload", payload)
+            pendingSharedPayload = null
+        }
+        homeWidgetChannel?.let { widgetChannel ->
+            homeWidgetChannelHandler?.announceIfPending(widgetChannel)
+        }
     }
 
     private fun captureSharedPayload(intent: Intent?) {

@@ -59,4 +59,15 @@ void main() {
     expect(registry.isParallelSafe('recovery.list'), isTrue);
     expect(registry.isParallelSafe('recovery.restore'), isFalse);
   });
+
+  test('widget reads stay parallel and management is an exclusive write', () {
+    const registry = AgentToolRegistry();
+
+    expect(registry.isRead('widget.list'), isTrue);
+    expect(registry.isRead('widget.get'), isTrue);
+    expect(registry.isParallelSafe('widget.list'), isTrue);
+    expect(registry.isParallelSafe('widget.get'), isTrue);
+    expect(registry.isWrite('widget.manage'), isTrue);
+    expect(registry.isParallelSafe('widget.manage'), isFalse);
+  });
 }

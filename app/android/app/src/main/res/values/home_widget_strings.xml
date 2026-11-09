@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_widget_name">懒狗秘书多表概览</string>
+    <string name="home_widget_description">在桌面查看常用的表和条目。</string>
+    <string name="home_widget_title">懒狗秘书</string>
+    <string name="home_widget_data_date">数据日期 %1$s</string>
+    <string name="home_widget_no_data_date">数据日期未同步</string>
+    <string name="home_widget_table_count">%1$d 项</string>
+    <string name="home_widget_empty">暂无内容</string>
+    <string name="home_widget_more">还有更多内容，请在应用中查看</string>
+    <string name="home_widget_scroll_hint">上下滑动</string>
+    <string name="home_widget_not_synced">小组件数据尚未同步</string>
+    <string name="home_widget_not_configured">请选择要显示的卡片</string>
+    <string name="home_widget_archived">这张卡片已归档，请在应用中重新选择</string>
+    <string name="home_widget_blocked">数据迁移期间，小组件暂不可用</string>
+    <string name="home_widget_error">小组件数据暂时不可用</string>
+    <string name="home_widget_card_unavailable">卡片快照已清除，请在应用中重新发布</string>
+    <string name="home_widget_open_settings">打开应用设置</string>
+    <string name="home_widget_row_expired">组件内容已更新，请重新打开</string>
+    <string name="home_widget_pinned">已添加到主屏幕</string>
+    <string name="home_widget_choose_card">选择要显示的卡片</string>
+    <string name="home_widget_no_cards">还没有可用卡片，请先在应用中创建并发布小组件。</string>
+    <string name="home_widget_cancel">取消</string>
+</resources>

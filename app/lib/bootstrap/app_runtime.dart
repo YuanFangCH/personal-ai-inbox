@@ -11,6 +11,7 @@ import '../data/chat_repository.dart';
 import '../data/conversation_store.dart';
 import '../data/conversation_store_factory.dart';
 import '../data/disk_space_probe.dart';
+import '../data/home_widget_bridge.dart';
 import '../data/device_paths.dart';
 import '../data/index_database.dart';
 import '../data/index_database_factory.dart';
@@ -35,6 +36,8 @@ import '../modules/conversation/content_intake.dart';
 import '../modules/conversation/model_duplicate_decision_source.dart';
 import '../modules/conversation/table_action_processor.dart';
 import '../modules/results/result_library.dart';
+import '../modules/home_widgets/widget_store.dart';
+import '../modules/home_widgets/widget_workspace.dart';
 import '../modules/tables/table_library.dart';
 import '../modules/tables/table_migration_gate.dart';
 import '../modules/settings/device_preferences.dart';
@@ -47,6 +50,7 @@ import '../services/agent_background_service.dart';
 import '../services/agent_execution_profile.dart';
 import '../services/voice_service.dart';
 import '../services/model_client.dart';
+import '../services/widget_tools.dart';
 
 /// Composition root for the local core.
 ///
@@ -103,6 +107,7 @@ final class AppRuntime {
     IndexDatabase? index;
     ChatRepository? chatRepository;
     AppRuntime? runtime;
+    HomeWidgetBridge? homeWidgetBridge;
     try {
       index = indexOverride ?? await createPlatformIndexDatabase(supportPath);
       late final TableMigrationGate migrationGate;
@@ -151,6 +156,28 @@ final class AppRuntime {
         service: tableMigrationService,
         onMigrationComplete: () => runtime!._initializeModules(),
       );
+      WidgetWorkspace? homeWidgets;
+      if (vaultOverride == null &&
+          !kIsWeb &&
+          defaultTargetPlatform == TargetPlatform.android) {
+        final bridge = HomeWidgetBridge();
+        try {
+          final directory = await bridge.getStoreDirectory();
+          final gate = migrationGate;
+          homeWidgets = WidgetWorkspace(
+            tables: tables,
+            store: WidgetStore(directory),
+            publish: bridge.publishSnapshots,
+            clear: bridge.clearSnapshots,
+            blocked: () => gate.requiresReadOnly,
+          );
+          homeWidgetBridge = bridge;
+        } catch (_) {
+          bridge.dispose();
+          debugPrint('桌面小组件通道不可用。');
+        }
+      }
+      final widgetTools = homeWidgets == null ? null : WidgetTools(homeWidgets);
       final captureSemanticRuntime = _CaptureSemanticRuntime();
       late final CaptureWorkflow capture;
       capture = CaptureWorkflow(
@@ -272,6 +299,7 @@ final class AppRuntime {
             conversation.effectiveAiPolicy,
       );
       final chatService = ChatService(
+        widgetTools: widgetTools,
         settings: settingsService,
         repository: chatRepository,
         results: results,
@@ -289,6 +317,7 @@ final class AppRuntime {
               ? DisabledAgentBackgroundControl()
               : _defaultAgentBackground());
       conversations = ConversationWorkspace(
+        widgetTools: widgetTools,
         repository: chatRepository,
         results: results,
         chatService: chatService,
@@ -309,6 +338,8 @@ final class AppRuntime {
         results: results,
       );
       runtime = AppRuntime(
+        homeWidgets: homeWidgets,
+        homeWidgetBridge: homeWidgetBridge,
         preferences: preferences,
         results: results,
         tables: tables,
@@ -333,6 +364,7 @@ final class AppRuntime {
       if (runtime != null) {
         await runtime.shutdown();
       } else {
+        homeWidgetBridge?.dispose();
         await chatRepository?.close();
         await index?.close();
       }
@@ -342,6 +374,8 @@ final class AppRuntime {
   }
 
   AppRuntime({
+    this.homeWidgets,
+    this.homeWidgetBridge,
     required this.preferences,
     required this.results,
     required this.tables,
@@ -359,6 +393,8 @@ final class AppRuntime {
        backgroundAgent = backgroundAgent ?? _defaultAgentBackground();
 
   final DevicePreferences preferences;
+  final WidgetWorkspace? homeWidgets;
+  final HomeWidgetBridge? homeWidgetBridge;
   final ResultLibrary results;
   final TableLibrary tables;
   final TableMigrationGate migrationGate;
@@ -372,6 +408,7 @@ final class AppRuntime {
   final Future<void> Function()? closeAdapters;
   bool _disposed = false;
   bool _modulesInitialized = false;
+  bool? _widgetGateWasBlocked;
   Future<void>? _shutdownFuture;
   String? _shutdownError;
 
@@ -382,7 +419,12 @@ final class AppRuntime {
     if (migrationGate.isEnabled) {
       await initializeConversationStore?.call();
       await migrationGate.initialize();
+      if (homeWidgets != null) {
+        _widgetGateWasBlocked = migrationGate.requiresReadOnly;
+        migrationGate.addListener(_onWidgetMigrationGateChanged);
+      }
       if (migrationGate.requiresReadOnly) {
+        await refreshHomeWidgets();
         if (migrationGate.migrationComplete) await tables.initialize();
         return;
       }
@@ -393,6 +435,11 @@ final class AppRuntime {
   Future<void> _initializeModules() async {
     await results.initialize();
     await tables.initialize();
+    try {
+      await homeWidgets?.initialize();
+    } catch (_) {
+      debugPrint('桌面小组件初始化失败。');
+    }
     await capture.initialize();
     await conversations.initialize();
     await sync.initialize();
@@ -403,7 +450,10 @@ final class AppRuntime {
     await preferences.initialize();
     if (migrationGate.isEnabled) {
       await migrationGate.refresh();
-      if (migrationGate.requiresReadOnly) return;
+      if (migrationGate.requiresReadOnly) {
+        await refreshHomeWidgets();
+        return;
+      }
     }
     if (!_modulesInitialized) {
       await _initializeModules();
@@ -416,9 +466,27 @@ final class AppRuntime {
     await sync.refresh();
   }
 
+  Future<void> refreshHomeWidgets() async {
+    try {
+      await homeWidgets?.refreshWidgets();
+    } catch (_) {
+      debugPrint('桌面小组件刷新失败。');
+    }
+  }
+
+  void _onWidgetMigrationGateChanged() {
+    final blocked = migrationGate.requiresReadOnly;
+    if (_widgetGateWasBlocked == blocked) return;
+    _widgetGateWasBlocked = blocked;
+    if (blocked || _modulesInitialized) unawaited(refreshHomeWidgets());
+  }
+
   void dispose() {
     if (_disposed) return;
     _disposed = true;
+    migrationGate.removeListener(_onWidgetMigrationGateChanged);
+    homeWidgets?.dispose();
+    homeWidgetBridge?.dispose();
     conversations.dispose();
     voiceService.dispose();
     sync.dispose();

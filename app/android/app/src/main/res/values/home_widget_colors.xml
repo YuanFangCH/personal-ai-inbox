@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="home_widget_text_primary_light">#17211D</color>
+    <color name="home_widget_text_secondary_light">#58645F</color>
+    <color name="home_widget_accent_light">#176B57</color>
+
+    <color name="home_widget_text_primary_dark">#EFF7F3</color>
+    <color name="home_widget_text_secondary_dark">#B7C5BE</color>
+    <color name="home_widget_accent_dark">#65D5B2</color>
+
+    <color name="home_widget_solid_surface_light">#FFFFFF</color>
+    <color name="home_widget_solid_section_light">#E1EEE8</color>
+    <color name="home_widget_solid_border_light">#CBD8D2</color>
+    <color name="home_widget_solid_background_light">#FCFBF7</color>
+
+    <color name="home_widget_solid_surface_dark">#202824</color>
+    <color name="home_widget_solid_section_dark">#24372F</color>
+    <color name="home_widget_solid_border_dark">#3A4A43</color>
+    <color name="home_widget_solid_background_dark">#171D1A</color>
+</resources>

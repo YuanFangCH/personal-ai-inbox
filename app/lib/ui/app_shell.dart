@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:collection';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../core/table_models.dart';
 import '../modules/tables/table_migration_gate.dart';
 import 'app_scope.dart';
 import 'pages/calendar_page.dart';
@@ -12,6 +15,8 @@ import 'pages/tables_page.dart';
 import 'pages/table_migration_read_only_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/sync_page.dart';
+import 'pages/table_detail_page.dart';
+import 'pages/widget_settings_page.dart';
 import 'theme/app_design_tokens.dart';
 import 'widgets/capture_sheet.dart';
 
@@ -37,13 +42,22 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   AppPage _page = AppPage.home;
   bool _startupChecked = false;
   bool _secretaryCreated = false;
   String? _pendingSecretaryConversationId;
   final Queue<String> _queuedSecretaryConversationIds = Queue<String>();
   Listenable? _observedConversations;
+  Object? _observedHomeWidgetBridge;
+  StreamSubscription<void>? _homeWidgetOpenTargetSubscription;
+  bool _handlingHomeWidgetOpenTargets = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   @override
   void didChangeDependencies() {
@@ -54,14 +68,33 @@ class _AppShellState extends State<AppShell> {
       _observedConversations = conversations;
       conversations.addListener(_handlePendingConversationOpen);
     }
-    if (AppScope.migrationGate(context).requiresReadOnly) return;
-    if (_startupChecked) {
-      return;
+    final bridge = AppScope.of(context).homeWidgetBridge;
+    if (!identical(_observedHomeWidgetBridge, bridge)) {
+      unawaited(_homeWidgetOpenTargetSubscription?.cancel());
+      _observedHomeWidgetBridge = bridge;
+      _homeWidgetOpenTargetSubscription = bridge?.openTargets.listen(
+        (_) => unawaited(_drainHomeWidgetOpenTargets()),
+        onError: (Object error, StackTrace stackTrace) =>
+            _handleHomeWidgetBridgeError(error, stackTrace),
+      );
     }
-    _startupChecked = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _handlePendingConversationOpen();
-    });
+    if (!_startupChecked) {
+      _startupChecked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (!AppScope.migrationGate(context).requiresReadOnly) {
+          _handlePendingConversationOpen();
+        }
+        unawaited(_drainHomeWidgetOpenTargets());
+      });
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_drainHomeWidgetOpenTargets());
+    }
   }
 
   void _handlePendingConversationOpen() {
@@ -97,8 +130,122 @@ class _AppShellState extends State<AppShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _observedConversations?.removeListener(_handlePendingConversationOpen);
+    unawaited(_homeWidgetOpenTargetSubscription?.cancel());
     super.dispose();
+  }
+
+  Future<void> _drainHomeWidgetOpenTargets() async {
+    if (_handlingHomeWidgetOpenTargets || !mounted) {
+      return;
+    }
+    final bridge = AppScope.of(context).homeWidgetBridge;
+    if (bridge == null) return;
+    final migrationGate = AppScope.migrationGate(context);
+    _handlingHomeWidgetOpenTargets = true;
+    try {
+      Map<String, Object?>? target;
+      while (mounted && (target = await bridge.takeOpenTarget()) != null) {
+        if (migrationGate.requiresReadOnly) {
+          continue;
+        }
+        await _handleHomeWidgetOpenTarget(target!);
+      }
+    } on PlatformException catch (error, stackTrace) {
+      _handleHomeWidgetBridgeError(error, stackTrace);
+    } on Object catch (error, stackTrace) {
+      _handleHomeWidgetBridgeError(error, stackTrace);
+    } finally {
+      _handlingHomeWidgetOpenTargets = false;
+    }
+  }
+
+  void _handleHomeWidgetBridgeError(Object error, StackTrace stackTrace) {
+    if (!mounted) return;
+    if (error is PlatformException) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('桌面卡片入口暂时不可用，请稍后重试。')));
+      return;
+    }
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: error,
+        stack: stackTrace,
+        library: 'home widget bridge',
+      ),
+    );
+  }
+
+  Future<void> _handleHomeWidgetOpenTarget(Map<String, Object?> target) async {
+    if (!mounted || AppScope.migrationGate(context).requiresReadOnly) {
+      return;
+    }
+    switch (target['kind']) {
+      case 'settings':
+        unawaited(
+          Navigator.of(context).push<void>(
+            MaterialPageRoute<void>(builder: (_) => const WidgetSettingsPage()),
+          ),
+        );
+        return;
+      case 'table':
+        await _openHomeWidgetTable(
+          tableId: _optionalTargetString(target['table_id']),
+        );
+        return;
+      case 'entry':
+        await _openHomeWidgetTable(
+          tableId: _optionalTargetString(target['table_id']),
+          entryId: _optionalTargetString(target['entry_id']),
+        );
+        return;
+    }
+  }
+
+  Future<void> _openHomeWidgetTable({
+    required String? tableId,
+    String? entryId,
+  }) async {
+    final runtime = AppScope.of(context);
+    String? resolvedTableId = tableId;
+    TableEntryDocument? entry;
+    if (entryId != null) {
+      entry = await runtime.tables.readEntry(entryId);
+      if (!mounted || runtime.migrationGate.requiresReadOnly) return;
+      if (entry == null || entry.deleted) {
+        setState(() => _page = AppPage.matters);
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('这条内容已被删除，已返回表列表。')));
+        return;
+      }
+      resolvedTableId = entry.tableId;
+    }
+
+    final table = resolvedTableId == null
+        ? null
+        : await runtime.tables.readTable(resolvedTableId);
+    if (!mounted || runtime.migrationGate.requiresReadOnly) return;
+    if (table == null || table.deleted) {
+      setState(() => _page = AppPage.matters);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('这张表已不存在，已返回表列表。')));
+      return;
+    }
+    setState(() => _page = AppPage.matters);
+    final route = entryId == null
+        ? MaterialPageRoute<void>(
+            builder: (_) => TableDetailPage(tableId: table.id),
+          )
+        : MaterialPageRoute<void>(
+            builder: (_) => TableEntryEditorPage(
+              tableId: table.id,
+              type: entry!.type,
+              entry: entry,
+            ),
+          );
+    unawaited(Navigator.of(context).push<void>(route));
   }
 
   @override
@@ -118,6 +265,7 @@ class _AppShellState extends State<AppShell> {
   Widget _buildMain(BuildContext context) {
     if (_page == AppPage.inbox) _secretaryCreated = true;
     final runtime = AppScope.of(context);
+    final homeWidgets = runtime.homeWidgets;
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 1024;
@@ -133,7 +281,11 @@ class _AppShellState extends State<AppShell> {
           AppPage.matters => [runtime.tables, runtime.capture, runtime.results],
           AppPage.knowledge => const <Listenable>[],
           AppPage.sync => [runtime.results, runtime.sync],
-          AppPage.settings => [runtime.results, runtime.preferences],
+          AppPage.settings => [
+            runtime.results,
+            runtime.preferences,
+            ?homeWidgets,
+          ],
         };
         final content = AnimatedBuilder(
           animation: Listenable.merge(pageModules),
@@ -397,6 +549,9 @@ class _AppShellState extends State<AppShell> {
     }
   }
 }
+
+String? _optionalTargetString(Object? value) =>
+    value is String && value.isNotEmpty ? value : null;
 
 class _MigratedSourceBanner extends StatelessWidget {
   const _MigratedSourceBanner({required this.gate});

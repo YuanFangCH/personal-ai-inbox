@@ -13,6 +13,7 @@ import '../../services/agent_background_service.dart';
 import '../../services/chat_service.dart';
 import '../../services/image_input_service.dart';
 import '../../services/model_client.dart';
+import '../../services/widget_tools.dart';
 import '../results/result_library.dart';
 import 'agent_background_control.dart';
 import 'agent_task_store.dart';
@@ -31,6 +32,7 @@ class ConversationWorkspace extends ChangeNotifier {
     required ChatService chatService,
     required AutoRecordProcessor autoRecordProcessor,
     TableActionProcessor? tableActionProcessor,
+    WidgetTools? widgetTools,
     AiPermissions Function()? defaultPermissions,
     AiPolicy Function()? defaultPolicy,
     bool Function()? fullAgentMode,
@@ -45,6 +47,7 @@ class ConversationWorkspace extends ChangeNotifier {
        _chatService = chatService,
        _autoRecordProcessor = autoRecordProcessor,
        _tableActionProcessor = tableActionProcessor,
+       _widgetTools = widgetTools,
        _defaultPermissions =
            defaultPermissions ?? (() => const AiPermissions()),
        _defaultPolicy = defaultPolicy,
@@ -61,6 +64,7 @@ class ConversationWorkspace extends ChangeNotifier {
   final ChatService _chatService;
   final AutoRecordProcessor _autoRecordProcessor;
   final TableActionProcessor? _tableActionProcessor;
+  final WidgetTools? _widgetTools;
   final AiPermissions Function() _defaultPermissions;
   final AiPolicy Function()? _defaultPolicy;
   final bool Function() _fullAgentMode;
@@ -2000,7 +2004,10 @@ class ConversationWorkspace extends ChangeNotifier {
     final storedResult = storedCall == null
         ? null
         : _storedToolResult(storedCall);
-    if (storedResult != null) {
+    // Widget management recovery must pass through the tool adapter again so
+    // the current policy and table scope are rechecked before reusing a stored
+    // receipt.
+    if (storedResult != null && call.name != 'widget.manage') {
       await _acknowledgeInboxAssignmentResult(storedResult);
       return storedResult.copyWith(generation: storedGeneration);
     }
@@ -2029,6 +2036,34 @@ class ConversationWorkspace extends ChangeNotifier {
               conversation,
               call,
               actionTime,
+            );
+    } else if (call.name == 'widget.manage') {
+      final widgetTools = _widgetTools;
+      result = widgetTools == null
+          ? _ToolActionResult.failed(
+              code: 'widget_unavailable',
+              message: '桌面小组件工作区尚未接入，工具没有执行。',
+            )
+          : _ToolActionResult.fromReceipt(
+              await widgetTools.manage(
+                ChatWriteToolCall(
+                  turnId: assistant.id,
+                  conversationId: assistant.conversationId,
+                  round: int.tryParse(call.index?.toString() ?? '') ?? 0,
+                  index: call.index ?? 0,
+                  callId: call.id ?? '',
+                  name: call.name ?? '',
+                  wireName: 'widget_manage',
+                  rawArguments: call.arguments.toString(),
+                  arguments: const {},
+                ),
+                resolveCurrentPolicy: () async {
+                  final current = await _repository.findConversation(
+                    assistant.conversationId,
+                  );
+                  return current == null ? null : effectivePolicyFor(current);
+                },
+              ),
             );
     } else if (_tableActionProcessor != null) {
       final tableProcessor = _tableActionProcessor;

@@ -46,6 +46,7 @@
 | [表交互契约](docs/table-interaction-contract.md) | 页面层级、AI 工具和确认交互基线；当前实现文案见应用 |
 | [专用秘书 Agent 设计](docs/secretary-agent-design.md) | 已确认的秘书完整规格、权限/查重/检索/恢复 interface、A–F 实施包与36项验收；当前实施与验收中 |
 | [DSH 参考研究](docs/research/04-dsh-agent-permissions-and-runtime.md) | 固定提交源码事实、真实引擎钉住版本、借鉴建议与未证实边界；不自动成为运行能力 |
+| [Android 桌面小组件合同](docs/home-widget-contract.md) | 逻辑卡片、渲染快照、实例绑定和秘书工具 |
 
 ## 5. 已锁定决定
 
@@ -68,6 +69,8 @@
 - 2026-11-09 完全体模式采用设置页设备级覆盖层：默认关闭，开启后统一覆盖全部现有和新会话为应用内完全权限，关闭后恢复会话原策略；不批量改写持久授权。取消应用层累计上下文、检索、附件和瞬时故障重试上限，但保留模型硬限额、磁盘、网络、系统生命周期、幂等、CAS、写日志和不确定副作用核对。会话/附件删除保留 30 天；单条消息、推理内容和工具回执不可改写。见 [ADR 0026](docs/adr/0026-device-full-agent-mode.md)。
 
 ## 6. 当前进度与验证
+
+- 2026-11-10 Android 多表桌面小组件已接入候选；定向宿主 45/45、目标分析和 Debug APK 构建通过。模拟器与荣耀 90 验收按用户要求延后，见 [验证记录](test-results/home-widget-v1/VALIDATION.md)。
 
 - 2026-11-09 修复中断任务恢复死循环：物理手机任务 `agent_1794204476923870_1` 的 `tool_transcript_json` 约 66 KB，错误内容反复写回助手消息；根因是 `AgentContextManager` 只能裁剪工具结果，不能处理超大工具调用参数，随后又被额外 10% 缩小余量二次阻断。现新增安全摘要回退并标记 `latest_tool_round_compacted`，同时改为只要求最终请求低于模型窗口硬上限。`AgentContextManager` 3/3、`ChatService` 31/31、完整 Android 发布门禁 295/295、`flutter analyze --no-pub` 0 issue、formatter 271 文件 0 change。
 - 2026-11-09 物理手机 `1.5.1+13` 恢复复验：覆盖安装同正式证书的测试包后，原任务从 `needs_review` 转为 `running`；检查点请求数由 7 增至 12、工具调用由 28 增至 53，界面出现多张“已移动内容 / 已执行”卡片，发送按钮变为“停止生成”。无线 ADB 在继续等待最终完成后掉线，尚未取得最终完成态；需重连后确认任务结束和内容归属。
@@ -185,7 +188,8 @@
 
 ## 7. 风险、阻塞与下一步
 
-- Android 多表桌面小组件：[v1 合同](docs/home-widget-contract.md)、[ADR 0027](docs/adr/0027-android-table-widget-projection.md)及合成快照已准备。用户要求暂缓实测；正式接入状态与原型验证见 `test-results/home-widget-v1/VALIDATION.md`。不得将构建通过等同于启动器验收。
+- Android 多表桌面小组件已接入候选版本；按用户要求延后设备验收。待验证 API 24–30 固定行、API 35 启动器和荣耀 90 的添加、滚动、缩放、点击、配置绑定与覆盖升级。设备门禁完成前不发布；见 `test-results/home-widget-v1/VALIDATION.md`。
+
 
 ### 风险与边界
 
@@ -237,6 +241,12 @@
 3. 检查 46 条迁移内容和 4 张表在正式包中的新增、编辑、重启持久化；A01–A30、A34–A35、Windows 与平板验收、云盘同步和到点提醒继续单独处理。
 
 ## 8. 变更记录
+
+### 2026-11-10 / Android 多表桌面小组件接入
+
+- 交付：Android 设置、可配置多表投影、启动器实例绑定和点击，普通模式只读、完全权限可管理逻辑卡片；新增 ADR 0027 与定向 CI 检查。
+- 验证：定向宿主 45/45、目标 Dart 分析无诊断、Debug APK 构建及 APK 元数据核验通过。详见 `test-results/home-widget-v1/VALIDATION.md`。
+- 状态：用户同意设备验收延期；模拟器和真机安装、桌面交互、覆盖升级及发布均未执行。
 
 ### 2026-11-10 / 冻结 Android 多表小组件合同
 

@@ -77,3 +77,6 @@ jobs:
           test/table_migration_gate_test.dart
           test/table_migration_io_test.dart
           test/app_runtime_test.dart
+          test/home_widget_bridge_test.dart
+          test/home_widgets
+          test/widget_tools_test.dart

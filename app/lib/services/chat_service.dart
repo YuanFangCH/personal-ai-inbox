@@ -20,6 +20,7 @@ import 'agent_tool_registry.dart';
 import 'model_client.dart';
 import 'model_capabilities.dart';
 import 'model_request_policy.dart';
+import 'widget_tools.dart';
 
 export 'agent_tool_contracts.dart';
 
@@ -59,6 +60,7 @@ class ChatService {
     ChatAgentLoopPolicy agentLoopPolicy = const ChatAgentLoopPolicy(),
     AgentToolRegistry toolRegistry = const AgentToolRegistry(),
     ChatWriteToolExecutor? writeToolExecutor,
+    WidgetTools? widgetTools,
     Future<void> Function()? refreshSettings,
     Future<void> Function()? refreshConversationState,
     Future<void> Function(Duration)? retryWait,
@@ -75,6 +77,7 @@ class ChatService {
          maxParallelToolCalls: agentLoopPolicy.maxParallelToolCalls,
        ),
        _writeToolExecutor = writeToolExecutor,
+       _widgetTools = widgetTools,
        _refreshSettings = refreshSettings,
        _refreshConversationState = refreshConversationState,
        _retryWait = retryWait;
@@ -90,6 +93,7 @@ class ChatService {
   final AgentToolExecutor _toolExecutor;
   final AgentContextManager _contextManager = const AgentContextManager();
   final ChatWriteToolExecutor? _writeToolExecutor;
+  final WidgetTools? _widgetTools;
   final Future<void> Function()? _refreshSettings;
   final Future<void> Function()? _refreshConversationState;
   final Future<void> Function(Duration)? _retryWait;
@@ -683,6 +687,7 @@ class ChatService {
                         retrieval,
                         conversationId: conversationId,
                         operationReceipts: operationReceipts,
+                        policy: currentPolicy,
                       );
               },
             );
@@ -739,6 +744,7 @@ class ChatService {
                     retrieval,
                     conversationId: conversationId,
                     operationReceipts: operationReceipts,
+                    policy: currentPolicy,
                   );
           } else if (_isAppManagementWriteTool(name)) {
             reply = await _executeAppManagementTool(
@@ -1113,6 +1119,12 @@ class ChatService {
       'app.settings.update' => policy.decisionFor(
         AiPermissionAction.appSettingsUpdate,
       ),
+      'widget.manage' =>
+        policy.preset == AiPolicyPreset.fullAccess &&
+                policy.decisionFor(AiPermissionAction.appSettingsUpdate) ==
+                    AiPolicyDecision.allow
+            ? AiPolicyDecision.allow
+            : AiPolicyDecision.deny,
       _ => AiPolicyDecision.deny,
     };
   }
@@ -1155,12 +1167,22 @@ class ChatService {
     LocalRetrieval retrieval, {
     required String conversationId,
     required Map<String, ChatWriteToolReceipt> operationReceipts,
+    required AiPolicy policy,
   }) {
     return switch (name) {
       'conversation.list' => _listConversationsForAgent(arguments),
       'attachment.search' => _searchAttachmentsForAgent(arguments),
       'attachment.read' => _readAttachmentForAgent(arguments),
       'app.settings.read' => _readAppSettingsForAgent(),
+      'widget.list' =>
+        _widgetTools?.listCardsForAgent(policy) ??
+            Future.value(_toolError('桌面小组件暂不可用。')),
+      'widget.get' =>
+        _widgetTools?.getCardForAgent(
+              arguments['card_id']?.toString() ?? '',
+              policy,
+            ) ??
+            Future.value(_toolError('桌面小组件暂不可用。')),
       'content.verify' => _verifyContent(
         arguments,
         retrieval,
@@ -2300,6 +2322,11 @@ ${_globalKnowledgePolicyInstructions(policy)}不得声称未执行或待确认�
     tools.addAll(
       _appManagementReadTools.where((tool) => _readToolVisible(tool, policy)),
     );
+    if (_widgetTools != null) {
+      tools.addAll(
+        _widgetReadTools.where((tool) => _readToolVisible(tool, policy)),
+      );
+    }
     if (_policyToolVisible(policy, AiPermissionAction.conversationManage)) {
       tools.add(_conversationManageToolDefinition);
     }
@@ -2308,6 +2335,12 @@ ${_globalKnowledgePolicyInstructions(policy)}不得声称未执行或待确认�
     }
     if (_policyToolVisible(policy, AiPermissionAction.appSettingsUpdate)) {
       tools.add(_appSettingsUpdateToolDefinition);
+    }
+    if (_widgetTools != null &&
+        policy.preset == AiPolicyPreset.fullAccess &&
+        policy.decisionFor(AiPermissionAction.appSettingsUpdate) ==
+            AiPolicyDecision.allow) {
+      tools.add(_widgetManageToolDefinition);
     }
     return [for (final tool in tools) _relaxFullAccessSchema(tool, policy)];
   }
@@ -2394,6 +2427,8 @@ ${_globalKnowledgePolicyInstructions(policy)}不得声称未执行或待确认�
       'attachment_search' => const {AiPermissionAction.attachmentRead},
       'attachment_read' => const {AiPermissionAction.attachmentRead},
       'app_settings_read' => const {AiPermissionAction.appSettingsRead},
+      'widget_list' ||
+      'widget_get' => const {AiPermissionAction.appSettingsRead},
       _ => const <AiPermissionAction>{},
     };
     return _anyPolicyToolVisible(policy, actions);
@@ -2600,6 +2635,121 @@ ${_globalKnowledgePolicyInstructions(policy)}不得声称未执行或待确认�
     ),
     _functionTool('app_settings_read', '读取可安全修改的界面设置。', const {}, const []),
   ];
+
+  List<Map<String, dynamic>> get _widgetReadTools => [
+    _functionTool(
+      'widget_list',
+      '列出当前表读取范围内可管理的桌面小组件卡片摘要。',
+      const {},
+      const [],
+    ),
+    _functionTool(
+      'widget_get',
+      '按 card_id 读取一张仍在当前表读取范围内的桌面小组件卡片配置。',
+      {
+        'card_id': {'type': 'string'},
+      },
+      ['card_id'],
+    ),
+  ];
+
+  Map<String, dynamic> get _widgetManageToolDefinition => _functionTool(
+    'widget_manage',
+    '创建、替换、归档或恢复桌面小组件逻辑卡片。仅在有效完全权限并允许 '
+        'appSettingsUpdate 时可用；执行前会重新检查权限和卡片表范围。',
+    {
+      'operation': {
+        'type': 'string',
+        'enum': ['create', 'replace', 'archive', 'restore'],
+      },
+      'card_id': {
+        'type': ['string', 'null'],
+      },
+      'expected_revision': {
+        'type': ['integer', 'null'],
+      },
+      'spec': {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties': {
+          'title': {'type': 'string'},
+          'source_mode': {
+            'type': 'string',
+            'enum': ['selected_tables', 'all_tables'],
+          },
+          'sections': {
+            'type': 'array',
+            'maxItems': 20,
+            'items': {
+              'type': 'object',
+              'additionalProperties': false,
+              'properties': {
+                'table_id': {'type': 'string'},
+                'label': {
+                  'type': ['string', 'null'],
+                },
+                'types': {
+                  'type': 'array',
+                  'items': {
+                    'type': 'string',
+                    'enum': ['note', 'todo', 'schedule', 'event'],
+                  },
+                },
+                'todo_state': {
+                  'type': 'string',
+                  'enum': ['any', 'open', 'done'],
+                },
+                'days_ahead': {
+                  'type': ['integer', 'null'],
+                  'minimum': 1,
+                },
+                'sort': {
+                  'type': 'object',
+                  'additionalProperties': false,
+                  'properties': {
+                    'key': {
+                      'type': 'string',
+                      'enum': ['updated_at', 'business_time', 'title'],
+                    },
+                    'direction': {
+                      'type': 'string',
+                      'enum': ['asc', 'desc'],
+                    },
+                  },
+                  'required': ['key', 'direction'],
+                },
+                'limit': {'type': 'integer', 'minimum': 1, 'maximum': 10},
+                'fields': {
+                  'type': 'array',
+                  'maxItems': 3,
+                  'items': {
+                    'type': 'object',
+                    'additionalProperties': false,
+                    'properties': {
+                      'field': {'type': 'string'},
+                    },
+                    'required': ['field'],
+                  },
+                },
+              },
+              'required': ['table_id'],
+            },
+          },
+          'excluded_table_ids': {
+            'type': 'array',
+            'items': {'type': 'string'},
+          },
+          'hide_empty_sections': {'type': 'boolean'},
+          'theme': {
+            'type': 'string',
+            'enum': ['system', 'light', 'dark'],
+          },
+        },
+        'required': ['title'],
+      },
+    },
+    ['operation'],
+  );
 
   Map<String, dynamic> get _conversationManageToolDefinition => _functionTool(
     'conversation_manage',

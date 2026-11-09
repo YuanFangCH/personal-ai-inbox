@@ -46,6 +46,8 @@ class _PersonalAiInboxAppState extends State<PersonalAiInboxApp>
     unawaited(_backgroundAgent.initialize());
     final runtime = widget.runtime;
     _modules = AppModules(
+      homeWidgets: runtime.homeWidgets,
+      homeWidgetBridge: runtime.homeWidgetBridge,
       results: runtime.results,
       tables: runtime.tables,
       migrationGate: runtime.migrationGate,
@@ -65,6 +67,7 @@ class _PersonalAiInboxAppState extends State<PersonalAiInboxApp>
         _scheduleShutdownAfterBackgroundTask();
       case AppLifecycleState.resumed:
         _shutdownGate.cancelShutdown();
+        unawaited(widget.runtime.refreshHomeWidgets());
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
       case AppLifecycleState.paused:

@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 
+import '../data/home_widget_bridge.dart';
+import '../modules/home_widgets/widget_workspace.dart';
 import '../modules/capture/capture_workflow.dart';
 import '../modules/conversation/conversation_workspace.dart';
 import '../modules/results/result_library.dart';
@@ -12,6 +14,8 @@ import '../services/voice_service.dart';
 
 class AppModules {
   const AppModules({
+    this.homeWidgets,
+    this.homeWidgetBridge,
     required this.results,
     required this.tables,
     required this.migrationGate,
@@ -24,6 +28,8 @@ class AppModules {
   });
 
   final ResultLibrary results;
+  final WidgetWorkspace? homeWidgets;
+  final HomeWidgetBridge? homeWidgetBridge;
   final TableLibrary tables;
   final TableMigrationGate migrationGate;
   final CaptureWorkflow capture;

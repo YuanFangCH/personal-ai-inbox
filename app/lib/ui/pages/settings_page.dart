@@ -9,6 +9,7 @@ import '../app_scope.dart';
 import '../presentation/domain_presentation.dart';
 import '../widgets/common.dart';
 import 'global_knowledge_page.dart';
+import 'widget_settings_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -97,8 +98,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final preferences = AppScope.preferences(context);
-    final results = AppScope.results(context);
+    final modules = AppScope.of(context);
+    final preferences = modules.preferences;
+    final results = modules.results;
     final settings = preferences.settings;
     return PageFrame(
       title: '设置',
@@ -177,6 +179,24 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
+          if (modules.homeWidgets != null) ...[
+            const SizedBox(height: 16),
+            SurfacePanel(
+              padding: EdgeInsets.zero,
+              child: ListTile(
+                key: const Key('settings_home_widgets'),
+                leading: const Icon(Icons.dashboard_customize_outlined),
+                title: const Text('桌面小组件'),
+                subtitle: const Text('选择内容、隐私显示、固定与归档'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const WidgetSettingsPage(),
+                  ),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           SurfacePanel(
             child: Column(
