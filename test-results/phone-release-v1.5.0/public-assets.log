@@ -1,0 +1,157 @@
+# Public asset verification
+
+APK: personal-ai-inbox-v1.5.0-android.apk
+Bytes: 90977347
+SHA-256: e4bd3d65e3b02a05258670e9d8fc6e545dbc758456102f18d0030788c578a71b
+SHA256SUMS: matched
+versionCode: 12
+versionName: 1.5.0
+minSdk: 24
+targetSdk: 36
+Required permissions: present
+v2 signature: verified
+Certificate SHA-256: 51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816
+
+## aapt2 dump badging
+
+package: name='com.yuanfang.aitext.personal_ai_inbox' versionCode='12' versionName='1.5.0' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'
+minSdkVersion:'24'
+targetSdkVersion:'36'
+uses-permission: name='android.permission.INTERNET'
+uses-permission: name='android.permission.RECORD_AUDIO'
+uses-permission: name='android.permission.POST_NOTIFICATIONS'
+uses-permission: name='android.permission.FOREGROUND_SERVICE'
+uses-permission: name='android.permission.FOREGROUND_SERVICE_DATA_SYNC'
+uses-permission: name='android.permission.WAKE_LOCK'
+uses-permission: name='com.yuanfang.aitext.personal_ai_inbox.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'
+application-label:'懒狗秘书'
+application-label-af:'懒狗秘书'
+application-label-am:'懒狗秘书'
+application-label-ar:'懒狗秘书'
+application-label-as:'懒狗秘书'
+application-label-az:'懒狗秘书'
+application-label-be:'懒狗秘书'
+application-label-bg:'懒狗秘书'
+application-label-bn:'懒狗秘书'
+application-label-bs:'懒狗秘书'
+application-label-ca:'懒狗秘书'
+application-label-cs:'懒狗秘书'
+application-label-da:'懒狗秘书'
+application-label-de:'懒狗秘书'
+application-label-el:'懒狗秘书'
+application-label-en-AU:'懒狗秘书'
+application-label-en-CA:'懒狗秘书'
+application-label-en-GB:'懒狗秘书'
+application-label-en-IN:'懒狗秘书'
+application-label-en-XC:'懒狗秘书'
+application-label-es:'懒狗秘书'
+application-label-es-US:'懒狗秘书'
+application-label-et:'懒狗秘书'
+application-label-eu:'懒狗秘书'
+application-label-fa:'懒狗秘书'
+application-label-fi:'懒狗秘书'
+application-label-fr:'懒狗秘书'
+application-label-fr-CA:'懒狗秘书'
+application-label-gl:'懒狗秘书'
+application-label-gu:'懒狗秘书'
+application-label-hi:'懒狗秘书'
+application-label-hr:'懒狗秘书'
+application-label-hu:'懒狗秘书'
+application-label-hy:'懒狗秘书'
+application-label-in:'懒狗秘书'
+application-label-is:'懒狗秘书'
+application-label-it:'懒狗秘书'
+application-label-iw:'懒狗秘书'
+application-label-ja:'懒狗秘书'
+application-label-ka:'懒狗秘书'
+application-label-kk:'懒狗秘书'
+application-label-km:'懒狗秘书'
+application-label-kn:'懒狗秘书'
+application-label-ko:'懒狗秘书'
+application-label-ky:'懒狗秘书'
+application-label-lo:'懒狗秘书'
+application-label-lt:'懒狗秘书'
+application-label-lv:'懒狗秘书'
+application-label-mk:'懒狗秘书'
+application-label-ml:'懒狗秘书'
+application-label-mn:'懒狗秘书'
+application-label-mr:'懒狗秘书'
+application-label-ms:'懒狗秘书'
+application-label-my:'懒狗秘书'
+application-label-nb:'懒狗秘书'
+application-label-ne:'懒狗秘书'
+application-label-nl:'懒狗秘书'
+application-label-or:'懒狗秘书'
+application-label-pa:'懒狗秘书'
+application-label-pl:'懒狗秘书'
+application-label-pt:'懒狗秘书'
+application-label-pt-BR:'懒狗秘书'
+application-label-pt-PT:'懒狗秘书'
+application-label-ro:'懒狗秘书'
+application-label-ru:'懒狗秘书'
+application-label-si:'懒狗秘书'
+application-label-sk:'懒狗秘书'
+application-label-sl:'懒狗秘书'
+application-label-sq:'懒狗秘书'
+application-label-sr:'懒狗秘书'
+application-label-sr-Latn:'懒狗秘书'
+application-label-sv:'懒狗秘书'
+application-label-sw:'懒狗秘书'
+application-label-ta:'懒狗秘书'
+application-label-te:'懒狗秘书'
+application-label-th:'懒狗秘书'
+application-label-tl:'懒狗秘书'
+application-label-tr:'懒狗秘书'
+application-label-uk:'懒狗秘书'
+application-label-ur:'懒狗秘书'
+application-label-uz:'懒狗秘书'
+application-label-vi:'懒狗秘书'
+application-label-zh-CN:'懒狗秘书'
+application-label-zh-HK:'懒狗秘书'
+application-label-zh-TW:'懒狗秘书'
+application-label-zu:'懒狗秘书'
+application-icon-160:'res/9w.png'
+application-icon-240:'res/yn.png'
+application-icon-320:'res/FS.png'
+application-icon-480:'res/RJ.png'
+application-icon-640:'res/o-.png'
+application: label='懒狗秘书' icon='res/9w.png'
+launchable-activity: name='com.yuanfang.aitext.personal_ai_inbox.MainActivity'  label='' icon=''
+uses-library-not-required:'androidx.window.extensions'
+uses-library-not-required:'androidx.window.sidecar'
+feature-group: label=''
+  uses-feature: name='android.hardware.faketouch'
+  uses-implied-feature: name='android.hardware.faketouch' reason='default feature for all apps'
+  uses-feature: name='android.hardware.microphone'
+  uses-implied-feature: name='android.hardware.microphone' reason='requested android.permission.RECORD_AUDIO permission'
+main
+other-activities
+other-receivers
+other-services
+supports-screens: 'small' 'normal' 'large' 'xlarge'
+supports-any-density: 'true'
+locales: '--_--' 'af' 'am' 'ar' 'as' 'az' 'be' 'bg' 'bn' 'bs' 'ca' 'cs' 'da' 'de' 'el' 'en-AU' 'en-CA' 'en-GB' 'en-IN' 'en-XC' 'es' 'es-US' 'et' 'eu' 'fa' 'fi' 'fr' 'fr-CA' 'gl' 'gu' 'hi' 'hr' 'hu' 'hy' 'in' 'is' 'it' 'iw' 'ja' 'ka' 'kk' 'km' 'kn' 'ko' 'ky' 'lo' 'lt' 'lv' 'mk' 'ml' 'mn' 'mr' 'ms' 'my' 'nb' 'ne' 'nl' 'or' 'pa' 'pl' 'pt' 'pt-BR' 'pt-PT' 'ro' 'ru' 'si' 'sk' 'sl' 'sq' 'sr' 'sr-Latn' 'sv' 'sw' 'ta' 'te' 'th' 'tl' 'tr' 'uk' 'ur' 'uz' 'vi' 'zh-CN' 'zh-HK' 'zh-TW' 'zu'
+densities: '160' '240' '320' '480' '640'
+native-code: 'arm64-v8a' 'armeabi-v7a' 'x86_64'
+
+
+## apksigner verify --verbose --print-certs
+
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): false
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1
+Signer #1 certificate DN: CN=Lazy Secretary Android Release, OU=Release, O=YuanFangCH, C=SG
+Signer #1 certificate SHA-256 digest: 51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816
+Signer #1 certificate SHA-1 digest: c67d7d185a2cf5047a81a501aac288368ea37f46
+Signer #1 certificate MD5 digest: b95d84893460b8daacb30cefa6fd87a7
+Signer #1 key algorithm: RSA
+Signer #1 key size (bits): 4096
+Signer #1 public key SHA-256 digest: dfab05f2ef60ea8e4bf06ca32d83d52b7994013ec2769148d5a0e29817c0fd16
+Signer #1 public key SHA-1 digest: b67c2530b23b4eae993b30ae870fefcb43da3e01
+Signer #1 public key MD5 digest: 1be3a62c9261468ca87ad4fc5d14bfb4
+

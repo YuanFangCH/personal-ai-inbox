@@ -10,17 +10,17 @@
 | 最后更新时间 | 2026-11-09 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.5.0+12` Android 手机预览版发布准备完成：格式、静态分析、292 项定向门禁、真实 DeepSeek 工具往返 1/1、手机矩阵 50/50 和 900 秒长测均通过；待推送和创建 Release |
+| 当前阶段 | `v1.5.0+12` Android 手机预览版已发布并完成公开资产复核；完全体模式验收、main CI 与 Android Release 均通过 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.5.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
 
-2026-11-09 按用户要求发布 Android 手机 `v1.5.0+12` 新预览版：设置页新增默认关闭的完全体模式，并对全部现有和新会话提供可逆的应用内完全权限覆盖；取消应用层累计上下文、检索、附件和瞬时故障重试上限，补齐输出续写、安全恢复、会话/附件回收站与普通设置工具。验收包含真实 DeepSeek `table_list` 工具往返 1/1、手机矩阵 50/50 和 900 秒长测 907 秒/37 条/154 次请求。
+2026-11-09 按用户要求发布 Android 手机 `v1.5.0+12` 新预览版：设置页新增默认关闭的完全体模式，并对全部现有和新会话提供可逆的应用内完全权限覆盖；取消应用层累计上下文、检索、附件和瞬时故障重试上限，补齐输出续写、安全恢复、会话/附件回收站与普通设置工具。main CI `42585275215` 与 Android Release `42585293796` 均 success；公开 APK `90,977,347` 字节、SHA-256 `e4bd3d65e3b02a05258670e9d8fc6e545dbc758456102f18d0030788c578a71b`。
 
-上一条手机发布结论见 `test-results/phone-release-v1.4.0/VALIDATION.md`，完全体模式验收见 `test-results/full-agent-mode-20261109/VALIDATION.md` 与 `test-results/phone-50-longrun-20261109/VALIDATION.md`。目标公开下载：`https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.5.0`。
+当前手机发布结论见 `test-results/phone-release-v1.5.0/VALIDATION.md`，完全体模式验收见 `test-results/full-agent-mode-20261109/VALIDATION.md` 与 `test-results/phone-50-longrun-20261109/VALIDATION.md`。公开下载：`https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.5.0`。
 ## 3. 当前目标与范围
 
-- 当前任务：提交并推送 `v1.5.0+12` 发布准备，创建 `phone-v1.5.0` pre-release，核验 APK、签名、权限、哈希和公开下载。手机 API Key 重配及迁移后 46 条内容持久化复验继续保留。
+- 当前任务：`v1.5.0+12` Android 手机发布已完成。手机 API Key 重配及迁移后 46 条内容持久化复验继续保留。
 
 - Android 手机、Android 平板和 Windows 作为独立客户端运行。
 - 每个成果保存为一个 Markdown 文件；本地索引由 SQLite 管理。
@@ -69,6 +69,7 @@
 
 ## 6. 当前进度与验证
 
+- 2026-11-09 Android 手机 v1.5.0 发布完成：Release `phone-v1.5.0`（pre-release）；main CI `42585275215` / job `129053480590` success，Android Release `42585293796` / job `129053543183` success。公开 APK `90,977,347` 字节，SHA-256 `e4bd3d65e3b02a05258670e9d8fc6e545dbc758456102f18d0030788c578a71b`，版本 `1.5.0+12`，API 24/36、必要权限、v2 签名和长期证书均复核通过。详见 `test-results/phone-release-v1.5.0/VALIDATION.md`。
 - 2026-11-09 `v1.5.0+12` Android 手机发布准备：版本升至 `1.5.0+12`；新增 `docs/releases/v1.5.0.md`；main CI 与 Android Release 定向门禁加入完全体模式设置、迁移、重试、恢复、附件、回收站和上下文测试。待推送、打 `phone-v1.5.0` 标签并核验公开资产。
 - 2026-11-09 手机 50 例、真实模型与 900 秒长测通过：`SEC-001`–`SEC-100` 中手机适用 50/50，4 分 08 秒；标准 `integration_test` 路径真实 DeepSeek 完全体模式 `table_list` 工具往返 1/1；900 秒业务实际 907 秒，完成 37 条写入与读回、154 次模型请求，后台任务在切后台、锁屏 12 秒、唤醒重开应用后继续并完成最终答复。首次长测暴露检查点用量断言不允许 fixture 请求数领先一拍，已修正为容许 `requestCount ± 1`。未执行全量测试、平板、Windows 或物理手机。详见 `test-results/phone-50-longrun-20261109/VALIDATION.md`。
 - 2026-11-09 完全体模式实现：设置快照升级到 v6、可移植设置 v2、会话库 v7；新增全局策略覆盖、启动安全检查点续跑、`finish_reason=length` 自动续写、瞬时故障无限退避重试、无累计本地检索、完整文件/压缩包输入、批量图片输入、会话/附件 30 天回收站、整段会话与普通设置工具。受保护控制面继续拒绝 API Key、模型端点/名称、图片出网、权限策略和完全体开关。`flutter analyze --no-pub` 0 issue，主机定向 179/179，Android AVD `full_agent_android_test.dart` 1/1；详见 `test-results/full-agent-mode-20261109/VALIDATION.md` 与 [ADR 0026](docs/adr/0026-device-full-agent-mode.md)。
@@ -224,11 +225,19 @@
 
 ### 下一步
 
-1. 推送 `v1.5.0+12` 发布提交与 `phone-v1.5.0` 标签，等待 main CI 和 Android Release 成功，核验公开 APK 哈希、版本、API、权限、v2 签名和长期证书。
-2. 将发布运行号、APK 大小和 SHA-256 回写到 README、本交接及 `test-results/phone-release-v1.5.0/VALIDATION.md`。
-3. 在物理手机设置页重新输入 API Key 并保存，然后验证真实设备连接、普通回复、工具调用及超大工具结果压缩路径；A01–A30、A34–A35、Windows 与平板验收、云盘同步和到点提醒继续单独处理。
+1. 提交并推送 v1.5.0 发布完成记录，确认工作区干净。
+2. 在物理手机设置页重新输入 API Key 并保存，然后验证真实设备连接、普通回复、工具调用及超大工具结果压缩路径。
+3. A01–A30、A34–A35、Windows 与平板验收、云盘同步和到点提醒继续单独处理。
 
 ## 8. 变更记录
+
+### 2026-11-09 / 发布 Android 手机 v1.5.0 预发布
+
+- 任务：发布包含设备级完全体模式的 Android 手机预览版并核验公开资产。
+- 变更：版本升至 `1.5.0+12`；新增 `docs/releases/v1.5.0.md`；main CI 与 Android Release 门禁加入完全体模式设置、迁移、策略、附件、回收站、输出续写、无限重试、上下文和启动恢复定向测试；README 与本交接记录公开下载、哈希和验证结论。
+- 验证：main CI `42585275215` success；Android Release `42585293796` success，耗时 15 分 27 秒；Dart 格式、Analyze、292 项定向回归、秘密扫描、APK 构建、版本/API/权限、v2 签名和长期证书均通过。公开 APK `90,977,347` 字节，SHA-256 `e4bd3d65e3b02a05258670e9d8fc6e545dbc758456102f18d0030788c578a71b`，与 `SHA256SUMS.txt` 一致。
+- 状态：Android 手机发布完成；GitHub Release 为 `phone-v1.5.0` pre-release。
+- 风险/下一步：本次只发布 Android 手机资产，未构建新的 Windows/平板/全平台资产；未执行全量测试、物理手机、真实资料迁移、真实云同步或提醒验收。
 
 ### 2026-11-09 / 准备 Android 手机 v1.5.0 预发布
 

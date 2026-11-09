@@ -2,7 +2,7 @@
 
 日期：2026-11-09
 
-状态：本地发布准备通过；GitHub main CI、Android Release 和公开资产核验待标签流水线完成。
+状态：发布完成；main CI、Android Release 和公开资产独立核验均通过。
 
 ## 本地检查
 
@@ -25,14 +25,19 @@
 - 900 秒长测：实际 907 秒、37 条写入与读回、154 次模型请求；后台、锁屏、唤醒、重开和最终流式答复通过。
 - 详见 `../phone-50-longrun-20261109/VALIDATION.md`。
 
-## 待流水线核验
+## 发布结果
 
-- main Flutter CI 成功。
-- Android Release 成功，签名密钥恢复和长期证书指纹校验通过。
-- 公开 APK 的 `versionName=1.5.0`、`versionCode=12`、minSdk 24、targetSdk 36 和必要权限正确。
-- APK 为 v2 签名，证书 SHA-256 为 `51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816`。
-- GitHub Release `phone-v1.5.0` 为 pre-release，资产为通用 APK 与 `SHA256SUMS.txt`，公开哈希一致。
-- 下载 APK 后复核大小、SHA-256、版本、权限和签名。
+- main Flutter CI `42585275215` / job `129053480590`：success。
+- Android Release `42585293796` / job `129053543183`：success，耗时 15 分 27 秒。
+- GitHub Release：`phone-v1.5.0`，pre-release，发布时间 `2026-11-09T08:34:03Z`。
+- 公开资产：`personal-ai-inbox-v1.5.0-android.apk` 与 `SHA256SUMS.txt`。
+- APK 大小：`90,977,347` 字节。
+- APK SHA-256：`e4bd3d65e3b02a05258670e9d8fc6e545dbc758456102f18d0030788c578a71b`，与 GitHub 资产 digest 和 `SHA256SUMS.txt` 一致。
+- APK 元数据：`versionName=1.5.0`、`versionCode=12`、minSdk 24、targetSdk 36。
+- 必要权限：Internet、通知、前台服务、前台数据同步和唤醒锁均存在。
+- APK 使用 v2 签名；证书 SHA-256 为 `51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816`，与长期 Android 发布证书一致。
+- 下载包由 GitHub 公开 Release 重新获取并独立复核，原始输出见 `public-assets.log`。
+- 公开下载：`https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.5.0`。
 
 ## 未覆盖
 
