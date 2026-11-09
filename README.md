@@ -8,11 +8,11 @@
 
 首个预发布版本从 [GitHub Releases](https://github.com/YuanFangCH/personal-ai-inbox/releases) 下载：
 
-- 本次 `v1.5.0`：Android 7.0 及以上安装通用 APK，不提供新的 Windows 资产。
+- 本次 `v1.5.1`：Android 7.0 及以上安装通用 APK，不提供新的 Windows 资产。
 - Windows 11 x64 继续使用上一版全平台预发布中的安装包或便携 ZIP。
 - 发布页同时提供 `SHA256SUMS.txt`，下载后应校验文件哈希。
 
-Android 手机 `v1.5.0` 预览版已发布，使用 `phone-v1.5.0` 标签，只提供通用 APK 与 `SHA256SUMS.txt`：[GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.5.0)。APK 为 `90,977,347` 字节，SHA-256 为 `e4bd3d65e3b02a05258670e9d8fc6e545dbc758456102f18d0030788c578a71b`。`v1.4.0` 继续作为上一版 Android 手机预发布保留，`v1.2.1` 是上一版全平台预发布。升级前请完整备份应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.5.0.md)；真实资料迁移需要在应用内确认。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
+Android 手机 `v1.5.1` 补丁版使用 `phone-v1.5.1` 标签，只提供通用 APK 与 `SHA256SUMS.txt`：[GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.5.1)。`v1.5.0` 继续作为上一版 Android 手机预发布保留，`v1.2.1` 是上一版全平台预发布。升级前请完整备份应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.5.1.md)；真实资料迁移需要在应用内确认。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
 
 ## 核心能力
 
@@ -33,6 +33,8 @@ Android 手机 `v1.5.0` 预览版已发布，使用 `phone-v1.5.0` 标签，只�
 每次在本项目开启新对话，先读本 README，再读 [RM_HANDOFF.md](RM_HANDOFF.md) 获取最新交接状态，并遵守 [AGENTS.md](AGENTS.md)。项目内正式修改同步更新 RM_HANDOFF。
 
 ## 当前进展
+
+2026-11-09 `v1.5.1+13` Android 补丁版准备：修复任务中断后“已核对，继续”仍反复卡住的问题。当最新工具回合因工具参数或结果过大无法保持完整时，上下文压缩现在回退到包含用户目标、对象版本、操作回执和待核对冲突的安全摘要；只要结果低于模型上下文硬上限即可继续，不再被额外的 10% 余量要求阻断。物理手机复验中，原任务已从 `needs_review` 恢复为 `running`，请求数和工具调用持续增加，并显示多批“已移动内容”回执。
 
 2026-11-09 物理手机签名切换完成：`HONOR REA-AN00` 原安装 `1.4.0+11` Debug 包，因 Debug 证书与正式长期证书不同无法覆盖升级。已完整归档应用私有数据（179 文件），使用同正式签名的可调试迁移包恢复数据，再覆盖安装公开 `v1.5.0+12`；最终设备端 APK 哈希与 Release 资产完全一致，证书 `51b5e2f3...523f4816`，文件为数 176（排除卸载后失效的 Keystore 凭据），首页数据和表内容保留。备份位于 `D:\Dsk\aitext-backups\phone-signature-migration-20261109`。
 

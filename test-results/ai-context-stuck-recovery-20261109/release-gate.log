@@ -1,0 +1,301 @@
+00:00 +0: loading D:/Dsk/aitext/app/test/agent_tool_executor_test.dart
+00:00 +0: D:/Dsk/aitext/app/test/agent_tool_executor_test.dart: plan groups parallel reads and isolates every write
+00:00 +1: D:/Dsk/aitext/app/test/agent_tool_executor_test.dart: parallel reads preserve order and obey the concurrency cap
+00:00 +2: D:/Dsk/aitext/app/test/agent_tool_executor_test.dart: registry exposes complete table recovery and inbox tools
+00:00 +3: D:/Dsk/aitext/app/test/agent_task_store_test.dart: v1 upgrade preserves usage and original snapshot
+00:00 +4: D:/Dsk/aitext/app/test/agent_task_store_test.dart: v2 budget exhaustion migrates to usage and requeues paused task
+00:00 +5: D:/Dsk/aitext/app/test/agent_task_store_test.dart: v3 round-trips usage-only state
+00:00 +6: D:/Dsk/aitext/app/test/agent_task_store_test.dart: preflight preserves unsupported schema and status bytes
+00:00 +7: D:/Dsk/aitext/app/test/agent_task_store_test.dart: missing primary with a legacy backup fails closed
+00:00 +8: D:/Dsk/aitext/app/test/agent_task_store_test.dart: missing primary with a temporary write fails closed
+00:00 +9: D:/Dsk/aitext/app/test/agent_task_store_test.dart: existing primary remains authoritative when sidecars exist
+00:00 +10: D:/Dsk/aitext/app/test/agent_task_store_test.dart: upgrade refuses a backup with different source bytes
+00:00 +11: D:/Dsk/aitext/app/test/agent_task_store_test.dart: failed upgrade restores source bytes and retains backup
+00:00 +12: D:/Dsk/aitext/app/test/agent_task_status_card_test.dart: restored paused task exposes usage without budget continuation
+00:01 +13: D:/Dsk/aitext/app/test/agent_task_status_card_test.dart: restored paused task exposes usage without budget continuation
+00:01 +14: D:/Dsk/aitext/app/test/agent_task_status_card_test.dart: restored paused task exposes usage without budget continuation
+00:01 +15: D:/Dsk/aitext/app/test/agent_task_status_card_test.dart: restored paused task exposes usage without budget continuation
+00:01 +16: D:/Dsk/aitext/app/test/agent_task_status_card_test.dart: restored paused task exposes usage without budget continuation
+00:01 +17: D:/Dsk/aitext/app/test/agent_task_status_card_test.dart: restored paused task exposes usage without budget continuation
+00:01 +18: D:/Dsk/aitext/app/test/agent_task_status_card_test.dart: restored paused task exposes usage without budget continuation
+00:01 +19: D:/Dsk/aitext/app/test/agent_task_status_card_test.dart: restored paused task exposes usage without budget continuation
+00:01 +20: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +21: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +22: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +23: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +24: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +25: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +26: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +27: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +28: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +29: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +30: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +31: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +32: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +33: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +34: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +35: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +36: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +37: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +38: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +39: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +40: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +41: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +42: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:01 +43: D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart: restart restores a paused task usage and resumes without a grant
+00:02 +44: D:/Dsk/aitext/app/test/conversation_workspace_scheduler_test.dart: startup settles running turn with matching completed evidence
+00:02 +45: D:/Dsk/aitext/app/test/conversation_workspace_scheduler_test.dart: startup settles a running turn after response-ready recovery completes
+00:02 +46: D:/Dsk/aitext/app/test/conversation_workspace_scheduler_test.dart: startup keeps response-ready tool intent in review when assistant is missing
+00:02 +47: D:/Dsk/aitext/app/test/conversation_workspace_scheduler_test.dart: startup keeps running turn in review when completion evidence is incomplete
+00:02 +48: D:/Dsk/aitext/app/test/conversation_workspace_scheduler_test.dart: auxiliary usage is serialized with task checkpoints
+00:02 +49: D:/Dsk/aitext/app/test/conversation_workspace_scheduler_test.dart: usage checkpoint failure is visible after model dispatch
+00:02 +50: D:/Dsk/aitext/app/test/conversation_workspace_scheduler_test.dart: manual retry does not resume the original failed task
+00:02 +51: D:/Dsk/aitext/app/test/conversation_workspace_scheduler_test.dart: independent tasks have separate usage ledgers
+00:02 +52: D:/Dsk/aitext/app/test/conversation_workspace_scheduler_test.dart: active time checkpoints while response headers are still pending
+00:02 +53: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: keeps the prior transcript when saving a compacted task checkpoint fails
+00:02 +54: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: keeps the prior transcript when saving a compacted task checkpoint fails
+00:02 +55: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: keeps the prior transcript when saving a compacted task checkpoint fails
+00:02 +56: D:/Dsk/aitext/app/test/conversation_workspace_scheduler_test.dart: other conversations run in FIFO order
+00:02 +57: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: ModelClient emits terminal for a closed continuation SSE body
+00:02 +58: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: ModelClient emits terminal for a closed continuation SSE body
+00:03 +59: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: ModelClient emits terminal for a closed continuation SSE body
+00:03 +60: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: ModelClient emits terminal for a closed continuation SSE body
+00:03 +61: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: ModelClient emits terminal for a closed continuation SSE body
+00:03 +62: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: ModelClient emits terminal for a closed continuation SSE body
+00:03 +63: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: ModelClient emits terminal for a closed continuation SSE body
+00:03 +64: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: ModelClient emits terminal for a closed continuation SSE body
+00:03 +65: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: ModelClient emits terminal for a closed continuation SSE body
+00:03 +66: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: ModelClient emits terminal for a closed continuation SSE body
+00:03 +67: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: ModelClient emits terminal for a closed continuation SSE body
+00:03 +68: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: ModelClient emits terminal for a closed continuation SSE body
+00:03 +69: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: ModelClient emits terminal for a closed continuation SSE body
+00:03 +70: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: ModelClient emits terminal for a closed continuation SSE body
+00:03 +71: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: ModelClient emits terminal for a closed continuation SSE body
+00:03 +72: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: ModelClient emits terminal for a closed continuation SSE body
+00:03 +73: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: ModelClient emits terminal for a closed continuation SSE body
+00:03 +74: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: ModelClient emits terminal for a closed continuation SSE body
+00:03 +75: D:/Dsk/aitext/app/test/content_intake_test.dart: explicit evidence recalls changed title for field augmentation
+00:03 +76: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: live workspace settles a new turn after stopping an open SSE turn
+00:03 +77: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: live workspace settles a new turn after stopping an open SSE turn
+00:03 +78: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: live workspace settles a new turn after stopping an open SSE turn
+00:03 +79: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: live workspace settles a new turn after stopping an open SSE turn
+00:03 +80: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: live workspace settles a new turn after stopping an open SSE turn
+00:03 +81: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: live workspace settles a new turn after stopping an open SSE turn
+00:03 +82: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: live workspace settles a new turn after stopping an open SSE turn
+00:03 +83: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: live workspace settles a new turn after stopping an open SSE turn
+00:03 +84: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: live workspace settles a new turn after stopping an open SSE turn
+00:03 +85: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: live workspace settles a new turn after stopping an open SSE turn
+00:03 +86: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: live workspace settles a new turn after stopping an open SSE turn
+00:03 +87: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: live workspace settles a new turn after stopping an open SSE turn
+00:03 +88: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: live workspace settles a new turn after stopping an open SSE turn
+00:03 +89: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: live workspace settles a new turn after stopping an open SSE turn
+00:03 +90: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: live workspace settles a new turn after stopping an open SSE turn
+00:03 +91: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: live workspace settles a new turn after stopping an open SSE turn
+00:03 +92: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: live workspace settles a new turn after stopping an open SSE turn
+00:03 +93: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: live workspace settles a new turn after stopping an open SSE turn
+00:03 +94: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: live workspace settles a new turn after stopping an open SSE turn
+00:04 +95: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: restart continues the original generation with its persisted receipt
+00:04 +96: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: restart continues the original generation with its persisted receipt
+00:04 +97: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: restart continues the original generation with its persisted receipt
+00:04 +98: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: restart continues the original generation with its persisted receipt
+00:04 +99: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: restart continues the original generation with its persisted receipt
+00:04 +100: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: restart continues the original generation with its persisted receipt
+00:04 +101: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: restart continues the original generation with its persisted receipt
+00:04 +102: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: restart continues the original generation with its persisted receipt
+00:04 +103: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: restart continues the original generation with its persisted receipt
+00:04 +104: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: restart continues the original generation with its persisted receipt
+00:04 +105: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: restart continues the original generation with its persisted receipt
+00:04 +106: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: restart continues the original generation with its persisted receipt
+00:04 +107: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: restart continues the original generation with its persisted receipt
+00:04 +108: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: setAiPolicy persists the selected action policy
+00:04 +109: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: runtime creates conversations from the effective default policy
+00:04 +110: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: memory bootstrap does not initialize the Android background channel
+00:04 +111: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: invalid task checkpoint fails before module writes or background startup
+00:04 +112: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: missing checkpoint with legacy backup fails before module or background startup
+00:04 +113: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: shutdown records checkpoint failure and still completes cleanup
+ConversationWorkspace shutdown completed with errors:
+Bad state: checkpoint write failed
+AppRuntime shutdown completed with errors:
+Bad state: checkpoint write failed
+00:04 +114: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: cancel interrupts preparation before the network starts
+00:04 +115: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: batches stream UI updates and merges text persistence
+00:05 +116: D:/Dsk/aitext/app/test/conversation_workspace_agent_runtime_test.dart: batches stream UI updates and merges text persistence
+00:05 +117: D:/Dsk/aitext/app/test/conversation_lifecycle_test.dart: the first sent message creates exactly one conversation
+00:05 +118: D:/Dsk/aitext/app/test/conversation_lifecycle_test.dart: the first sent message creates exactly one conversation
+00:05 +119: D:/Dsk/aitext/app/test/conversation_lifecycle_test.dart: the first sent message creates exactly one conversation
+00:05 +120: D:/Dsk/aitext/app/test/conversation_lifecycle_test.dart: the first sent message creates exactly one conversation
+00:05 +121: D:/Dsk/aitext/app/test/conversation_lifecycle_test.dart: the first sent message creates exactly one conversation
+00:05 +122: D:/Dsk/aitext/app/test/conversation_lifecycle_test.dart: the first sent message creates exactly one conversation
+00:05 +123: D:/Dsk/aitext/app/test/conversation_lifecycle_test.dart: the first sent message creates exactly one conversation
+00:05 +124: D:/Dsk/aitext/app/test/conversation_lifecycle_test.dart: the first sent message creates exactly one conversation
+00:07 +125: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:07 +126: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:07 +127: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:08 +128: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:08 +129: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:08 +130: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:08 +131: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +132: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +133: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +134: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +135: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +136: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +137: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +138: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +139: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +140: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +141: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +142: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +143: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +144: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +145: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +146: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +147: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:09 +148: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:10 +149: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:10 +150: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:11 +151: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:12 +152: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:12 +153: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:12 +154: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:12 +155: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:12 +156: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:12 +157: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:12 +158: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:12 +159: D:/Dsk/aitext/app/test/conversation_large_history_ui_test.dart: large history remains scrollable and responsive during a long stream
+00:12 +160: D:/Dsk/aitext/app/test/settings_page_test.dart: full-agent switch overrides existing and new conversations then restores
+00:12 +161: D:/Dsk/aitext/app/test/settings_page_test.dart: full-agent switch overrides existing and new conversations then restores
+00:12 +162: D:/Dsk/aitext/app/test/settings_page_test.dart: full-agent switch overrides existing and new conversations then restores
+00:12 +163: D:/Dsk/aitext/app/test/settings_page_test.dart: full-agent switch overrides existing and new conversations then restores
+00:12 +164: D:/Dsk/aitext/app/test/settings_page_test.dart: full-agent switch overrides existing and new conversations then restores
+00:12 +165: D:/Dsk/aitext/app/test/settings_page_test.dart: full-agent switch overrides existing and new conversations then restores
+00:12 +166: D:/Dsk/aitext/app/test/settings_page_test.dart: full-agent switch overrides existing and new conversations then restores
+00:12 +167: D:/Dsk/aitext/app/test/settings_page_test.dart: full-agent switch overrides existing and new conversations then restores
+00:12 +168: D:/Dsk/aitext/app/test/settings_page_test.dart: permission defaults update settings without mutating existing conversations
+00:13 +169: D:/Dsk/aitext/app/test/settings_page_test.dart: permission defaults update settings without mutating existing conversations
+00:13 +170: D:/Dsk/aitext/app/test/settings_page_test.dart: permission defaults update settings without mutating existing conversations
+00:13 +171: D:/Dsk/aitext/app/test/settings_page_test.dart: permission defaults update settings without mutating existing conversations
+00:13 +172: D:/Dsk/aitext/app/test/settings_page_test.dart: advanced settings expose request limits and reject invalid URL
+00:14 +173: D:/Dsk/aitext/app/test/conversation_permission_sheet_test.dart: full-agent mode locks conversation-level permission editing
+00:14 +174: D:/Dsk/aitext/app/test/full_agent_recovery_test.dart: full-agent mode continues a length-limited response
+00:14 +175: D:/Dsk/aitext/app/test/settings_page_test.dart: custom default policy controls fit a phone layout
+00:14 +176: D:/Dsk/aitext/app/test/conversation_permission_sheet_test.dart: selects and returns full access after explicit confirmation
+00:14 +177: D:/Dsk/aitext/app/test/full_agent_recovery_test.dart: full-agent mode resumes a safe app-close checkpoint on startup
+00:14 +178: D:/Dsk/aitext/app/test/conversation_permission_sheet_test.dart: custom mode can deny a decision group
+00:14 +179: D:/Dsk/aitext/app/test/conversation_permission_sheet_test.dart: permission sheet remains usable on a narrow phone layout
+00:15 +180: D:/Dsk/aitext/app/test/full_agent_retry_test.dart: full-agent mode exposes protected-capable app management tools
+00:15 +181: D:/Dsk/aitext/app/test/full_agent_retry_test.dart: standard mode keeps app management write tools hidden
+00:15 +182: D:/Dsk/aitext/app/test/full_agent_retry_test.dart: app settings tool changes ordinary settings and rejects protected ones
+00:15 +183: D:/Dsk/aitext/app/test/full_agent_retry_test.dart: full-agent mode retries beyond the standard retry cap
+00:15 +184: D:/Dsk/aitext/app/test/file_input_service_test.dart: uses the injected file picker and extracts the selected file
+00:15 +185: D:/Dsk/aitext/app/test/file_input_service_test.dart: file selection cancellation creates no file input
+00:15 +186: D:/Dsk/aitext/app/test/file_input_service_test.dart: extracts UTF-8 text and clips by Unicode characters
+00:15 +187: D:/Dsk/aitext/app/test/file_input_service_test.dart: extracts CSV cells as inert UTF-8 text and rejects non-text bytes
+00:15 +188: D:/Dsk/aitext/app/test/file_input_service_test.dart: extracts DOCX body text without evaluating embedded content
+00:15 +189: D:/Dsk/aitext/app/test/chat_repository_trash_test.dart: conversation and attachment deletion round-trip through trash
+00:15 +190: D:/Dsk/aitext/app/test/chat_repository_trash_test.dart: conversation and attachment deletion round-trip through trash
+00:15 +191: D:/Dsk/aitext/app/test/chat_repository_trash_test.dart: conversation and attachment deletion round-trip through trash
+00:15 +192: D:/Dsk/aitext/app/test/chat_repository_trash_test.dart: conversation and attachment deletion round-trip through trash
+00:15 +193: D:/Dsk/aitext/app/test/chat_repository_trash_test.dart: conversation and attachment deletion round-trip through trash
+00:15 +194: D:/Dsk/aitext/app/test/model_client_stream_test.dart: surfaces finish_reason length for full-agent continuation
+00:15 +195: D:/Dsk/aitext/app/test/model_client_stream_test.dart: terminal completes the outer stream before HTTP body cancellation finishes
+00:15 +196: D:/Dsk/aitext/app/test/model_client_stream_test.dart: cancelling streamed model deltas cancels the HTTP response body
+00:15 +197: D:/Dsk/aitext/app/test/model_client_stream_test.dart: thinking mode is capability gated and carries reasoning for tool turns
+00:15 +198: D:/Dsk/aitext/app/test/model_client_stream_test.dart: streamChat parses content and tool call fragments
+00:15 +199: D:/Dsk/aitext/app/test/model_client_stream_test.dart: finish_reason tool_calls is an explicit complete terminal
+00:15 +200: D:/Dsk/aitext/app/test/model_client_stream_test.dart: finish_reason stop without content is not a complete answer
+00:15 +201: D:/Dsk/aitext/app/test/model_client_stream_test.dart: finish_reason length remains incomplete even after a tool delta
+00:15 +202: D:/Dsk/aitext/app/test/model_client_stream_test.dart: text-only capability omits tools and JSON response mode
+00:15 +203: D:/Dsk/aitext/app/test/model_client_stream_test.dart: EOF without a completion signal has an explicit end reason
+00:15 +204: D:/Dsk/aitext/app/test/model_client_stream_test.dart: assembles multiline SSE data fields before decoding JSON
+00:15 +205: D:/Dsk/aitext/app/test/model_client_stream_test.dart: an empty response has an explicit end reason
+00:15 +206: D:/Dsk/aitext/app/test/model_client_stream_test.dart: malformed SSE data raises a typed protocol error
+00:15 +207: D:/Dsk/aitext/app/test/model_client_stream_test.dart: HTTP failures expose status and Retry-After without the API key
+00:15 +208: D:/Dsk/aitext/app/test/model_client_stream_test.dart: cancelling the public stream aborts the outbound request
+00:15 +209: D:/Dsk/aitext/app/test/model_client_stream_test.dart: cancelling while waiting for headers aborts without waiting for timeout
+00:15 +210: D:/Dsk/aitext/app/test/model_client_stream_test.dart: cancellation signal aborts while waiting for response headers
+00:15 +211: D:/Dsk/aitext/app/test/model_client_stream_test.dart: stream idle timeout applies after response headers
+00:15 +212: D:/Dsk/aitext/app/test/model_client_stream_test.dart: total timeout applies even while the stream emits no bytes
+00:15 +213: D:/Dsk/aitext/app/test/model_client_stream_test.dart: response header timeout aborts the outbound request
+00:16 +214: D:/Dsk/aitext/app/test/local_retrieval_test.dart: read disabled performs no searches or external reads
+00:16 +215: D:/Dsk/aitext/app/test/retrieval_pagination_test.dart: table listing has no implicit 20-row limit and cursors are opaque
+00:16 +216: D:/Dsk/aitext/app/test/retrieval_pagination_test.dart: table listing has no implicit 20-row limit and cursors are opaque
+00:16 +217: D:/Dsk/aitext/app/test/retrieval_pagination_test.dart: table listing has no implicit 20-row limit and cursors are opaque
+00:16 +218: D:/Dsk/aitext/app/test/retrieval_pagination_test.dart: table listing has no implicit 20-row limit and cursors are opaque
+00:16 +219: D:/Dsk/aitext/app/test/retrieval_pagination_test.dart: table listing has no implicit 20-row limit and cursors are opaque
+00:16 +220: D:/Dsk/aitext/app/test/retrieval_pagination_test.dart: table listing has no implicit 20-row limit and cursors are opaque
+00:16 +221: D:/Dsk/aitext/app/test/retrieval_pagination_test.dart: table listing has no implicit 20-row limit and cursors are opaque
+00:16 +222: D:/Dsk/aitext/app/test/local_retrieval_test.dart: full-agent retrieval has no cumulative search-call boundary
+00:16 +223: D:/Dsk/aitext/app/test/retrieval_pagination_test.dart: cross-table search pages all tables and reports coverage
+00:16 +224: D:/Dsk/aitext/app/test/retrieval_pagination_test.dart: cross-table search pages all tables and reports coverage
+00:16 +225: D:/Dsk/aitext/app/test/retrieval_pagination_test.dart: cross-table search pages all tables and reports coverage
+00:16 +226: D:/Dsk/aitext/app/test/local_retrieval_test.dart: output exhaustion returns a parseable boundary envelope
+00:16 +227: D:/Dsk/aitext/app/test/local_retrieval_test.dart: output exhaustion returns a parseable boundary envelope
+00:16 +228: D:/Dsk/aitext/app/test/sqlite_migration_coordinator_test.dart: rollback restores task checkpoint bytes from the migration group
+00:16 +229: D:/Dsk/aitext/app/test/sqlite_migration_coordinator_test.dart: rollback validates every backup before restoring database or earlier files
+00:17 +230: D:/Dsk/aitext/app/test/sqlite_migration_coordinator_test.dart: new migration manifest rejects missing entries additional file entries before rollback
+00:17 +231: D:/Dsk/aitext/app/test/sqlite_migration_coordinator_test.dart: new migration manifest rejects missing list additional file entries before rollback
+00:17 +232: D:/Dsk/aitext/app/test/sqlite_migration_coordinator_test.dart: new migration manifest rejects duplicate path additional file entries before rollback
+00:17 +233: D:/Dsk/aitext/app/test/sqlite_migration_coordinator_test.dart: legacy pending migration manifest without files remains readable
+00:17 +234: D:/Dsk/aitext/app/test/sqlite_migration_coordinator_test.dart: v10 index upgrade rollback restores the entire database group and backup hashes
+00:17 +235: D:/Dsk/aitext/app/test/sqlite_migration_coordinator_test.dart: v10 index upgrade rollback restores the entire database group and backup hashes
+00:17 +236: D:/Dsk/aitext/app/test/sqlite_migration_coordinator_test.dart: v10 index upgrade rollback restores the entire database group and backup hashes
+00:17 +237: D:/Dsk/aitext/app/test/sqlite_migration_coordinator_test.dart: v10 index upgrade rollback restores the entire database group and backup hashes
+00:17 +238: D:/Dsk/aitext/app/test/sqlite_migration_coordinator_test.dart: rollback restores both database snapshots and non-secret settings
+00:17 +239: D:/Dsk/aitext/app/test/sqlite_migration_coordinator_test.dart: rollback restores both database snapshots and non-secret settings
+00:17 +240: D:/Dsk/aitext/app/test/sqlite_migration_coordinator_test.dart: rollback restores both database snapshots and non-secret settings
+00:17 +241: D:/Dsk/aitext/app/test/chat_service_tools_test.dart: table mode searches indexed table content and offers no legacy writes
+00:17 +242: D:/Dsk/aitext/app/test/chat_service_tools_test.dart: table mode searches indexed table content and offers no legacy writes
+00:17 +243: D:/Dsk/aitext/app/test/sqlite_migration_coordinator_test.dart: completes only after both databases reach the supported version
+00:17 +244: D:/Dsk/aitext/app/test/sqlite_migration_coordinator_test.dart: completes only after both databases reach the supported version
+00:17 +245: D:/Dsk/aitext/app/test/sqlite_migration_coordinator_test.dart: completes only after both databases reach the supported version
+00:17 +246: D:/Dsk/aitext/app/test/sqlite_migration_coordinator_test.dart: table migration snapshot backs up both databases and settings idempotently
+00:17 +247: D:/Dsk/aitext/app/test/sqlite_migration_coordinator_test.dart: schema upgrade preserves legacy result, capture and conversation rows
+00:18 +248: D:/Dsk/aitext/app/test/table_ai_runtime_test.dart: full access changes an inbox target through the model tool path
+00:18 +249: D:/Dsk/aitext/app/test/table_ai_runtime_test.dart: standard inbox target change waits for explicit confirmation
+00:18 +250: D:/Dsk/aitext/app/test/table_ai_runtime_test.dart: explicit task resume restores an inbox receipt after a committed write crash
+00:18 +251: D:/Dsk/aitext/app/test/table_ai_runtime_test.dart: third-state assignment journal opens in visible read-only review
+00:18 +252: D:/Dsk/aitext/app/test/table_ai_runtime_test.dart: startup recovery never replays legacy result writes in table mode
+00:18 +253: D:/Dsk/aitext/app/test/table_action_processor_test.dart: revoking permission during duplicate preparation prevents commit
+00:18 +254: D:/Dsk/aitext/app/test/table_action_processor_test.dart: revoking permission during duplicate preparation prevents commit
+00:18 +255: D:/Dsk/aitext/app/test/table_action_processor_test.dart: revoking permission during duplicate preparation prevents commit
+00:18 +256: D:/Dsk/aitext/app/test/table_action_processor_test.dart: revoking permission during duplicate preparation prevents commit
+00:18 +257: D:/Dsk/aitext/app/test/table_ai_runtime_test.dart: injected legacy result tool cannot bypass table mode
+00:18 +258: D:/Dsk/aitext/app/test/table_action_processor_test.dart: legacy receipt without request evidence blocks automatic replay
+00:18 +259: D:/Dsk/aitext/app/test/table_action_processor_test.dart: rejects changed arguments in an already executed tool position
+00:18 +260: D:/Dsk/aitext/app/test/table_action_processor_test.dart: resolves permission again for each tool in a batch
+00:18 +261: D:/Dsk/aitext/app/test/table_migration_service_test.dart: source cleanup protects data: none
+00:18 +262: D:/Dsk/aitext/app/test/table_migration_service_test.dart: source cleanup protects data: none
+00:18 +263: D:/Dsk/aitext/app/test/table_migration_service_test.dart: source cleanup protects data: none
+00:18 +264: D:/Dsk/aitext/app/test/table_migration_service_test.dart: source cleanup protects data: none
+00:18 +265: D:/Dsk/aitext/app/test/table_migration_service_test.dart: source cleanup protects data: none
+00:18 +266: D:/Dsk/aitext/app/test/table_action_processor_test.dart: stale structure confirmation leaves the newer table version unchanged
+00:19 +267: D:/Dsk/aitext/app/test/table_migration_service_test.dart: source cleanup protects data: interrupted
+00:19 +268: D:/Dsk/aitext/app/test/table_action_processor_test.dart: schedule change retains its event and updates the referenced schedule
+00:19 +269: D:/Dsk/aitext/app/test/table_migration_service_test.dart: source cleanup protects data: bad-backup
+00:19 +270: D:/Dsk/aitext/app/test/table_action_processor_test.dart: same schedule notice reuses its receipt after the schedule moves tables
+00:19 +271: D:/Dsk/aitext/app/test/table_action_processor_test.dart: same schedule notice reuses its receipt after the schedule moves tables
+00:19 +272: D:/Dsk/aitext/app/test/table_migration_service_test.dart: dated legacy schedules remain migratable after their start time
+00:19 +273: D:/Dsk/aitext/app/test/table_action_processor_test.dart: content create reuses the same exact item across user messages
+00:19 +274: D:/Dsk/aitext/app/test/table_action_processor_test.dart: content create reuses the same exact item across user messages
+00:19 +275: D:/Dsk/aitext/app/test/table_action_processor_test.dart: content create reuses the same exact item across user messages
+00:19 +276: D:/Dsk/aitext/app/test/table_migration_service_test.dart: preflight retains tombstones and blocks undated, draft and conflicted records
+00:19 +277: D:/Dsk/aitext/app/test/table_action_processor_test.dart: saved action receipt replays before processing content again
+00:19 +278: D:/Dsk/aitext/app/test/table_action_processor_test.dart: saved action receipt replays before processing content again
+00:19 +279: D:/Dsk/aitext/app/test/table_action_processor_test.dart: saved action receipt replays before processing content again
+00:19 +280: D:/Dsk/aitext/app/test/table_action_processor_test.dart: saved action receipt replays before processing content again
+00:19 +281: D:/Dsk/aitext/app/test/table_action_processor_test.dart: full access executes structure while standard remains pending
+00:19 +282: D:/Dsk/aitext/app/test/table_action_processor_test.dart: inbox assignment rechecks allow at commit and can resume only after confirmation
+00:19 +283: D:/Dsk/aitext/app/test/table_action_processor_test.dart: journal reconciliation requires a persisted applied action
+00:19 +284: D:/Dsk/aitext/app/test/table_action_processor_test.dart: inbox assignment rejects either target outside selected scope
+00:19 +285: D:/Dsk/aitext/app/test/table_action_processor_test.dart: selected table scope blocks new tables at execution
+00:19 +286: D:/Dsk/aitext/app/test/table_action_processor_test.dart: structure confirmation rechecks the effective conversation policy
+00:19 +287: D:/Dsk/aitext/app/test/table_migration_gate_test.dart: migration confirms, backs up and cleans sources before restart
+00:20 +288: D:/Dsk/aitext/app/test/table_migration_gate_test.dart: migration confirms, backs up and cleans sources before restart
+00:20 +289: D:/Dsk/aitext/app/test/table_migration_gate_test.dart: migration confirms, backs up and cleans sources before restart
+00:20 +290: D:/Dsk/aitext/app/test/app_runtime_test.dart: cleaned migration keeps legacy links and sync gate
+00:21 +291: D:/Dsk/aitext/app/test/app_runtime_test.dart: renders the legacy migration gate instead of writable app pages
+00:21 +292: D:/Dsk/aitext/app/test/app_runtime_test.dart: keeps a legacy vault in read-only migration review at startup
+00:21 +293: D:/Dsk/aitext/app/test/app_runtime_test.dart: bootstraps modules in a temporary memory configuration and shuts down safely
+00:21 +294: D:/Dsk/aitext/app/test/app_runtime_test.dart: uses the injected sync provider instead of the sandbox default
+00:21 +295: All tests passed!

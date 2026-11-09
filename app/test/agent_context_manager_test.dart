@@ -85,4 +85,90 @@ void main() {
       expect(totalChars, lessThanOrEqualTo(maxChars));
     },
   );
+
+  test('falls back to the safe summary when the latest tool round cannot be bounded', () {
+    const maxChars = 8000;
+    final toolCalls = <Map<String, dynamic>>[
+      for (var index = 0; index < 8; index++)
+        {
+          'id': 'call_oversized_$index',
+          'type': 'function',
+          'function': {
+            'name': 'content_move',
+            'arguments': jsonEncode({
+              'entry_id': 'entry_$index',
+              'body': '参数' * 500,
+            }),
+          },
+        },
+    ];
+    final history = <ChatRequestMessage>[
+      const ChatRequestMessage(role: 'user', text: '把这些内容全部移动。'),
+      ChatRequestMessage(role: 'assistant', text: '', toolCalls: toolCalls),
+      for (var index = 0; index < toolCalls.length; index++)
+        ChatRequestMessage(
+          role: 'tool',
+          toolCallId: 'call_oversized_$index',
+          name: 'content_move',
+          text: jsonEncode({
+            'status': 'success',
+            'data': {'body': '结果' * 800},
+          }),
+        ),
+    ];
+
+    final compaction = const AgentContextManager().compact(
+      history,
+      maxChars: maxChars,
+    );
+
+    expect(compaction.blockedReason, isNull);
+    expect(compaction.messages, hasLength(1));
+    expect(compaction.messages.single.role, 'system');
+    expect(compaction.messages.single.text, contains('本地安全前缀摘要'));
+    expect(compaction.messages.single.text, contains('把这些内容全部移动'));
+    expect(
+      compaction.messages.single.text,
+      contains('latest_tool_round_compacted'),
+    );
+  });
+
+  test('accepts a compaction that fits even below the preferred reduction', () {
+    const maxChars = 4200;
+    final history = <ChatRequestMessage>[
+      ChatRequestMessage(role: 'assistant', text: '旧答复' * 180),
+      ChatRequestMessage(
+        role: 'assistant',
+        text: '',
+        toolCalls: [
+          {
+            'id': 'call_near_limit',
+            'type': 'function',
+            'function': {
+              'name': 'content_move',
+              'arguments': jsonEncode({'body': '参数' * 1800}),
+            },
+          },
+        ],
+      ),
+      ChatRequestMessage(
+        role: 'tool',
+        toolCallId: 'call_near_limit',
+        name: 'content_move',
+        text: jsonEncode({
+          'status': 'success',
+          'data': {'body': '结果' * 20},
+        }),
+      ),
+    ];
+
+    final compaction = const AgentContextManager().compact(
+      history,
+      maxChars: maxChars,
+    );
+
+    expect(compaction.blockedReason, isNull);
+    expect(compaction.messages, isNotEmpty);
+    expect(compaction.messages.first.text, contains('本地安全前缀摘要'));
+  });
 }

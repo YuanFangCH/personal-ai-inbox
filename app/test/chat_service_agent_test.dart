@@ -1390,6 +1390,75 @@ void main() {
     await fixture.close(service);
   });
 
+  test('oversized resumed tool calls continue from the safe summary', () async {
+    final fixture = await _AgentFixture.create();
+    final requests = <Map<String, dynamic>>[];
+    final calls = <Map<String, Object?>>[
+      for (var index = 0; index < 8; index++)
+        {
+          'id': 'call_resumed_args_$index',
+          'type': 'function',
+          'function': {
+            'name': 'content_move',
+            'arguments': jsonEncode({
+              'entry_id': 'entry_$index',
+              'table_id': fixture.table.id,
+              'body': '参数' * 500,
+            }),
+          },
+        },
+    ];
+    final service = ChatService(
+      settings: FakeSettingsService(modelKey: 'test-key'),
+      repository: fixture.chats,
+      results: fixture.results,
+      tables: fixture.tables,
+      agentLoopPolicy: const ChatAgentLoopPolicy(maxRequestContextChars: 8000),
+      modelClient: ModelClient(
+        client: MockClient.streaming((request, body) async {
+          requests.add(
+            jsonDecode(await body.bytesToString()) as Map<String, dynamic>,
+          );
+          return _textResponse('已从安全摘要继续处理。');
+        }),
+      ),
+    );
+
+    final deltas = await (await service.streamReply(
+      conversationId: fixture.conversationId,
+      resumeToolTranscript: [
+        {'role': 'assistant', 'content': '', 'tool_calls': calls},
+        for (var index = 0; index < calls.length; index++)
+          {
+            'role': 'tool',
+            'tool_call_id': 'call_resumed_args_$index',
+            'name': 'content_move',
+            'content': jsonEncode({
+              'status': 'success',
+              'data': {'body': '结果' * 800},
+            }),
+          },
+      ],
+      persistToolTranscript: (_) async {},
+    )).toList();
+
+    expect(requests, hasLength(1));
+    final requestMessages = (requests.single['messages'] as List).cast<Map>();
+    final summary = requestMessages.singleWhere(
+      (message) =>
+          message['role'] == 'system' &&
+          '${message['content']}'.contains('本地安全前缀摘要'),
+    );
+    expect('${summary['content']}', contains('latest_tool_round_compacted'));
+    expect(
+      requestMessages.where((message) => message['role'] == 'tool'),
+      isEmpty,
+    );
+    expect(deltas.map((delta) => delta.content).join(), '已从安全摘要继续处理。');
+    expect(deltas.last.termination, ChatStreamTermination.completed);
+    await fixture.close(service);
+  });
+
   test('pauses without another model request when compacted context cannot persist', () async {
     final fixture = await _AgentFixture.create();
     await fixture.chats.saveMessage(

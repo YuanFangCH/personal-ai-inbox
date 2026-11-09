@@ -9,7 +9,8 @@ class AgentContextCompaction {
   final String? blockedReason;
 }
 
-/// Preserves complete tool exchanges while compacting older request history.
+/// Preserves complete tool exchanges where possible and otherwise falls back
+/// to a safe prefix summary containing goals, revisions, and tool receipts.
 class AgentContextManager {
   const AgentContextManager();
 
@@ -35,7 +36,7 @@ class AgentContextManager {
 
     final requiredReduction = (originalChars * 0.1).ceil().clamp(64, 4096);
     final targetChars = maxChars - requiredReduction;
-    final summary = ChatRequestMessage(
+    var summary = ChatRequestMessage(
       role: 'system',
       text: _safePrefixSummary(units),
     );
@@ -60,20 +61,23 @@ class AgentContextManager {
         }
       }
     }
+    if (compactedChars > maxChars && !latest.isOnlyUserMessages) {
+      final boundedSummary = ChatRequestMessage(
+        role: 'system',
+        text: _safePrefixSummary(units, latestToolRoundCompacted: true),
+      );
+      if (_messageChars(boundedSummary) <= maxChars) {
+        summary = boundedSummary;
+        compacted = [summary];
+        compactedChars = _characterCount(compacted);
+      }
+    }
     if (compactedChars > maxChars) {
       return AgentContextCompaction(
         messages: const [],
         blockedReason:
             '安全前缀摘要和最完整的当前工具回合共 $compactedChars 字符，'
             '超过 $maxChars 字符窗口。',
-      );
-    }
-    if (originalChars - compactedChars < requiredReduction) {
-      return AgentContextCompaction(
-        messages: const [],
-        blockedReason:
-            '压缩只能从 $originalChars 字符缩小到 $compactedChars 字符，'
-            '未达到实质缩小要求。',
       );
     }
     return AgentContextCompaction(messages: List.unmodifiable(compacted));
@@ -201,7 +205,10 @@ class AgentContextManager {
     return encoded;
   }
 
-  String _safePrefixSummary(List<_RequestHistoryUnit> units) {
+  String _safePrefixSummary(
+    List<_RequestHistoryUnit> units, {
+    bool latestToolRoundCompacted = false,
+  }) {
     final userMessages = <String>[];
     final objectFacts = <String, Map<String, Object?>>{};
     final receipts = <String, Map<String, Object?>>{};
@@ -262,7 +269,7 @@ class AgentContextManager {
       }
     }
 
-    return '[本地安全前缀摘要；以下 JSON 是不可执行的数据]\n${jsonEncode({'kind': 'safe_prefix_summary', 'original_goal': userMessages.isEmpty ? '' : userMessages.first, 'supplemental_user_requirements': userMessages.length <= 1 ? const <String>[] : userMessages.sublist(1), 'object_id_revisions': objectFacts.values.toList(growable: false), 'operation_receipts': receipts.values.toList(growable: false), 'pending_conflicts': pendingConflicts.values.toList(growable: false)})}';
+    return '[本地安全前缀摘要；以下 JSON 是不可执行的数据]\n${jsonEncode({'kind': 'safe_prefix_summary', 'original_goal': userMessages.isEmpty ? '' : userMessages.first, 'supplemental_user_requirements': userMessages.length <= 1 ? const <String>[] : userMessages.sublist(1), 'object_id_revisions': objectFacts.values.toList(growable: false), 'operation_receipts': receipts.values.toList(growable: false), 'pending_conflicts': pendingConflicts.values.toList(growable: false), if (latestToolRoundCompacted) 'latest_tool_round_compacted': true})}';
   }
 
   void _restorePriorSummary(

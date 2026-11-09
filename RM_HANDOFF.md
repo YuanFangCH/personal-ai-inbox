@@ -10,12 +10,12 @@
 | 最后更新时间 | 2026-11-09 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.5.0+12` Android 手机预览版已发布，物理手机已从 Debug 签名包无损迁移到正式长期签名包；等待重新输入 API Key 和物理手机 AI 复验 |
+| 当前阶段 | `v1.5.1+13` Android 补丁版代码与定向验证完成：超长工具回合恢复已能推进模型和工具执行；待正式构建发布并在物理手机确认最终完成态 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.5.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
 
-2026-11-09 物理手机签名迁移完成：确认原安装包为 `1.4.0+11` Debug 签名（证书 `f026fcff...3b775aff`），与正式长期签名 `51b5e2f3...523f4816` 不兼容。已归档 179 个私有文件，构建同正式签名的可调试迁移包恢复数据，再覆盖安装公开 `v1.5.0+12`；最终设备 APK 哈希 `e4bd3d65...c578a71b` 与公开资产一致，非 Debuggable，首页和表数据保留。
+2026-11-09 物理手机复现“任务中断，等待核对”无法继续：确认原安装包为 `1.4.0+11` Debug 签名后，已迁移到正式签名并保留数据。随后从实体手机数据库定位到任务 `agent_1794204476923870_1` 的最新工具回合约 66 KB，工具参数和回执无法保持完整并压入 48,000 字符窗口；每次点击“已核对，继续”都会立即再次返回同一状态。修复为在完整工具回合无法裁剪时回退到安全摘要，保留用户目标、对象版本、操作回执和待核对冲突。
 
 当前手机发布结论见 `test-results/phone-release-v1.5.0/VALIDATION.md`，签名迁移见 `test-results/phone-signature-migration-20261109/VALIDATION.md`，完全体模式验收见 `test-results/full-agent-mode-20261109/VALIDATION.md` 与 `test-results/phone-50-longrun-20261109/VALIDATION.md`。公开下载：`https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.5.0`。
 ## 3. 当前目标与范围
@@ -69,6 +69,9 @@
 
 ## 6. 当前进度与验证
 
+- 2026-11-09 修复中断任务恢复死循环：物理手机任务 `agent_1794204476923870_1` 的 `tool_transcript_json` 约 66 KB，错误内容反复写回助手消息；根因是 `AgentContextManager` 只能裁剪工具结果，不能处理超大工具调用参数，随后又被额外 10% 缩小余量二次阻断。现新增安全摘要回退并标记 `latest_tool_round_compacted`，同时改为只要求最终请求低于模型窗口硬上限。`AgentContextManager` 3/3、`ChatService` 31/31、完整 Android 发布门禁 295/295、`flutter analyze --no-pub` 0 issue、formatter 271 文件 0 change。
+- 2026-11-09 物理手机 `1.5.1+13` 恢复复验：覆盖安装同正式证书的测试包后，原任务从 `needs_review` 转为 `running`；检查点请求数由 7 增至 12、工具调用由 28 增至 53，界面出现多张“已移动内容 / 已执行”卡片，发送按钮变为“停止生成”。无线 ADB 在继续等待最终完成后掉线，尚未取得最终完成态；需重连后确认任务结束和内容归属。
+- 2026-11-09 `v1.5.1+13` 正式签名 Release 本地构建通过：`versionName=1.5.1`、`versionCode=13`、非 Debuggable、v2 签名和长期证书 `51b5e2f3...523f4816` 均正确。本地 APK SHA-256 `e9067ecba38757fe40ec0af7ca23d0ea78e0268094060829c81e5af9bbc60783`；公开资产以 GitHub 流水线结果为准。
 - 2026-11-09 物理手机签名迁移完成：`HONOR REA-AN00` / Android 15 原安装 `1.4.0+11` Debug 包；设备安装证书 `f026fcff0c43fb75287ba91a64cea8cf0aaba071aa07f532a12dd26f3b775aff`，正式长期签名证书 `51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816`。完整快照含 179 个文件、SHA-256 `0bd72320ed10a686a7f4c14037b71c029f13bf03ae60980e8c1fbfcc2c43d2d8`；恢复时排除 3 个卸载后失效的 Keystore 凭据文件，最终 176 个文件恢复。正式覆盖安装成功，设备 APK 哈希 `e4bd3d65e3b02a05258670e9d8fc6e545dbc758456102f18d0030788c578a71b` 与公开 Release 完全一致，非 Debuggable，通知权限已恢复，首页无迁移门且原待办可见。详见 `test-results/phone-signature-migration-20261109/VALIDATION.md`。
 - 2026-11-09 Android 手机 v1.5.0 发布完成：Release `phone-v1.5.0`（pre-release）；main CI `42585275215` / job `129053480590` success，Android Release `42585293796` / job `129053543183` success。公开 APK `90,977,347` 字节，SHA-256 `e4bd3d65e3b02a05258670e9d8fc6e545dbc758456102f18d0030788c578a71b`，版本 `1.5.0+12`，API 24/36、必要权限、v2 签名和长期证书均复核通过。详见 `test-results/phone-release-v1.5.0/VALIDATION.md`。
 - 2026-11-09 `v1.5.0+12` Android 手机发布准备：版本升至 `1.5.0+12`；新增 `docs/releases/v1.5.0.md`；main CI 与 Android Release 定向门禁加入完全体模式设置、迁移、重试、恢复、附件、回收站和上下文测试。待推送、打 `phone-v1.5.0` 标签并核验公开资产。
@@ -226,11 +229,20 @@
 
 ### 下一步
 
-1. 在物理手机设置页重新输入 API Key 并保存，然后验证真实设备连接、普通回复、工具调用及超大工具结果压缩路径。
-2. 检查 46 条迁移内容和 4 张表在正式包中的新增、编辑、重启持久化。
-3. A01–A30、A34–A35、Windows 与平板验收、云盘同步和到点提醒继续单独处理。
+1. 构建并安装 `v1.5.1+13` 正式签名 APK，在物理手机点击原任务的“已核对，继续”，确认不再返回同一核对状态。
+2. 发布 `phone-v1.5.1` 补丁预览并核验公开 APK 哈希、版本和证书。
+3. 检查 46 条迁移内容和 4 张表在正式包中的新增、编辑、重启持久化；A01–A30、A34–A35、Windows 与平板验收、云盘同步和到点提醒继续单独处理。
 
 ## 8. 变更记录
+
+### 2026-11-09 / 修复中断任务反复卡在等待核对
+
+- 任务：修复物理手机 AI 页面的任务中断卡死，并避免通过删除软件和重导 10 月数据造成后续数据丢失。
+- 诊断：临时安装同签名可调试包并读取检查点及 SQLite。唯一任务 `agent_1794204476923870_1` 的 `needs_review` 恢复时，最新工具回合约 66 KB；`AgentContextManager` 无法压缩超大的工具调用参数，只能返回 `上下文无法安全压缩`，每次确认都会再次失败并写回同一错误。
+- 变更：新增完整工具回合无法压入窗口时的安全摘要回退；摘要保留用户目标、补充要求、对象 ID/版本、操作回执、待核对冲突，并标记 `latest_tool_round_compacted`。新增上下文管理器和 ChatService 回归。
+- 验证：新增回归先红后绿；`agent_context_manager_test.dart` 3/3、`chat_service_agent_test.dart` 31/31、完整 Android 发布门禁 295/295、`flutter analyze --no-pub` 0 issue、formatter 271 文件 0 change。物理手机安装 `1.5.1+13` 测试包后，原任务由 `needs_review` 转为 `running`，请求数和工具调用继续增长并出现多批移动回执。
+- 状态：代码修复和“恢复后不再卡死”验证完成；待发布正式 `1.5.1+13` 并在设备重连后确认最终完成态。提交元数据使用仓库既有 `Distant-scout` 身份。
+- 风险/下一步：安全摘要会丢弃无法保留的完整工具参数正文，但对象身份、版本、回执与冲突仍保留；完整原始 transcript 继续保存在本机。
 
 ### 2026-11-09 / 物理手机从 Debug 签名迁移到正式长期签名
 
