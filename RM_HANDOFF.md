@@ -10,17 +10,17 @@
 | 最后更新时间 | 2026-11-09 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.4.0+11` Android 手机预发布已发布：Flutter 原生无预算 Harness、完全权限全量表工具和真实模型验证已交付 |
+| 当前阶段 | `v1.4.0+11` Android 手机预发布已发布；AI 超大工具回合压缩修复已在源码与主机定向验证完成，待同签名新包真机覆盖 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.4.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
 
-2026-11-09 按用户要求发布 Android 手机 `v1.4.0+11` 新版本：Flutter 原生无预算 Harness、完全权限全量表工具、回收站/收纳目标、并行只读/写屏障和真实 DeepSeek AVD 验证已进入 GitHub pre-release `phone-v1.4.0`。发布提交 `630afaf`；main CI `42539611481` 与 Android Release `42539816724` 均 success。公开 APK SHA-256 `68b8656703019b2628857540bcc2dfd64b69c2c961f6760a74f956a4a2677255`，长期证书指纹 `51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816`，版本 `1.4.0+11`。平板、Windows 与 A01–A30/A34–A35 延期。
+2026-11-09 按用户要求发布 Android 手机 `v1.4.0+11` 新版本：Flutter 原生无预算 Harness、完全权限全量表工具、回收站/收纳目标、并行只读/写屏障和真实 DeepSeek AVD 验证已进入 GitHub pre-release `phone-v1.4.0`。同时已定位并修复发布包真机 AI 页面的超大工具回合压缩阻断：最新完整工具调用/结果对保留，超限工具正文按预算压缩，完整 transcript 留在本机。源码与主机定向验证完成；当前手机仍为旧 `1.4.0+11` 包，需同签名新包覆盖后复验旧任务恢复。发布提交 `630afaf`；main CI `42539611481` 与 Android Release `42539816724` 均 success。公开 APK SHA-256 `68b8656703019b2628857540bcc2dfd64b69c2c961f6760a74f956a4a2677255`，长期证书指纹 `51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816`，版本 `1.4.0+11`。平板、Windows 与 A01–A30/A34–A35 延期。
 
 最新手机发布结论见 `test-results/phone-release-v1.4.0/VALIDATION.md`，既有最终设备验证见 `test-results/secretary-agent-implementation/final-device-20261107/VALIDATION.md`。公开下载：`https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.4.0`。
 ## 3. 当前目标与范围
 
-- 当前任务：Flutter 原生单 Agent Harness 升级。取消所有模式的应用层累计请求/活动时长预算，完全权限覆盖全部表数据、回收站和收纳目标；A01–A30、A34–A35 与平板/Windows UI 验收继续按各自范围处理。
+- 当前任务：修复 `v1.4.0+11` 真机 AI 页面在最新工具回合超过 `48,000` 字符窗口时无法压缩、任务反复暂停的问题；源码与主机回归已完成，等待同签名新包真机覆盖。A01–A30、A34–A35 与平板/Windows UI 验收继续按各自范围处理。
 
 - Android 手机、Android 平板和 Windows 作为独立客户端运行。
 - 每个成果保存为一个 Markdown 文件；本地索引由 SQLite 管理。
@@ -68,6 +68,7 @@
 
 ## 6. 当前进度与验证
 
+- 2026-11-09 AI 页面超大工具回合压缩修复：真机 `HONOR REA-AN00` / Android 15 / `1.4.0+11` 确认设置连接成功且新短对话可返回 `OK`，旧会话失败原因是安全前缀摘要与完整工具回合共 `49,557` 字符超过 `48,000` 字符窗口。`AgentContextManager` 现保留最新工具调用/结果配对，并对超限工具正文按剩余预算压缩；状态、operation ID、对象 ID/revision、回执与 coverage 保留，完整 transcript 仍本地持久化。新增纯压缩回归与 ChatService 恢复工具回合集成回归，定向 29/29、目标 analyze 0 issue。详见 `test-results/ai-page-context-compaction-20261109/VALIDATION.md`。
 - 2026-11-09 Android 手机 v1.4.0 发布完成：Release `phone-v1.4.0`（pre-release）；main CI `42539611481` / job `128911389363` success，Android Release `42539816724` / job `128912007915` success。公开 APK 90,764,203 bytes，SHA-256 `68b8656703019b2628857540bcc2dfd64b69c2c961f6760a74f956a4a2677255`，版本 `1.4.0+11`，API 24/36、必要权限、v2 签名和长期证书均复核通过。详见 `test-results/phone-release-v1.4.0/VALIDATION.md`。
 - 2026-11-09 `v1.4.0+11` Android 手机发布准备：新增 `docs/releases/v1.4.0.md`；版本升至 `1.4.0+11`；main CI 与 Android Release 定向门禁加入 Harness 测试；Android Release 改为从 `pubspec.yaml` 动态读取 build 号。待推送、打 `phone-v1.4.0` 标签并核验公开资产。
 - 2026-11-09 GitHub main CI 通过：run `42499993545` 在提交 `21b3e11` 上完成 Dart 格式、`flutter analyze` 和迁移/秘书定向回归，全部 success。
@@ -175,6 +176,7 @@
 
 ### 风险与边界
 
+- 2026-11-09 当前手机安装的 `1.4.0+11` 不包含本轮压缩修复；本机没有该公开包使用的长期 release keystore，不能生成同签名覆盖包直接安装。未卸载应用或清除用户数据。需在可读取发布密钥的发布流程生成下一版同签名 APK 后，先覆盖安装再对旧“任务中断，等待核对”卡片执行继续任务，确认压缩后的工具回合完成并消失。
 - 2026-11-08 Harness 无累计任务预算不等于无限请求超时或无限上下文：单请求响应头/流空闲/总期限、网络重试、上下文压缩、CAS、幂等、写日志和 Android 生命周期限制继续有效。完全权限仍不包含 API Key、任意文件、SQL、Root/OS 权限或修改自身授权。
 - Windows 当前 TCP 排除范围包含 `6172–6271`，因此最终设备验收使用未排除的 `5620/5621` 与独立 ADB 5041，serial 为 `emulator-5620`。phone/tablet 最终矩阵、双端恢复场景和双端900秒长测均已通过；若系统排除范围或 Emulator 版本变化，先重跑端口/AVD预检再执行设备验收。
 - A26 `conversation_workspace.dart` 后续有源码变化，旧20项测试的源绑定过期。本轮重跑当前源码下 retry recovery 3/3、A32 文件后端恢复 1/1，并对 Workspace 及两份测试 analyze 无诊断；详情与当前 SHA 见 `test-results/secretary-agent-implementation/a26-pending-intent/VALIDATION.md` 和 `a32-file-backed-recovery/VALIDATION.md`。完整20项组合与设备进程终止仍未复验。
@@ -216,11 +218,20 @@
 
 ### 下一步
 
-1. 用户可在 Android 7.0 及以上备份现有数据后，从 `phone-v1.4.0` Release 安装或覆盖升级。
+1. 通过持有长期 release keystore 的发布流程构建下一版同签名 Android 包，覆盖安装到当前手机并验证旧失败任务可继续完成。
 2. A01–A30、A34–A35 的遗留主机组合以后续 Android 手机审计任务处理；本轮不扩大范围。
 3. Windows 与平板验收、云盘同步和到点提醒继续单独规划。
 
 ## 8. 变更记录
+
+### 2026-11-09 / 修复 AI 页面超大工具回合压缩阻断
+
+- 任务：修复真机 AI 页面旧会话反复显示“任务中断，等待核对”和错误任务卡的问题。
+- 诊断：设备已安装公开 `1.4.0+11`；模型连接返回 `connection-ok`，新无工具短对话返回 `OK`。失败消息明确为安全前缀摘要与完整当前工具回合 `49,557` 字符超过 `48,000` 字符窗口。
+- 变更：`AgentContextManager` 保留最新 assistant/tool 调用配对，对超预算工具结果按 JSON 可解析的有界回执压缩；保留 status、operation ID、对象 ID/revision、错误码、retryable、coverage 和分页读取提示；完整工具 transcript 继续由 ChatService 本地持久化。新增 `agent_context_manager_test.dart` 和 ChatService 恢复工具回合集成回归。
+- 验证：压缩回归修复前 exit 1，修复后 `agent_context_manager_test.dart` + `chat_service_agent_test.dart` 29/29；目标 `flutter analyze` 0 issue。详见 `test-results/ai-page-context-compaction-20261109/VALIDATION.md`。
+- 状态：源码与主机定向修复完成；未创建新 APK/Release。
+- 风险/下一步：本机无长期 release keystore，当前真机仍运行旧包且未清除用户数据；下一版同签名 APK 覆盖后需复验旧任务恢复。
 
 ### 2026-11-09 / 发布 Android 手机 v1.4.0 预发布
 

@@ -33,6 +33,8 @@ Android 手机 `v1.4.0` 预览版已发布，使用 `phone-v1.4.0` 标签，只�
 
 ## 当前进展
 
+2026-11-09 修复 AI 页面超大工具回合无法压缩的问题：最新完整工具调用/结果对会保留，但超出请求窗口的工具结果正文按剩余字符预算压缩，完整 transcript 仍保存在本机。真机确认原失败为 `49,557` 字符超过 `48,000` 字符窗口；主机定向回归 29/29 和静态检查通过。当前手机 `v1.4.0+11` 仍为旧包，需同签名新包覆盖后才能在真机恢复旧任务。详见 `test-results/ai-page-context-compaction-20261109/VALIDATION.md`。
+
 2026-11-09 `v1.4.0+11` Android 手机预览版已发布：纳入 Flutter 原生无预算 Harness、完全权限全量表工具、回收站/收纳目标能力、并行只读与写屏障，以及真实 DeepSeek Android AVD 验证。Android Release `42539816724` 与 main CI `42539611481` 均 success；公开 APK SHA-256 为 `68b8656703019b2628857540bcc2dfd64b69c2c961f6760a74f956a4a2677255`。详见[发行说明](docs/releases/v1.4.0.md)与[发布验证](test-results/phone-release-v1.4.0/VALIDATION.md)。
 
 2026-11-08 AI Harness 升级完成：取消累计 2 小时/240 次请求预算和追加额度，新增并行只读工具、写屏障、用量账本 v3、完全权限回收站/收纳目标工具及查重自动前进。主机定向测试、Android 手机 AVD 表 AI 场景通过；随后在 Android 15 手机 AVD 用真实 DeepSeek 完成连接、普通回复、`table_list` 和完全权限 `content_create` 写入/读回 1/1。详见 `test-results/harness-unbounded-full-access/VALIDATION.md`、`test-results/android-real-model-20261108/VALIDATION.md` 与 [ADR 0025](docs/adr/0025-unbounded-flutter-agent-harness.md)。

@@ -1297,6 +1297,99 @@ void main() {
     },
   );
 
+  test('oversized resumed tool output is bounded before the next model request', () async {
+    final fixture = await _AgentFixture.create();
+    final requests = <Map<String, dynamic>>[];
+    final persistedSnapshots = <List<Map<String, dynamic>>>[];
+    final oversizedResult = jsonEncode({
+      'status': 'success',
+      'message': 'content read completed',
+      'data': {
+        'entries': [
+          {'id': 'entry_resumed_large', 'revision': 9, 'body': '完整正文。' * 1200},
+        ],
+      },
+    });
+    final service = ChatService(
+      settings: FakeSettingsService(modelKey: 'test-key'),
+      repository: fixture.chats,
+      results: fixture.results,
+      tables: fixture.tables,
+      agentLoopPolicy: const ChatAgentLoopPolicy(maxRequestContextChars: 4000),
+      modelClient: ModelClient(
+        client: MockClient.streaming((request, body) async {
+          requests.add(
+            jsonDecode(await body.bytesToString()) as Map<String, dynamic>,
+          );
+          return _textResponse('压缩后的工具结果已继续处理。');
+        }),
+      ),
+    );
+
+    final deltas = await (await service.streamReply(
+      conversationId: fixture.conversationId,
+      resumeToolTranscript: [
+        {
+          'role': 'assistant',
+          'content': '',
+          'tool_calls': [
+            {
+              'id': 'call_resumed_large',
+              'type': 'function',
+              'function': {
+                'name': 'content_read',
+                'arguments':
+                    '{"entry_id":"entry_resumed_large","table_id":"${fixture.table.id}"}',
+              },
+            },
+          ],
+        },
+        {
+          'role': 'tool',
+          'tool_call_id': 'call_resumed_large',
+          'name': 'content_read',
+          'content': oversizedResult,
+        },
+      ],
+      persistToolTranscript: (snapshot) async {
+        persistedSnapshots.add(snapshot);
+      },
+    )).toList();
+
+    expect(requests, hasLength(1));
+    final requestMessages = (requests.single['messages'] as List).cast<Map>();
+    final compactedTool = requestMessages.singleWhere(
+      (message) =>
+          message['role'] == 'tool' &&
+          message['tool_call_id'] == 'call_resumed_large',
+    );
+    expect('${compactedTool['content']}', contains('_context_compacted'));
+    expect(
+      persistedSnapshots.any(
+        (snapshot) => snapshot.any(
+          (message) =>
+              message['role'] == 'system' &&
+              '${message['content']}'.contains('本地安全前缀摘要'),
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      persistedSnapshots.any(
+        (snapshot) => snapshot.any(
+          (message) =>
+              message['role'] == 'tool' &&
+              message['tool_call_id'] == 'call_resumed_large' &&
+              message['content'] == oversizedResult,
+        ),
+      ),
+      isTrue,
+    );
+    expect(deltas.map((delta) => delta.content).join(), '压缩后的工具结果已继续处理。');
+    expect(deltas.last.termination, ChatStreamTermination.completed);
+    await fixture.close(service);
+  });
+
   test('pauses without another model request when compacted context cannot persist', () async {
     final fixture = await _AgentFixture.create();
     await fixture.chats.saveMessage(

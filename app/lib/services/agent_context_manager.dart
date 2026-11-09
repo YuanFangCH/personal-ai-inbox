@@ -33,6 +33,8 @@ class AgentContextManager {
       return AgentContextCompaction(messages: history);
     }
 
+    final requiredReduction = (originalChars * 0.1).ceil().clamp(64, 4096);
+    final targetChars = maxChars - requiredReduction;
     final summary = ChatRequestMessage(
       role: 'system',
       text: _safePrefixSummary(units),
@@ -44,6 +46,20 @@ class AgentContextManager {
       compacted = [summary];
       compactedChars = _characterCount(compacted);
     }
+    // Preserve the latest call/receipt pair, but bound oversized tool bodies.
+    if (compactedChars > targetChars && !latest.isOnlyUserMessages) {
+      final availableForLatest = targetChars - _messageChars(summary);
+      if (availableForLatest > 0) {
+        final boundedLatest = _compactLatestToolUnit(
+          latest.messages,
+          availableChars: availableForLatest,
+        );
+        if (boundedLatest != null) {
+          compacted = [summary, ...boundedLatest];
+          compactedChars = _characterCount(compacted);
+        }
+      }
+    }
     if (compactedChars > maxChars) {
       return AgentContextCompaction(
         messages: const [],
@@ -52,7 +68,6 @@ class AgentContextManager {
             '超过 $maxChars 字符窗口。',
       );
     }
-    final requiredReduction = (originalChars * 0.1).ceil().clamp(64, 4096);
     if (originalChars - compactedChars < requiredReduction) {
       return AgentContextCompaction(
         messages: const [],
@@ -62,6 +77,128 @@ class AgentContextManager {
       );
     }
     return AgentContextCompaction(messages: List.unmodifiable(compacted));
+  }
+
+  List<ChatRequestMessage>? _compactLatestToolUnit(
+    List<ChatRequestMessage> messages, {
+    required int availableChars,
+  }) {
+    final toolIndexes = <int>[
+      for (var index = 0; index < messages.length; index++)
+        if (messages[index].role == 'tool') index,
+    ];
+    if (toolIndexes.isEmpty) return null;
+
+    final nonToolChars = messages.fold<int>(
+      0,
+      (total, message) =>
+          message.role == 'tool' ? total : total + _messageChars(message),
+    );
+    final toolOverhead = toolIndexes.fold<int>(
+      0,
+      (total, index) =>
+          total +
+          (_messageChars(messages[index]) - messages[index].text.runes.length),
+    );
+    final textBudget = availableChars - nonToolChars - toolOverhead;
+    final minimumTextChars = 64 * toolIndexes.length;
+    if (textBudget < minimumTextChars) return null;
+
+    final allocations = <int, int>{};
+    var remaining = textBudget;
+    var pending = List<int>.from(toolIndexes);
+    while (pending.isNotEmpty) {
+      final share = remaining ~/ pending.length;
+      if (share < 64) return null;
+      final stillPending = <int>[];
+      for (final index in pending) {
+        final originalLength = messages[index].text.runes.length;
+        if (originalLength <= share) {
+          allocations[index] = originalLength;
+          remaining -= originalLength;
+        } else {
+          stillPending.add(index);
+        }
+      }
+      if (stillPending.isEmpty) break;
+      if (stillPending.length == pending.length) {
+        for (final index in stillPending) {
+          allocations[index] = share;
+          remaining -= share;
+        }
+        break;
+      }
+      pending = stillPending;
+    }
+
+    final compacted = <ChatRequestMessage>[];
+    for (var index = 0; index < messages.length; index++) {
+      final message = messages[index];
+      final allocation = allocations[index];
+      if (allocation == null || message.text.runes.length <= allocation) {
+        compacted.add(message);
+        continue;
+      }
+      compacted.add(
+        ChatRequestMessage(
+          role: message.role,
+          text: _compactToolText(message.text, allocation),
+          images: message.images,
+          toolCalls: message.toolCalls,
+          toolCallId: message.toolCallId,
+          name: message.name,
+          reasoningContent: message.reasoningContent,
+        ),
+      );
+    }
+    return _characterCount(compacted) <= availableChars ? compacted : null;
+  }
+
+  String _compactToolText(String text, int maxChars) {
+    final originalChars = text.runes.length;
+    Map<String, Object?>? decoded;
+    try {
+      final value = jsonDecode(text);
+      if (value is Map) decoded = Map<String, Object?>.from(value);
+    } on FormatException {
+      decoded = null;
+    }
+
+    final metadata = <String, Object?>{
+      '_context_compacted': true,
+      '_original_chars': originalChars,
+      if (decoded != null)
+        'status': _clip('${decoded['status'] ?? 'unknown'}', 80),
+      if (decoded != null && decoded['operation_id'] != null)
+        'operation_id': _clip('${decoded['operation_id']}', 240),
+      if (decoded != null && decoded['code'] != null)
+        'code': _clip('${decoded['code']}', 120),
+      if (decoded != null)
+        'message': _clip(
+          '${decoded['message'] ?? decoded['error'] ?? ''}',
+          400,
+        ),
+      if (decoded != null) 'retryable': decoded['retryable'] == true,
+      if (decoded != null && decoded['coverage'] != null)
+        'coverage': _boundedCoverage(decoded['coverage']),
+      'guidance': '完整工具结果保存在本机；需要更多内容时请缩小范围或分页重新读取。',
+    };
+    final rawPreview = decoded == null
+        ? text
+        : jsonEncode(decoded['data'] ?? decoded);
+    var previewLimit = (maxChars - jsonEncode(metadata).runes.length - 32)
+        .clamp(0, rawPreview.runes.length);
+    String build(String preview) =>
+        jsonEncode({...metadata, if (preview.isNotEmpty) 'preview': preview});
+    var preview = _clip(rawPreview, previewLimit);
+    var encoded = build(preview);
+    while (encoded.runes.length > maxChars && previewLimit > 0) {
+      final overflow = encoded.runes.length - maxChars;
+      previewLimit = (previewLimit - overflow - 8).clamp(0, previewLimit - 1);
+      preview = _clip(rawPreview, previewLimit);
+      encoded = build(preview);
+    }
+    return encoded;
   }
 
   String _safePrefixSummary(List<_RequestHistoryUnit> units) {
