@@ -10,17 +10,17 @@
 | 最后更新时间 | 2026-11-09 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | 完全体模式已完成手机验收：真实 DeepSeek 工具往返 1/1、手机矩阵 50/50、900 秒长测 907 秒/37 条/154 次请求通过；等待测试断言修复提交 |
-| 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.4.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
+| 当前阶段 | `v1.5.0+12` Android 手机预览版发布准备完成：格式、静态分析、292 项定向门禁、真实 DeepSeek 工具往返 1/1、手机矩阵 50/50 和 900 秒长测均通过；待推送和创建 Release |
+| 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.5.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
 
-2026-11-09 完全体模式已完成 Android AVD 验收：从上一轮本机会话读取测试 Key，真实 DeepSeek `table_list` 工具往返 1/1；手机矩阵 50/50；900 秒长测完成 907 秒、37 条写入/读回和 154 次请求，并覆盖切后台、锁屏 12 秒、唤醒恢复及最终流式答复。测试 Key 未写入仓库或日志。长测检查点用量断言已允许一拍滞后，修正后完整通过。
+2026-11-09 按用户要求发布 Android 手机 `v1.5.0+12` 新预览版：设置页新增默认关闭的完全体模式，并对全部现有和新会话提供可逆的应用内完全权限覆盖；取消应用层累计上下文、检索、附件和瞬时故障重试上限，补齐输出续写、安全恢复、会话/附件回收站与普通设置工具。验收包含真实 DeepSeek `table_list` 工具往返 1/1、手机矩阵 50/50 和 900 秒长测 907 秒/37 条/154 次请求。
 
-最新手机发布结论见 `test-results/phone-release-v1.4.0/VALIDATION.md`，既有最终设备验证见 `test-results/secretary-agent-implementation/final-device-20261107/VALIDATION.md`。公开下载：`https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.4.0`。
+上一条手机发布结论见 `test-results/phone-release-v1.4.0/VALIDATION.md`，完全体模式验收见 `test-results/full-agent-mode-20261109/VALIDATION.md` 与 `test-results/phone-50-longrun-20261109/VALIDATION.md`。目标公开下载：`https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.5.0`。
 ## 3. 当前目标与范围
 
-- 当前任务：提交本轮长测断言稳定性修复和验证记录。手机 API Key 重配及迁移后 46 条内容持久化复验继续保留。
+- 当前任务：提交并推送 `v1.5.0+12` 发布准备，创建 `phone-v1.5.0` pre-release，核验 APK、签名、权限、哈希和公开下载。手机 API Key 重配及迁移后 46 条内容持久化复验继续保留。
 
 - Android 手机、Android 平板和 Windows 作为独立客户端运行。
 - 每个成果保存为一个 Markdown 文件；本地索引由 SQLite 管理。
@@ -69,6 +69,7 @@
 
 ## 6. 当前进度与验证
 
+- 2026-11-09 `v1.5.0+12` Android 手机发布准备：版本升至 `1.5.0+12`；新增 `docs/releases/v1.5.0.md`；main CI 与 Android Release 定向门禁加入完全体模式设置、迁移、重试、恢复、附件、回收站和上下文测试。待推送、打 `phone-v1.5.0` 标签并核验公开资产。
 - 2026-11-09 手机 50 例、真实模型与 900 秒长测通过：`SEC-001`–`SEC-100` 中手机适用 50/50，4 分 08 秒；标准 `integration_test` 路径真实 DeepSeek 完全体模式 `table_list` 工具往返 1/1；900 秒业务实际 907 秒，完成 37 条写入与读回、154 次模型请求，后台任务在切后台、锁屏 12 秒、唤醒重开应用后继续并完成最终答复。首次长测暴露检查点用量断言不允许 fixture 请求数领先一拍，已修正为容许 `requestCount ± 1`。未执行全量测试、平板、Windows 或物理手机。详见 `test-results/phone-50-longrun-20261109/VALIDATION.md`。
 - 2026-11-09 完全体模式实现：设置快照升级到 v6、可移植设置 v2、会话库 v7；新增全局策略覆盖、启动安全检查点续跑、`finish_reason=length` 自动续写、瞬时故障无限退避重试、无累计本地检索、完整文件/压缩包输入、批量图片输入、会话/附件 30 天回收站、整段会话与普通设置工具。受保护控制面继续拒绝 API Key、模型端点/名称、图片出网、权限策略和完全体开关。`flutter analyze --no-pub` 0 issue，主机定向 179/179，Android AVD `full_agent_android_test.dart` 1/1；详见 `test-results/full-agent-mode-20261109/VALIDATION.md` 与 [ADR 0026](docs/adr/0026-device-full-agent-mode.md)。
 - 2026-11-09 AI 页面超大工具回合压缩修复：真机 `HONOR REA-AN00` / Android 15 / `1.4.0+11` 确认设置连接成功且新短对话可返回 `OK`，旧会话失败原因是安全前缀摘要与完整工具回合共 `49,557` 字符超过 `48,000` 字符窗口。`AgentContextManager` 现保留最新工具调用/结果配对，并对超限工具正文按剩余预算压缩；状态、operation ID、对象 ID/revision、回执与 coverage 保留，完整 transcript 仍本地持久化。新增纯压缩回归与 ChatService 恢复工具回合集成回归，定向 29/29、目标 analyze 0 issue。详见 `test-results/ai-page-context-compaction-20261109/VALIDATION.md`。
@@ -223,11 +224,19 @@
 
 ### 下一步
 
-1. 提交本轮长测断言稳定性修复与测试记录，随后确认工作区干净。
-2. 在物理手机设置页重新输入 API Key 并保存，然后验证真实设备连接、普通回复、工具调用及超大工具结果压缩路径；验证后再决定正式包签名迁移方案。
-3. A01–A30、A34–A35、Windows 与平板验收、云盘同步和到点提醒继续单独处理。
+1. 推送 `v1.5.0+12` 发布提交与 `phone-v1.5.0` 标签，等待 main CI 和 Android Release 成功，核验公开 APK 哈希、版本、API、权限、v2 签名和长期证书。
+2. 将发布运行号、APK 大小和 SHA-256 回写到 README、本交接及 `test-results/phone-release-v1.5.0/VALIDATION.md`。
+3. 在物理手机设置页重新输入 API Key 并保存，然后验证真实设备连接、普通回复、工具调用及超大工具结果压缩路径；A01–A30、A34–A35、Windows 与平板验收、云盘同步和到点提醒继续单独处理。
 
 ## 8. 变更记录
+
+### 2026-11-09 / 准备 Android 手机 v1.5.0 预发布
+
+- 任务：将完全体模式作为新的 Android 手机预览版更新到 GitHub 并建立可下载 pre-release。
+- 变更：版本升至 `1.5.0+12`；新增 `docs/releases/v1.5.0.md`；main CI 与 Android Release 门禁加入完全体模式设置、迁移、策略、附件、回收站、输出续写、无限重试、上下文和启动恢复定向测试；更新 README 与交接入口。
+- 验证：`flutter analyze --no-pub` 0 issue；Dart formatter 271 文件 0 change；扩展发布门禁 292/292；完全体主机定向 179/179；Android AVD 开关 1/1；真实 DeepSeek `table_list` 1/1；手机矩阵 50/50；900 秒长测 907 秒/37 条/154 次请求；版本、标签、发行说明一致性和公开秘密扫描通过。证据说明和失败/最终日志在 `test-results/phone-release-v1.5.0/`。
+- 状态：发布准备完成；尚未推送、打标签或创建 GitHub Release。
+- 风险/下一步：标签流水线仍需验证格式、Analyze、扩展后的定向门禁、签名密钥、APK 版本/API/权限、v2 签名和长期证书；完全体模式不绕过模型硬限额、网络、磁盘或系统生命周期。
 
 ### 2026-11-09 / 完成手机 50 例、真实模型和 900 秒长测
 

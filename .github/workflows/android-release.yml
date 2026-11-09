@@ -91,6 +91,21 @@ jobs:
           test/conversation_large_history_ui_test.dart
           test/secretary_conversation_ui_test.dart
           test/app_background_lifecycle_test.dart
+          test/settings_service_test.dart
+          test/settings_page_test.dart
+          test/device_preferences_test.dart
+          test/ai_policy_test.dart
+          test/conversation_store_test.dart
+          test/conversation_permission_sheet_test.dart
+          test/full_agent_recovery_test.dart
+          test/full_agent_retry_test.dart
+          test/file_input_service_test.dart
+          test/chat_repository_trash_test.dart
+          test/model_client_stream_test.dart
+          test/local_retrieval_test.dart
+          test/retrieval_pagination_test.dart
+          test/sqlite_migration_coordinator_test.dart
+          test/agent_context_manager_test.dart
           test/chat_service_tools_test.dart
           test/table_ai_runtime_test.dart
           test/table_action_processor_test.dart

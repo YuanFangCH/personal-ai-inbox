@@ -186,7 +186,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       tester
-          .widget<ChoiceChip>(find.byKey(const Key('permission_preset_custom')))
+          .widget<ChoiceChip>(
+            find.byKey(const Key('permission_preset_standard')),
+          )
           .selected,
       isTrue,
       reason: 'a blank new conversation starts from global defaults',

@@ -37,7 +37,9 @@ void main() {
     expect(runtime.preferences.settings.fullAgentMode, isTrue);
     expect(
       runtime.conversations
-          .effectivePolicyFor(runtime.conversations.findConversation(conversation.id))
+          .effectivePolicyFor(
+            runtime.conversations.findConversation(conversation.id),
+          )
           .preset,
       AiPolicyPreset.fullAccess,
     );
@@ -47,7 +49,9 @@ void main() {
     expect(runtime.preferences.settings.fullAgentMode, isFalse);
     expect(
       runtime.conversations
-          .effectivePolicyFor(runtime.conversations.findConversation(conversation.id))
+          .effectivePolicyFor(
+            runtime.conversations.findConversation(conversation.id),
+          )
           .preset,
       AiPolicyPreset.standard,
     );

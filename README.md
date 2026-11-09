@@ -8,11 +8,11 @@
 
 首个预发布版本从 [GitHub Releases](https://github.com/YuanFangCH/personal-ai-inbox/releases) 下载：
 
-- 本次 `v1.4.0`：Android 7.0 及以上安装通用 APK，不提供新的 Windows 资产。
+- 本次 `v1.5.0`：Android 7.0 及以上安装通用 APK，不提供新的 Windows 资产。
 - Windows 11 x64 继续使用上一版全平台预发布中的安装包或便携 ZIP。
 - 发布页同时提供 `SHA256SUMS.txt`，下载后应校验文件哈希。
 
-Android 手机 `v1.4.0` 预览版已发布，使用 `phone-v1.4.0` 标签，只提供通用 APK 与 `SHA256SUMS.txt`：[GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.4.0)。APK SHA-256 为 `68b8656703019b2628857540bcc2dfd64b69c2c961f6760a74f956a4a2677255`。`v1.3.0` 继续作为上一版 Android 手机预发布保留，`v1.2.1` 是上一版全平台预发布。升级前请完整备份应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.4.0.md)；真实资料迁移需要在应用内确认。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
+Android 手机 `v1.5.0` 预览版使用 `phone-v1.5.0` 标签，只提供通用 APK 与 `SHA256SUMS.txt`：[GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.5.0)。APK SHA-256 以 Release 页与 `SHA256SUMS.txt` 为准。`v1.4.0` 继续作为上一版 Android 手机预发布保留，`v1.2.1` 是上一版全平台预发布。升级前请完整备份应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.5.0.md)；真实资料迁移需要在应用内确认。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
 
 ## 核心能力
 
@@ -33,6 +33,8 @@ Android 手机 `v1.4.0` 预览版已发布，使用 `phone-v1.4.0` 标签，只�
 每次在本项目开启新对话，先读本 README，再读 [RM_HANDOFF.md](RM_HANDOFF.md) 获取最新交接状态，并遵守 [AGENTS.md](AGENTS.md)。项目内正式修改同步更新 RM_HANDOFF。
 
 ## 当前进展
+
+2026-11-09 `v1.5.0+12` Android 手机预览版发布准备：新增设置页完全体模式、全局现有/新会话覆盖、无应用层累计上下文/检索/附件预算、输出续写、瞬时故障无限退避重试、安全启动续跑、会话与附件 30 天回收站，以及整段会话/附件/普通界面设置工具。完全体模式按本地 Android AVD 真实 DeepSeek 工具往返 1/1、手机矩阵 50/50、900 秒长测 907 秒通过；发行说明见 [v1.5.0](docs/releases/v1.5.0.md)。
 
 2026-11-09 手机端完全体模式验收通过：使用上一轮本机测试 Key 在 Android AVD 完成真实 DeepSeek `table_list` 工具往返 1/1；手机适用秘书矩阵 50/50，用时 4 分 08 秒；900 秒长测完成 907 秒、37 条写入与读回、154 次请求，并覆盖切后台、锁屏 12 秒、唤醒恢复和最终流式答复。测试 Key 未写入仓库或日志。详见 `test-results/phone-50-longrun-20261109/VALIDATION.md`。
 
