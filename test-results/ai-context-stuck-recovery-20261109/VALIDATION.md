@@ -53,3 +53,12 @@
 - 尚未观察到最终任务完成卡或停止生成自动结束。
 - 尚未逐条核对所有目标表和内容归属。
 - 未执行全量 Flutter 测试、平板、Windows 或云同步测试。
+
+## 发布结果
+
+- main Flutter CI `42600289991` / job `129102767208`：success。
+- Android Release `42600311129` / job `129102839728`：success，耗时 14 分 22 秒。
+- 公开 APK：`90,977,347` 字节，SHA-256 `3e084f2ae788acf7f7a34b550abd62ec1aa4ed26d9bb808be2440c12dac44c7e`，与 `SHA256SUMS.txt` 一致。
+- APK 元数据：`versionName=1.5.1`、`versionCode=13`、minSdk 24、targetSdk 36；非 Debuggable，v2 签名，长期证书 `51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816`。
+- 原始输出见 `public-assets.log`。
+- 手机无线 ADB 发布后仍 offline；公开 APK 覆盖安装和最终完成态核验待设备重连。

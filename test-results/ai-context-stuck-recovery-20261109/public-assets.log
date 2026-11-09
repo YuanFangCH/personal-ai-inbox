@@ -1,0 +1,9 @@
+# Public asset verification
+
+APK=D:\Dsk\aitext-backups\phone-ai-stuck-20261109\public-v1.5.1\personal-ai-inbox-v1.5.1-android.apk
+BYTES=90977347
+SHA256=3e084f2ae788acf7f7a34b550abd62ec1aa4ed26d9bb808be2440c12dac44c7e
+STATUS=matched
+VERSION=1.5.1+13
+CERT=51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816
+V2=true

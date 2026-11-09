@@ -10,7 +10,7 @@
 | 最后更新时间 | 2026-11-09 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.5.1+13` Android 补丁版代码与定向验证完成：超长工具回合恢复已能推进模型和工具执行；待正式构建发布并在物理手机确认最终完成态 |
+| 当前阶段 | `v1.5.1+13` Android 补丁预览版已发布：超长工具回合恢复已修复并在物理手机确认脱离核对态；待设备重连后用公开 APK 覆盖测试包并确认最终完成态 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.5.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
@@ -72,6 +72,7 @@
 - 2026-11-09 修复中断任务恢复死循环：物理手机任务 `agent_1794204476923870_1` 的 `tool_transcript_json` 约 66 KB，错误内容反复写回助手消息；根因是 `AgentContextManager` 只能裁剪工具结果，不能处理超大工具调用参数，随后又被额外 10% 缩小余量二次阻断。现新增安全摘要回退并标记 `latest_tool_round_compacted`，同时改为只要求最终请求低于模型窗口硬上限。`AgentContextManager` 3/3、`ChatService` 31/31、完整 Android 发布门禁 295/295、`flutter analyze --no-pub` 0 issue、formatter 271 文件 0 change。
 - 2026-11-09 物理手机 `1.5.1+13` 恢复复验：覆盖安装同正式证书的测试包后，原任务从 `needs_review` 转为 `running`；检查点请求数由 7 增至 12、工具调用由 28 增至 53，界面出现多张“已移动内容 / 已执行”卡片，发送按钮变为“停止生成”。无线 ADB 在继续等待最终完成后掉线，尚未取得最终完成态；需重连后确认任务结束和内容归属。
 - 2026-11-09 `v1.5.1+13` 正式签名 Release 本地构建通过：`versionName=1.5.1`、`versionCode=13`、非 Debuggable、v2 签名和长期证书 `51b5e2f3...523f4816` 均正确。本地 APK SHA-256 `e9067ecba38757fe40ec0af7ca23d0ea78e0268094060829c81e5af9bbc60783`；公开资产以 GitHub 流水线结果为准。
+- 2026-11-09 Android 手机 v1.5.1 发布完成：Release `phone-v1.5.1`（pre-release）；main CI `42600289991` / job `129102767208` success，Android Release `42600311129` / job `129102839728` success。公开 APK `90,977,347` 字节，SHA-256 `3e084f2ae788acf7f7a34b550abd62ec1aa4ed26d9bb808be2440c12dac44c7e`，版本 `1.5.1+13`、非 Debuggable、v2 签名和长期证书均复核通过。详见 `test-results/ai-context-stuck-recovery-20261109/VALIDATION.md`。
 - 2026-11-09 物理手机签名迁移完成：`HONOR REA-AN00` / Android 15 原安装 `1.4.0+11` Debug 包；设备安装证书 `f026fcff0c43fb75287ba91a64cea8cf0aaba071aa07f532a12dd26f3b775aff`，正式长期签名证书 `51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816`。完整快照含 179 个文件、SHA-256 `0bd72320ed10a686a7f4c14037b71c029f13bf03ae60980e8c1fbfcc2c43d2d8`；恢复时排除 3 个卸载后失效的 Keystore 凭据文件，最终 176 个文件恢复。正式覆盖安装成功，设备 APK 哈希 `e4bd3d65e3b02a05258670e9d8fc6e545dbc758456102f18d0030788c578a71b` 与公开 Release 完全一致，非 Debuggable，通知权限已恢复，首页无迁移门且原待办可见。详见 `test-results/phone-signature-migration-20261109/VALIDATION.md`。
 - 2026-11-09 Android 手机 v1.5.0 发布完成：Release `phone-v1.5.0`（pre-release）；main CI `42585275215` / job `129053480590` success，Android Release `42585293796` / job `129053543183` success。公开 APK `90,977,347` 字节，SHA-256 `e4bd3d65e3b02a05258670e9d8fc6e545dbc758456102f18d0030788c578a71b`，版本 `1.5.0+12`，API 24/36、必要权限、v2 签名和长期证书均复核通过。详见 `test-results/phone-release-v1.5.0/VALIDATION.md`。
 - 2026-11-09 `v1.5.0+12` Android 手机发布准备：版本升至 `1.5.0+12`；新增 `docs/releases/v1.5.0.md`；main CI 与 Android Release 定向门禁加入完全体模式设置、迁移、重试、恢复、附件、回收站和上下文测试。待推送、打 `phone-v1.5.0` 标签并核验公开资产。
@@ -229,11 +230,19 @@
 
 ### 下一步
 
-1. 构建并安装 `v1.5.1+13` 正式签名 APK，在物理手机点击原任务的“已核对，继续”，确认不再返回同一核对状态。
-2. 发布 `phone-v1.5.1` 补丁预览并核验公开 APK 哈希、版本和证书。
+1. 手机无线 ADB 重新上线后，安装公开 `v1.5.1+13` 正式 APK 覆盖当前同签名测试包，确认设备 APK 哈希为 `3e084f2a...44c7e`。
+2. 核对原任务最终完成态、已移动内容数量和表内归属。
 3. 检查 46 条迁移内容和 4 张表在正式包中的新增、编辑、重启持久化；A01–A30、A34–A35、Windows 与平板验收、云盘同步和到点提醒继续单独处理。
 
 ## 8. 变更记录
+
+### 2026-11-09 / 发布 Android 手机 v1.5.1 补丁预览
+
+- 任务：发布超长工具回合恢复死循环修复，并验证 APK、签名和公开资产。
+- 变更：版本升至 `1.5.1+13`；新增 `docs/releases/v1.5.1.md`；安全摘要回退低于模型硬上限时允许继续；补充完整发布门禁和物理手机恢复验证记录。
+- 验证：main CI `42600289991` success；Android Release `42600311129` success，耗时 14 分 22 秒；完整 Android 发布门禁 295/295、Analyze 0 issue、公开 APK 哈希/版本/v2 签名/长期证书核验通过。
+- 状态：GitHub Release `phone-v1.5.1` pre-release 已发布；物理手机当前运行同签名测试包并已证明任务恢复运行。
+- 风险/下一步：无线 ADB 掉线，尚未用公开 APK 覆盖测试包和确认原任务最终完成态；设备重连后继续。
 
 ### 2026-11-09 / 修复中断任务反复卡在等待核对
 
