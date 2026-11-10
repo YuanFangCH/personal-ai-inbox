@@ -1,0 +1,3 @@
+tag=phone-v1.6.0
+tag_object=38059f5a07083b1ce1ab080791e1e8471c190ab8
+tag_commit=c990bee764b98c84b68cdddfcc5c99f7738548fc

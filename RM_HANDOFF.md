@@ -10,17 +10,17 @@
 | 最后更新时间 | 2026-11-10 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.6.0+14` Android 手机预览版发布流程中：本地门禁已通过；main CI 首轮暴露测试读回竞态，修复后待复验；荣耀 90 真机延期 |
+| 当前阶段 | `v1.6.0+14` Android 手机预览版已发布：API 35 模拟器门禁、main CI、Android Release 与公开资产复核通过；荣耀 90 真机延期 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.6.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
 
-2026-11-10 `v1.6.0+14` Android 手机预览版进入发布流程：API 35 模拟器完成手机适用秘书矩阵 50/50、921 秒长测与 47 条写入/读回，并完成多表桌面小组件的尺寸、滚动、深色、多实例、独立绑定、归档恢复、冷进程点击和 `v1.5.1+13` 同签名覆盖升级。荣耀 90 真机与 API 24–30 固定行仍明确未覆盖。
+2026-11-10 `v1.6.0+14` Android 手机预览版已发布到 GitHub：API 35 模拟器完成手机适用秘书矩阵 50/50、921 秒长测与 47 条写入/读回，并完成多表桌面小组件的尺寸、滚动、深色、多实例、独立绑定、归档恢复、冷进程点击和 `v1.5.1+13` 同签名覆盖升级。荣耀 90 真机与 API 24–30 固定行仍明确未覆盖。
 
-当前验证入口为 `test-results/phone-release-v1.6.0/VALIDATION.md`，小组件合同见 `docs/home-widget-contract.md`，发行说明见 `docs/releases/v1.6.0.md`。
+当前公开下载为 `https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.0`，验证入口为 `test-results/phone-release-v1.6.0/VALIDATION.md`，小组件合同见 `docs/home-widget-contract.md`，发行说明见 `docs/releases/v1.6.0.md`。
 ## 3. 当前目标与范围
 
-- 当前任务：完成 `v1.6.0+14` Android 手机预览版 GitHub 更新、发布和公开资产复核；荣耀 90 真机、API 24–30 和平板/Windows 专项继续单独处理。
+- 当前任务：`v1.6.0+14` Android 手机预览版的 GitHub 更新、发布和公开资产复核已完成；荣耀 90 真机、API 24–30 和平板/Windows 专项继续单独处理。
 
 - Android 手机、Android 平板和 Windows 作为独立客户端运行。
 - 每个成果保存为一个 Markdown 文件；本地索引由 SQLite 管理。
@@ -75,6 +75,7 @@
 - 2026-11-10 Android 手机发布门禁重跑：50/50 个唯一秘书用例通过，用时约 4 分 06 秒；900 秒长测实际 921 秒，47 条写入/读回、219 次请求，切后台、锁屏 12 秒、唤醒、重开和最终流式答复通过。长测 runner 修正成功 `.bat` 进程空退出码与正常 stderr 的 Windows PowerShell 兼容问题。
 - 2026-11-10 最终 Debug 候选构建通过：`1.6.0+14`、minSdk 24、targetSdk 36，APK 241,453,479 字节，SHA-256 `5fc70664d8c03fdf416a3239f880a8fcfacb88b0a13ac80cd515e55a05f00ab7`；`flutter analyze --no-pub` 0 issue，格式 289 文件 0 change。PDF 依赖升级到 `pdfrx 2.12.0` 并保留 `pdfium_dart 0.4.1` 本地许可副本修复上游下载路径，文件输入测试 9/9。
 - 2026-11-10 发布准备提交 `6a8c088` 已推送 `main`；Flutter CI `42784532576` 在定向测试阶段发现 `agent_budget_file_recovery_test.dart` 绕过 vault 写锁直接读取检查点，Linux 上命中旧文件删除与临时文件重命名之间的窗口。测试已改为通过同一写锁读取并等待最终 usage 落盘后再断言，生产写路径未改。
+- 2026-11-10 Android 手机 v1.6.0 发布完成：修复提交 `c990bee` 的 main CI `42785276198` success；Android Release `42785654908` success，耗时 16 分 14 秒。`phone-v1.6.0` 为非草稿 pre-release，标签公开端解析到 `c990bee`；公开 APK 92,327,311 字节，SHA-256 `dab7263bf4b7280633cf28a848ed960c0d3761ed36204c58c11779de5b652611`，与 `SHA256SUMS.txt` 及 Release API 摘要一致，版本 `1.6.0+14`、API 24/36、非 Debuggable、v2 签名和长期证书均复核通过。
 
 - 2026-11-09 修复中断任务恢复死循环：物理手机任务 `agent_1794204476923870_1` 的 `tool_transcript_json` 约 66 KB，错误内容反复写回助手消息；根因是 `AgentContextManager` 只能裁剪工具结果，不能处理超大工具调用参数，随后又被额外 10% 缩小余量二次阻断。现新增安全摘要回退并标记 `latest_tool_round_compacted`，同时改为只要求最终请求低于模型窗口硬上限。`AgentContextManager` 3/3、`ChatService` 31/31、完整 Android 发布门禁 295/295、`flutter analyze --no-pub` 0 issue、formatter 271 文件 0 change。
 - 2026-11-09 物理手机 `1.5.1+13` 恢复复验：覆盖安装同正式证书的测试包后，原任务从 `needs_review` 转为 `running`；检查点请求数由 7 增至 12、工具调用由 28 增至 53，界面出现多张“已移动内容 / 已执行”卡片，发送按钮变为“停止生成”。无线 ADB 在继续等待最终完成后掉线，尚未取得最终完成态；需重连后确认任务结束和内容归属。
@@ -240,11 +241,17 @@
 
 ### 下一步
 
-1. 将 `v1.6.0+14` 发布准备提交推送至 `main`，等待该提交 main CI 成功。
-2. 推送 `phone-v1.6.0` 标签，等待 Android Release 成功并从公开 Release 复核 APK、SHA-256、版本、API 与长期证书。
-3. 荣耀 90、API 24–30、平板/Windows、云盘同步和到点提醒继续单独验收。
+1. 荣耀 90、API 24–30、平板/Windows、云盘同步和到点提醒继续单独验收。
+2. 后续 Android 发布继续复核 `phone-v1.6.0` 作为上一版同签名覆盖安装来源。
 
 ## 8. 变更记录
+
+### 2026-11-10 / 发布 Android 手机 v1.6.0 多表小组件预览版
+
+- 交付：`v1.6.0+14` 通用 APK 与 `SHA256SUMS.txt` 已发布为 GitHub pre-release `phone-v1.6.0`；修复 main CI 暴露的检查点测试读回竞态后，最终标签指向验收提交 `c990bee`。
+- 验证：main CI `42785276198` success；Android Release `42785654908` success。从公开 Release 重新下载资产后核验 SHA-256 `dab7263bf4b7280633cf28a848ed960c0d3761ed36204c58c11779de5b652611`、版本 `1.6.0+14`、API 24/36、非 Debuggable、v2 签名和长期证书 `51B5E2F3F44CE9374CB680A0173C6498A4E13C718C602A355A8B6A50523F4816`。详见 `test-results/phone-release-v1.6.0/VALIDATION.md`。
+- 状态：Android 手机预览版发布完成；Release 位于 `https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.0`。
+- 风险/下一步：荣耀 90、API 24–30、平板/Windows 专项和未列明的后台小组件能力不在本轮门禁；未执行全量 Flutter 测试，所有设备数据均为合成资料。
 
 ### 2026-11-10 / 准备 Android 手机 v1.6.0 多表小组件预览版
 

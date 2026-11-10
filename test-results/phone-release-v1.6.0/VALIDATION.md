@@ -3,7 +3,7 @@
 日期：2026-11-10  
 设备：`aitext_agent_c_phone` / Android 15 / API 35 / `emulator-5620`  
 隔离 ADB：`127.0.0.1:5041`  
-结论：本地发布门禁通过；荣耀 90 真机与 API 24–30 按计划未执行。
+结论：本地门禁、main CI、Android Release 与公开资产复核通过；荣耀 90 真机与 API 24–30 按计划未执行。
 
 ## 版本与构建
 
@@ -87,6 +87,14 @@ flutter test --no-pub --reporter expanded `
 2. 同签名覆盖安装后，合成数据保持 5 张表、17 条条目、1 个会话和 2 条消息。
 3. 覆盖安装 `1.6.0+14` 后再次核对，仍为 5 张表、17 条条目、1 个会话和 2 条消息；界面显示“5 张表 · 17 条内容”，秘书历史仍含“请保留这条合成验收会话。”与“合成升级会话已保留。”。
 4. 证据：[upgrade-old-home.png](evidence/upgrade-old-home.png)、[upgrade-old-history.png](evidence/upgrade-old-history.png)、[upgrade-new-history.png](evidence/upgrade-new-history.png)、[upgrade-new-tables3.png](evidence/upgrade-new-tables3.png)。
+
+## GitHub 发布
+
+- main CI `42785276198` 在提交 `c990bee` 上 success，job `129724814085` 用时 2 分 23 秒。首轮 `42784532576` 暴露的检查点读回竞态已修复，Windows 目标测试连续 5/5 次通过，修复证据见 [ci-race-targeted-windows.log](evidence/ci-race-targeted-windows.log)。
+- Android Release `42785654908` success，job `129726078610` 用时 16 分 14 秒；标签 `phone-v1.6.0` 的公开 tag object 指向验收提交 `c990bee`。
+- GitHub Release `phone-v1.6.0` 为非草稿 pre-release，仅包含 `personal-ai-inbox-v1.6.0-android.apk` 与 `SHA256SUMS.txt`：[公开 Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.0)。
+- 从公开 Release 重新下载并独立核验：APK 92,327,311 字节，SHA-256 `dab7263bf4b7280633cf28a848ed960c0d3761ed36204c58c11779de5b652611`，与 `SHA256SUMS.txt` 和 Release API 摘要一致；`versionName=1.6.0`、`versionCode=14`、minSdk 24、targetSdk 36、非 Debuggable、v2 签名。
+- 公开 APK 证书 SHA-256 为 `51B5E2F3F44CE9374CB680A0173C6498A4E13C718C602A355A8B6A50523F4816`，与长期发布证书一致。完整命令输出：[public-assets-verification.log](evidence/public-assets-verification.log)；运行元数据：[main-ci.json](evidence/main-ci.json)、[android-release-run.json](evidence/android-release-run.json)、[release.json](evidence/release.json)、[tag.txt](evidence/tag.txt)。
 
 ## 未覆盖
 
