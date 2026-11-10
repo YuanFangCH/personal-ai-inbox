@@ -1,6 +1,6 @@
 # Android 桌面小组件 v1 合同
 
-状态：v1 实现合同。用户已同意先接入正式应用，API 35 模拟器和荣耀 90 真机验收延后，仍是发布门禁。
+状态：v1 实现合同。2026-11-10 已完成 Android 15 / API 35 手机模拟器桌面验收；荣耀 90 真机仍延后，属于后续发布复核项。
 
 逻辑卡片、渲染快照和启动器实例是三个对象。Flutter 持有逻辑卡片，从 TableLibrary 投影快照；Kotlin 只保存快照及本机绑定，使用标准 RemoteViews。表内内容继续以 Markdown 为权威。卡片与快照不参与成果同步、设置导出或系统备份。
 
@@ -45,7 +45,7 @@ Future<WidgetPublishResult> refreshWidgets();
 
 openTargetAvailable 为原生发出的拉取提示，冷启动首帧也主动拉取。入口与现有分享通道分开。快照示例见 `app/test/fixtures/widget_snapshot_v1.json`。每卡至多 48 行，优先保留表头后填条目；整包最多 512 KiB，逆卡片顺序裁剪条目、再裁表头，设置 has_more。只传显示用短文本与 ID。
 
-Kotlin 的 bind(widgetId, cardId) 和 render(widgetId) 返回 Boolean；校验本 Provider 实例及有效卡片。取消配置不写绑定；固定请求只由用户发起，收到系统成功回调后绑定。移除实例只清绑定；系统恢复的实例重新选卡。归档实例显示占位。条目点击经非导出 Activity 校验快照行，再由 Flutter 查当前归属；已移动打开现位置，已删除回表列表并提示。API 31+ 大尺寸用单一滚动列表；API 24–30 固定行。日期筛选总是显示数据日期，App 重开或回前台重算。
+Kotlin 的 bind(widgetId, cardId) 和 render(widgetId) 返回 Boolean；校验本 Provider 实例及有效卡片。取消配置不写绑定；固定请求只由用户发起，收到系统成功回调后绑定。移除实例只清绑定；系统恢复的实例重新选卡。归档实例显示占位。标题使用直接 Activity PendingIntent；API 31+ 滚动集合使用可变 PendingIntent 模板与 fill-in Intent，经非导出 `HomeWidgetClickReceiver` 校验实例、卡片版本、快照行及哈希后再启动现有 Flutter 导航。冷进程点击会启动 App 并由 Flutter 查当前归属；已移动打开现位置，已删除回表列表并提示。API 31+ 大尺寸用单一滚动列表，4×2 使用短列表，2×2 使用摘要；API 24–30 固定行。日期筛选总是显示数据日期，App 重开或回前台重算。
 
 ## 秘书
 

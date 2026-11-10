@@ -1,0 +1,133 @@
+# pdfium_dart
+
+Dart FFI bindings for the PDFium library. This package provides low-level access to PDFium's C API from Dart.
+
+This package is part of the [pdfrx](https://github.com/espresso3389/pdfrx) project.
+
+## Requirements
+
+- Dart 3.13 or later
+- A C compiler for native builds (MSVC on Windows, Xcode on Apple platforms, or Clang/GCC on Linux). The compiler builds a small bundled library that prevents simultaneous PDFium access from multiple Flutter engines, even when that protection is disabled at runtime; Flutter builds use their platform toolchain.
+
+See [native build requirements](https://github.com/espresso3389/pdfrx/blob/master/doc/pdfrx-Initialization.md#native-build-requirements).
+
+## Overview
+
+This package contains auto-generated FFI bindings for PDFium using [ffigen](https://pub.dev/packages/ffigen). It is designed to be a minimal, pure Dart package that other packages can depend on to access PDFium functionality.
+
+**Key Features:**
+
+- Pure Dart package with no Flutter dependencies
+- Auto-generated FFI bindings using [ffigen](https://pub.dev/packages/ffigen)
+- Provides direct access to PDFium's C API
+- Downloads and bundles PDFium at build time using Dart native assets
+- Bundles `pdfrx_pdfium_gate`, a small native library that lets only one participating Flutter engine access PDFium at a time
+- Includes [getPdfium()](https://pub.dev/documentation/pdfium_dart/latest/pdfium_dart/getPdfium.html) for resolving PDFium across Dart and Flutter runtimes
+- Supports Windows, Linux, Android, and macOS build hooks
+
+## Usage
+
+### Basic Usage
+
+This package is primarily intended to be used as a dependency by higher-level packages like [pdfium_flutter](https://pub.dev/packages/pdfium_flutter) and [pdfrx_engine](https://pub.dev/packages/pdfrx_engine). Direct usage is possible but not recommended unless you need low-level PDFium access.
+
+```dart
+import 'package:pdfium_dart/pdfium_dart.dart';
+import 'dart:ffi';
+
+// If you already have PDFium loaded
+final pdfium = PDFium(DynamicLibrary.open('/path/to/libpdfium.so'));
+```
+
+### PDFium Loading
+
+The [getPdfium](https://pub.dev/documentation/pdfium_dart/latest/pdfium_dart/getPdfium.html) function resolves the PDFium library for the current runtime. You can also pass an explicit module path for custom deployments or tests:
+
+```dart
+import 'package:pdfium_dart/pdfium_dart.dart';
+
+void main() async {
+  // Resolves PDFium for the current Dart or Flutter runtime.
+  final pdfium = getPdfium();
+
+  // Or load a specific shared library.
+  final customPdfium = getPdfium(modulePath: '/path/to/libpdfium.so');
+
+  // Use PDFium API
+  // ...
+}
+```
+
+The build hook downloads binaries from [bblanchon/pdfium-binaries](https://github.com/bblanchon/pdfium-binaries/releases) and exposes them through Dart native assets. At runtime, `getPdfium()` chooses the appropriate loading strategy:
+
+- `modulePath` is used first when explicitly provided.
+- Flutter apps on iOS/macOS use the PDFium XCFramework that is already linked into the app by `pdfium_flutter`.
+- Native PDFium assets are not built for iOS; Flutter iOS apps should depend on `pdfium_flutter` so the XCFramework is linked by the Flutter plugin.
+- Pure Dart commands on macOS, such as `dart test`, `dart run`, and `dart compile`, use the `libpdfium.dylib` native asset.
+- Flutter apps on Linux look for `libpdfium.so` in the shared library directory relative to the resolved executable.
+- Other supported platforms first try the platform library name, then fall back to the bundled native asset recorded in `.dart_tool/native_assets.yaml`.
+
+### Download proxies
+
+The build hook honors the standard `http_proxy`, `https_proxy`, and `no_proxy` environment variables when it
+downloads PDFium. If no proxy environment variable is defined for the requested scheme, it falls back to the
+current user's static system proxy: `scutil --proxy` on macOS, and the Win32
+`WinHttpGetIEProxyConfigForCurrentUser` API on Windows. Explicit environment proxies take precedence, and
+`no_proxy`/`NO_PROXY` exclusions also apply when using a system proxy. System wildcard and local-host bypass
+rules are supported; CIDR bypass rules and automatic proxy configuration (PAC/WPAD) are not supported.
+Transient connection failures and HTTP 408, 429, and 5xx responses are retried with short backoff delays.
+
+## Generating Bindings
+
+### Prerequisites
+
+The [ffigen](https://pub.dev/packages/ffigen) process requires LLVM/Clang to be installed for parsing C headers:
+
+- **macOS**: Install via Homebrew
+
+  ```bash
+  brew install llvm
+  ```
+
+- **Linux**: Install via package manager
+
+  ```bash
+  # Ubuntu/Debian
+  sudo apt-get install libclang-dev
+
+  # Fedora
+  sudo dnf install clang-devel
+  ```
+
+- **Windows**: Download and install LLVM from [llvm.org](https://releases.llvm.org/)
+
+### Regenerating Bindings
+
+To regenerate the FFI bindings:
+
+1. Run the ffigen helper:
+
+   ```bash
+   dart tool/ffigen.dart
+   ```
+
+   The helper downloads PDFium headers into `.dart_tool/pdfium_headers/` before running `ffigen`.
+
+   Use `dart tool/ffigen.dart --force` to refresh the downloaded headers, or
+   `dart tool/ffigen.dart --download-only` to only prepare the headers.
+
+The bindings are generated from PDFium headers using the `ffigen` configuration in `pubspec.yaml`.
+
+## Platform Support
+
+| Platform | Architecture | Support |
+|----------|-------------|---------|
+| Windows  | x64, ARM64, x86 | ✅  |
+| Linux    | x64, ARM64, ARM, x86 | ✅ |
+| Android  | ARM64, ARMv7, x86, x86_64 | ✅ |
+| macOS    | x64, ARM64  | ✅      |
+| HarmonyOS (OHOS) | ARM64 | ✅ (bring your own `libpdfium.so`) |
+
+**Note:** For Flutter applications, use [pdfium_flutter](https://pub.dev/packages/pdfium_flutter) unless you specifically need the lower-level Dart bindings directly. `pdfium_flutter` includes the Flutter deployment layer for all native platforms except Web.
+
+**HarmonyOS note:** the build hook does not download PDFium for OHOS targets. Bundle a `libpdfium.so` under the HAP's `libs/<abi>/` directory; the loader resolves it via a bare-name `dlopen` from the app's native library directory at runtime.

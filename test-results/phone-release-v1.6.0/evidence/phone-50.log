@@ -1,0 +1,166 @@
+00:00 +0: loading D:/Dsk/aitext/app/integration_test/secretary_100_android_test.dart
+Running Gradle task 'assembleDebug'...                          
+WARNING: Your app uses the following plugins that apply Kotlin Gradle Plugin (KGP): flutter_tts
+Future versions of Flutter will fail to build if your app uses plugins that apply KGP.
+
+Please check the changelogs of these plugins and upgrade to a version that supports Built-in Kotlin.
+If no such version exists, report the issue to the plugin. If necessary, here is a guide on filing
+an issue against a plugin: https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-app-developers#report-incompatible-kotlin-gradle-plugin-usage-to-plugin-authors
+
+If you are a plugin author, please migrate your plugin to Built-in Kotlin using this guide: https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-plugin-authors
+Warning: SDK processing. This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+Running Gradle task 'assembleDebug'...                            148.2s
+√ Built build\app\outputs\flutter-apk\app-debug.apk
+Installing build\app\outputs\flutter-apk\app-debug.apk...        1,550ms
+00:00 +0: SEC-001 首页进入 AI、发送后退出再进入
+SEC_CASE_METRIC|SEC-001|{"elapsed_ms":3732}
+SEC_CASE_RESULT|SEC-001|passed
+00:10 +1: SEC-002 空临时页输入后清空并退出
+SEC_CASE_METRIC|SEC-002|{"elapsed_ms":3125}
+SEC_CASE_RESULT|SEC-002|passed
+00:17 +2: SEC-004 键盘/图片选择返回后继续输入
+SEC_CASE_METRIC|SEC-004|{"elapsed_ms":3205}
+SEC_CASE_RESULT|SEC-004|passed
+00:24 +3: SEC-007 深色与 1.3 字体下打开顶部权限
+SEC_CASE_METRIC|SEC-007|{"elapsed_ms":1299}
+SEC_CASE_RESULT|SEC-007|passed
+00:28 +4: SEC-010 多图片预览、移除后发送
+SEC_CASE_METRIC|SEC-010|{"elapsed_ms":3867}
+SEC_CASE_RESULT|SEC-010|passed
+00:36 +5: SEC-011 首装创建会话
+SEC_CASE_METRIC|SEC-011|{"elapsed_ms":18}
+SEC_CASE_RESULT|SEC-011|passed
+00:39 +6: SEC-014 000：全部关闭仍做普通问答
+SEC_CASE_METRIC|SEC-014|{"elapsed_ms":35}
+SEC_CASE_RESULT|SEC-014|passed
+00:43 +7: SEC-015 100：只读下查询并尝试新增
+SEC_CASE_METRIC|SEC-015|{"elapsed_ms":19}
+SEC_CASE_RESULT|SEC-015|passed
+00:47 +8: SEC-018 110：读和新增，尝试更新/删除
+SEC_CASE_METRIC|SEC-018|{"elapsed_ms":18}
+SEC_CASE_RESULT|SEC-018|passed
+00:50 +9: SEC-021 111：全开时尝试改全局事实
+SEC_CASE_METRIC|SEC-021|{"elapsed_ms":31}
+SEC_CASE_RESULT|SEC-021|passed
+00:54 +10: SEC-022 在途生成撤权并恢复完整响应
+SEC_CASE_METRIC|SEC-022|{"elapsed_ms":17}
+SEC_CASE_RESULT|SEC-022|passed
+00:57 +11: SEC-023 寒暄无需外部事实
+SEC_CASE_METRIC|SEC-023|{"model_requests":1,"tool_messages":0,"elapsed_ms":2916}
+SEC_CASE_RESULT|SEC-023|passed
+01:04 +12: SEC-024 改写本轮给定文本
+SEC_CASE_METRIC|SEC-024|{"model_requests":1,"tool_messages":0,"elapsed_ms":2962}
+SEC_CASE_RESULT|SEC-024|passed
+01:10 +13: SEC-027 用户已给周基准，计算指定日期
+SEC_CASE_METRIC|SEC-027|{"model_requests":1,"tool_messages":0,"elapsed_ms":3120}
+SEC_CASE_RESULT|SEC-027|passed
+01:17 +14: SEC-029 缺少学期周基准
+SEC_CASE_METRIC|SEC-029|{"search_calls":1,"result_chars":616,"elapsed_ms":253}
+SEC_CASE_RESULT|SEC-029|passed
+01:20 +15: SEC-032 给定稳定 ID 读取指定字段
+SEC_CASE_METRIC|SEC-032|{"search_calls":0,"detail_calls":1,"result_chars":597,"elapsed_ms":112}
+SEC_CASE_RESULT|SEC-032|passed
+01:24 +16: SEC-034 同会话重复问未变事实
+SEC_CASE_METRIC|SEC-034|{"search_calls":2,"cache_reused_chars":1150,"elapsed_ms":96}
+SEC_CASE_RESULT|SEC-034|passed
+01:28 +17: SEC-036 必要来源无命中
+SEC_CASE_METRIC|SEC-036|{"search_calls":1,"result_chars":389,"elapsed_ms":13}
+SEC_CASE_RESULT|SEC-036|passed
+01:31 +18: SEC-038 模型重复请求/换词循环
+SEC_CASE_METRIC|SEC-038|{"search_calls":21,"result_chars":7846,"blocked_call":21,"elapsed_ms":18}
+SEC_CASE_RESULT|SEC-038|passed
+01:34 +19: SEC-040 最新状态要求与写前检查
+SEC_CASE_METRIC|SEC-040|{"search_calls":1,"cas_stale_rejected":true,"revision":2,"elapsed_ms":246}
+SEC_CASE_RESULT|SEC-040|passed
+01:38 +20: SEC-041 明确创建事项
+SEC_CASE_METRIC|SEC-041|{"action_type":"matter","action_count":3,"elapsed_ms":764}
+SEC_CASE_RESULT|SEC-041|passed
+01:42 +21: SEC-044 新建普通知识
+SEC_CASE_METRIC|SEC-044|{"action_type":"knowledge","action_count":3,"elapsed_ms":717}
+SEC_CASE_RESULT|SEC-044|passed
+01:46 +22: SEC-045 修改普通成果
+SEC_CASE_METRIC|SEC-045|{"action_type":"matter","action_count":3,"elapsed_ms":742}
+SEC_CASE_RESULT|SEC-045|passed
+01:51 +23: SEC-048 撤销普通新增
+SEC_CASE_METRIC|SEC-048|{"action_type":"todo","action_count":3,"elapsed_ms":726}
+SEC_CASE_RESULT|SEC-048|passed
+01:55 +24: SEC-050 撤销普通删除
+SEC_CASE_METRIC|SEC-050|{"action_type":"todo","action_count":3,"elapsed_ms":707}
+SEC_CASE_RESULT|SEC-050|passed
+01:59 +25: SEC-052 重启后撤销与期限到期
+SEC_CASE_METRIC|SEC-052|{"action_type":"todo","action_count":3,"elapsed_ms":2010}
+SEC_CASE_RESULT|SEC-052|passed
+02:04 +26: SEC-054 完整响应提交中断后重放
+SEC_CASE_METRIC|SEC-054|{"action_type":"matter","action_count":3,"elapsed_ms":6416}
+SEC_CASE_RESULT|SEC-054|passed
+02:14 +27: SEC-055 AI 自动识别学期事实
+SEC_CASE_METRIC|SEC-055|{"pending_candidates":1,"applied_candidates":0,"elapsed_ms":20}
+SEC_CASE_RESULT|SEC-055|passed
+02:18 +28: SEC-058 拒绝候选后继续对话
+SEC_CASE_METRIC|SEC-058|{"rejected_candidates":1,"applied_candidates":0,"elapsed_ms":27}
+SEC_CASE_RESULT|SEC-058|passed
+02:21 +29: SEC-060 提议更新既有全局知识
+SEC_CASE_METRIC|SEC-060|{"confirmed_updates":1,"elapsed_ms":328}
+SEC_CASE_RESULT|SEC-060|passed
+02:25 +30: SEC-062 提议删除全局事实
+SEC_CASE_METRIC|SEC-062|{"pending_delete_candidates":1,"deleted":0,"elapsed_ms":171}
+SEC_CASE_RESULT|SEC-062|passed
+02:28 +31: SEC-064 取消或拒绝删除
+SEC_CASE_METRIC|SEC-064|{"delete_candidates":1,"deleted":0,"elapsed_ms":172}
+SEC_CASE_RESULT|SEC-064|passed
+02:32 +32: SEC-067 普通成果工具尝试改删全局事实
+SEC_CASE_METRIC|SEC-067|{"elapsed_ms":323}
+SEC_CASE_RESULT|SEC-067|passed
+02:36 +33: SEC-068 先移除用途标识再修改
+SEC_CASE_METRIC|SEC-068|{"elapsed_ms":322}
+SEC_CASE_RESULT|SEC-068|passed
+02:39 +34: SEC-071 不同会话提出同一事实
+SEC_CASE_METRIC|SEC-071|{"elapsed_ms":310}
+SEC_CASE_RESULT|SEC-071|passed
+02:43 +35: SEC-072 相关写权限关闭时提议变更
+SEC_CASE_METRIC|SEC-072|{"elapsed_ms":324}
+SEC_CASE_RESULT|SEC-072|passed
+02:47 +36: SEC-073 第一教学周基准计算第 N 周
+SEC_CASE_METRIC|SEC-073|{"elapsed_ms":186}
+SEC_CASE_RESULT|SEC-073|passed
+02:51 +37: SEC-076 超出总周数与考试/假期口径不明
+SEC_CASE_METRIC|SEC-076|{"elapsed_ms":166}
+SEC_CASE_RESULT|SEC-076|passed
+02:54 +38: SEC-078 同步时存在 pending 候选
+SEC_CASE_METRIC|SEC-078|{"elapsed_ms":168}
+SEC_CASE_RESULT|SEC-078|passed
+02:58 +39: SEC-080 两端并发确认不同新版本
+SEC_CASE_METRIC|SEC-080|{"elapsed_ms":175}
+SEC_CASE_RESULT|SEC-080|passed
+03:01 +40: SEC-082 三个隔离端离线确认再恢复交换
+SEC_CASE_METRIC|SEC-082|{"elapsed_ms":166}
+SEC_CASE_RESULT|SEC-082|passed
+03:05 +41: SEC-083 流式回复停止并继续提问
+SEC_CASE_METRIC|SEC-083|{"model_requests":2,"elapsed_ms":4169}
+SEC_CASE_RESULT|SEC-083|passed
+03:13 +42: SEC-086 上下文到上限需裁剪
+SEC_CASE_METRIC|SEC-086|{"model_requests":1,"elapsed_ms":2967}
+SEC_CASE_RESULT|SEC-086|passed
+03:19 +43: SEC-089 检索发起后取消或离开页面
+SEC_CASE_METRIC|SEC-089|{"model_requests":1,"elapsed_ms":3766}
+SEC_CASE_RESULT|SEC-089|passed
+03:26 +44: SEC-090 秘书角色与内部分类器共存
+SEC_CASE_METRIC|SEC-090|{"model_requests":1,"elapsed_ms":2592}
+SEC_CASE_RESULT|SEC-090|passed
+03:33 +45: SEC-091 TXT/MD 文件加入后提问
+SEC_CASE_METRIC|SEC-091|{"model_requests":1,"file_text_chars":44,"file_name":"matrix.txt","elapsed_ms":3135}
+SEC_CASE_RESULT|SEC-091|passed
+03:39 +46: SEC-095 加密/损坏/超限文件失败后继续
+SEC_CASE_METRIC|SEC-095|{"model_requests":1,"file_text_chars":0,"file_name":null,"elapsed_ms":4416}
+SEC_CASE_RESULT|SEC-095|passed
+03:47 +47: SEC-096 图片/文件处理取消与原素材保留
+SEC_CASE_METRIC|SEC-096|{"model_requests":1,"file_text_chars":0,"file_name":null,"elapsed_ms":3848}
+SEC_CASE_RESULT|SEC-096|passed
+03:55 +48: SEC-097 麦克风拒绝或录音取消
+SEC_CASE_METRIC|SEC-097|{"elapsed_ms":1600}
+SEC_CASE_RESULT|SEC-097|passed
+04:00 +49: SEC-100 录音/转写中断或失败后恢复
+SEC_CASE_METRIC|SEC-100|{"elapsed_ms":1582}
+SEC_CASE_RESULT|SEC-100|passed
+04:05 +50: (tearDownAll)
+04:06 +50: All tests passed!

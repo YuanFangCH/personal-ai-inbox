@@ -8,11 +8,11 @@
 
 首个预发布版本从 [GitHub Releases](https://github.com/YuanFangCH/personal-ai-inbox/releases) 下载：
 
-- 本次 `v1.5.1`：Android 7.0 及以上安装通用 APK，不提供新的 Windows 资产。
+- 本次 `v1.6.0`：Android 7.0 及以上安装通用 APK，不提供新的 Windows 资产。
 - Windows 11 x64 继续使用上一版全平台预发布中的安装包或便携 ZIP。
 - 发布页同时提供 `SHA256SUMS.txt`，下载后应校验文件哈希。
 
-Android 手机 `v1.5.1` 补丁版已发布，使用 `phone-v1.5.1` 标签，只提供通用 APK 与 `SHA256SUMS.txt`：[GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.5.1)。APK 为 `90,977,347` 字节，SHA-256 为 `3e084f2ae788acf7f7a34b550abd62ec1aa4ed26d9bb808be2440c12dac44c7e`。`v1.5.0` 继续作为上一版 Android 手机预发布保留，`v1.2.1` 是上一版全平台预发布。升级前请完整备份应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.5.1.md)；真实资料迁移需要在应用内确认。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
+Android 手机 `v1.6.0` 使用 `phone-v1.6.0` 标签，只提供通用 APK 与 `SHA256SUMS.txt`：[GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.0)。本版新增可配置多表桌面小组件；`v1.5.1` 继续作为上一版 Android 手机预发布保留，`v1.2.1` 是上一版全平台预发布。升级前请完整备份应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.6.0.md)；真实资料迁移需要在应用内确认。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
 
 ## 核心能力
 
@@ -34,7 +34,7 @@ Android 手机 `v1.5.1` 补丁版已发布，使用 `phone-v1.5.1` 标签，只�
 
 ## 当前进展
 
-Android 多表桌面小组件已接入候选版本：从「设置 → 桌面小组件」配置多表卡片；普通模式下秘书只读配置，完全权限可以管理卡片。设备验收延期，详见[接口合同](docs/home-widget-contract.md)和[验证记录](test-results/home-widget-v1/VALIDATION.md)。
+2026-11-10 Android 多表桌面小组件已完成 API 35 手机模拟器发布门禁：从「设置 → 桌面小组件」配置多表卡片；普通模式下秘书只读配置，完全权限可以管理卡片；2×2 摘要、4×2 短列表和 4×4 滚动、多实例共享刷新、独立卡片绑定、归档恢复及冷进程点击均通过。荣耀 90 真机与 API 24–30 固定行仍未实测，详见[接口合同](docs/home-widget-contract.md)和[验证记录](test-results/home-widget-v1/VALIDATION.md)。
 
 2026-11-09 `v1.5.1+13` Android 补丁版已发布：修复任务中断后“已核对，继续”仍反复卡住的问题。当最新工具回合因工具参数或结果过大无法保持完整时，上下文压缩现在回退到包含用户目标、对象版本、操作回执和待核对冲突的安全摘要；只要结果低于模型上下文硬上限即可继续，不再被额外的 10% 余量要求阻断。物理手机复验中，原任务已从 `needs_review` 恢复为 `running`，请求数和工具调用持续增加，并显示多批“已移动内容”回执。main CI `42600289991` 与 Android Release `42600311129` 均 success；详见[发行说明](docs/releases/v1.5.1.md)与[发布验证](test-results/ai-context-stuck-recovery-20261109/VALIDATION.md)。
 

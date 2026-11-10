@@ -1,0 +1,35 @@
+00:00 +0: loading D:/Dsk/aitext/app/test/home_widgets/home_widget_contract_test.dart
+00:00 +0: D:/Dsk/aitext/app/test/home_widgets/home_widget_contract_test.dart: parses the shared snapshot fixture
+00:00 +1: D:/Dsk/aitext/app/test/home_widgets/home_widget_contract_test.dart: round-trips contract constructors and command parsers
+00:00 +2: D:/Dsk/aitext/app/test/home_widgets/home_widget_contract_test.dart: parses all command constructors
+00:00 +3: D:/Dsk/aitext/app/test/home_widgets/home_widget_contract_test.dart: rejects stale or malformed contract shapes
+00:00 +4: D:/Dsk/aitext/app/test/home_widgets/home_widget_contract_test.dart: publish result carries optional bridge counts
+00:00 +5: D:/Dsk/aitext/app/test/home_widgets/home_widget_projection_test.dart: filters by type, todo state, and local business-day window
+00:00 +6: D:/Dsk/aitext/app/test/home_widgets/home_widget_projection_test.dart: projectCard enforces hidden and titles visibility itself
+00:00 +7: D:/Dsk/aitext/app/test/home_widgets/home_widget_projection_test.dart: sets data day only when a section uses days_ahead
+00:00 +8: D:/Dsk/aitext/app/test/home_widgets/home_widget_projection_test.dart: caps at 48 rows, retains every section header, and marks hasMore
+00:00 +9: D:/Dsk/aitext/app/test/home_widgets/home_widget_projection_test.dart: returns Chinese warnings for removed tables and fields
+00:00 +10: D:/Dsk/aitext/app/test/home_widgets/home_widget_projection_test.dart: trims the envelope to 512 KiB from the last card first
+00:00 +11: D:/Dsk/aitext/app/test/home_widgets/home_widget_projection_test.dart: trims the envelope to 512 KiB from the last card first
+00:00 +12: D:/Dsk/aitext/app/test/home_widgets/widget_store_test.dart: recovers the previous complete state when a later write is torn
+00:00 +13: D:/Dsk/aitext/app/test/home_widgets/widget_workspace_test.dart: commits commands idempotently with revision and undo semantics
+00:00 +14: D:/Dsk/aitext/app/test/home_widgets/widget_workspace_test.dart: commits commands idempotently with revision and undo semantics
+00:01 +15: D:/Dsk/aitext/app/test/home_widgets/widget_workspace_test.dart: undoing creation archives the card
+00:01 +16: D:/Dsk/aitext/app/test/home_widgets/widget_workspace_test.dart: publish failure keeps the committed config and pending receipt
+00:01 +17: D:/Dsk/aitext/app/test/home_widgets/widget_workspace_test.dart: receipt update failure returns the original applied pending receipt
+00:01 +18: D:/Dsk/aitext/app/test/home_widgets/widget_workspace_test.dart: rechecks authorization immediately before commit
+00:01 +19: D:/Dsk/aitext/app/test/home_widgets/widget_workspace_test.dart: blocked mode clears during refresh and forbids writes
+00:01 +20: D:/Dsk/aitext/app/test/home_widgets/widget_workspace_test.dart: clears when the migration gate closes during content snapshot
+00:01 +21: D:/Dsk/aitext/app/test/home_widgets/widget_workspace_test.dart: coalesces table changes and publishes after the refresh delay
+00:01 +22: D:/Dsk/aitext/app/test/home_widgets/widget_workspace_test.dart: coalesces table changes and publishes after the refresh delay
+00:01 +23: D:/Dsk/aitext/app/test/home_widgets/widget_workspace_test.dart: coalesces table changes and publishes after the refresh delay
+00:01 +24: D:/Dsk/aitext/app/test/home_widgets/widget_workspace_test.dart: coalesces table changes and publishes after the refresh delay
+00:01 +25: D:/Dsk/aitext/app/test/home_widgets/widget_workspace_test.dart: coalesces table changes and publishes after the refresh delay
+00:01 +26: D:/Dsk/aitext/app/test/home_widgets/widget_workspace_test.dart: coalesces table changes and publishes after the refresh delay
+00:01 +27: D:/Dsk/aitext/app/test/home_widgets/widget_workspace_test.dart: coalesces table changes and publishes after the refresh delay
+00:01 +28: D:/Dsk/aitext/app/test/home_widgets/widget_workspace_test.dart: coalesces table changes and publishes after the refresh delay
+00:01 +29: D:/Dsk/aitext/app/test/home_widgets/widget_workspace_test.dart: coalesces table changes and publishes after the refresh delay
+00:01 +30: D:/Dsk/aitext/app/test/home_widgets/widget_workspace_test.dart: coalesces table changes and publishes after the refresh delay
+00:01 +31: D:/Dsk/aitext/app/test/home_widgets/widget_workspace_test.dart: coalesces table changes and publishes after the refresh delay
+00:01 +32: D:/Dsk/aitext/app/test/home_widgets/widget_workspace_test.dart: serializes overlapping refresh requests
+00:01 +33: All tests passed!

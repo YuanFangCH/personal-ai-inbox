@@ -1,0 +1,11 @@
+run=20261110T005416Z-phone-longrun
+cases=50
+unique_cases=50
+all_tests_passed=true
+duration_seconds=921
+unique_write_readbacks=47
+model_requests=219
+background=true
+screen_off_seconds=12
+foreground_after_unlock=true
+cleanup_failures=none

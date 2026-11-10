@@ -66,6 +66,9 @@
             android:name=".HomeWidgetPinReceiver"
             android:exported="false" />
         <receiver
+            android:name=".HomeWidgetClickReceiver"
+            android:exported="false" />
+        <receiver
             android:name=".HomeWidgetProvider"
             android:exported="false"
             android:label="@string/home_widget_name">

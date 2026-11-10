@@ -653,37 +653,36 @@ packages:
     source: hosted
     version: "2.3.0"
   pdfium_dart:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: pdfium_dart
-      sha256: e296a26c030e6e0fb34b32ce7481a3cfa0c2d35ce80f6269551c685759f4c91f
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.1"
+      path: "third_party/pdfium_dart"
+      relative: true
+    source: path
+    version: "0.4.1"
   pdfium_flutter:
     dependency: transitive
     description:
       name: pdfium_flutter
-      sha256: "59897274513984b347fc98e7bf71ba457678daea8b5568cd7c688979aeb77765"
+      sha256: "4d18e6181aa87200750aa4fc607c870f957731b1de9252c2ea19627c19109388"
       url: "https://pub.dev"
     source: hosted
-    version: "0.3.1"
+    version: "0.4.1"
   pdfrx:
     dependency: "direct main"
     description:
       name: pdfrx
-      sha256: "475eacf00b7e96895380af6322d3dd6f572c6b233bcc2eb25bed856ee82f31ce"
+      sha256: b3bd49fd0918ba7f807ceb0860f4110c346fc70dd96bd68b992418cf17f97650
       url: "https://pub.dev"
     source: hosted
-    version: "2.6.6"
+    version: "2.12.0"
   pdfrx_engine:
     dependency: transitive
     description:
       name: pdfrx_engine
-      sha256: f74ca9ea4ec722545f054a1d6ee1bf01222409ecd9458e5945c0cc5feaa3d2c6
+      sha256: "4f86165b90c8ae7647747e2d2f9880727f0480caab976a712de1c95076c48762"
       url: "https://pub.dev"
     source: hosted
-    version: "0.6.1"
+    version: "0.9.1"
   petitparser:
     dependency: transitive
     description:

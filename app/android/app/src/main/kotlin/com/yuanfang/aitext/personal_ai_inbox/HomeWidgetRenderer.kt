@@ -4,7 +4,9 @@ import android.annotation.TargetApi
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.res.Configuration
+import android.content.pm.ApplicationInfo
 import android.os.Build
+import android.util.Log
 import android.view.View
 import android.widget.RemoteViews
 
@@ -12,7 +14,7 @@ internal object HomeWidgetRenderer {
     private const val DEFAULT_WIDTH_DP = 300
     private const val DEFAULT_HEIGHT_DP = 260
     private const val COMPACT_WIDTH_DP = 220
-    private const val SHORT_HEIGHT_DP = 225
+    private const val SHORT_HEIGHT_DP = 200
     private const val FIXED_ROW_COUNT = 6
 
     private data class Palette(
@@ -86,6 +88,11 @@ internal object HomeWidgetRenderer {
             AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,
             DEFAULT_HEIGHT_DP,
         ).coerceAtLeast(1)
+        if (
+            context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+        ) {
+            Log.d("HomeWidgetRenderer", "widget=$widgetId width=$width height=$height")
+        }
         val views = when {
             width < COMPACT_WIDTH_DP ->
                 compactViews(context, widgetId, card, palette)
@@ -171,6 +178,10 @@ internal object HomeWidgetRenderer {
                 },
             )
         }
+        views.setPendingIntentTemplate(
+            R.id.widget_list,
+            HomeWidgetNavigation.pendingIntentTemplate(context, widgetId),
+        )
         views.setRemoteAdapter(R.id.widget_list, items.build())
         views.setEmptyView(R.id.widget_list, R.id.widget_list_empty)
         views.setTextViewText(R.id.widget_list_empty, context.getString(R.string.home_widget_empty))
@@ -293,6 +304,15 @@ internal object HomeWidgetRenderer {
         row: HomeWidgetRow,
         palette: Palette,
     ): RemoteViews {
+        val target =
+            HomeWidgetOpenTarget(
+                kind = "table",
+                widgetId = widgetId,
+                cardId = card.cardId,
+                cardRevision = card.revision,
+                tableId = row.tableId,
+                rowHash = card.rowHash(row),
+            )
         return RemoteViews(context.packageName, R.layout.home_widget_section_item).apply {
             setInt(R.id.section_card, "setBackgroundResource", palette.section)
             setTextViewText(R.id.section_title, row.title)
@@ -302,9 +322,12 @@ internal object HomeWidgetRenderer {
             )
             setTextColor(R.id.section_title, context.getColor(palette.textPrimary))
             setTextColor(R.id.section_count, context.getColor(palette.textSecondary))
-            setOnClickPendingIntent(
+            setOnClickFillInIntent(
                 R.id.section_card,
-                tablePendingIntent(context, widgetId, card, row),
+                HomeWidgetNavigation.fillInIntent(
+                    context,
+                    target,
+                ),
             )
         }
     }
@@ -316,6 +339,16 @@ internal object HomeWidgetRenderer {
         row: HomeWidgetRow,
         palette: Palette,
     ): RemoteViews {
+        val target =
+            HomeWidgetOpenTarget(
+                kind = "entry",
+                widgetId = widgetId,
+                cardId = card.cardId,
+                cardRevision = card.revision,
+                tableId = row.tableId,
+                entryId = row.entryId,
+                rowHash = card.rowHash(row),
+            )
         return RemoteViews(context.packageName, R.layout.home_widget_entry_item).apply {
             setInt(R.id.entry_card, "setBackgroundResource", palette.surface)
             setTextViewText(R.id.entry_title, row.title)
@@ -323,9 +356,12 @@ internal object HomeWidgetRenderer {
             setTextColor(R.id.entry_title, context.getColor(palette.textPrimary))
             setTextColor(R.id.entry_detail, context.getColor(palette.textSecondary))
             setViewVisibility(R.id.entry_badge, View.GONE)
-            setOnClickPendingIntent(
+            setOnClickFillInIntent(
                 R.id.entry_card,
-                entryPendingIntent(context, widgetId, card, row),
+                HomeWidgetNavigation.fillInIntent(
+                    context,
+                    target,
+                ),
             )
         }
     }
@@ -378,7 +414,7 @@ internal object HomeWidgetRenderer {
     }
 
     private fun rowsForHeight(heightDp: Int): Int =
-        ((heightDp - 58) / 43).coerceIn(1, FIXED_ROW_COUNT)
+        ((heightDp - 58) / 43).coerceIn(2, FIXED_ROW_COUNT)
 
     private fun settingsPendingIntent(context: Context, widgetId: Int) =
         HomeWidgetNavigation.pendingIntent(

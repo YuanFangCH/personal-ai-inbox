@@ -632,7 +632,18 @@ function Get-DisplayLockSnapshot([string]$DeviceSerial) {
 }
 
 function Invoke-CheckedAdb([string]$Label, [string[]]$Arguments) {
-    $output = @(& $adb @Arguments 2>&1)
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        # Windows PowerShell promotes native stderr redirected with 2>&1 to a
+        # NativeCommandError record. Some successful adb commands, notably
+        # monkey, write informational text to stderr; retain that text without
+        # letting the script-wide Stop preference terminate the phase.
+        $output = @(& $adb @Arguments 2>&1)
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
     $exitCode = $LASTEXITCODE
     "adb_action=$Label exit=$exitCode output=$($output -join ' ')" | Add-Content -LiteralPath $runLog
     if ($exitCode -ne 0) { throw "ADB action '$Label' failed with exit ${exitCode}: $($output -join ' ')" }
@@ -1531,7 +1542,18 @@ function Invoke-IntegrationPhase(
         throw
     }
     $process.Refresh()
-    "phase_exit=$Phase code=$($process.ExitCode) at=$([DateTime]::UtcNow.ToString('o'))" | Add-Content -LiteralPath $runLog
+    $flutterExitCode = $process.ExitCode
+    $flutterOutputVerifiedPassed = $false
+    if ($null -eq $flutterExitCode -and (Test-Path -LiteralPath $stdout)) {
+        $capturedStdout = Get-Content -LiteralPath $stdout -Raw
+        $flutterOutputVerifiedPassed =
+            $null -ne $capturedStdout -and
+            $capturedStdout -match '(?m)^.*All tests passed!\s*$'
+        "phase_exit_code_missing=$Phase output_verified_passed=$flutterOutputVerifiedPassed" |
+            Add-Content -LiteralPath $runLog
+    }
+    "phase_exit=$Phase code=$flutterExitCode output_verified_passed=$flutterOutputVerifiedPassed at=$([DateTime]::UtcNow.ToString('o'))" |
+        Add-Content -LiteralPath $runLog
     if ($null -ne $businessDeadline) {
         "phase_business_elapsed_seconds=$([Math]::Round(([DateTime]::UtcNow - $businessStartedAt).TotalSeconds, 3)) phase=$Phase marker=$BusinessStartMarker" | Add-Content -LiteralPath $runLog
     } else {
@@ -1542,21 +1564,22 @@ function Invoke-IntegrationPhase(
     Add-TrackedDescendantProcesses $process $rootFingerprint $trackedProcesses
     if ($AllowExpectedDriverDisconnect -and $readyActionDone) {
         Stop-IntegrationProcessTree $process $rootFingerprint $Phase 'expected_force_stop_driver_boundary_exit' $trackedProcesses $phaseStartTicks $runToken
-        "phase_interrupted_by_design=$Phase code=$($process.ExitCode) ready_marker=$ReadyMarker" | Add-Content -LiteralPath $runLog
+        "phase_interrupted_by_design=$Phase code=$flutterExitCode ready_marker=$ReadyMarker" | Add-Content -LiteralPath $runLog
         return @{ interrupted = $true; stdout = $stdout; stderr = $stderr }
     }
-    if ($process.ExitCode -ne 0) {
+    if (($null -ne $flutterExitCode -and $flutterExitCode -ne 0) -or
+        ($null -eq $flutterExitCode -and -not $flutterOutputVerifiedPassed)) {
         $script:integrationPhaseAbnormal = $true
         if ($null -ne $OnFailureCapture) {
             try {
-                $captured = & $OnFailureCapture ([System.Exception]::new("Flutter exit code $($process.ExitCode)"))
+                $captured = & $OnFailureCapture ([System.Exception]::new("Flutter exit code $flutterExitCode"))
                 "phase_failure_evidence_capture=$Phase success=$([bool]$captured) stage=nonzero_exit" | Add-Content -LiteralPath $runLog
             } catch {
                 "phase_failure_evidence_capture=$Phase success=false error=$($_.Exception.Message) stage=nonzero_exit" | Add-Content -LiteralPath $runLog
             }
         }
-        Stop-IntegrationProcessTree $process $rootFingerprint $Phase "flutter_exit_$($process.ExitCode)" $trackedProcesses $phaseStartTicks $runToken
-        throw "Integration phase $Phase failed with exit code $($process.ExitCode). See $stdout and $stderr."
+        Stop-IntegrationProcessTree $process $rootFingerprint $Phase "flutter_exit_$flutterExitCode" $trackedProcesses $phaseStartTicks $runToken
+        throw "Integration phase $Phase failed with exit code $flutterExitCode. See $stdout and $stderr."
     }
     $missingAdditionalMarkers = @($AdditionalReadyMarkers | Where-Object { -not $additionalReadyActionsDone.ContainsKey($_) })
     if ($missingAdditionalMarkers.Count -gt 0) {

@@ -6,6 +6,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.util.Log
 
 internal data class HomeWidgetOpenTarget(
     val kind: String,
@@ -105,6 +107,49 @@ internal object HomeWidgetNavigation {
         )
     }
 
+    fun pendingIntentTemplate(
+        context: Context,
+        widgetId: Int,
+    ): PendingIntent {
+        val intent = Intent(context, HomeWidgetClickReceiver::class.java)
+            .setAction(ACTION_OPEN_TARGET)
+        var flags = PendingIntent.FLAG_UPDATE_CURRENT
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            flags = flags or PendingIntent.FLAG_MUTABLE
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            0x48470000 xor widgetId,
+            intent,
+            flags,
+        )
+    }
+
+    fun fillInIntent(
+        context: Context,
+        target: HomeWidgetOpenTarget,
+    ): Intent =
+        Intent()
+            .setAction(ACTION_OPEN_TARGET)
+            .setData(targetIntent(context, target).data)
+            .apply {
+                target.cardId?.let { putExtra(EXTRA_CARD_ID, it) }
+                target.cardRevision?.let { putExtra(EXTRA_CARD_REVISION, it) }
+                target.tableId?.let { putExtra(EXTRA_TABLE_ID, it) }
+                target.entryId?.let { putExtra(EXTRA_ENTRY_ID, it) }
+                target.rowHash?.let { putExtra(EXTRA_ROW_HASH, it) }
+                putExtra(EXTRA_KIND, target.kind)
+                putExtra(EXTRA_WIDGET_ID, target.widgetId)
+            }
+
+    fun openQueuedTarget(context: Context, target: HomeWidgetOpenTarget) {
+        HomeWidgetOpenQueue.offer(target)
+        context.startActivity(
+            mainActivityIntent(context)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+    }
+
     fun fromOpenActivityIntent(intent: Intent?): HomeWidgetOpenTarget? {
         if (intent?.action != ACTION_OPEN_TARGET) {
             return null
@@ -148,6 +193,18 @@ internal object HomeWidgetNavigation {
             else -> null
         } ?: return false
         return target.rowHash == card.rowHash(row)
+    }
+
+    fun handleCollectionClick(context: Context, intent: Intent) {
+        val target = fromOpenActivityIntent(intent)
+        if (target == null || !validate(context, target)) {
+            return
+        }
+        Log.d(
+            "HomeWidgetNavigation",
+            "Launching widget target ${target.kind} widget=${target.widgetId}",
+        )
+        openQueuedTarget(context, target)
     }
 
     private fun readTarget(intent: Intent): HomeWidgetOpenTarget? {
