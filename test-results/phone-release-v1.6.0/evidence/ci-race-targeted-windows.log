@@ -1,0 +1,26 @@
+
+run=1 started=2026-11-10T08:45:15.4405606Z
+00:00 +0: loading D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart
+00:00 +0: restart restores a paused task usage and resumes without a grant
+00:01 +1: All tests passed!
+run=1 exit=0
+run=2 started=2026-11-10T08:45:28.8605735Z
+00:00 +0: loading D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart
+00:00 +0: restart restores a paused task usage and resumes without a grant
+00:01 +1: All tests passed!
+run=2 exit=0
+run=3 started=2026-11-10T08:45:35.5247865Z
+00:00 +0: loading D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart
+00:00 +0: restart restores a paused task usage and resumes without a grant
+00:01 +1: All tests passed!
+run=3 exit=0
+run=4 started=2026-11-10T08:45:42.1311418Z
+00:00 +0: loading D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart
+00:00 +0: restart restores a paused task usage and resumes without a grant
+00:01 +1: All tests passed!
+run=4 exit=0
+run=5 started=2026-11-10T08:45:48.7427157Z
+00:00 +0: loading D:/Dsk/aitext/app/test/agent_budget_file_recovery_test.dart
+00:00 +0: restart restores a paused task usage and resumes without a grant
+00:01 +1: All tests passed!
+run=5 exit=0

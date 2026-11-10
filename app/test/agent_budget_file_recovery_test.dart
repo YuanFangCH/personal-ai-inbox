@@ -113,9 +113,7 @@ void main() {
       await firstSend.timeout(const Duration(seconds: 2));
       await firstResponseCancelled.future.timeout(const Duration(seconds: 2));
 
-      final pausedSnapshot = AgentTaskCheckpoint.fromJson(
-        jsonDecode((await vault.read(AgentTaskCheckpoint.storagePath))!),
-      );
+      final pausedSnapshot = (await _readPersistedCheckpoint(vault))!;
       final pausedTurn = pausedSnapshot.turns.single;
       final taskId = pausedTurn.taskId;
       final firstRunId = pausedTurn.effectiveRunId;
@@ -134,9 +132,7 @@ void main() {
           .last;
       expect(otherAssistant.status, ChatMessageStatus.complete);
       expect(requests, 2);
-      final beforeShutdown = AgentTaskCheckpoint.fromJson(
-        jsonDecode((await vault.read(AgentTaskCheckpoint.storagePath))!),
-      );
+      final beforeShutdown = (await _readPersistedCheckpoint(vault))!;
       final firstBudgetBeforeShutdown = beforeShutdown.runUsage[firstRunId]!;
       final otherRunId = beforeShutdown.runUsage.keys.singleWhere(
         (id) => id != firstRunId,
@@ -148,9 +144,7 @@ void main() {
 
       runtime = await boot();
       expect(requests, 2, reason: '启动必须保留暂停状态且不自动派发模型请求。');
-      final afterRestart = AgentTaskCheckpoint.fromJson(
-        jsonDecode((await vault.read(AgentTaskCheckpoint.storagePath))!),
-      );
+      final afterRestart = (await _readPersistedCheckpoint(vault))!;
       final restoredTurn = afterRestart.turns.single;
       expect(restoredTurn.taskId, taskId);
       expect(restoredTurn.assistantMessageId, firstAssistantId);
@@ -186,8 +180,9 @@ void main() {
         ChatMessageStatus.complete,
       );
       expect(requests, 3);
-      final finalSnapshot = AgentTaskCheckpoint.fromJson(
-        jsonDecode((await vault.read(AgentTaskCheckpoint.storagePath))!),
+      final finalSnapshot = await _waitForCheckpoint(
+        vault,
+        (checkpoint) => checkpoint.runUsage[firstRunId]?.usedRequests == 2,
       );
       expect(finalSnapshot.runUsage[firstRunId]!.usedRequests, 2);
       expect(
@@ -222,6 +217,28 @@ Future<void> _waitFor(bool Function() condition) async {
   while (!condition()) {
     if (DateTime.now().isAfter(deadline)) {
       fail('condition was not reached before timeout');
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
+}
+
+Future<AgentTaskCheckpoint?> _readPersistedCheckpoint(IoVaultStore vault) =>
+    vault.exclusive(() async {
+      final raw = await vault.read(AgentTaskCheckpoint.storagePath);
+      if (raw == null) return null;
+      return AgentTaskCheckpoint.fromJson(jsonDecode(raw));
+    });
+
+Future<AgentTaskCheckpoint> _waitForCheckpoint(
+  IoVaultStore vault,
+  bool Function(AgentTaskCheckpoint checkpoint) condition,
+) async {
+  final deadline = DateTime.now().add(const Duration(seconds: 3));
+  while (true) {
+    final checkpoint = await _readPersistedCheckpoint(vault);
+    if (checkpoint != null && condition(checkpoint)) return checkpoint;
+    if (DateTime.now().isAfter(deadline)) {
+      fail('persisted checkpoint was not reached before timeout');
     }
     await Future<void>.delayed(const Duration(milliseconds: 10));
   }
