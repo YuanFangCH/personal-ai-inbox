@@ -34,6 +34,8 @@ Android 手机 `v1.6.0` 使用 `phone-v1.6.0` 标签，只提供通用 APK 与 `
 
 ## 当前进展
 
+2026-11-12 秘书对话新增运行阶段/工具活动展示与浅蓝主题，历史工具行从现有会话 transcript 派生，无新增数据库字段。代码合同见 [运行活动合同](docs/secretary-activity-contract.md)，定向验证见 `test-results/secretary-activity-light-blue/VALIDATION.md`。
+
 2026-11-10 `v1.6.0+14` Android 手机预览版已发布：[phone-v1.6.0](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.0)。main CI `42785276198` 与 Android Release `42785654908` 均 success；公开通用 APK 为 92,327,311 字节，SHA-256 `dab7263bf4b7280633cf28a848ed960c0d3761ed36204c58c11779de5b652611`，API 24/36、非 Debuggable、v2 签名及长期证书复核通过。API 35 模拟器已完成 50/50 手机用例、921 秒长测及多表小组件门禁；荣耀 90 真机与 API 24–30 固定行仍未实测。详见[发行说明](docs/releases/v1.6.0.md)、[接口合同](docs/home-widget-contract.md)和[验证记录](test-results/phone-release-v1.6.0/VALIDATION.md)。
 
 2026-11-09 `v1.5.1+13` Android 补丁版已发布：修复任务中断后“已核对，继续”仍反复卡住的问题。当最新工具回合因工具参数或结果过大无法保持完整时，上下文压缩现在回退到包含用户目标、对象版本、操作回执和待核对冲突的安全摘要；只要结果低于模型上下文硬上限即可继续，不再被额外的 10% 余量要求阻断。物理手机复验中，原任务已从 `needs_review` 恢复为 `running`，请求数和工具调用持续增加，并显示多批“已移动内容”回执。main CI `42600289991` 与 Android Release `42600311129` 均 success；详见[发行说明](docs/releases/v1.5.1.md)与[发布验证](test-results/ai-context-stuck-recovery-20261109/VALIDATION.md)。

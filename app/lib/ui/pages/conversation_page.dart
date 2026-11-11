@@ -7,6 +7,7 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/chat_models.dart';
+import '../../core/chat_activity.dart';
 import '../../core/models.dart';
 import '../../modules/conversation/conversation_workspace.dart';
 import '../../services/file_input_service.dart';
@@ -30,6 +31,7 @@ part 'conversation/auto_record_card.dart';
 part 'conversation/table_chat_action_card.dart';
 part 'conversation/composer.dart';
 part 'conversation/message_bubble.dart';
+part 'conversation/activity.dart';
 part 'conversation/page_actions.dart';
 
 class ConversationPage extends StatefulWidget {

@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../../core/agent_usage.dart';
+import '../../core/chat_activity.dart';
 import '../../core/chat_models.dart';
 import '../../core/models.dart';
 import '../../data/chat_repository.dart';
@@ -110,6 +111,7 @@ class ConversationWorkspace extends ChangeNotifier {
   final Map<String, Future<void>> _generationSaveQueues = {};
   final Map<String, List<AutoRecordAction>> _liveAutoActions = {};
   final Map<String, List<TableChatAction>> _liveTableActions = {};
+  final Map<String, ChatLiveActivity> _liveChatActivities = {};
   Timer? _streamUiFlushTimer;
   Timer? _streamPersistenceTimer;
   Timer? _activeUsageCheckpointTimer;
@@ -126,6 +128,15 @@ class ConversationWorkspace extends ChangeNotifier {
   String? get activeConversationId => _activeConversationId;
 
   bool get isChatGenerating => _isChatGenerating;
+
+  ChatLiveActivity? liveActivityFor(String assistantMessageId) {
+    if (!_isChatGenerating ||
+        _cancelChatRequested ||
+        _activeTurn?.assistantMessageId != assistantMessageId) {
+      return null;
+    }
+    return _liveChatActivities[assistantMessageId];
+  }
 
   bool get fullAgentMode => _fullAgentMode();
 
@@ -1386,6 +1397,7 @@ class ConversationWorkspace extends ChangeNotifier {
         );
     await _saveMessage(assistant);
     _replaceMessage(assistant);
+    _setLiveChatActivity(assistantMessageId, ChatActivityPhase.preparing);
     final previousGeneration = await _repository.findGeneration(
       assistantMessageId,
     );
@@ -1484,6 +1496,14 @@ class ConversationWorkspace extends ChangeNotifier {
                 usage: usageMeter,
                 isCancelled: () => cancellation.isCompleted,
                 cancellationSignal: cancellation.future,
+                onActivity: (event) {
+                  if (!identical(_generationCancellation, cancellation) ||
+                      _cancelChatRequested ||
+                      cancellation.isCompleted) {
+                    return;
+                  }
+                  _applyChatActivityEvent(assistantMessageId, event);
+                },
                 resumeToolTranscript: assistant.toolTranscript,
                 persistToolTranscript: (transcript) async {
                   final checkpointedAssistant = assistant.copyWith(
@@ -1496,6 +1516,7 @@ class ConversationWorkspace extends ChangeNotifier {
                   await _persistTaskCheckpoint();
                   assistant = checkpointedAssistant;
                   _replaceMessage(assistant);
+                  _reconcileChatActivity(assistantMessageId, transcript);
                 },
               ),
               cancellation,
@@ -1723,6 +1744,7 @@ class ConversationWorkspace extends ChangeNotifier {
         _generationCancellation = null;
         _liveAutoActions.remove(assistantMessageId);
         _liveTableActions.remove(assistantMessageId);
+        _liveChatActivities.remove(assistantMessageId);
         if (subscription != null) {
           unawaited(subscription.cancel());
         }
@@ -1893,6 +1915,62 @@ class ConversationWorkspace extends ChangeNotifier {
       _streamUiFlushTimer = null;
       notifyListeners();
     });
+  }
+
+  void _setLiveChatActivity(
+    String assistantMessageId,
+    ChatActivityPhase phase, {
+    List<ChatActivityTool> runningTools = const [],
+  }) {
+    _liveChatActivities[assistantMessageId] = ChatLiveActivity(
+      phase: phase,
+      runningTools: runningTools,
+    );
+    _notifySoon();
+  }
+
+  void _applyChatActivityEvent(
+    String assistantMessageId,
+    ChatActivityEvent event,
+  ) {
+    if (event case ChatActivityPhaseChanged(:final phase)) {
+      _setLiveChatActivity(assistantMessageId, phase);
+      return;
+    }
+    if (event case ChatActivityToolDispatched(:final tool)) {
+      final current = _liveChatActivities[assistantMessageId];
+      final tools = <ChatActivityTool>[
+        ...?current?.runningTools,
+        if (!(current?.runningTools.any((item) => item.key == tool.key) ??
+            false))
+          tool,
+      ];
+      _setLiveChatActivity(
+        assistantMessageId,
+        ChatActivityPhase.runningTools,
+        runningTools: tools,
+      );
+    }
+  }
+
+  void _reconcileChatActivity(
+    String assistantMessageId,
+    List<Map<String, dynamic>> transcript,
+  ) {
+    final current = _liveChatActivities[assistantMessageId];
+    if (current == null || current.runningTools.isEmpty) return;
+    final completed = completedChatActivityTools(transcript)
+        .map((tool) => tool.key)
+        .toSet();
+    final remaining = current.runningTools
+        .where((tool) => !completed.contains(tool.key))
+        .toList(growable: false);
+    if (remaining.length == current.runningTools.length) return;
+    _setLiveChatActivity(
+      assistantMessageId,
+      remaining.isEmpty ? ChatActivityPhase.waitingForModel : current.phase,
+      runningTools: remaining,
+    );
   }
 
   void _flushUiNotifications() {

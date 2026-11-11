@@ -303,6 +303,14 @@ class _Composer extends StatelessWidget {
                           key: const Key('chat_send'),
                           tooltip: generating ? '发送补充' : '发送',
                           onPressed: enabled ? _submitFromButton : null,
+                          style: IconButton.styleFrom(
+                            backgroundColor: Theme.of(context)
+                                .colorScheme
+                                .primaryFixed,
+                            foregroundColor: Theme.of(context)
+                                .colorScheme
+                                .onPrimaryFixed,
+                          ),
                           icon: const Icon(Icons.arrow_upward),
                         ),
                       ],

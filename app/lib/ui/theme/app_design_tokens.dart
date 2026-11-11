@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppDesignTokens {
-  static const primary = Color(0xFF4D6BFE);
-  static const primaryDark = Color(0xFF8FA3FF);
+  static const primary = Color(0xFF216EAA);
+  static const primaryDark = Color(0xFF8FCAFF);
+  static const primaryButton = Color(0xFF80C5F6);
+  static const onPrimaryButton = Color(0xFF0D2C4B);
+  static const lightPrimaryContainer = Color(0xFFDCEFFF);
+  static const lightOnPrimaryContainer = Color(0xFF0D2C4B);
+  static const darkPrimaryContainer = Color(0xFF103B59);
+  static const darkOnPrimaryContainer = Color(0xFFCDE8FF);
 
   static const lightBackground = Color(0xFFFFFFFF);
   static const lightSidebar = Color(0xFFF7F8FA);

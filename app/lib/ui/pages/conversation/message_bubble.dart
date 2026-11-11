@@ -38,6 +38,11 @@ class _MessageBubble extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (!isUser)
+                  _ChatActivityPanel(
+                    message: message,
+                    live: app.liveActivityFor(message.id),
+                  ),
                 if (message.attachments.isNotEmpty)
                   Wrap(
                     spacing: 8,
@@ -62,11 +67,6 @@ class _MessageBubble extends StatelessWidget {
                           styleSheet: MarkdownPresentation.styleSheet(theme),
                           builders: MarkdownPresentation.builders,
                         ),
-                if (message.status == ChatMessageStatus.streaming)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 10),
-                    child: LinearProgressIndicator(minHeight: 2),
-                  ),
                 if (message.status == ChatMessageStatus.failed ||
                     message.status == ChatMessageStatus.interrupted) ...[
                   const SizedBox(height: 10),

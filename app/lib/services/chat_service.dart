@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../core/agent_usage.dart';
+import '../core/chat_activity.dart';
 import '../core/chat_models.dart';
 import '../core/models.dart';
 import '../core/table_models.dart';
@@ -114,6 +115,7 @@ class ChatService {
     Future<void> Function(List<Map<String, dynamic>>)? persistToolTranscript,
     bool Function()? isCancelled,
     Future<void>? cancellationSignal,
+    ChatActivitySink? onActivity,
   }) async {
     final settings = await _settings.load();
     final invalidSettings = settings.validate();
@@ -215,6 +217,7 @@ class ChatService {
       cancellationSignal: cancellationSignal,
       usage: usage ?? AgentUsageMeter(),
       maxRequestContextChars: _requestContextChars(settings, capabilities),
+      onActivity: onActivity,
     );
   }
 
@@ -234,6 +237,7 @@ class ChatService {
     required bool Function()? isCancelled,
     required Future<void>? cancellationSignal,
     required int maxRequestContextChars,
+    required ChatActivitySink? onActivity,
   }) async* {
     final history = List<ChatRequestMessage>.of(messages);
     final deferredActions = <_PendingChatToolCall>[];
@@ -277,6 +281,10 @@ class ChatService {
           0,
           (count, item) => count + (item['tool_calls'] as List).length,
         );
+    void emitPhase(ChatActivityPhase phase) {
+      onActivity?.call(ChatActivityPhaseChanged(phase));
+    }
+
     var finalReasoningContent = '';
     var batchRequests = 0;
     var sawUserVisibleContent = false;
@@ -420,14 +428,21 @@ class ChatService {
             thinkingEnabled: thinkingEnabled,
             cancellationSignal: cancellationSignal,
           );
+          emitPhase(ChatActivityPhase.waitingForModel);
           calls = <int, _PendingChatToolCall>{};
           reasoningContent = StringBuffer();
           roundVisibleContent.clear();
           termination = null;
           var sawTransportPayload = false;
+          var sawVisibleContent = false;
+          var sawReasoning = false;
           try {
             await for (final delta in stream) {
               if (delta.content.isNotEmpty) {
+                if (!sawVisibleContent) {
+                  emitPhase(ChatActivityPhase.writingReply);
+                  sawVisibleContent = true;
+                }
                 sawTransportPayload = true;
                 sawUserVisibleContent = true;
                 roundHasVisibleContent = true;
@@ -435,6 +450,10 @@ class ChatService {
                 yield delta;
               }
               if (delta.reasoningContent.isNotEmpty) {
+                if (!sawReasoning && !sawVisibleContent) {
+                  emitPhase(ChatActivityPhase.thinking);
+                  sawReasoning = true;
+                }
                 reasoningContent.write(delta.reasoningContent);
               }
               if (delta.toolCallIndex != null) {
@@ -460,6 +479,7 @@ class ChatService {
                 retryAfter: null,
                 unlimited: currentSettings.fullAgentMode,
                 cancellationSignal: cancellationSignal,
+                onActivity: onActivity,
               );
               if (decision) {
                 retryCount++;
@@ -497,6 +517,7 @@ class ChatService {
                   retryAfter: null,
                   unlimited: true,
                   cancellationSignal: cancellationSignal,
+                  onActivity: onActivity,
                 );
                 if (decision) {
                   retryCount++;
@@ -518,6 +539,7 @@ class ChatService {
                 retryAfter: error.retryAfter,
                 unlimited: currentSettings.fullAgentMode,
                 cancellationSignal: cancellationSignal,
+                onActivity: onActivity,
               );
               if (decision) {
                 retryCount++;
@@ -536,6 +558,7 @@ class ChatService {
                 retryAfter: null,
                 unlimited: currentSettings.fullAgentMode,
                 cancellationSignal: cancellationSignal,
+                onActivity: onActivity,
               );
               if (decision) {
                 retryCount++;
@@ -675,6 +698,14 @@ class ChatService {
             final readReplies = await _toolExecutor.executeReads(
               readCalls,
               execute: (item) async {
+                if (!(isCancelled?.call() ?? false)) {
+                  _emitToolDispatched(
+                    item.callId,
+                    item.wireName,
+                    toolRound,
+                    onActivity,
+                  );
+                }
                 final name = _operationToolName(item.wireName);
                 if (tableMode && _isLegacyResultTool(name)) {
                   return _toolError('旧成果工具已停用；请使用表内内容工具。');
@@ -770,6 +801,7 @@ class ChatService {
             if (!_writeToolDispatchAllowed(name, decision)) {
               reply = _toolError('当前会话未开启该写入操作所需权限。');
             } else if (_writeToolExecutor != null) {
+              _emitToolDispatched(callId, wireName, toolRound, onActivity);
               yield ChatStreamDelta(
                 toolCallIndex: stableIndex,
                 toolCallId: callId,
@@ -978,6 +1010,7 @@ class ChatService {
     required Duration? retryAfter,
     required bool unlimited,
     required Future<void>? cancellationSignal,
+    ChatActivitySink? onActivity,
   }) async {
     if (!unlimited && retryCount >= _agentLoopPolicy.retryDelays.length) {
       return false;
@@ -988,6 +1021,9 @@ class ChatService {
     final delay = retryAfter != null && retryAfter > configured
         ? retryAfter
         : configured;
+    onActivity?.call(
+      const ChatActivityPhaseChanged(ChatActivityPhase.waitingToRetry),
+    );
     if (cancellationSignal != null) {
       final cancelled = await Future.any<bool>([
         _performRetryWait(delay).then((_) => false),
@@ -2136,6 +2172,20 @@ class ChatService {
   }.contains(name);
 
   bool _isWriteTool(String name) => _toolRegistry.isWrite(name);
+
+  void _emitToolDispatched(
+    String callId,
+    String wireName,
+    int round,
+    ChatActivitySink? onActivity,
+  ) {
+    if (onActivity == null) return;
+    onActivity(
+      ChatActivityToolDispatched(
+        ChatActivityTool(round: round, callId: callId, wireName: wireName),
+      ),
+    );
+  }
 
   Map<String, dynamic> _decodeArguments(String value) {
     try {

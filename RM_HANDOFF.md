@@ -7,20 +7,22 @@
 | 字段 | 当前值 |
 |---|---|
 | 项目名称 | 懒狗秘书 |
-| 最后更新时间 | 2026-11-10 |
+| 最后更新时间 | 2026-11-12 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.6.0+14` Android 手机预览版已发布：API 35 模拟器门禁、main CI、Android Release 与公开资产复核通过；荣耀 90 真机延期 |
+| 当前阶段 | 秘书运行活动与浅蓝主题实现完成；定向测试/静态验证状态见本轮记录。Android `v1.6.0+14` 已发布，荣耀 90 真机延期 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.6.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
+
+2026-11-12 秘书聊天加入运行阶段和已派发工具行；完成历史从现有 tool transcript 派生并折叠回看。共享界面换用浅蓝强调色。代码合同：[秘书运行活动与蓝色主题](docs/secretary-activity-contract.md)；验证：[本轮结果](test-results/secretary-activity-light-blue/VALIDATION.md)。
 
 2026-11-10 `v1.6.0+14` Android 手机预览版已发布到 GitHub：API 35 模拟器完成手机适用秘书矩阵 50/50、921 秒长测与 47 条写入/读回，并完成多表桌面小组件的尺寸、滚动、深色、多实例、独立绑定、归档恢复、冷进程点击和 `v1.5.1+13` 同签名覆盖升级。荣耀 90 真机与 API 24–30 固定行仍明确未覆盖。
 
 当前公开下载为 `https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.0`，验证入口为 `test-results/phone-release-v1.6.0/VALIDATION.md`，小组件合同见 `docs/home-widget-contract.md`，发行说明见 `docs/releases/v1.6.0.md`。
 ## 3. 当前目标与范围
 
-- 当前任务：`v1.6.0+14` Android 手机预览版的 GitHub 更新、发布和公开资产复核已完成；荣耀 90 真机、API 24–30 和平板/Windows 专项继续单独处理。
+- 当前任务：秘书运行活动和浅蓝主题；完成本轮原子变更后提交。Android 设备覆盖边界按上文继续处理。
 
 - Android 手机、Android 平板和 Windows 作为独立客户端运行。
 - 每个成果保存为一个 Markdown 文件；本地索引由 SQLite 管理。
@@ -245,6 +247,13 @@
 2. 后续 Android 发布继续复核 `phone-v1.6.0` 作为上一版同签名覆盖安装来源。
 
 ## 8. 变更记录
+
+### 2026-11-12 / 增加秘书实时运行活动和浅蓝主题
+
+- 交付：ChatService 提供隔离的活动事件回调；Workspace 按回复 ID/取消令牌维护运行快照；聊天回复显示中文阶段和实际派发工具，完成历史由原 transcript 回执派生并折叠。浅色/深色强调色及固定蓝色发送按钮接入共用主题。增加运行合同、更新视觉规格/README。未新增请求协议、数据库字段或迁移。
+- 验证：四个定向 Flutter 测试文件 38/38；相关源码与测试 `flutter analyze --no-pub` 无诊断；12 个 Dart 目标 formatter 0 change；仓库 `git diff --check` 通过。验证命令、结论与覆盖范围已纳入 `test-results/secretary-activity-light-blue/VALIDATION.md`。
+- 状态：功能实现完成，尚未提交或发布。
+- 风险/下一步：未覆盖实时活动像素截图、历史活动分页专项、全量测试、构建、模拟器/真机和真实模型验证；按项目提交门禁暂存本轮文件并创建一个 Conventional Commit。
 
 ### 2026-11-10 / 发布 Android 手机 v1.6.0 多表小组件预览版
 

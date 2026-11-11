@@ -14,6 +14,84 @@ import 'package:personal_ai_inbox/services/model_client.dart';
 import 'test_support.dart';
 
 void main() {
+  testWidgets('completed tool activity is folded above the assistant reply', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    var requests = 0;
+    final runtime = await AppRuntime.bootstrap(
+      vaultOverride: MemoryVaultStore(),
+      indexOverride: MemoryIndexDatabase(),
+      modelClient: ModelClient(
+        client: MockClient.streaming((_, body) async {
+          await body.bytesToString();
+          requests++;
+          final event = requests == 1
+              ? {
+                  'choices': [
+                    {
+                      'delta': {
+                        'tool_calls': [
+                          {
+                            'index': 0,
+                            'id': 'ui-list-tables',
+                            'function': {
+                              'name': 'table_list',
+                              'arguments': '{"private":"hidden"}',
+                            },
+                          },
+                        ],
+                      },
+                      'finish_reason': 'tool_calls',
+                    },
+                  ],
+                }
+              : {
+                  'choices': [
+                    {
+                      'delta': {'content': '表格检查完成。'},
+                    },
+                  ],
+                };
+          return http.StreamedResponse(
+            Stream.fromIterable([
+              utf8.encode('data: ${jsonEncode(event)}\n\n'),
+              utf8.encode('data: [DONE]\n\n'),
+            ]),
+            200,
+            headers: {'content-type': 'text/event-stream'},
+          );
+        }),
+      ),
+      settingsOverride: FakeSettingsService(
+        deviceId: 'secretary-activity-history-ui',
+        modelKey: 'test-key',
+      ),
+    );
+    addTearDown(runtime.dispose);
+    final conversation = await runtime.conversations.createConversation();
+    await runtime.conversations.openConversation(conversation.id);
+    await runtime.conversations.sendChatMessage(conversation.id, text: '检查我的表');
+
+    await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav_inbox')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('运行过程 · 1 个工具调用'), findsOneWidget);
+    expect(find.text('工具已返回 · 查看表列表'), findsNothing);
+    await tester.tap(find.text('运行过程 · 1 个工具调用'));
+    await tester.pumpAndSettle();
+    expect(find.text('工具已返回 · 查看表列表'), findsOneWidget);
+    expect(find.textContaining('private'), findsNothing);
+    await _disposeApp(tester);
+  });
+
   testWidgets('workspace active conversation mounts in the secretary page', (
     tester,
   ) async {

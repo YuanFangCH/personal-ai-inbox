@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:personal_ai_inbox/core/agent_usage.dart';
+import 'package:personal_ai_inbox/core/chat_activity.dart';
 import 'package:personal_ai_inbox/core/chat_models.dart';
 import 'package:personal_ai_inbox/core/ai_policy.dart';
 import 'package:personal_ai_inbox/core/models.dart';
@@ -24,6 +25,56 @@ import 'package:personal_ai_inbox/services/model_client.dart';
 import 'test_support.dart';
 
 void main() {
+  test(
+    'reports model phases and dispatched tools without their payloads',
+    () async {
+      final fixture = await _AgentFixture.create();
+      var requests = 0;
+      final events = <ChatActivityEvent>[];
+      final service = ChatService(
+        settings: FakeSettingsService(modelKey: 'test-key'),
+        repository: fixture.chats,
+        results: fixture.results,
+        tables: fixture.tables,
+        modelClient: ModelClient(
+          client: MockClient.streaming((_, body) async {
+            await body.bytesToString();
+            requests++;
+            return requests == 1
+                ? _toolCallResponse(
+                    id: 'activity-read',
+                    name: 'table_list',
+                    arguments: {'private_argument': 'must not escape'},
+                  )
+                : _textResponse('检查完成');
+          }),
+        ),
+      );
+      addTearDown(() => fixture.close(service));
+
+      await (await service.streamReply(
+        conversationId: fixture.conversationId,
+        onActivity: events.add,
+      )).toList();
+
+      expect(
+        events.whereType<ChatActivityPhaseChanged>().map(
+          (event) => event.phase,
+        ),
+        containsAllInOrder([
+          ChatActivityPhase.waitingForModel,
+          ChatActivityPhase.waitingForModel,
+          ChatActivityPhase.writingReply,
+        ]),
+      );
+      expect(
+        events.whereType<ChatActivityToolDispatched>().single.tool.wireName,
+        'table_list',
+      );
+      expect(events.toString(), isNot(contains('must not escape')));
+    },
+  );
+
   test(
     'completed ChatService answer does not wait for HTTP body cancellation',
     () async {

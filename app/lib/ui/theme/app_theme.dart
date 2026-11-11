@@ -10,7 +10,12 @@ class AppTheme {
       seedColor: AppDesignTokens.primary,
       brightness: Brightness.light,
       primary: AppDesignTokens.primary,
-      secondary: const Color(0xFF53658F),
+      onPrimary: Colors.white,
+      primaryContainer: AppDesignTokens.lightPrimaryContainer,
+      onPrimaryContainer: AppDesignTokens.lightOnPrimaryContainer,
+      primaryFixed: AppDesignTokens.primaryButton,
+      onPrimaryFixed: AppDesignTokens.onPrimaryButton,
+      secondary: const Color(0xFF536B7E),
       surface: AppDesignTokens.lightBackground,
       onSurface: AppDesignTokens.lightText,
     );
@@ -22,7 +27,12 @@ class AppTheme {
       seedColor: AppDesignTokens.primaryDark,
       brightness: Brightness.dark,
       primary: AppDesignTokens.primaryDark,
-      secondary: const Color(0xFFB1BEDF),
+      onPrimary: const Color(0xFF002A46),
+      primaryContainer: AppDesignTokens.darkPrimaryContainer,
+      onPrimaryContainer: AppDesignTokens.darkOnPrimaryContainer,
+      primaryFixed: AppDesignTokens.primaryButton,
+      onPrimaryFixed: AppDesignTokens.onPrimaryButton,
+      secondary: const Color(0xFFB1C8DA),
       surface: AppDesignTokens.darkBackground,
       onSurface: AppDesignTokens.darkText,
     );
@@ -46,6 +56,20 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: scheme.primaryFixed,
+          foregroundColor: scheme.onPrimaryFixed,
+          disabledBackgroundColor: scheme.primaryFixed.withValues(alpha: 0.24),
+          disabledForegroundColor: scheme.onPrimaryFixed.withValues(
+            alpha: 0.55,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
+      ),
       scaffoldBackgroundColor: scheme.surface,
       visualDensity: VisualDensity.standard,
       splashFactory: InkSparkle.splashFactory,
@@ -144,14 +168,6 @@ class AppTheme {
               ? AppDesignTokens.darkSecondaryText
               : AppDesignTokens.lightSecondaryText,
           fontWeight: FontWeight.w500,
-        ),
-      ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
