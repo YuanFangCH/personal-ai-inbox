@@ -201,6 +201,27 @@ function Assert-AvdNotOccupied {
     }
 }
 
+function Move-StaleAvdLocks {
+    param(
+        [string]$AvdHome,
+        [string]$Name,
+        [string]$OutputDir
+    )
+    $avdDir = Join-Path $AvdHome "$Name.avd"
+    $backupDir = Join-Path $OutputDir ('runtime\stale-avd-locks-' + (Get-Date -Format 'yyyyMMddHHmmss'))
+    $lockNames = @(
+        'hardware-qemu.ini.lock',
+        'multiinstance.lock',
+        'snapshot.lock.lock'
+    )
+    foreach ($lockName in $lockNames) {
+        $source = Join-Path $avdDir $lockName
+        if (-not (Test-Path -LiteralPath $source)) { continue }
+        New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
+        Move-Item -LiteralPath $source -Destination (Join-Path $backupDir $lockName) -Force
+    }
+}
+
 function Get-FreeEmulatorPort {
     foreach ($port in 5554..5682) {
         if (($port - 5554) % 2 -ne 0) { continue }
@@ -238,6 +259,7 @@ function Start-ValidationAvd {
         throw "emulator was not found: $emulator"
     }
     Assert-AvdNotOccupied $AvdName
+    Move-StaleAvdLocks -AvdHome $AvdHome -Name $AvdName -OutputDir $OutputDir
     $avd = Get-AvdDataPath -SdkRoot $SdkRoot -AvdHome $AvdHome -Name $AvdName
     $before = @(Get-ConnectedEmulatorSerials -Adb $adb)
     $emulatorPort = Get-FreeEmulatorPort
@@ -275,7 +297,6 @@ function Start-ValidationAvd {
             -ArgumentList @(
                 '-avd', $AvdName,
                 '-port', $emulatorPort,
-                '-read-only',
                 '-no-snapshot-save',
                 '-no-boot-anim',
                 '-no-window',
@@ -713,30 +734,82 @@ function Invoke-PublishedStage {
     }
     Add-ValidationCheck 'upgrade.previous-install' 'passed' "v1.6.0+14 已安装；sha256=$($previousPublished.Sha256)。"
 
-    & $adb -s $Context.Serial shell monkey -p $packageName -c android.intent.category.LAUNCHER 1 | Out-Null
-    Start-Sleep -Seconds 3
-    & $adb -s $Context.Serial shell am force-stop $packageName | Out-Null
+    & $adb -s $Context.Serial root 2>&1 | Out-Null
+    $rootReady = $false
+    for ($attempt = 0; $attempt -lt 30; $attempt++) {
+        $devices = & $adb devices
+        if ($devices -match "(?m)^$([regex]::Escape($Context.Serial))\s+device$") {
+            $identity = (& $adb -s $Context.Serial shell id 2>$null | Out-String).Trim()
+            if ($identity -match '\buid=0\b') {
+                $rootReady = $true
+                break
+            }
+        }
+        Start-Sleep -Seconds 1
+    }
+    if (-not $rootReady) {
+        throw "adb root did not become ready for $($Context.Serial)."
+    }
 
     $fixture = Join-Path $OutputDir 'retention-fixture'
     Remove-ScopedValidationDirectory $fixture
     New-Item -ItemType Directory -Path $fixture -Force | Out-Null
-    & $adb -s $Context.Serial root | Out-Null
-    & $adb -s $Context.Serial wait-for-device | Out-Null
     $dataDir = "/data/user/0/$packageName/files"
     & $adb -s $Context.Serial shell mkdir -p $dataDir | Out-Null
-    $owner = (& $adb -s $Context.Serial shell stat -c '%u:%g' $dataDir | Out-String).Trim()
+    $owner = (& $adb -s $Context.Serial shell stat -c '%u:%g' "/data/user/0/$packageName" | Out-String).Trim()
     if ($LASTEXITCODE -ne 0 -or $owner -notmatch '^\d+:\d+$') {
         throw "Unable to determine app data ownership: $owner"
     }
 
     $conversationDb = Join-Path $fixture 'conversations.sqlite3'
-    & $adb -s $Context.Serial pull "$dataDir/conversations.sqlite3" $conversationDb | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Unable to pull the previous conversation database.'
-    }
     $timestamp = '2026-11-12T12:00:00+08:00'
     $sql = @"
-PRAGMA wal_checkpoint(TRUNCATE);
+PRAGMA journal_mode=WAL;
+PRAGMA foreign_keys=ON;
+CREATE TABLE IF NOT EXISTS conversations (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  auto_title INTEGER NOT NULL,
+  preview TEXT NOT NULL,
+  ai_permissions_json TEXT NOT NULL,
+  ai_policy_json TEXT
+);
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id TEXT PRIMARY KEY,
+  conversation_id TEXT NOT NULL,
+  role TEXT NOT NULL,
+  content TEXT NOT NULL,
+  status TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  attachments_json TEXT NOT NULL,
+  actions_json TEXT NOT NULL,
+  error TEXT,
+  reasoning_content TEXT NOT NULL,
+  tool_transcript_json TEXT NOT NULL,
+  FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation
+  ON chat_messages(conversation_id, created_at);
+CREATE TABLE IF NOT EXISTS generation_runs (
+  assistant_message_id TEXT PRIMARY KEY,
+  conversation_id TEXT NOT NULL,
+  user_message_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  response_text TEXT NOT NULL,
+  tool_calls_json TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  error TEXT
+);
+CREATE TABLE IF NOT EXISTS agent_trash_entries (
+  id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  payload_json TEXT NOT NULL
+);
 INSERT OR REPLACE INTO conversations
   (id, title, created_at, updated_at, auto_title, preview, ai_permissions_json, ai_policy_json)
 VALUES
@@ -745,6 +818,8 @@ INSERT OR REPLACE INTO chat_messages
   (id, conversation_id, role, content, status, created_at, updated_at, attachments_json, actions_json, error, reasoning_content, tool_transcript_json)
 VALUES
   ('msg_phone_retention_v161', 'conv_phone_retention_v161', 'user', 'PHONE_RETENTION_V161 message', 'complete', '$timestamp', '$timestamp', '[]', '[]', NULL, '', '[]');
+PRAGMA user_version=7;
+PRAGMA wal_checkpoint(TRUNCATE);
 "@
     Invoke-SqliteSeed -SdkRoot $SdkRoot -DatabasePath $conversationDb -Sql $sql
     $tableDir = Join-Path $fixture 'vault\tables'
@@ -784,16 +859,26 @@ PHONE_RETENTION_V161 entry body
     Set-Content -LiteralPath (Join-Path $tableDir 'tb_phone_retention_v161.md') -Value $table -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $itemDir 'it_phone_retention_v161.md') -Value $item -Encoding UTF8
 
-    & $adb -s $Context.Serial push (Join-Path $fixture '*') $dataDir/
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Unable to push the retention fixture.'
-    }
+    & $adb -s $Context.Serial push $conversationDb "$dataDir/conversations.sqlite3" | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to push the retention conversation database.' }
+    & $adb -s $Context.Serial shell mkdir -p "$dataDir/vault/tables" "$dataDir/vault/items" | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to create the retention vault directories.' }
+    & $adb -s $Context.Serial push (Join-Path $tableDir 'tb_phone_retention_v161.md') "$dataDir/vault/tables/tb_phone_retention_v161.md" | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to push the retention table fixture.' }
+    & $adb -s $Context.Serial push (Join-Path $itemDir 'it_phone_retention_v161.md') "$dataDir/vault/items/it_phone_retention_v161.md" | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to push the retention item fixture.' }
     & $adb -s $Context.Serial shell chown -R $owner $dataDir | Out-Null
     & $adb -s $Context.Serial shell chmod -R u+rwX $dataDir | Out-Null
     & $adb -s $Context.Serial shell rm -f `
         "$dataDir/conversations.sqlite3-wal" `
         "$dataDir/conversations.sqlite3-shm" | Out-Null
     Add-ValidationCheck 'upgrade.synthetic-data' 'passed' '已写入可识别的合成会话、表和条目。'
+
+    & $adb -s $Context.Serial shell input keyevent 82 | Out-Null
+    & $adb -s $Context.Serial shell wm dismiss-keyguard | Out-Null
+    & $adb -s $Context.Serial shell monkey -p $packageName -c android.intent.category.LAUNCHER 1 | Out-Null
+    Start-Sleep -Seconds 3
+    & $adb -s $Context.Serial shell am force-stop $packageName | Out-Null
 
     & $adb -s $Context.Serial install -r $apk
     if ($LASTEXITCODE -ne 0) {
@@ -806,14 +891,38 @@ PHONE_RETENTION_V161 entry body
     if ($packageDump -notmatch "versionCode=$expectedBuild\b" -or $packageDump -notmatch "versionName=$([regex]::Escape($expectedVersion))\b") {
         throw 'Installed package version did not update to 1.6.1+15.'
     }
-    & $adb -s $Context.Serial shell grep -a -q 'PHONE_RETENTION_V161' "$dataDir/conversations.sqlite3"
-    $conversationCheck = $LASTEXITCODE
-    & $adb -s $Context.Serial shell grep -a -q 'PHONE_RETENTION_V161' "$dataDir/vault/tables/tb_phone_retention_v161.md"
-    $tableCheck = $LASTEXITCODE
-    & $adb -s $Context.Serial shell grep -a -q 'PHONE_RETENTION_V161' "$dataDir/vault/items/it_phone_retention_v161.md"
-    $itemCheck = $LASTEXITCODE
-    if ($conversationCheck -ne 0 -or $tableCheck -ne 0 -or $itemCheck -ne 0) {
-        throw 'Synthetic session or table marker was not retained after upgrade.'
+    $verificationDir = Join-Path $releaseDir 'upgrade-verify'
+    Remove-ScopedValidationDirectory $verificationDir
+    New-Item -ItemType Directory -Path $verificationDir -Force | Out-Null
+    $conversationBytes = [System.Collections.Generic.List[byte]]::new()
+    foreach ($suffix in @('', '-wal')) {
+        $remote = "$dataDir/conversations.sqlite3$suffix"
+        & $adb -s $Context.Serial shell test -f $remote
+        if ($LASTEXITCODE -ne 0) { continue }
+        $local = Join-Path $verificationDir "conversations.sqlite3$suffix"
+        & $adb -s $Context.Serial pull $remote $local | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "Unable to pull upgraded conversation file: $remote" }
+        $conversationBytes.AddRange([IO.File]::ReadAllBytes($local))
+    }
+    $conversationMarker = [Text.Encoding]::UTF8.GetString($conversationBytes.ToArray())
+    foreach ($relative in @(
+        'vault/tables/tb_phone_retention_v161.md',
+        'vault/items/it_phone_retention_v161.md'
+    )) {
+        $remote = "$dataDir/$relative"
+        & $adb -s $Context.Serial shell test -f $remote
+        if ($LASTEXITCODE -ne 0) {
+            throw "Retention file is missing after upgrade: $relative"
+        }
+        $local = Join-Path $verificationDir $relative.Replace('/', '\')
+        New-Item -ItemType Directory -Path (Split-Path -Parent $local) -Force | Out-Null
+        & $adb -s $Context.Serial pull $remote $local | Out-Null
+        if ($LASTEXITCODE -ne 0 -or (Get-Content -Raw -LiteralPath $local) -notmatch 'PHONE_RETENTION_V161') {
+            throw "Retention marker is missing after upgrade: $relative"
+        }
+    }
+    if ($conversationMarker -notmatch 'PHONE_RETENTION_V161') {
+        throw 'Synthetic conversation marker was not retained after upgrade.'
     }
     Add-ValidationCheck 'upgrade.data-retained' 'passed' '覆盖启动后合成会话、表和条目标记均可读回。'
     $screenshotRemote = '/sdcard/secretary-activity-published.png'

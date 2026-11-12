@@ -8,11 +8,11 @@
 
 首个预发布版本从 [GitHub Releases](https://github.com/YuanFangCH/personal-ai-inbox/releases) 下载：
 
-- 本次 `v1.6.0`：Android 7.0 及以上安装通用 APK，不提供新的 Windows 资产。
+- 本次 `v1.6.1`：Android 7.0 及以上安装通用 APK，不提供新的 Windows 资产。
 - Windows 11 x64 继续使用上一版全平台预发布中的安装包或便携 ZIP。
 - 发布页同时提供 `SHA256SUMS.txt`，下载后应校验文件哈希。
 
-Android 手机 `v1.6.0` 使用 `phone-v1.6.0` 标签，只提供通用 APK 与 `SHA256SUMS.txt`：[GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.0)。本版新增可配置多表桌面小组件；`v1.5.1` 继续作为上一版 Android 手机预发布保留，`v1.2.1` 是上一版全平台预发布。升级前请完整备份应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.6.0.md)；真实资料迁移需要在应用内确认。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
+Android 手机 `v1.6.1` 使用 `phone-v1.6.1` 标签，只提供通用 APK 与 `SHA256SUMS.txt`：[GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.1)。本版新增秘书运行阶段与工具活动实时反馈、折叠回看和浅蓝主题；`v1.6.0` 继续作为上一版 Android 手机预发布保留，`v1.2.1` 是上一版全平台预发布。升级前请完整备份应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.6.1.md)；真实资料迁移需要在应用内确认。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
 
 ## 核心能力
 
@@ -34,7 +34,7 @@ Android 手机 `v1.6.0` 使用 `phone-v1.6.0` 标签，只提供通用 APK 与 `
 
 ## 当前进展
 
-2026-11-12 秘书对话新增运行阶段/工具活动展示与浅蓝主题，历史工具行从现有会话 transcript 派生，无新增数据库字段。代码合同见 [运行活动合同](docs/secretary-activity-contract.md)，定向验证见 `test-results/secretary-activity-light-blue/VALIDATION.md`。`v1.6.1+15` 候选已在 E 盘 Android 15 AVD `aitext_v161_phone` 完成完成态、停止态、失败态、浅色/深色、320dp/1.5 倍字体、宽屏和历史恢复验收；Android 集成测试 4/4、定向主机测试 38/38。发布合同见 [手机验收与预览发布合同](docs/phone-preview-validation-contract.md)，当前进展见 `test-results/phone-release-v1.6.1/VALIDATION.md`；GitHub 发布尚待执行。
+2026-11-12 `v1.6.1+15` Android 手机预览版已发布：[phone-v1.6.1](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.1)。本版新增秘书运行阶段与工具活动实时反馈、完成/停止/失败后的折叠回看和浅蓝主题；历史工具行来自现有会话 transcript，无新增数据库字段。main CI `43201007670` 与 Android Release `43201383058` 均 success。公开 APK 为 92,475,115 字节，SHA-256 `83cf43344c1e64ec01a35579b47b64700972c51ad8fad15a6081849938dd169a`，API 24/36、非 Debuggable、v2 签名和长期证书复核通过；E 盘 AVD 完成 `v1.6.0+14` 到 `v1.6.1+15` 的合成会话与表数据覆盖升级。详见[发行说明](docs/releases/v1.6.1.md)、[运行活动合同](docs/secretary-activity-contract.md)和[验证记录](test-results/phone-release-v1.6.1/VALIDATION.md)。
 
 2026-11-10 `v1.6.0+14` Android 手机预览版已发布：[phone-v1.6.0](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.0)。main CI `42785276198` 与 Android Release `42785654908` 均 success；公开通用 APK 为 92,327,311 字节，SHA-256 `dab7263bf4b7280633cf28a848ed960c0d3761ed36204c58c11779de5b652611`，API 24/36、非 Debuggable、v2 签名及长期证书复核通过。API 35 模拟器已完成 50/50 手机用例、921 秒长测及多表小组件门禁；荣耀 90 真机与 API 24–30 固定行仍未实测。详见[发行说明](docs/releases/v1.6.0.md)、[接口合同](docs/home-widget-contract.md)和[验证记录](test-results/phone-release-v1.6.0/VALIDATION.md)。
 

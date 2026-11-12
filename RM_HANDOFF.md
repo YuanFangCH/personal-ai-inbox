@@ -10,19 +10,19 @@
 | 最后更新时间 | 2026-11-12 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.6.1+15` 已完成 E 盘 Android 15 AVD 候选验收、全库静态检查和发布准备，待提交、推送、CI 与 `phone-v1.6.1` 公开复核。Android `v1.6.0+14` 仍为当前公开版，荣耀 90 真机延期 |
+| 当前阶段 | `v1.6.1+15` Android 手机预览版已发布并完成公开 APK、长期签名及 `v1.6.0+14` 覆盖升级复核。荣耀 90 真机、API 24–30 与平板/Windows 专项继续延期 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.6.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
 
-2026-11-12 秘书聊天加入运行阶段和已派发工具行；完成历史从现有 tool transcript 派生并折叠回看。共享界面换用浅蓝强调色，实现提交为 `5d763d7`。代码合同：[秘书运行活动与蓝色主题](docs/secretary-activity-contract.md)；验证：[本轮结果](test-results/secretary-activity-light-blue/VALIDATION.md)。`v1.6.1+15` 已通过 E 盘 Android 15 AVD `aitext_v161_phone` 候选场景 4/4，发现并修复低高度任务状态卡溢出；公开 Release 仍需提交、推送、CI 和公开包复核。
+2026-11-12 `v1.6.1+15` Android 手机预览版已发布：秘书聊天显示真实运行阶段和工具活动，完成/停止/失败后保留折叠历史，界面换用浅蓝强调色。E 盘 API 35 AVD 候选活动场景 4/4，公开包从 `v1.6.0+14` 同签名覆盖安装且合成会话/表数据保留。Release：[phone-v1.6.1](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.1)；验证：[本轮结果](test-results/phone-release-v1.6.1/VALIDATION.md)。
 
 2026-11-10 `v1.6.0+14` Android 手机预览版已发布到 GitHub：API 35 模拟器完成手机适用秘书矩阵 50/50、921 秒长测与 47 条写入/读回，并完成多表桌面小组件的尺寸、滚动、深色、多实例、独立绑定、归档恢复、冷进程点击和 `v1.5.1+13` 同签名覆盖升级。荣耀 90 真机与 API 24–30 固定行仍明确未覆盖。
 
-当前公开下载为 `https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.0`，验证入口为 `test-results/phone-release-v1.6.0/VALIDATION.md`，小组件合同见 `docs/home-widget-contract.md`，发行说明见 `docs/releases/v1.6.0.md`。
+当前公开下载为 `https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.1`，验证入口为 `test-results/phone-release-v1.6.1/VALIDATION.md`，运行活动合同见 `docs/secretary-activity-contract.md`，发行说明见 `docs/releases/v1.6.1.md`。
 ## 3. 当前目标与范围
 
-- 当前任务：提交并推送 `v1.6.1+15` 发布准备，等待 main CI 后推送 `phone-v1.6.1`，再下载公开 APK 完成签名、版本和 `v1.6.0+14` 覆盖升级复核。
+- 当前任务：`v1.6.1+15` 发布闭环已完成；后续设备审计从荣耀 90、API 24–30、平板和 Windows 继续。
 
 - Android 手机、Android 平板和 Windows 作为独立客户端运行。
 - 每个成果保存为一个 Markdown 文件；本地索引由 SQLite 管理。
@@ -248,6 +248,13 @@
 2. 后续 Android 发布继续复核 `phone-v1.6.0` 作为上一版同签名覆盖安装来源。
 
 ## 8. 变更记录
+
+### 2026-11-12 / 发布 Android 手机 v1.6.1 活动反馈预览版
+
+- 交付：`v1.6.1+15` 通用 APK 与 `SHA256SUMS.txt` 已发布为 GitHub pre-release `phone-v1.6.1`，标签指向通过 main CI 的 `8a36541`。
+- 验证：main CI `43201007670` success；Android Release `43201383058` success。公开 APK 92,475,115 字节，SHA-256 `83cf43344c1e64ec01a35579b47b64700972c51ad8fad15a6081849938dd169a`，与清单及 Release API 摘要一致；版本 `1.6.1+15`、API 24/36、非 Debuggable、v2 签名和长期证书通过。E 盘 `aitext_v161_publish_phone` 从 `v1.6.0+14` 覆盖到新包，合成会话、表与条目均保留。
+- 状态：Android 手机预览版发布完成，当前公开下载为 `https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.1`。
+- 风险/下一步：荣耀 90、API 24–30、平板、Windows、真实模型与真实用户资料未在本次复核中覆盖。
 
 ### 2026-11-12 / 稳定重复决策日期夹具
 
