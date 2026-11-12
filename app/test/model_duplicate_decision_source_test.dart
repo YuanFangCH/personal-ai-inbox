@@ -574,8 +574,12 @@ void main() {
       final table = runtime.tables.tables.singleWhere(
         (item) => item.role == TableRole.inboxSchedule,
       );
-      final start = DateTime(2026, 11, 10, 9);
+      final future = DateTime.now().add(const Duration(days: 7));
+      final start = DateTime(future.year, future.month, future.day, 9);
       final end = start.add(const Duration(hours: 1));
+      final title =
+          '${start.year}-${start.month.toString().padLeft(2, '0')}-'
+          '${start.day.toString().padLeft(2, '0')} 09:00 信号与系统期中考试';
       final evidence = semanticFactEvidenceForContent(
         type: TableContentType.schedule,
         start: start,
@@ -583,7 +587,7 @@ void main() {
       );
       final objectEvidence = contentObjectEvidenceKey(
         type: TableContentType.schedule,
-        title: '2026-11-10 09:00 信号与系统期中考试',
+        title: title,
         start: start,
         end: end,
       );
@@ -592,7 +596,7 @@ void main() {
           id: 'entry_capture_scope',
           type: TableContentType.schedule,
           tableId: table.id,
-          title: '2026-11-10 09:00 信号与系统期中考试',
+          title: title,
           revision: 1,
           createdAt: DateTime(2026, 11, 1, 9),
           updatedAt: DateTime(2026, 11, 1, 9),
@@ -606,7 +610,7 @@ void main() {
       );
 
       final outcome = await runtime.capture.captureText(
-        '2026-11-10 09:00 信号与系统期中考试',
+        title,
         preferModel: false,
       );
 
@@ -618,7 +622,7 @@ void main() {
       expect(outcome.tableEntry!.id, 'entry_capture_scope');
       expect(duplicateRequests, 1);
       final updated = await runtime.tables.readEntry('entry_capture_scope');
-      expect(updated!.title, '2026-11-10 09:00 信号与系统期中考试');
+      expect(updated!.title, title);
       expect(updated.body, contains('第三章'));
       expect(updated.body, contains('第四章'));
       expect(

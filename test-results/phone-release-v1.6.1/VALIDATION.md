@@ -16,7 +16,7 @@
 | E 盘 AVD 候选验收 | passed | `aitext_v161_phone` / API 35 / `emulator-5620`；完成、停止、失败、主题和宽屏 4/4 |
 | 定向主机测试 | passed | 活动/服务/秘书/大历史 38/38；任务卡与相关秘书 UI 8/8 |
 | 全库静态检查 | passed | 293 文件格式 0 change；`flutter analyze --no-pub` 0 issue |
-| main CI | not executed | 发布准备尚未提交 |
+| main CI | failed then fixed | 首轮 `43200235300` 因固定过去日期的重复决策测试失败；改用未来日期后该用例 5/5、完整文件 12/12 通过，待推送重跑 |
 | GitHub Android Release | not executed | 尚未打标签 |
 | 公开 APK 复核 | not executed | 尚无公开资产 |
 | `v1.6.0` 到 `v1.6.1` 覆盖升级 | not executed | 等待公开包 |
