@@ -94,10 +94,10 @@ void main() {
 
     expect(projection.matchingCount, 1);
     expect(projection.snapshot.dataDay, '2026-11-10');
-    expect(projection.snapshot.rows, hasLength(2));
-    final row = projection.snapshot.rows.last;
+    expect(projection.snapshot.rows, hasLength(1));
+    final row = projection.snapshot.rows.single;
     expect(row.entryId, 'todo_open');
-    expect(row.detail, contains('2026-11-10 10:00'));
+    expect(row.detail, contains('11月10日 10:00'));
     expect(row.detail, contains('课程: 数学'));
   });
 
@@ -146,6 +146,41 @@ void main() {
     expect(titles.rows.last.detail, isNull);
   });
 
+  test('detailed visibility publishes only title and business time', () {
+    final table = _table(id: 'tb_work', title: '作业');
+    final entry = _entry(
+      id: 'todo_1',
+      tableId: table.id,
+      type: TableContentType.todo,
+      title: '提交练习',
+      due: DateTime(2026, 11, 10, 20),
+      customValues: const {'secret': 'private'},
+    );
+    final snapshot = projectCard(
+      CardDefinition(
+        cardId: 'detailed',
+        revision: 1,
+        archived: false,
+        visibility: WidgetVisibility.titleTime,
+        spec: CardSpec(
+          title: '学习',
+          sections: [
+            SectionSpec(
+              tableId: table.id,
+              fields: [
+                WidgetField.custom('secret'),
+                const WidgetField.builtin(WidgetBuiltinField.status),
+              ],
+            ),
+          ],
+        ),
+      ),
+      source: _source([table], [entry]),
+      localNow: now,
+    );
+    expect(snapshot.rows.single.detail, '11月10日 20:00');
+  });
+
   test('sets data day only when a section uses days_ahead', () {
     final table = _table(id: 'tb_work', title: '作业');
     final card = CardDefinition(
@@ -167,7 +202,7 @@ void main() {
     expect(snapshot.dataDay, isNull);
   });
 
-  test('caps at 48 rows, retains every section header, and marks hasMore', () {
+  test('caps the unified timeline at 48 rows and marks hasMore', () {
     final tables = [
       for (var index = 0; index < 7; index++)
         _table(id: 'tb_$index', title: '表 $index'),
@@ -204,10 +239,77 @@ void main() {
     expect(snapshot.rows, hasLength(48));
     expect(snapshot.hasMore, isTrue);
     expect(
-      snapshot.rows.where((row) => row.kind == WidgetRowKind.section),
-      hasLength(7),
+      snapshot.rows.every((row) => row.kind == WidgetRowKind.entry),
+      isTrue,
     );
   });
+
+  test(
+    'merges shortcut sources across tables, deduplicates and sorts by time',
+    () {
+      final first = _table(id: 'table_a', title: 'A');
+      final second = _table(id: 'table_b', title: 'B');
+      final entries = [
+        _entry(
+          id: 'late',
+          tableId: first.id,
+          type: TableContentType.schedule,
+          title: '周末',
+          start: DateTime(2026, 11, 16, 9),
+        ),
+        _entry(
+          id: 'untimed',
+          tableId: second.id,
+          type: TableContentType.todo,
+          title: '无日期待办',
+        ),
+        _entry(
+          id: 'early',
+          tableId: second.id,
+          type: TableContentType.todo,
+          title: '逾期待办',
+          due: DateTime(2026, 11, 9),
+          done: false,
+        ),
+        _entry(
+          id: 'same',
+          tableId: second.id,
+          type: TableContentType.schedule,
+          title: '今日安排',
+          start: DateTime(2026, 11, 10, 9),
+        ),
+      ];
+      final card = CardDefinition(
+        cardId: 'timeline',
+        revision: 1,
+        archived: false,
+        visibility: WidgetVisibility.titleTime,
+        spec: CardSpec(
+          title: '时间轴',
+          sourceMode: WidgetSourceMode.allTables,
+          sections: [SectionSpec(tableId: first.id)],
+          includeOpenTodos: true,
+          includeRecentEvents: true,
+        ),
+      );
+
+      final result = projectCardDetails(
+        card,
+        source: _source([first, second], entries),
+        localNow: now,
+      );
+
+      expect(result.matchingCount, 4);
+      expect(result.snapshot.rows.map((row) => row.entryId), [
+        'early',
+        'same',
+        'late',
+        'untimed',
+      ]);
+      expect(result.snapshot.rows.first.detail, contains('11月9日'));
+      expect(result.snapshot.dataDay, '2026-11-10');
+    },
+  );
 
   test('returns Chinese warnings for removed tables and fields', () {
     final table = _table(id: 'tb_work', title: '作业');

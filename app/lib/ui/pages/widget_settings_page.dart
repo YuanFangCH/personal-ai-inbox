@@ -448,7 +448,13 @@ class _CardPanel extends StatelessWidget {
                         isDense: true,
                       ),
                       items: [
-                        for (final visibility in WidgetVisibility.values)
+                        for (final visibility in [
+                          WidgetVisibility.hidden,
+                          WidgetVisibility.titles,
+                          WidgetVisibility.titleTime,
+                          if (card.visibility == WidgetVisibility.fields)
+                            WidgetVisibility.fields,
+                        ])
                           DropdownMenuItem(
                             value: visibility,
                             child: Text(_visibilityLabel(visibility)),
@@ -607,14 +613,43 @@ class _WidgetCardEditorPageState extends State<WidgetCardEditorPage> {
                     },
                   ),
                   const SizedBox(height: 8),
+                  if (_draft.sourceMode == WidgetSourceMode.allTables ||
+                      _draft.includeOpenTodos ||
+                      _draft.includeRecentEvents) ...[
+                    const Divider(),
+                    for (final table in tables)
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: _draft.excludedTableIds.contains(table.id),
+                        onChanged: configuredIds.contains(table.id)
+                            ? null
+                            : (value) => setState(() {
+                                if (value == true) {
+                                  _draft.excludedTableIds.add(table.id);
+                                } else {
+                                  _draft.excludedTableIds.remove(table.id);
+                                }
+                              }),
+                        title: Text('从快捷来源排除「${table.title}」'),
+                      ),
+                  ],
                   SwitchListTile(
+                    key: const Key('widget_card_include_open_todos'),
                     contentPadding: EdgeInsets.zero,
-                    value: _draft.hideEmptySections,
-                    onChanged: (value) {
-                      setState(() => _draft.hideEmptySections = value);
-                    },
-                    title: const Text('隐藏空分区'),
-                    subtitle: const Text('关闭时仍显示表名和 0 条内容'),
+                    value: _draft.includeOpenTodos,
+                    onChanged: (value) =>
+                        setState(() => _draft.includeOpenTodos = value),
+                    title: const Text('加入「要做的」'),
+                    subtitle: const Text('包含逾期、无截止时间的未完成待办'),
+                  ),
+                  SwitchListTile(
+                    key: const Key('widget_card_include_recent_events'),
+                    contentPadding: EdgeInsets.zero,
+                    value: _draft.includeRecentEvents,
+                    onChanged: (value) =>
+                        setState(() => _draft.includeRecentEvents = value),
+                    title: const Text('加入「最近事件」'),
+                    subtitle: const Text('今天起 7 天内的日程和事件'),
                   ),
                 ],
               ),
@@ -673,9 +708,7 @@ class _WidgetCardEditorPageState extends State<WidgetCardEditorPage> {
                         key: ValueKey(_draft.sections[index]),
                         draft: _draft.sections[index],
                         tables: tables,
-                        allowRemove:
-                            _draft.sections.length > 1 ||
-                            _draft.sourceMode == WidgetSourceMode.allTables,
+                        allowRemove: true,
                         onChanged: () => setState(() {}),
                         onMoveUp: index == 0
                             ? null
@@ -691,44 +724,6 @@ class _WidgetCardEditorPageState extends State<WidgetCardEditorPage> {
                 ],
               ),
             ),
-            if (_draft.sourceMode == WidgetSourceMode.allTables) ...[
-              const SizedBox(height: 16),
-              SurfacePanel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SectionHeading(title: '排除的表'),
-                    const SizedBox(height: 4),
-                    Text(
-                      '优先显示的表不会被排除。',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 8),
-                    if (tables.isEmpty)
-                      const Text('当前没有可显示的表。')
-                    else
-                      for (final table in tables)
-                        CheckboxListTile(
-                          key: Key('widget_card_exclude_${table.id}'),
-                          contentPadding: EdgeInsets.zero,
-                          value: _draft.excludedTableIds.contains(table.id),
-                          onChanged: configuredIds.contains(table.id)
-                              ? null
-                              : (selected) {
-                                  setState(() {
-                                    if (selected == true) {
-                                      _draft.excludedTableIds.add(table.id);
-                                    } else {
-                                      _draft.excludedTableIds.remove(table.id);
-                                    }
-                                  });
-                                },
-                          title: Text(table.title),
-                        ),
-                  ],
-                ),
-              ),
-            ],
             if (_draft.sections.any(
               (section) => !tables.any((table) => table.id == section.tableId),
             )) ...[
@@ -825,9 +820,10 @@ class _WidgetCardEditorPageState extends State<WidgetCardEditorPage> {
       throw const FormatException('请填写卡片标题');
     }
     final tables = AppScope.of(context).tables.tables;
-    if (_draft.sourceMode == WidgetSourceMode.selectedTables &&
-        _draft.sections.isEmpty) {
-      throw const FormatException('指定表模式至少需要一张表');
+    if (_draft.sections.isEmpty &&
+        !_draft.includeOpenTodos &&
+        !_draft.includeRecentEvents) {
+      throw const FormatException('至少选择一张表或一个快捷内容来源');
     }
     final sectionIds = <String>{};
     final sections = <SectionSpec>[];
@@ -837,13 +833,13 @@ class _WidgetCardEditorPageState extends State<WidgetCardEditorPage> {
       }
       sections.add(draft.toSpec());
     }
-    final excluded = _draft.sourceMode == WidgetSourceMode.allTables
-        ? _draft.excludedTableIds
-              .where((id) => !sectionIds.contains(id))
-              .toList(growable: false)
-        : const <String>[];
+    final excluded = _draft.excludedTableIds
+        .where((id) => !sectionIds.contains(id))
+        .toList(growable: false);
     if (_draft.sourceMode == WidgetSourceMode.allTables &&
         sections.isEmpty &&
+        !_draft.includeOpenTodos &&
+        !_draft.includeRecentEvents &&
         tables.every((table) => excluded.contains(table.id))) {
       throw const FormatException('至少保留一张可显示的表');
     }
@@ -854,6 +850,8 @@ class _WidgetCardEditorPageState extends State<WidgetCardEditorPage> {
       excludedTableIds: excluded,
       hideEmptySections: _draft.hideEmptySections,
       theme: _draft.theme,
+      includeOpenTodos: _draft.includeOpenTodos,
+      includeRecentEvents: _draft.includeRecentEvents,
     );
   }
 
@@ -1185,6 +1183,8 @@ class _CardDraft {
     required this.hideEmptySections,
     required this.sections,
     required this.excludedTableIds,
+    required this.includeOpenTodos,
+    required this.includeRecentEvents,
   });
 
   factory _CardDraft.blank() => _CardDraft(
@@ -1194,6 +1194,8 @@ class _CardDraft {
     hideEmptySections: false,
     sections: [],
     excludedTableIds: {},
+    includeOpenTodos: false,
+    includeRecentEvents: false,
   );
 
   factory _CardDraft.fromSpec(CardSpec spec) => _CardDraft(
@@ -1203,6 +1205,8 @@ class _CardDraft {
     hideEmptySections: spec.hideEmptySections,
     sections: spec.sections.map(_SectionDraft.fromSpec).toList(),
     excludedTableIds: spec.excludedTableIds.toSet(),
+    includeOpenTodos: spec.includeOpenTodos,
+    includeRecentEvents: spec.includeRecentEvents,
   );
 
   String title;
@@ -1211,6 +1215,8 @@ class _CardDraft {
   bool hideEmptySections;
   final List<_SectionDraft> sections;
   final Set<String> excludedTableIds;
+  bool includeOpenTodos;
+  bool includeRecentEvents;
 
   void dispose() {
     for (final section in sections) {
@@ -1285,7 +1291,8 @@ String _receiptError(CardWriteReceipt receipt) =>
 
 String _visibilityLabel(WidgetVisibility visibility) => switch (visibility) {
   WidgetVisibility.hidden => '全部隐藏',
-  WidgetVisibility.titles => '仅标题',
+  WidgetVisibility.titles => '简洁显示（仅标题）',
+  WidgetVisibility.titleTime => '详细显示（标题和时间）',
   WidgetVisibility.fields => '标题和字段',
 };
 

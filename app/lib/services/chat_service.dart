@@ -2790,6 +2790,8 @@ ${_globalKnowledgePolicyInstructions(policy)}不得声称未执行或待确认�
             'items': {'type': 'string'},
           },
           'hide_empty_sections': {'type': 'boolean'},
+          'include_open_todos': {'type': 'boolean'},
+          'include_recent_events': {'type': 'boolean'},
           'theme': {
             'type': 'string',
             'enum': ['system', 'light', 'dark'],

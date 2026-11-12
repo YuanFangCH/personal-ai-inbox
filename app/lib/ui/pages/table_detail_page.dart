@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/table_models.dart';
+import '../../core/table_entry_order.dart';
 import '../../modules/conversation/manual_content_intake.dart';
 import '../../modules/tables/table_library.dart';
 import '../app_scope.dart';
@@ -34,7 +35,7 @@ class TableDetailPage extends StatelessWidget {
             library.entries
                 .where((entry) => entry.tableId == tableId && !entry.deleted)
                 .toList(growable: false)
-              ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+              ..sort(compareTableEntriesByBusinessTime);
         return Scaffold(
           appBar: AppBar(title: Text(table.title)),
           body: PageFrame(

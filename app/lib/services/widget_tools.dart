@@ -160,6 +160,10 @@ class WidgetTools {
 
   bool _coversSpec(CardSpec spec, AiPolicy policy) {
     if (policy.tableScope.isNone) return false;
+    if ((spec.includeOpenTodos || spec.includeRecentEvents) &&
+        !policy.tableScope.isAll) {
+      return false;
+    }
     return switch (spec.sourceMode) {
       WidgetSourceMode.allTables => policy.tableScope.isAll,
       WidgetSourceMode.selectedTables => spec.referencedTableIds.every(

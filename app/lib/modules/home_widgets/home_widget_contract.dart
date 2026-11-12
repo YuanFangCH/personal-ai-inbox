@@ -40,6 +40,7 @@ enum WidgetTheme {
 enum WidgetVisibility {
   hidden('hidden'),
   titles('titles'),
+  titleTime('title_time'),
   fields('fields');
 
   const WidgetVisibility(this.wireName);
@@ -417,6 +418,8 @@ class CardSpec {
     List<String> excludedTableIds = const [],
     bool hideEmptySections = false,
     WidgetTheme theme = WidgetTheme.system,
+    bool includeOpenTodos = false,
+    bool includeRecentEvents = false,
   }) {
     if (title.trim().isEmpty) {
       throw const FormatException('title must not be empty');
@@ -434,6 +437,8 @@ class CardSpec {
       excludedTableIds: List.unmodifiable(excludedTableIds.toSet()),
       hideEmptySections: hideEmptySections,
       theme: theme,
+      includeOpenTodos: includeOpenTodos,
+      includeRecentEvents: includeRecentEvents,
     );
   }
 
@@ -444,6 +449,8 @@ class CardSpec {
     required this.excludedTableIds,
     required this.hideEmptySections,
     required this.theme,
+    this.includeOpenTodos = false,
+    this.includeRecentEvents = false,
   });
 
   final String title;
@@ -452,6 +459,8 @@ class CardSpec {
   final List<String> excludedTableIds;
   final bool hideEmptySections;
   final WidgetTheme theme;
+  final bool includeOpenTodos;
+  final bool includeRecentEvents;
 
   static CardSpec parse(Object? value) {
     if (value is CardSpec) return value;
@@ -479,6 +488,15 @@ class CardSpec {
       theme: json['theme'] == null
           ? WidgetTheme.system
           : WidgetTheme.parse(json['theme']),
+      includeOpenTodos:
+          _optionalBool(json['include_open_todos'], 'include_open_todos') ??
+          false,
+      includeRecentEvents:
+          _optionalBool(
+            json['include_recent_events'],
+            'include_recent_events',
+          ) ??
+          false,
     );
   }
 
@@ -489,6 +507,8 @@ class CardSpec {
     'excluded_table_ids': excludedTableIds,
     'hide_empty_sections': hideEmptySections,
     'theme': theme.wireName,
+    if (includeOpenTodos) 'include_open_todos': true,
+    if (includeRecentEvents) 'include_recent_events': true,
   };
 
   Set<String> get referencedTableIds => {

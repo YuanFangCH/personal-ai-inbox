@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/calendar.dart';
 import '../../core/models.dart';
+import '../../core/table_entry_order.dart';
 import '../../core/table_models.dart';
 import '../../modules/tables/table_library.dart';
 import '../app_scope.dart';
@@ -42,13 +43,14 @@ class HomePage extends StatelessWidget {
             .toList()
           ..sort((a, b) => a.start!.compareTo(b.start!));
     final openTodos =
-        tableLibrary.entries
-            .where(
-              (entry) => entry.type == TableContentType.todo && !entry.done,
-            )
+        (tableLibrary.entries
+                .where(
+                  (entry) => entry.type == TableContentType.todo && !entry.done,
+                )
+                .toList()
+              ..sort(compareTableEntriesByBusinessTime))
             .map((entry) => _asTodoDocument(entry, tableLibrary))
-            .toList()
-          ..sort(_compareTodo);
+            .toList(growable: false);
     final recentKnowledge =
         tableLibrary.entries
             .where((entry) => entry.type == TableContentType.note)
@@ -99,15 +101,6 @@ class HomePage extends StatelessWidget {
         },
       ),
     );
-  }
-
-  static int _compareTodo(ResultDocument a, ResultDocument b) {
-    if (a.due == null && b.due == null) {
-      return b.updatedAt.compareTo(a.updatedAt);
-    }
-    if (a.due == null) return 1;
-    if (b.due == null) return -1;
-    return a.due!.compareTo(b.due!);
   }
 
   static ResultDocument _asTodoDocument(

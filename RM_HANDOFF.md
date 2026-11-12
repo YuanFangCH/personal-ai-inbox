@@ -22,7 +22,7 @@
 当前公开下载为 `https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.1`，验证入口为 `test-results/phone-release-v1.6.1/VALIDATION.md`，运行活动合同见 `docs/secretary-activity-contract.md`，发行说明见 `docs/releases/v1.6.1.md`。
 ## 3. 当前目标与范围
 
-- 当前任务：`v1.6.1+15` 发布闭环已完成；后续设备审计从荣耀 90、API 24–30、平板和 Windows 继续。
+- 当前任务：已实现首页/表详情按业务时间排序、Android 桌面时间轴跨表来源、显示模式与分页；定向测试、Dart 分析和 Debug APK 构建完成，验证记录见 `test-results/widget-timeline/VALIDATION.md`。本轮原子提交，不发布。
 
 - Android 手机、Android 平板和 Windows 作为独立客户端运行。
 - 每个成果保存为一个 Markdown 文件；本地索引由 SQLite 管理。
@@ -71,9 +71,11 @@
 - 秘书导航更新：秘书页在 AppShell 中常驻；主页面切换保留会话、未发送草稿、已选附件、思考选项和阅读位置，回复生成不中断。手机保留底部导航，宽屏用统一应用侧栏；新建/历史/分享定位不增加对话路由。全局约定见 ADR 0022。
 - 2026-11-09 完全体模式采用设置页设备级覆盖层：默认关闭，开启后统一覆盖全部现有和新会话为应用内完全权限，关闭后恢复会话原策略；不批量改写持久授权。取消应用层累计上下文、检索、附件和瞬时故障重试上限，但保留模型硬限额、磁盘、网络、系统生命周期、幂等、CAS、写日志和不确定副作用核对。会话/附件删除保留 30 天；单条消息、推理内容和工具回执不可改写。见 [ADR 0026](docs/adr/0026-device-full-agent-mode.md)。
 - 2026-11-10 Android 多表桌面小组件采用逻辑卡片、Flutter 快照和原生实例三层模型；API 31+ 使用标准集合滚动并采用可变广播模板处理行点击，固定尺寸使用直接 RemoteViews。日期只在 App 活跃时重算，配置和快照留在本机 `noBackupFilesDir`。见 [ADR 0027](docs/adr/0027-android-table-widget-projection.md)。
+- 2026-11-12 小组件时间轴从表和快捷来源合并去重，按待办截止/日程开始/事件发生时间升序，无时间最后；快捷来源需要全表读取授权。卡片提供仅标题/标题加时间，旧 fields 可见性保留到人工切换。API31+ StackView 上下滑，API24–30 固定行点按翻页。
 
 ## 6. 当前进度与验证
 
+- 2026-11-12 小组件时间轴已实现：共享时间比较器、Dart 跨来源投影、简洁/详细配置、秘书全表权限门槛、Android StackView/固定行翻页和合同文档完成。定向测试 31/31、9 个 Dart 分析目标和 Debug APK 构建通过。首页 UI 测试有 4 项因既有后台生命周期两秒定时器未在 teardown 清理而失败；app_runtime 迁移用例通过。长期签名 AVD 因证书不同未覆盖安装，干净 API 35 AVD 的 ADB 尚未就绪，因此设备视觉/分页验证未完成。详见 `test-results/widget-timeline/VALIDATION.md`。
 - 2026-11-10 Android 多表桌面小组件 API 35 验收通过：2×2 摘要、4×2 短列表、4×4 滚动、多表/自定义字段/日期筛选、深色、同卡多实例同步、不同卡独立绑定、取消固定、归档恢复、标题/条目点击、`am kill` 冷进程点击均通过。荣耀 90 真机延期；API 24–30 未在对应 AVD 实测。详见 [发布验证](test-results/phone-release-v1.6.0/VALIDATION.md)。
 - 2026-11-10 Android 手机发布门禁重跑：50/50 个唯一秘书用例通过，用时约 4 分 06 秒；900 秒长测实际 921 秒，47 条写入/读回、219 次请求，切后台、锁屏 12 秒、唤醒、重开和最终流式答复通过。长测 runner 修正成功 `.bat` 进程空退出码与正常 stderr 的 Windows PowerShell 兼容问题。
 - 2026-11-10 最终 Debug 候选构建通过：`1.6.0+14`、minSdk 24、targetSdk 36，APK 241,453,479 字节，SHA-256 `5fc70664d8c03fdf416a3239f880a8fcfacb88b0a13ac80cd515e55a05f00ab7`；`flutter analyze --no-pub` 0 issue，格式 289 文件 0 change。PDF 依赖升级到 `pdfrx 2.12.0` 并保留 `pdfium_dart 0.4.1` 本地许可副本修复上游下载路径，文件输入测试 9/9。
@@ -197,6 +199,7 @@
 ## 7. 风险、阻塞与下一步
 
 - API 35 模拟器的小组件门禁已完成；荣耀 90 真机、API 24–30 固定行、平板与 Windows 专项仍未覆盖。荣耀真机未验收不阻塞本轮模拟器通过的 Android 预览发布，但发行说明必须明确标注。
+- 本轮新小组件候选尚未在 API 35 启动器验证：不得将既有 v1.6.0 小组件通过记录视作本次 StackView 代码的设备验收。继续验证前使用干净 AVD/可访问的 ADB transport，核对 2×2、4×2、大尺寸、滑动、点按和实例隔离；不要卸载长期签名 AVD 上的不同证书应用。
 
 
 ### 风险与边界
@@ -248,6 +251,20 @@
 2. 后续 Android 发布继续复核 `phone-v1.6.0` 作为上一版同签名覆盖安装来源。
 
 ## 8. 变更记录
+
+### 2026-11-12 / 完成首页排序和 Android 桌面时间轴候选
+
+- 新增共享表业务时间比较器，首页表卡片/待办及表详情复用；小组件表来源与未完成待办、未来七日日程/事件合并、去重并按时间排序。
+- 新增来源 JSON 开关、快捷来源排除表、简洁/详细快照隐私、秘书全表范围检查；保留旧 fields 和命令签名兼容。
+- Android 使用紧凑浅蓝/浅深色布局、API 31+ StackView 分页和旧系统固定行翻页；更新 `docs/home-widget-contract.md`、README 及验证记录。
+- 验证：31 个小组件/桥接/工具定向用例通过、9 个 Dart 分析目标通过、Debug APK 构建通过。首页 UI teardown timer 失败及未完成设备验收如 `test-results/widget-timeline/VALIDATION.md` 所述；未运行全量测试、未发布。
+
+### 2026-11-12 / 实现表时间轴和 Android 桌面翻页
+
+- 交付：首页、表详情与小组件按业务时间排序；小组件新增未完成待办/未来七日日程与事件快捷来源，跨表合并去重，并提供简洁/详细显示和原生分页。同步更新小组件合同、README 和本交接。
+- 验证：相关 Dart analyzer 9 项无诊断；投影/合同/工作区 22 项通过。更宽 UI 测试遇到插件缓存缺件；Android 调试包正在构建，AVD/真机分页验收待记录。
+- 状态：实现中，待完成构建和可行设备检查并补齐验证记录，再按门禁原子提交；不发布。
+- 风险/下一步：荣耀 90 与 API 24–30 尚未实机覆盖。Pub Cache 缺 file_picker、pdfrx、flutter_tts、speech_to_text、petitparser 包，影响首页/表页 UI 测试载入。
 
 ### 2026-11-12 / 发布 Android 手机 v1.6.1 活动反馈预览版
 

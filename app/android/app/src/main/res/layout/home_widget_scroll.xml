@@ -56,15 +56,14 @@
         android:layout_marginTop="7dp"
         android:layout_weight="1">
 
-        <ListView
+        <StackView
             android:id="@+id/widget_list"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
             android:divider="@null"
-            android:fadingEdge="vertical"
-            android:scrollbarStyle="outsideOverlay"
-            android:scrollbars="vertical" />
+            android:animateFirstView="false"
+            android:loopViews="false" />
 
         <TextView
             android:id="@+id/widget_list_empty"

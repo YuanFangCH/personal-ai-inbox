@@ -48,6 +48,8 @@ void main() {
       excludedTableIds: const ['tb_archive'],
       hideEmptySections: true,
       theme: WidgetTheme.dark,
+      includeOpenTodos: true,
+      includeRecentEvents: true,
     );
     final command = CardCommand.replace(
       cardId: 'card_1',
@@ -60,6 +62,8 @@ void main() {
 
     expect(parsedSpec.sourceMode, WidgetSourceMode.allTables);
     expect(parsedSpec.sections.single.daysAhead, 7);
+    expect(parsedSpec.includeOpenTodos, isTrue);
+    expect(parsedSpec.includeRecentEvents, isTrue);
     expect(parsedSpec.sections.single.fields.first.wireName, 'builtin:time');
     expect(parsedSpec.sections.single.toJson()['fields'], [
       'builtin:time',

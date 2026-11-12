@@ -94,7 +94,7 @@ class WidgetWorkspace extends ChangeNotifier {
       cardId: cardId ?? 'preview',
       revision: existing?.revision ?? 1,
       archived: false,
-      visibility: existing?.visibility ?? WidgetVisibility.fields,
+      visibility: existing?.visibility ?? WidgetVisibility.titles,
       spec: spec,
     );
     final projection = projectCardDetails(
@@ -504,6 +504,9 @@ class WidgetWorkspace extends ChangeNotifier {
         previous?.excludedTableIds.toSet() ?? const <String>{};
 
     for (final section in spec.sections) {
+      if (spec.excludedTableIds.contains(section.tableId)) {
+        return '已选的数据表不能同时排除。';
+      }
       if (!tables.containsKey(section.tableId)) {
         if (!previousSections.containsKey(section.tableId)) {
           return '数据表 ${section.tableId} 不存在。';
@@ -525,6 +528,11 @@ class WidgetWorkspace extends ChangeNotifier {
           return '字段 custom:$customFieldId 在数据表 ${table.id} 中不存在。';
         }
       }
+    }
+    if (spec.sections.isEmpty &&
+        !spec.includeOpenTodos &&
+        !spec.includeRecentEvents) {
+      return '至少选择一张表或一个快捷内容来源。';
     }
     for (final tableId in spec.excludedTableIds) {
       if (!tables.containsKey(tableId) && !previousExcluded.contains(tableId)) {

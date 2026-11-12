@@ -220,7 +220,14 @@ void main() {
       };
 
       final receipt = await workspace.applyCardCommand(
-        CardCommand.create(CardSpec(title: '学习')),
+        CardCommand.create(
+          CardSpec(
+            title: '学习',
+            sections: [
+              SectionSpec(tableId: (await repository.listTables()).first.id),
+            ],
+          ),
+        ),
         operationId: 'op_receipt_update_failure',
         authorize: () async => true,
       );
@@ -236,7 +243,14 @@ void main() {
     var authorizationCalls = 0;
 
     final receipt = await workspace.applyCardCommand(
-      CardCommand.create(CardSpec(title: '学习')),
+      CardCommand.create(
+        CardSpec(
+          title: '学习',
+          sections: [
+            SectionSpec(tableId: (await repository.listTables()).first.id),
+          ],
+        ),
+      ),
       operationId: 'op_recheck',
       authorize: () async {
         authorizationCalls++;

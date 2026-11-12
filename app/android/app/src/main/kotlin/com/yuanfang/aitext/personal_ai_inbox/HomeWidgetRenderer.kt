@@ -13,7 +13,6 @@ import android.widget.RemoteViews
 internal object HomeWidgetRenderer {
     private const val DEFAULT_WIDTH_DP = 300
     private const val DEFAULT_HEIGHT_DP = 260
-    private const val COMPACT_WIDTH_DP = 220
     private const val SHORT_HEIGHT_DP = 200
     private const val FIXED_ROW_COUNT = 6
 
@@ -94,16 +93,27 @@ internal object HomeWidgetRenderer {
             Log.d("HomeWidgetRenderer", "widget=$widgetId width=$width height=$height")
         }
         val views = when {
-            width < COMPACT_WIDTH_DP ->
-                compactViews(context, widgetId, card, palette)
-
             height < SHORT_HEIGHT_DP ->
-                fixedViews(context, widgetId, card, palette, rowsForHeight(height))
+                fixedViews(
+                    context,
+                    widgetId,
+                    card,
+                    palette,
+                    rowsPerPage(height, context.resources.configuration.fontScale, Build.VERSION.SDK_INT),
+                    HomeWidgetSnapshotStore.pageIndex(context, widgetId),
+                )
 
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
                 scrollViews(context, manager, widgetId, card, palette)
 
-            else -> fixedViews(context, widgetId, card, palette, FIXED_ROW_COUNT)
+            else -> fixedViews(
+                context,
+                widgetId,
+                card,
+                palette,
+                rowsPerPage(height, context.resources.configuration.fontScale, Build.VERSION.SDK_INT),
+                HomeWidgetSnapshotStore.pageIndex(context, widgetId),
+            )
         }
         manager.updateAppWidget(widgetId, views)
         return true
@@ -165,18 +175,25 @@ internal object HomeWidgetRenderer {
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.home_widget_scroll)
         bindHeader(context, views, widgetId, card, palette)
+        val pages = HomeWidgetPager.paginate(
+            card.rows,
+            HomeWidgetPager.rowsPerPage(
+                manager.getAppWidgetOptions(widgetId).getInt(
+                    AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,
+                    DEFAULT_HEIGHT_DP,
+                ),
+                context.resources.configuration.fontScale,
+            ),
+        )
         val items = RemoteViews.RemoteCollectionItems.Builder()
             .setHasStableIds(true)
-            .setViewTypeCount(2)
-        card.rows.forEach { row ->
-            items.addItem(
-                stableRowId(widgetId, card, row),
-                if (row.kind == "section") {
-                    sectionItem(context, widgetId, card, row, palette)
-                } else {
-                    entryItem(context, widgetId, card, row, palette)
-                },
-            )
+            .setViewTypeCount(1)
+        val wide = manager.getAppWidgetOptions(widgetId).getInt(
+            AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH,
+            180,
+        ) >= 220
+        pages.forEach { page ->
+            items.addItem(page.index.toLong(), pageItem(context, widgetId, card, page, pages.size, palette, wide))
         }
         views.setPendingIntentTemplate(
             R.id.widget_list,
@@ -186,29 +203,76 @@ internal object HomeWidgetRenderer {
         views.setEmptyView(R.id.widget_list, R.id.widget_list_empty)
         views.setTextViewText(R.id.widget_list_empty, context.getString(R.string.home_widget_empty))
         views.setTextColor(R.id.widget_list_empty, context.getColor(palette.textSecondary))
-        views.setViewVisibility(
-            R.id.scroll_more,
-            if (card.hasMore) View.VISIBLE else View.GONE,
-        )
-        views.setTextViewText(R.id.scroll_more, context.getString(R.string.home_widget_more))
+        views.setViewVisibility(R.id.scroll_hint, View.GONE)
+        views.setViewVisibility(R.id.scroll_more, if (card.hasMore) View.VISIBLE else View.GONE)
+        views.setTextViewText(R.id.scroll_more, if (card.hasMore) "…" else "")
         views.setTextColor(R.id.scroll_more, context.getColor(palette.accent))
-        views.setOnClickPendingIntent(
-            R.id.scroll_more,
-            settingsPendingIntent(context, widgetId),
-        )
-        val size = manager.getAppWidgetOptions(widgetId)
-        val width = size.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, DEFAULT_WIDTH_DP)
-        val height = size.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, DEFAULT_HEIGHT_DP)
-        views.setViewVisibility(
-            R.id.scroll_hint,
-            if (card.rows.size > 4 || height < 230) View.VISIBLE else View.GONE,
-        )
-        views.setTextColor(R.id.scroll_hint, context.getColor(palette.accent))
-        views.setTextViewText(R.id.scroll_hint, context.getString(R.string.home_widget_scroll_hint))
-        if (width <= 0) {
-            views.setViewVisibility(R.id.scroll_hint, View.GONE)
-        }
         return views
+    }
+
+    private fun pageItem(
+        context: Context,
+        widgetId: Int,
+        card: HomeWidgetCard,
+        page: HomeWidgetPage,
+        pageCount: Int,
+        palette: Palette,
+        wide: Boolean,
+    ): RemoteViews {
+        val pageViews = RemoteViews(context.packageName, R.layout.home_widget_page)
+        page.rows.forEach { row -> pageViews.addView(R.id.widget_page_rows, entryItem(context, widgetId, card, row, palette, wide)) }
+        pageViews.setTextViewText(R.id.widget_page_counter, "${page.index + 1} / $pageCount")
+        pageViews.setTextColor(R.id.widget_page_counter, context.getColor(palette.accent))
+        pageViews.setTextColor(R.id.widget_page_previous, context.getColor(palette.accent))
+        pageViews.setTextColor(R.id.widget_page_next, context.getColor(palette.accent))
+        val previous = page.index - 1
+        val next = page.index + 1
+        pageViews.setOnClickFillInIntent(R.id.widget_page_previous, HomeWidgetNavigation.fillInIntent(context, pageTarget(widgetId, card, previous)))
+        pageViews.setOnClickFillInIntent(R.id.widget_page_next, HomeWidgetNavigation.fillInIntent(context, pageTarget(widgetId, card, next)))
+        pageViews.setViewVisibility(R.id.widget_page_previous, if (previous >= 0) View.VISIBLE else View.INVISIBLE)
+        pageViews.setViewVisibility(R.id.widget_page_next, if (next < pageCount) View.VISIBLE else View.INVISIBLE)
+        return pageViews
+    }
+
+    private fun pageTarget(widgetId: Int, card: HomeWidgetCard, pageIndex: Int) =
+        HomeWidgetOpenTarget(
+            kind = "page", widgetId = widgetId, cardId = card.cardId,
+            cardRevision = card.revision, generatedAtMs = card.generatedAtMs,
+            pageIndex = pageIndex,
+        )
+
+    fun rowsPerPage(heightDp: Int, fontScale: Float, apiLevel: Int): Int {
+        val capacity = HomeWidgetPager.rowsPerPage(heightDp, fontScale)
+        return if (apiLevel < Build.VERSION_CODES.S) capacity.coerceAtMost(FIXED_ROW_COUNT) else capacity
+    }
+
+    fun showPage(context: Context, manager: AppWidgetManager, request: HomeWidgetPageRequest): Boolean {
+        if (manager.getAppWidgetInfo(request.widgetId)?.provider !=
+            android.content.ComponentName(context, HomeWidgetProvider::class.java)) return false
+        val card = HomeWidgetSnapshotStore.load(context)?.card(request.cardId) ?: return false
+        if (card.revision != request.revision || card.generatedAtMs != request.generatedAtMs ||
+            HomeWidgetSnapshotStore.boundCardId(context, request.widgetId) != request.cardId) return false
+        val height = manager.getAppWidgetOptions(request.widgetId).getInt(
+            AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, DEFAULT_HEIGHT_DP,
+        )
+        val pages = HomeWidgetPager.paginate(
+            card.rows,
+            rowsPerPage(height, context.resources.configuration.fontScale, Build.VERSION.SDK_INT),
+        )
+        if (request.pageIndex !in pages.indices) return false
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            HomeWidgetSnapshotStore.setPageIndex(context, request.widgetId, request.pageIndex)
+            return render(context, manager, request.widgetId)
+        }
+        return runCatching {
+            manager.partiallyUpdateAppWidget(
+                request.widgetId,
+                RemoteViews(context.packageName, R.layout.home_widget_scroll).apply {
+                    setDisplayedChild(R.id.widget_list, request.pageIndex)
+                },
+            )
+            true
+        }.getOrDefault(false)
     }
 
     private fun fixedViews(
@@ -217,6 +281,7 @@ internal object HomeWidgetRenderer {
         card: HomeWidgetCard,
         palette: Palette,
         rowLimit: Int,
+        pageIndex: Int,
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.home_widget_fixed)
         bindHeader(context, views, widgetId, card, palette)
@@ -228,8 +293,10 @@ internal object HomeWidgetRenderer {
             arrayOf(R.id.fixed_row_4, R.id.fixed_row_4_title, R.id.fixed_row_4_detail),
             arrayOf(R.id.fixed_row_5, R.id.fixed_row_5_title, R.id.fixed_row_5_detail),
         )
+        val pages = HomeWidgetPager.paginate(card.rows, rowLimit)
+        val page = pages.getOrNull(pageIndex) ?: pages.firstOrNull()
         rowIds.forEachIndexed { index, ids ->
-            val row = card.rows.take(rowLimit).getOrNull(index)
+            val row = page?.rows?.getOrNull(index)
             if (row == null) {
                 views.setViewVisibility(ids[0], View.GONE)
             } else {
@@ -257,13 +324,14 @@ internal object HomeWidgetRenderer {
         views.setViewVisibility(R.id.fixed_empty, if (empty) View.VISIBLE else View.GONE)
         views.setTextViewText(R.id.fixed_empty, context.getString(R.string.home_widget_empty))
         views.setTextColor(R.id.fixed_empty, context.getColor(palette.textSecondary))
-        val showMore = card.hasMore || card.rows.size > rowLimit
+        val showMore = pages.size > 1
         views.setViewVisibility(R.id.fixed_more, if (showMore) View.VISIBLE else View.GONE)
-        views.setTextViewText(R.id.fixed_more, context.getString(R.string.home_widget_more))
+        views.setTextViewText(R.id.fixed_more, "${(page?.index ?: 0) + 1} / ${pages.size}")
         views.setTextColor(R.id.fixed_more, context.getColor(palette.accent))
         views.setOnClickPendingIntent(
             R.id.fixed_more,
-            settingsPendingIntent(context, widgetId),
+            HomeWidgetNavigation.pagePendingIntent(context, pageTarget(widgetId, card,
+                if (pageIndex + 1 < pages.size) pageIndex + 1 else 0)),
         )
         return views
     }
@@ -278,14 +346,12 @@ internal object HomeWidgetRenderer {
         views.setInt(R.id.widget_root, "setBackgroundResource", palette.background)
         views.setInt(R.id.widget_header, "setBackgroundResource", palette.background)
         views.setTextViewText(R.id.widget_title, card.title)
+        views.setViewVisibility(R.id.widget_title, View.GONE)
         views.setTextColor(R.id.widget_title, context.getColor(palette.textPrimary))
+        views.setViewVisibility(R.id.widget_date, if (card.dataDay.isBlank()) View.GONE else View.VISIBLE)
         views.setTextViewText(
             R.id.widget_date,
-            if (card.dataDay.isBlank()) {
-                context.getString(R.string.home_widget_no_data_date)
-            } else {
-                context.getString(R.string.home_widget_data_date, card.dataDay)
-            },
+            context.getString(R.string.home_widget_data_date, card.dataDay),
         )
         views.setTextColor(R.id.widget_date, context.getColor(palette.textSecondary))
         views.setOnClickPendingIntent(
@@ -303,6 +369,7 @@ internal object HomeWidgetRenderer {
         card: HomeWidgetCard,
         row: HomeWidgetRow,
         palette: Palette,
+        wide: Boolean = false,
     ): RemoteViews {
         val target =
             HomeWidgetOpenTarget(
@@ -338,6 +405,7 @@ internal object HomeWidgetRenderer {
         card: HomeWidgetCard,
         row: HomeWidgetRow,
         palette: Palette,
+        wide: Boolean = false,
     ): RemoteViews {
         val target =
             HomeWidgetOpenTarget(
@@ -349,7 +417,11 @@ internal object HomeWidgetRenderer {
                 entryId = row.entryId,
                 rowHash = card.rowHash(row),
             )
-        return RemoteViews(context.packageName, R.layout.home_widget_entry_item).apply {
+        return RemoteViews(
+            context.packageName,
+            if (wide && row.detail != null) R.layout.home_widget_entry_item_wide
+            else R.layout.home_widget_entry_item,
+        ).apply {
             setInt(R.id.entry_card, "setBackgroundResource", palette.surface)
             setTextViewText(R.id.entry_title, row.title)
             setTextViewText(R.id.entry_detail, row.detail.orEmpty())
@@ -412,9 +484,6 @@ internal object HomeWidgetRenderer {
         }
         return row.detail.orEmpty()
     }
-
-    private fun rowsForHeight(heightDp: Int): Int =
-        ((heightDp - 58) / 43).coerceIn(2, FIXED_ROW_COUNT)
 
     private fun settingsPendingIntent(context: Context, widgetId: Int) =
         HomeWidgetNavigation.pendingIntent(

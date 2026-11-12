@@ -46,6 +46,7 @@ class HomeWidgetProvider : AppWidgetProvider() {
                 if (HomeWidgetSnapshotStore.boundCardId(context, widgetId) == null) {
                     return@forEach
                 }
+                HomeWidgetSnapshotStore.setPageIndex(context, widgetId, 0)
                 if (render(context, widgetId)) {
                     submitted += 1
                 } else {
@@ -115,6 +116,7 @@ class HomeWidgetProvider : AppWidgetProvider() {
         appWidgetId: Int,
         newOptions: Bundle,
     ) {
+        HomeWidgetSnapshotStore.setPageIndex(context, appWidgetId, 0)
         render(context, appWidgetId)
     }
 
