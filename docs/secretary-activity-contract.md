@@ -16,4 +16,4 @@
 
 ## 验证
 
-定向活动投影、ChatService 活动时序、秘书 UI/大历史回归及相关 Dart analyze 命令与结果记录于 `test-results/secretary-activity-light-blue/VALIDATION.md`。
+定向活动投影、ChatService 活动时序、秘书 UI/大历史回归及相关 Dart analyze 命令与结果记录于 `test-results/secretary-activity-light-blue/VALIDATION.md`。Android 手机模拟器验收和 `v1.6.1+15` 公开预览包复核的脚本、接口、E 盘硬门禁与发布顺序见[手机验收与预览发布合同](phone-preview-validation-contract.md)。

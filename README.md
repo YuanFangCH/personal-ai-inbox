@@ -34,7 +34,7 @@ Android 手机 `v1.6.0` 使用 `phone-v1.6.0` 标签，只提供通用 APK 与 `
 
 ## 当前进展
 
-2026-11-12 秘书对话新增运行阶段/工具活动展示与浅蓝主题，历史工具行从现有会话 transcript 派生，无新增数据库字段。代码合同见 [运行活动合同](docs/secretary-activity-contract.md)，定向验证见 `test-results/secretary-activity-light-blue/VALIDATION.md`。
+2026-11-12 秘书对话新增运行阶段/工具活动展示与浅蓝主题，历史工具行从现有会话 transcript 派生，无新增数据库字段。代码合同见 [运行活动合同](docs/secretary-activity-contract.md)，定向验证见 `test-results/secretary-activity-light-blue/VALIDATION.md`。Android 手机 AVD 候选验收和 `v1.6.1+15` 预览发布方案已冻结为 [手机验收与预览发布合同](docs/phone-preview-validation-contract.md)；脚本、设备验收、版本升级和 GitHub 发布尚未执行。
 
 2026-11-10 `v1.6.0+14` Android 手机预览版已发布：[phone-v1.6.0](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.0)。main CI `42785276198` 与 Android Release `42785654908` 均 success；公开通用 APK 为 92,327,311 字节，SHA-256 `dab7263bf4b7280633cf28a848ed960c0d3761ed36204c58c11779de5b652611`，API 24/36、非 Debuggable、v2 签名及长期证书复核通过。API 35 模拟器已完成 50/50 手机用例、921 秒长测及多表小组件门禁；荣耀 90 真机与 API 24–30 固定行仍未实测。详见[发行说明](docs/releases/v1.6.0.md)、[接口合同](docs/home-widget-contract.md)和[验证记录](test-results/phone-release-v1.6.0/VALIDATION.md)。
 

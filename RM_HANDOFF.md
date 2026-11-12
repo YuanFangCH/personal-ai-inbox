@@ -10,19 +10,19 @@
 | 最后更新时间 | 2026-11-12 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | 秘书运行活动与浅蓝主题实现完成；定向测试/静态验证状态见本轮记录。Android `v1.6.0+14` 已发布，荣耀 90 真机延期 |
+| 当前阶段 | 秘书运行活动与浅蓝主题实现完成并提交；Android 手机 E 盘 AVD 验收及 `v1.6.1+15` 预览发布合同已冻结，脚本/设备验收/发布待执行。Android `v1.6.0+14` 已发布，荣耀 90 真机延期 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.6.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
 
-2026-11-12 秘书聊天加入运行阶段和已派发工具行；完成历史从现有 tool transcript 派生并折叠回看。共享界面换用浅蓝强调色。代码合同：[秘书运行活动与蓝色主题](docs/secretary-activity-contract.md)；验证：[本轮结果](test-results/secretary-activity-light-blue/VALIDATION.md)。
+2026-11-12 秘书聊天加入运行阶段和已派发工具行；完成历史从现有 tool transcript 派生并折叠回看。共享界面换用浅蓝强调色，实现提交为 `5d763d7`。代码合同：[秘书运行活动与蓝色主题](docs/secretary-activity-contract.md)；验证：[本轮结果](test-results/secretary-activity-light-blue/VALIDATION.md)。Android 手机 E 盘 AVD 候选验收与 `v1.6.1+15` 预览发布接口冻结在[手机验收与预览发布合同](docs/phone-preview-validation-contract.md)，实施前不得宣称设备或公开发布通过。
 
 2026-11-10 `v1.6.0+14` Android 手机预览版已发布到 GitHub：API 35 模拟器完成手机适用秘书矩阵 50/50、921 秒长测与 47 条写入/读回，并完成多表桌面小组件的尺寸、滚动、深色、多实例、独立绑定、归档恢复、冷进程点击和 `v1.5.1+13` 同签名覆盖升级。荣耀 90 真机与 API 24–30 固定行仍明确未覆盖。
 
 当前公开下载为 `https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.0`，验证入口为 `test-results/phone-release-v1.6.0/VALIDATION.md`，小组件合同见 `docs/home-widget-contract.md`，发行说明见 `docs/releases/v1.6.0.md`。
 ## 3. 当前目标与范围
 
-- 当前任务：秘书运行活动和浅蓝主题；完成本轮原子变更后提交。Android 设备覆盖边界按上文继续处理。
+- 当前任务：按冻结合同实现 E 盘 Android 手机 AVD 验收脚本和活动集成测试，通过候选门禁后发布 `v1.6.1+15`。秘书运行活动和浅蓝主题的实现提交为 `5d763d7`，尚待 Android 设备验收及公开包复核。
 
 - Android 手机、Android 平板和 Windows 作为独立客户端运行。
 - 每个成果保存为一个 Markdown 文件；本地索引由 SQLite 管理。
@@ -49,6 +49,7 @@
 | [专用秘书 Agent 设计](docs/secretary-agent-design.md) | 已确认的秘书完整规格、权限/查重/检索/恢复 interface、A–F 实施包与36项验收；当前实施与验收中 |
 | [DSH 参考研究](docs/research/04-dsh-agent-permissions-and-runtime.md) | 固定提交源码事实、真实引擎钉住版本、借鉴建议与未证实边界；不自动成为运行能力 |
 | [Android 桌面小组件合同](docs/home-widget-contract.md) | 逻辑卡片、渲染快照、实例绑定和秘书工具 |
+| [Android 手机验收与预览发布合同](docs/phone-preview-validation-contract.md) | E 盘 AVD、活动集成测试、结果 JSON、公开 APK 和 `phone-v1.6.1` 发布门禁 |
 
 ## 5. 已锁定决定
 
@@ -247,6 +248,13 @@
 2. 后续 Android 发布继续复核 `phone-v1.6.0` 作为上一版同签名覆盖安装来源。
 
 ## 8. 变更记录
+
+### 2026-11-12 / 冻结 Android 手机验收与预览发布合同
+
+- 交付：新增 E 盘 Android 手机模拟器验收与 `v1.6.1+15` / `phone-v1.6.1` 发布合同，定义计划文件结构、PowerShell 参数、`Start-ValidationAvd` / `Test-PublishedApk` 的形参/返回值/抛错边界、结构化结果 JSON、Dart 集成测试入口、稳定检查 ID、公开包升级和发布顺序。活动合同、README 与本交接同步链接。
+- 状态：合同冻结；`scripts/verify-secretary-activity-phone.ps1`、`app/integration_test/secretary_activity_phone_test.dart`、版本升级、发行说明、AVD 验收、GitHub 发布和公开包复核均待执行。
+- 验证：4 个相关 Markdown 文件的相对链接全部解析成功；合同内 JSON 示例通过 `ConvertFrom-Json`；`git diff --check` 通过。本轮不运行 Flutter 测试、模拟器、构建或发布。
+- 风险/下一步：实施时必须先验证 SDK、system image、AVD 数据和子进程临时目录的最终路径均在 E 盘；候选通过后再推送 main、打标签并复核公开资产。
 
 ### 2026-11-12 / 增加秘书实时运行活动和浅蓝主题
 
