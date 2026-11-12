@@ -46,6 +46,7 @@ jobs:
           test/agent_task_store_test.dart
           test/agent_task_status_card_test.dart
           test/agent_budget_file_recovery_test.dart
+          test/chat_activity_test.dart
           test/chat_service_agent_test.dart
           test/conversation_workspace_scheduler_test.dart
           test/conversation_workspace_agent_runtime_test.dart

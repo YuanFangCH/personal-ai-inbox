@@ -1950,6 +1950,8 @@ class ConversationWorkspace extends ChangeNotifier {
         ChatActivityPhase.runningTools,
         runningTools: tools,
       );
+      _flushUiNotifications();
+      notifyListeners();
     }
   }
 

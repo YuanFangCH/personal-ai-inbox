@@ -60,23 +60,32 @@ class _AgentTaskStatusCardState extends State<AgentTaskStatusCard> {
     if (tasks.isEmpty) {
       return const SizedBox.shrink();
     }
-    return Card(
-      key: const Key('agent_task_status_card'),
-      margin: const EdgeInsets.all(12),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (workspace.fullAgentMode) ...[
-              const Text('完全体模式运行中', key: Key('agent_full_agent_mode_status')),
-              const SizedBox(height: 6),
+    final maxHeight = (MediaQuery.sizeOf(context).height * 0.28)
+        .clamp(140.0, 240.0)
+        .toDouble();
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      child: Card(
+        key: const Key('agent_task_status_card'),
+        margin: const EdgeInsets.all(12),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (workspace.fullAgentMode) ...[
+                const Text(
+                  '完全体模式运行中',
+                  key: Key('agent_full_agent_mode_status'),
+                ),
+                const SizedBox(height: 6),
+              ],
+              for (var index = 0; index < tasks.length; index++) ...[
+                if (index > 0) const Divider(),
+                _taskSection(tasks[index], index),
+              ],
             ],
-            for (var index = 0; index < tasks.length; index++) ...[
-              if (index > 0) const Divider(),
-              _taskSection(tasks[index], index),
-            ],
-          ],
+          ),
         ),
       ),
     );

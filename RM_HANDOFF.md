@@ -10,19 +10,19 @@
 | 最后更新时间 | 2026-11-12 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | 秘书运行活动与浅蓝主题实现完成并提交；Android 手机 E 盘 AVD 验收及 `v1.6.1+15` 预览发布合同已冻结，脚本/设备验收/发布待执行。Android `v1.6.0+14` 已发布，荣耀 90 真机延期 |
+| 当前阶段 | `v1.6.1+15` 已完成 E 盘 Android 15 AVD 候选验收、全库静态检查和发布准备，待提交、推送、CI 与 `phone-v1.6.1` 公开复核。Android `v1.6.0+14` 仍为当前公开版，荣耀 90 真机延期 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.6.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
 
-2026-11-12 秘书聊天加入运行阶段和已派发工具行；完成历史从现有 tool transcript 派生并折叠回看。共享界面换用浅蓝强调色，实现提交为 `5d763d7`。代码合同：[秘书运行活动与蓝色主题](docs/secretary-activity-contract.md)；验证：[本轮结果](test-results/secretary-activity-light-blue/VALIDATION.md)。Android 手机 E 盘 AVD 候选验收与 `v1.6.1+15` 预览发布接口冻结在[手机验收与预览发布合同](docs/phone-preview-validation-contract.md)，实施前不得宣称设备或公开发布通过。
+2026-11-12 秘书聊天加入运行阶段和已派发工具行；完成历史从现有 tool transcript 派生并折叠回看。共享界面换用浅蓝强调色，实现提交为 `5d763d7`。代码合同：[秘书运行活动与蓝色主题](docs/secretary-activity-contract.md)；验证：[本轮结果](test-results/secretary-activity-light-blue/VALIDATION.md)。`v1.6.1+15` 已通过 E 盘 Android 15 AVD `aitext_v161_phone` 候选场景 4/4，发现并修复低高度任务状态卡溢出；公开 Release 仍需提交、推送、CI 和公开包复核。
 
 2026-11-10 `v1.6.0+14` Android 手机预览版已发布到 GitHub：API 35 模拟器完成手机适用秘书矩阵 50/50、921 秒长测与 47 条写入/读回，并完成多表桌面小组件的尺寸、滚动、深色、多实例、独立绑定、归档恢复、冷进程点击和 `v1.5.1+13` 同签名覆盖升级。荣耀 90 真机与 API 24–30 固定行仍明确未覆盖。
 
 当前公开下载为 `https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.0`，验证入口为 `test-results/phone-release-v1.6.0/VALIDATION.md`，小组件合同见 `docs/home-widget-contract.md`，发行说明见 `docs/releases/v1.6.0.md`。
 ## 3. 当前目标与范围
 
-- 当前任务：按冻结合同实现 E 盘 Android 手机 AVD 验收脚本和活动集成测试，通过候选门禁后发布 `v1.6.1+15`。秘书运行活动和浅蓝主题的实现提交为 `5d763d7`，尚待 Android 设备验收及公开包复核。
+- 当前任务：提交并推送 `v1.6.1+15` 发布准备，等待 main CI 后推送 `phone-v1.6.1`，再下载公开 APK 完成签名、版本和 `v1.6.0+14` 覆盖升级复核。
 
 - Android 手机、Android 平板和 Windows 作为独立客户端运行。
 - 每个成果保存为一个 Markdown 文件；本地索引由 SQLite 管理。
@@ -248,6 +248,13 @@
 2. 后续 Android 发布继续复核 `phone-v1.6.0` 作为上一版同签名覆盖安装来源。
 
 ## 8. 变更记录
+
+### 2026-11-12 / 完成 Android 手机 v1.6.1 候选验收
+
+- 交付：新增 E 盘 AVD 验收脚本和 Android 活动集成测试；版本升至 `1.6.1+15`，新增发行说明，活动投影测试加入两条发布相关 CI。工具派发改为立即通知界面；低高度/1.5 倍字体下任务状态卡改为最大高度约束并支持内部滚动，修复失败态 103px 纵向溢出。
+- 验证：主机活动、服务、秘书 UI 和大历史定向测试 38/38；`agent_task_status_card_test` 及相关秘书 UI 回归 8/8；Android 15/API 35 `aitext_v161_phone` 集成场景 4/4，覆盖完成、停止、失败、历史恢复、隐私、浅/深色、320dp/1.5 倍字体和宽屏。候选 Debug APK 242,247,382 字节，SHA-256 `e19666357a3e1277bebb9c4a3dd1f50b84d284745f0f601cea90fbd2697b9a1c`；全库 293 文件格式检查 0 change，`flutter analyze --no-pub` 0 issue。
+- 状态：候选验收通过，发布准备待提交和推送；GitHub main CI、Android Release 与公开包尚未产生。
+- 风险/下一步：Git B 盘/网络、长期签名两步发布和 `v1.6.0+14` 覆盖复核仍未执行；荣耀 90、API 24–30、平板和 Windows 继续明确未覆盖。
 
 ### 2026-11-12 / 冻结 Android 手机验收与预览发布合同
 

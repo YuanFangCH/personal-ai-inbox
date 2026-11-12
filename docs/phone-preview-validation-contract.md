@@ -29,6 +29,8 @@
 |---|---|---|
 | `scripts/verify-secretary-activity-phone.ps1` | 实施新增 | 启动 E 盘 AVD，执行候选验收或公开包复核，输出结构化 JSON。不推送代码、不打标签、不创建 Release。 |
 | `app/integration_test/secretary_activity_phone_test.dart` | 实施新增 | 在 Android 集成测试入口注入可控模型流，验证活动状态、主题、滚动、停止/失败和会话恢复。 |
+| `app/lib/modules/conversation/conversation_workspace.dart` | 实施修改 | 工具真实派发时立即通知界面，回执结算继续沿用原有流式批量更新。 |
+| `app/lib/ui/pages/conversation/agent_task_status_card.dart` | 实施修改 | 在低高度和 1.5 倍字体下约束任务状态卡高度并提供内部滚动，避免挤压秘书消息区。 |
 | `docs/phone-preview-validation-contract.md` | 本合同 | 冻结文件边界、函数接口、结果格式、验收和发布门禁。 |
 | `docs/releases/v1.6.1.md` | 发布准备新增 | GitHub Release 的中文发行说明，描述活动展示、浅蓝主题、兼容性、验证结论和未覆盖项。 |
 | `test-results/phone-release-v1.6.1/VALIDATION.md` | 验证记录 | 记录候选、CI、公开资产、E 盘路径、升级复核及未执行项。 |
@@ -75,7 +77,7 @@ param(
     [string]$SdkRoot = 'E:\DevTools\Android\Sdk',
     [string]$AvdHome = 'E:\DevTools\Android\.android\avd',
     [ValidatePattern('^[A-Za-z0-9._-]+$')]
-    [string]$AvdName = 'aitext_agent_c_phone',
+    [string]$AvdName = 'aitext_v161_phone',
     [string]$OutputDir = 'E:\DevTools\Android\aitext-validation\phone-v1.6.1',
     [ValidateRange(1, [int]::MaxValue)]
     [int]$BootTimeoutSeconds = 180
@@ -185,7 +187,7 @@ function Test-PublishedApk {
   "status": "passed",
   "version": "1.6.1",
   "buildNumber": 15,
-  "avdName": "aitext_agent_c_phone",
+  "avdName": "aitext_v161_phone",
   "deviceSerial": "emulator-5556",
   "artifactSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
   "checks": [
