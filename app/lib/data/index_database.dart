@@ -103,6 +103,8 @@ abstract interface class IndexDatabase {
     GlobalKnowledgeCandidate candidate,
   );
 
+  Future<void> removeGlobalKnowledgeCandidate(String id);
+
   Future<SyncConflictRecord?> findConflict(String resultId);
 
   Future<void> upsertConflict(SyncConflictRecord conflict);

@@ -54,6 +54,8 @@ class _PersonalAiInboxAppState extends State<PersonalAiInboxApp>
       capture: runtime.capture,
       conversations: runtime.conversations,
       preferences: runtime.preferences,
+      agentInstructions: runtime.agentInstructions,
+      legacyKnowledgeRetirement: runtime.legacyKnowledgeRetirement,
       sync: runtime.sync,
       fileInputService: runtime.fileInputService,
       voiceService: runtime.voiceService,

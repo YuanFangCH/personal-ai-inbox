@@ -83,8 +83,8 @@ class _ConversationPermissionSheetState
         builder: (context) => AlertDialog(
           title: const Text('启用完全权限？'),
           content: const Text(
-            '完全权限允许 AI 直接调整任意表和内容、删除预置表、修改字段，'
-            '并让全局知识直接生效。每次操作仍会显示真实回执和可用的撤销入口。',
+            '完全权限允许 AI 直接调整任意表和内容、删除预置表并修改字段。'
+            '符合条件的长期指令变更还可写入本机 AGENTS.md；操作会显示真实回执。',
           ),
           actions: [
             TextButton(
@@ -250,12 +250,12 @@ class _PresetExplanation extends StatelessWidget {
       ),
       AiPolicyPreset.standard => (
         '标准秘书',
-        '表内内容和正文可直接增改删；表结构、收纳目标、恢复与全局知识写入逐项确认。',
+        '表内内容和正文可直接增改删；表结构、收纳目标和恢复逐项确认。',
         theme.colorScheme.surfaceContainerHighest,
       ),
       AiPolicyPreset.fullAccess => (
         '完全权限',
-        '可直接管理任意表及内容、字段、收纳目标和全局知识，包括删除三个预置收纳表。',
+        '可直接管理任意表及内容、字段和收纳目标，包括删除三个预置收纳表。',
         theme.colorScheme.errorContainer,
       ),
       AiPolicyPreset.custom => (
@@ -357,8 +357,6 @@ String _decisionLabel(AiPolicyDecision decision) => switch (decision) {
 const _readActions = {
   AiPermissionAction.tableRead,
   AiPermissionAction.contentRead,
-  AiPermissionAction.globalKnowledgeRead,
-  AiPermissionAction.globalKnowledgeSearch,
   AiPermissionAction.conversationHistorySearch,
   AiPermissionAction.conversationHistoryRead,
   AiPermissionAction.attachmentRead,
@@ -369,7 +367,7 @@ const _customGroups = [
   _CustomDecisionGroup(
     id: 'read',
     title: '读取',
-    subtitle: '表、内容、全局知识和历史会话',
+    subtitle: '表、内容和历史会话',
     actions: _readActions,
   ),
   _CustomDecisionGroup(
@@ -400,16 +398,6 @@ const _customGroups = [
       AiPermissionAction.fieldAdjust,
       AiPermissionAction.inboxTargetAdjust,
       AiPermissionAction.restore,
-    },
-  ),
-  _CustomDecisionGroup(
-    id: 'knowledge',
-    title: '全局知识写入',
-    subtitle: '新增、更新或删除全局事实',
-    actions: {
-      AiPermissionAction.globalKnowledgeCreate,
-      AiPermissionAction.globalKnowledgeUpdate,
-      AiPermissionAction.globalKnowledgeDelete,
     },
   ),
   _CustomDecisionGroup(

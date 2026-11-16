@@ -167,16 +167,6 @@ class ConversationWorkspace extends ChangeNotifier {
       if (!fullAgentMode) return;
       await confirmTableStructureAction(actionId);
     }
-    for (final candidate in _results.globalKnowledgeCandidates) {
-      if (!fullAgentMode) return;
-      if (candidate.status != GlobalKnowledgeCandidateStatus.pending) continue;
-      await _results.confirmGlobalKnowledgeChange(
-        candidate.id,
-        displayedDigest: candidate.digest,
-        authorizationSource: GlobalKnowledgeAuthorizationSource.policy,
-        authorizationGuard: () async => fullAgentMode,
-      );
-    }
     notifyListeners();
   }
 
@@ -1490,6 +1480,7 @@ class ConversationWorkspace extends ChangeNotifier {
           : await _awaitCancellable(
               _chatService.streamReply(
                 conversationId: conversationId,
+                userMessageId: userMessageId,
                 assistantMessageId: assistantMessageId,
                 excludedMessageIds: excludedMessageIds,
                 thinkingEnabled: thinkingEnabled,
@@ -2103,20 +2094,10 @@ class ConversationWorkspace extends ChangeNotifier {
     final actionTime = completedAt ?? DateTime.now();
     _ToolActionResult result;
     if (call.name == 'propose_global_knowledge_change') {
-      final conversation = await _repository.findConversation(
-        assistant.conversationId,
+      result = _ToolActionResult.failed(
+        code: 'global_knowledge_retired',
+        message: '全局知识库已停用；该历史工具调用未执行。',
       );
-      result = conversation == null
-          ? _ToolActionResult.failed(
-              code: 'conversation_missing',
-              message: '会话不存在，全局知识没有写入。',
-            )
-          : await _executeGlobalKnowledgeTool(
-              assistant,
-              conversation,
-              call,
-              actionTime,
-            );
     } else if (call.name == 'widget.manage') {
       final widgetTools = _widgetTools;
       result = widgetTools == null
@@ -2191,195 +2172,6 @@ class ConversationWorkspace extends ChangeNotifier {
     if (action?.operation == 'table.assign_inbox_target' &&
         action?.status == TableChatActionStatus.applied) {
       await _tableActionProcessor?.acknowledgeInboxAssignmentOperation(action!);
-    }
-  }
-
-  Future<_ToolActionResult> _executeGlobalKnowledgeTool(
-    ChatMessage assistant,
-    Conversation conversation,
-    ToolCallAccumulator call,
-    DateTime actionTime,
-  ) async {
-    Map<String, dynamic> arguments;
-    try {
-      final decoded = jsonDecode(call.arguments.toString());
-      if (decoded is! Map) {
-        return _ToolActionResult.failed(
-          code: 'invalid_arguments',
-          message: '全局知识工具参数必须是对象。',
-        );
-      }
-      arguments = Map<String, dynamic>.from(decoded);
-    } on FormatException {
-      return _ToolActionResult.failed(
-        code: 'invalid_arguments',
-        message: '全局知识工具参数不是有效 JSON。',
-      );
-    }
-    final operation = GlobalKnowledgeOperation.values
-        .where((value) => value.name == arguments['operation'])
-        .firstOrNull;
-    if (operation == null) {
-      return _ToolActionResult.failed(
-        code: 'invalid_operation',
-        message: '全局知识操作类型无效。',
-      );
-    }
-    final permission = switch (operation) {
-      GlobalKnowledgeOperation.create =>
-        AiPermissionAction.globalKnowledgeCreate,
-      GlobalKnowledgeOperation.update =>
-        AiPermissionAction.globalKnowledgeUpdate,
-      GlobalKnowledgeOperation.delete =>
-        AiPermissionAction.globalKnowledgeDelete,
-    };
-    final targetId = arguments['target_id'] is String
-        ? arguments['target_id'] as String
-        : null;
-    final decision = effectivePolicyFor(conversation)
-        .decisionFor(permission, knowledgeId: targetId);
-    if (decision == AiPolicyDecision.deny) {
-      return _ToolActionResult(
-        receipt: ChatWriteToolReceipt.rejected(
-          code: 'policy_denied',
-          message: '当前会话权限不允许此全局知识操作。',
-        ),
-      );
-    }
-    final expectedRevision = arguments['expected_revision'] is num
-        ? (arguments['expected_revision'] as num).toInt()
-        : null;
-    final expectedHash = targetId == null
-        ? null
-        : await _results.hashManagedDocument(targetId);
-    if (targetId != null && expectedHash == null) {
-      return _ToolActionResult.failed(
-        code: 'target_missing',
-        message: '全局知识目标不存在或不可读取。',
-      );
-    }
-    final messages = await _repository.listMessages(conversation.id);
-    ChatMessage? sourceMessage;
-    for (final message in messages) {
-      if (message.role == ChatRole.user &&
-          !message.createdAt.isAfter(assistant.createdAt)) {
-        sourceMessage = message;
-      }
-    }
-    try {
-      final candidate = await _results.proposeGlobalKnowledgeChange(
-        operation: operation,
-        proposal: Map<String, Object?>.from(
-          arguments['proposal'] as Map? ?? const {},
-        ),
-        targetId: targetId,
-        expectedRevision: expectedRevision,
-        expectedHash: expectedHash,
-        sourceConversationId: conversation.id,
-        sourceMessageId: sourceMessage?.id,
-        authorizationSource: decision == AiPolicyDecision.allow
-            ? GlobalKnowledgeAuthorizationSource.policy
-            : GlobalKnowledgeAuthorizationSource.none,
-      );
-      final latestConversation = await _repository.findConversation(
-        conversation.id,
-      );
-      final latestDecision = latestConversation == null
-          ? AiPolicyDecision.deny
-          : effectivePolicyFor(latestConversation)
-                .decisionFor(permission, knowledgeId: targetId);
-      if (latestDecision == AiPolicyDecision.deny) {
-        return _ToolActionResult(
-          receipt: ChatWriteToolReceipt.rejected(
-            code: 'policy_denied',
-            message: '全局知识候选保存期间，当前会话权限已关闭。',
-          ),
-        );
-      }
-      if (latestDecision == AiPolicyDecision.ask &&
-          candidate.status == GlobalKnowledgeCandidateStatus.pending) {
-        return _ToolActionResult(
-          receipt: ChatWriteToolReceipt.waitingConfirmation(
-            operationId: candidate.id,
-            message: '候选已保存，等待你在全局知识中确认后才生效。',
-            data: {
-              'candidate_id': candidate.id,
-              'digest': candidate.digest,
-              'operation': operation.name,
-            },
-          ),
-        );
-      }
-      if (candidate.status == GlobalKnowledgeCandidateStatus.applied) {
-        return _ToolActionResult(
-          receipt: ChatWriteToolReceipt.succeeded(
-            operationId: candidate.id,
-            message: '该全局知识操作已应用并读取到原回执。',
-            data: {
-              'candidate_id': candidate.id,
-              'result_id': candidate.resultId,
-              'operation': operation.name,
-            },
-          ),
-        );
-      }
-      if (latestDecision == AiPolicyDecision.allow &&
-          candidate.authorizationSource !=
-              GlobalKnowledgeAuthorizationSource.policy) {
-        return _ToolActionResult(
-          receipt: ChatWriteToolReceipt.waitingConfirmation(
-            operationId: candidate.id,
-            message: '此候选来自此前的待确认操作；需要人工确认后才能生效。',
-            data: {
-              'candidate_id': candidate.id,
-              'digest': candidate.digest,
-              'operation': operation.name,
-              'authorization_source': candidate.authorizationSource.wireName,
-            },
-          ),
-        );
-      }
-      final applied = await _results.confirmGlobalKnowledgeChange(
-        candidate.id,
-        displayedDigest: candidate.digest,
-        authorizationSource: latestDecision == AiPolicyDecision.allow
-            ? GlobalKnowledgeAuthorizationSource.policy
-            : GlobalKnowledgeAuthorizationSource.human,
-        authorizationGuard: latestDecision == AiPolicyDecision.allow
-            ? () async {
-                final current = await _repository.findConversation(
-                  conversation.id,
-                );
-                return current == null
-                    ? false
-                    : effectivePolicyFor(current)
-                              .decisionFor(permission, knowledgeId: targetId) ==
-                          AiPolicyDecision.allow;
-              }
-            : null,
-      );
-      return _ToolActionResult(
-        receipt: ChatWriteToolReceipt.succeeded(
-          operationId: candidate.id,
-          message: switch (operation) {
-            GlobalKnowledgeOperation.create => '全局知识已创建并读回。',
-            GlobalKnowledgeOperation.update => '全局知识已更新并读回。',
-            GlobalKnowledgeOperation.delete => '全局知识已删除并读回。',
-          },
-          data: {
-            'candidate_id': candidate.id,
-            'result_id': applied.document.id,
-            'revision': applied.document.revision,
-            'operation': operation.name,
-            'applied_at': actionTime.toIso8601String(),
-          },
-        ),
-      );
-    } on Object catch (error) {
-      return _ToolActionResult.failed(
-        code: 'global_knowledge_failed',
-        message: error is StateError ? error.message : '全局知识操作失败：$error',
-      );
     }
   }
 

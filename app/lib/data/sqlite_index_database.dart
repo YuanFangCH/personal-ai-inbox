@@ -852,6 +852,13 @@ class SqliteIndexDatabase implements IndexDatabase {
   }
 
   @override
+  Future<void> removeGlobalKnowledgeCandidate(String id) async {
+    _database.execute('DELETE FROM global_knowledge_candidates WHERE id = ?', [
+      id,
+    ]);
+  }
+
+  @override
   Future<SyncConflictRecord?> findConflict(String resultId) async {
     final rows = _database.select(
       'SELECT * FROM sync_conflicts WHERE result_id = ?',

@@ -6,6 +6,7 @@ import 'package:personal_ai_inbox/data/memory_vault_store.dart';
 import 'package:personal_ai_inbox/data/result_repository.dart';
 import 'package:personal_ai_inbox/data/sync_engine.dart';
 import 'package:personal_ai_inbox/data/sync_provider.dart';
+import 'package:personal_ai_inbox/modules/results/result_library.dart';
 
 void main() {
   const codec = MarkdownCodec();
@@ -47,6 +48,54 @@ void main() {
     expect(second.unchanged, 1);
     expect(second.uploaded, 0);
   });
+
+  test(
+    'legacy global knowledge is neither uploaded nor accepted from remote',
+    () async {
+      final library = ResultLibrary(
+        repository: repository,
+        enableLegacyGlobalKnowledgeForTests: true,
+      );
+      await library.initialize();
+      final candidate = await library.proposeGlobalKnowledgeChange(
+        operation: GlobalKnowledgeOperation.create,
+        candidateId: 'gkc_sync_retired',
+        proposal: const {
+          'title': '旧全局知识',
+          'body': '已退役',
+          'facts': {'state': 'legacy'},
+        },
+      );
+      final created = await library.confirmGlobalKnowledgeChange(
+        candidate.id,
+        displayedDigest: candidate.digest,
+      );
+
+      final localReport = await engine.sync();
+      expect(localReport.uploaded, 0);
+      expect(await provider.listObjects(), isEmpty);
+
+      final source = await repository.readManagedResult(created.document.id);
+      final remoteProvider = _InjectedProvider([
+        SyncRemoteObject(
+          id: created.document.id,
+          path: created.document.markdownPath,
+          content: source!,
+          hash: repository.hashMarkdown(source),
+          etag: 'legacy-global',
+        ),
+      ]);
+      final remoteReport = await SyncEngine(
+        repository: repository,
+        provider: remoteProvider,
+        deviceId: 'test-device',
+      ).sync();
+      expect(remoteReport.downloaded, 0);
+      expect(remoteReport.failed, 1);
+      await library.shutdown();
+      library.dispose();
+    },
+  );
 
   test(
     'records a shared baseline when first observed hashes are equal',

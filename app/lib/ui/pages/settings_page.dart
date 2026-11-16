@@ -8,7 +8,8 @@ import '../../domain/app_failure.dart';
 import '../app_scope.dart';
 import '../presentation/domain_presentation.dart';
 import '../widgets/common.dart';
-import 'global_knowledge_page.dart';
+import 'agent_instructions_page.dart';
+import 'legacy_global_knowledge_retirement_page.dart';
 import 'widget_settings_page.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -133,6 +134,22 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: 16),
           SurfacePanel(
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              key: const Key('settings_legacy_knowledge_archive'),
+              leading: const Icon(Icons.archive_outlined),
+              title: const Text('检查并归档旧全局知识'),
+              subtitle: const Text('预览旧条目、候选与冲突副本；确认后生成本机 ZIP'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const LegacyGlobalKnowledgeRetirementPage(),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SurfacePanel(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -167,14 +184,14 @@ class _SettingsPageState extends State<SettingsPage> {
           SurfacePanel(
             padding: EdgeInsets.zero,
             child: ListTile(
-              key: const Key('settings_global_knowledge'),
-              leading: const Icon(Icons.lightbulb_outline),
-              title: const Text('全局知识库'),
-              subtitle: const Text('管理经确认并同步的基础事实'),
+              key: const Key('settings_agent_instructions'),
+              leading: const Icon(Icons.rule_folder_outlined),
+              title: const Text('秘书指令（AGENTS.md）'),
+              subtitle: const Text('编辑每次对话自动加载的长期规则'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (_) => const GlobalKnowledgePage(),
+                  builder: (_) => const AgentInstructionsPage(),
                 ),
               ),
             ),
@@ -904,17 +921,17 @@ class _AiPresetSummary extends StatelessWidget {
       ),
       AiPolicyPreset.standard => (
         '标准秘书',
-        '表内内容可直接增改删；表结构、恢复和全局知识写入逐项确认。',
+        '表内内容可直接增改删；表结构和恢复逐项确认。',
         theme.colorScheme.surfaceContainerHighest,
       ),
       AiPolicyPreset.fullAccess => (
         '完全权限',
-        '新对话可直接管理任意表、字段、内容和全局知识，包括删除预置表。',
+        '新对话可直接管理任意表、字段和内容，包括删除预置表。',
         theme.colorScheme.errorContainer,
       ),
       AiPolicyPreset.custom => (
         '自定义',
-        '按读取、内容、结构和全局知识分组选择允许、确认或禁止。',
+        '按读取、内容和结构分组选择允许、确认或禁止。',
         theme.colorScheme.tertiaryContainer,
       ),
     };
@@ -1012,12 +1029,10 @@ const _settingsPolicyGroups = [
   _SettingsPolicyGroup(
     id: 'read',
     title: '读取',
-    subtitle: '表、内容、全局知识和历史会话',
+    subtitle: '表、内容和历史会话',
     actions: {
       AiPermissionAction.tableRead,
       AiPermissionAction.contentRead,
-      AiPermissionAction.globalKnowledgeRead,
-      AiPermissionAction.globalKnowledgeSearch,
       AiPermissionAction.conversationHistorySearch,
       AiPermissionAction.conversationHistoryRead,
       AiPermissionAction.attachmentRead,
@@ -1052,16 +1067,6 @@ const _settingsPolicyGroups = [
       AiPermissionAction.fieldAdjust,
       AiPermissionAction.inboxTargetAdjust,
       AiPermissionAction.restore,
-    },
-  ),
-  _SettingsPolicyGroup(
-    id: 'knowledge',
-    title: '全局知识写入',
-    subtitle: '新增、更新或删除全局事实',
-    actions: {
-      AiPermissionAction.globalKnowledgeCreate,
-      AiPermissionAction.globalKnowledgeUpdate,
-      AiPermissionAction.globalKnowledgeDelete,
     },
   ),
   _SettingsPolicyGroup(

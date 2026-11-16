@@ -31,6 +31,7 @@
 | [0025](0025-unbounded-flutter-agent-harness.md) | Flutter 原生单 Agent Harness 取消累计任务预算，完全权限覆盖全部表数据，冲突自动新建并标记待核对 | accepted |
 | [0026](0026-device-full-agent-mode.md) | 设置页完全体模式作为全局应用内授权覆盖层，取消应用层累计上限并保留凭据、系统权限与本地正确性边界 | accepted |
 | [0027](0027-android-table-widget-projection.md) | Android 桌面小组件展示多表的本地投影 | accepted（v1.6.0 Android 手机预览版发布；API 35 模拟器通过，荣耀真机延后） |
+| [0028](0028-secretary-instructions-file.md) | 以本机 `AGENTS.md` 作为长期秘书指令，退役全局知识库 | accepted |
 
 相关文档：
 

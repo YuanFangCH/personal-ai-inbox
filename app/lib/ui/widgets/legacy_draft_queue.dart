@@ -47,7 +47,6 @@ class _LegacyDraftTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final entryId = _entryId(document.id);
-    final global = document.isGlobalKnowledge;
     final copied = tables.entries.any(
       (entry) =>
           entry.id == entryId ||
@@ -69,22 +68,13 @@ class _LegacyDraftTile extends StatelessWidget {
       ),
       trailing: TextButton(
         key: Key('legacy_draft_copy_${document.id}'),
-        onPressed: copied || global ? null : () => _copy(context),
-        child: Text(
-          global
-              ? '全局知识单独确认'
-              : copied
-              ? '已复制'
-              : '复制到表',
-        ),
+        onPressed: copied ? null : () => _copy(context),
+        child: Text(copied ? '已复制' : '复制到表'),
       ),
     );
   }
 
   Future<void> _copy(BuildContext context) async {
-    if (document.isGlobalKnowledge) {
-      throw StateError('全局知识保持独立审批，不能复制到普通表绕过确认。');
-    }
     final role = _tableRole(document);
     final table = tables.tables.singleWhere((item) => item.role == role);
     try {

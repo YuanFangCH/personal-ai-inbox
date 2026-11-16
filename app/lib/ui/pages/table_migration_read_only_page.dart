@@ -15,7 +15,7 @@ class TableMigrationReadOnlyPage extends StatelessWidget {
       builder: (context) => AlertDialog(
         title: const Text('确认迁移旧资料'),
         content: Text(
-          '将创建 ${preview.tables.length} 张表和 ${preview.entries.length} 条内容。应用会先备份 vault、数据库、会话和设置并校验空间；完成后清理已校验备份的旧格式源件，保留全局知识及迁移备份。',
+          '将创建 ${preview.tables.length} 张表和 ${preview.entries.length} 条内容。应用会先备份 vault、数据库、会话和设置并校验空间；完成后清理已校验备份的旧格式源件，旧全局知识仍需单独确认归档。',
         ),
         actions: [
           TextButton(
@@ -150,7 +150,7 @@ class _PreviewContent extends StatelessWidget {
         Text('迁移预检', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 8),
         Text(
-          '发现 ${preview.legacyRecordCount} 条可读取旧资料；拟建立 ${preview.tablesCount} 张表和 ${preview.entryCount} 条内容。全局知识保留在原独立管理中。',
+          '发现 ${preview.legacyRecordCount} 条可读取旧资料；拟建立 ${preview.tablesCount} 张表和 ${preview.entryCount} 条内容。旧全局知识可在设置中确认归档。',
         ),
         if (migrationComplete) ...[
           const SizedBox(height: 12),

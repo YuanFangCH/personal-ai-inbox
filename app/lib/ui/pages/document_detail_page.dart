@@ -9,7 +9,7 @@ import '../presentation/domain_presentation.dart';
 import '../presentation/markdown_presentation.dart';
 import '../widgets/common.dart';
 import 'document_editor_page.dart';
-import 'global_knowledge_page.dart';
+import 'legacy_global_knowledge_retirement_page.dart';
 import 'table_detail_page.dart';
 
 class DocumentDetailPage extends StatelessWidget {
@@ -46,6 +46,9 @@ class DocumentDetailPage extends StatelessWidget {
         body: const Center(child: Text('成果不存在或已删除')),
       );
     }
+    if (document.isGlobalKnowledge) {
+      return const LegacyGlobalKnowledgeRetirementPage();
+    }
     final legacyReadOnly = migrationComplete && !document.isGlobalKnowledge;
 
     final children = document.type == ResultType.matter
@@ -61,17 +64,7 @@ class DocumentDetailPage extends StatelessWidget {
       appBar: AppBar(
         title: Text(resultTypeLabel(document.type)),
         actions: [
-          if (document.isGlobalKnowledge)
-            IconButton(
-              tooltip: '管理全局知识',
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const GlobalKnowledgePage(),
-                ),
-              ),
-              icon: const Icon(Icons.lightbulb_outline),
-            )
-          else if (!legacyReadOnly) ...[
+          if (!legacyReadOnly) ...[
             IconButton(
               tooltip: '编辑',
               onPressed: () => Navigator.of(context).push(

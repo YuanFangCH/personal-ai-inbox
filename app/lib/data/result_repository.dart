@@ -897,6 +897,54 @@ class ResultRepository {
   Future<void> deleteRaw(String path) =>
       _vault.exclusive(() => _vault.delete(path));
 
+  Future<void> purgeArchivedGlobalKnowledge({
+    required Map<String, String> documentHashes,
+    required Map<String, String> documentIds,
+    required Map<String, ({String digest, String status})> candidateSnapshots,
+    required Map<String, String> conflictHashes,
+  }) => _withWriteLock(() async {
+    for (final entry in documentHashes.entries) {
+      final source = await _vault.read(entry.key);
+      if (source == null) continue;
+      if (sha256.convert(utf8.encode(source)).toString() != entry.value ||
+          !_codec.decode(source).isGlobalKnowledge) {
+        throw StateError('归档后的旧知识源已变化，停止清理：${entry.key}');
+      }
+    }
+    for (final entry in conflictHashes.entries) {
+      final source = await _vault.read(entry.key);
+      if (source == null) continue;
+      if (sha256.convert(utf8.encode(source)).toString() != entry.value) {
+        throw StateError('归档后的冲突副本已变化，停止清理：${entry.key}');
+      }
+    }
+    for (final entry in candidateSnapshots.entries) {
+      final candidate = await _index.findGlobalKnowledgeCandidate(entry.key);
+      if (candidate == null) continue;
+      if (candidate.digest != entry.value.digest ||
+          candidate.status.name != entry.value.status) {
+        throw StateError('归档后的旧知识候选已变化，停止清理：${entry.key}');
+      }
+    }
+    for (final path in documentHashes.keys) {
+      final source = await _vault.read(path);
+      final id = documentIds[path]!;
+      if (source == null) {
+        await _index.removeResult(id);
+        continue;
+      }
+      final document = _codec.decode(source);
+      await _vault.delete(path);
+      await _index.removeResult(document.id);
+    }
+    for (final id in candidateSnapshots.keys) {
+      await _index.removeGlobalKnowledgeCandidate(id);
+    }
+    for (final path in conflictHashes.keys) {
+      await _vault.delete(path);
+    }
+  });
+
   Future<void> resolveConflictUsingRemote(String conflictPath) async {
     final source = await readRaw(conflictPath);
     if (source == null) {

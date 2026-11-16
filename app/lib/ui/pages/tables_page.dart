@@ -38,6 +38,9 @@ class _TablesPageState extends State<TablesPage> {
       ]),
       builder: (context, _) {
         final library = AppScope.tables(context);
+        final legacyDrafts = AppScope.results(context).draftDocuments
+            .where((document) => !document.isGlobalKnowledge)
+            .toList(growable: false);
         final matchingEntries = _normalizedQuery.isEmpty
             ? const <TableEntryDocument>[]
             : library.entries
@@ -173,10 +176,8 @@ class _TablesPageState extends State<TablesPage> {
                 const CaptureReviewQueue(),
                 const SizedBox(height: 16),
               ],
-              if (AppScope.results(context).draftDocuments.isNotEmpty) ...[
-                LegacyDraftQueue(
-                  documents: AppScope.results(context).draftDocuments,
-                ),
+              if (legacyDrafts.isNotEmpty) ...[
+                LegacyDraftQueue(documents: legacyDrafts),
                 const SizedBox(height: 16),
               ],
               if (!_showTables) ...[

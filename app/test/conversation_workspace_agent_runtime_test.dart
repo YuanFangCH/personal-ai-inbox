@@ -909,84 +909,81 @@ void main() {
     expect(requests, 0);
   });
 
-  test(
-    'full access applies global knowledge through the tool callback',
-    () async {
-      final harness = await _WorkspaceHarness.create();
-      addTearDown(harness.close);
-      final conversation = await harness.workspace.createConversation(
-        policy: AiPolicy.forPreset(AiPolicyPreset.fullAccess),
-      );
-      final now = DateTime(2026, 11, 3, 13);
-      final user = ChatMessage(
-        id: 'msg_global_user',
+  test('historical global knowledge tool callbacks are rejected', () async {
+    final harness = await _WorkspaceHarness.create();
+    addTearDown(harness.close);
+    final conversation = await harness.workspace.createConversation(
+      policy: AiPolicy.forPreset(AiPolicyPreset.fullAccess),
+    );
+    final now = DateTime(2026, 11, 3, 13);
+    final user = ChatMessage(
+      id: 'msg_global_user',
+      conversationId: conversation.id,
+      role: ChatRole.user,
+      content: '记住本学期第十八周结束',
+      status: ChatMessageStatus.complete,
+      createdAt: now,
+      updatedAt: now,
+    );
+    final assistant = ChatMessage(
+      id: 'msg_global_assistant',
+      conversationId: conversation.id,
+      role: ChatRole.assistant,
+      content: '',
+      status: ChatMessageStatus.streaming,
+      createdAt: now.add(const Duration(seconds: 1)),
+      updatedAt: now.add(const Duration(seconds: 1)),
+    );
+    await harness.chatRepository.saveMessage(user);
+    await harness.chatRepository.saveMessage(assistant);
+    await harness.chatRepository.saveGeneration(
+      GenerationRun(
+        assistantMessageId: assistant.id,
         conversationId: conversation.id,
-        role: ChatRole.user,
-        content: '记住本学期第十八周结束',
-        status: ChatMessageStatus.complete,
-        createdAt: now,
-        updatedAt: now,
-      );
-      final assistant = ChatMessage(
-        id: 'msg_global_assistant',
-        conversationId: conversation.id,
-        role: ChatRole.assistant,
-        content: '',
-        status: ChatMessageStatus.streaming,
-        createdAt: now.add(const Duration(seconds: 1)),
-        updatedAt: now.add(const Duration(seconds: 1)),
-      );
-      await harness.chatRepository.saveMessage(user);
-      await harness.chatRepository.saveMessage(assistant);
-      await harness.chatRepository.saveGeneration(
-        GenerationRun(
-          assistantMessageId: assistant.id,
-          conversationId: conversation.id,
-          userMessageId: user.id,
-          status: GenerationStatus.requesting,
-          responseText: '',
-          toolCalls: const [],
-          createdAt: assistant.createdAt,
-          updatedAt: assistant.updatedAt,
-        ),
-      );
-      final call = ChatWriteToolCall(
-        turnId: assistant.id,
-        conversationId: conversation.id,
-        round: 1,
-        index: 0,
-        callId: 'call_global_once',
-        name: 'propose_global_knowledge_change',
-        wireName: 'propose_global_knowledge_change',
-        rawArguments: jsonEncode({
-          'operation': 'create',
-          'target_id': null,
-          'expected_revision': null,
-          'proposal': {
-            'title': '2026 秋季学期',
-            'body': '本学期第十八周结束。',
-            'facts': {'end_week': 18},
-          },
-        }),
-        arguments: const {},
-      );
+        userMessageId: user.id,
+        status: GenerationStatus.requesting,
+        responseText: '',
+        toolCalls: const [],
+        createdAt: assistant.createdAt,
+        updatedAt: assistant.updatedAt,
+      ),
+    );
+    final call = ChatWriteToolCall(
+      turnId: assistant.id,
+      conversationId: conversation.id,
+      round: 1,
+      index: 0,
+      callId: 'call_global_once',
+      name: 'propose_global_knowledge_change',
+      wireName: 'propose_global_knowledge_change',
+      rawArguments: jsonEncode({
+        'operation': 'create',
+        'target_id': null,
+        'expected_revision': null,
+        'proposal': {
+          'title': '2026 秋季学期',
+          'body': '本学期第十八周结束。',
+          'facts': {'end_week': 18},
+        },
+      }),
+      arguments: const {},
+    );
 
-      final firstReceipt = await harness.workspace.executeWriteTool(call);
-      final secondReceipt = await harness.workspace.executeWriteTool(call);
+    final firstReceipt = await harness.workspace.executeWriteTool(call);
+    final secondReceipt = await harness.workspace.executeWriteTool(call);
 
-      expect(firstReceipt.succeeded, isTrue);
-      expect(secondReceipt.succeeded, isTrue);
-      expect(harness.results.documents, hasLength(1));
-      expect(harness.results.documents.single.isGlobalKnowledge, isTrue);
-      final generation = await harness.chatRepository.findGeneration(
-        assistant.id,
-      );
-      expect(
-        generation?.toolCalls.single['completed_receipt_json'],
-        contains('全局知识已创建'),
-      );
-    },
-  );
+    expect(firstReceipt.succeeded, isFalse);
+    expect(firstReceipt.code, 'global_knowledge_retired');
+    expect(secondReceipt.succeeded, isFalse);
+    expect(harness.results.documents, isEmpty);
+    final generation = await harness.chatRepository.findGeneration(
+      assistant.id,
+    );
+    expect(
+      generation?.toolCalls.single['completed_receipt_json'],
+      contains('全局知识库已停用'),
+    );
+  });
 
   test(
     'full access does not silently approve a pre-existing pending candidate',
@@ -1060,7 +1057,8 @@ void main() {
       );
 
       final receipt = await harness.workspace.executeWriteTool(call);
-      expect(receipt.outcome, ChatWriteToolOutcome.waitingConfirmation);
+      expect(receipt.outcome, ChatWriteToolOutcome.failed);
+      expect(receipt.code, 'global_knowledge_retired');
       expect(harness.results.documents, isEmpty);
       expect(
         harness.results.globalKnowledgeCandidates.single.status,
@@ -1473,7 +1471,10 @@ class _WorkspaceHarness {
       deviceId: 'workspace-agent-test',
     );
     await repository.initialize();
-    final results = ResultLibrary(repository: repository);
+    final results = ResultLibrary(
+      repository: repository,
+      enableLegacyGlobalKnowledgeForTests: true,
+    );
     await results.initialize();
     final capture = CaptureWorkflow(
       repository: repository,

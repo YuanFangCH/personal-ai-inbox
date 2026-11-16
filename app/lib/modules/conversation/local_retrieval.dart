@@ -87,20 +87,15 @@ class LocalRetrieval {
     int limit = 5,
     String? cursor,
   }) async {
+    if (globalKnowledgeOnly) {
+      return _failure('retired', '旧全局知识已退役，不再提供检索。');
+    }
     final ordinaryDecision = _policy.decisionFor(
       AiPermissionAction.contentRead,
     );
-    final knowledgeDecision = _policy.decisionFor(
-      AiPermissionAction.globalKnowledgeSearch,
-    );
-    if (globalKnowledgeOnly) {
-      final denied = _readDecisionFailure(knowledgeDecision);
-      if (denied != null) return denied;
-    } else if (ordinaryDecision == AiPolicyDecision.deny &&
-        knowledgeDecision == AiPolicyDecision.deny) {
+    if (ordinaryDecision == AiPolicyDecision.deny) {
       return _denied();
-    } else if (ordinaryDecision == AiPolicyDecision.ask &&
-        knowledgeDecision == AiPolicyDecision.ask) {
+    } else if (ordinaryDecision == AiPolicyDecision.ask) {
       return _confirmationRequired();
     }
     if (query.trim().isEmpty) return _failure('invalid_argument', '搜索词不能为空。');
@@ -136,12 +131,10 @@ class LocalRetrieval {
           (document) =>
               !document.deleted &&
               document.status == ResultStatus.canonical &&
-              (document.isGlobalKnowledge
-                  ? knowledgeDecision == AiPolicyDecision.allow &&
-                        _policy.knowledgeReadScope.covers(document.id)
-                  : ordinaryDecision == AiPolicyDecision.allow) &&
+              !document.isGlobalKnowledge &&
+              ordinaryDecision == AiPolicyDecision.allow &&
               (type == null || document.type == type) &&
-              (!globalKnowledgeOnly || document.isGlobalKnowledge),
+              !globalKnowledgeOnly,
         )
         .toList(growable: false);
     final ranked =
@@ -799,18 +792,17 @@ class LocalRetrieval {
       'table' => 'table',
       'entry' || 'table_entry' => 'entry',
       'result' => 'result',
-      'global_knowledge' => 'global_knowledge',
       _ => null,
     };
     if (kind == null) {
       return _failure(
         'invalid_argument',
-        'target_kind 仅支持 table、entry、result、global_knowledge。',
+        'target_kind 仅支持 table、entry、result。',
       );
     }
     final sourceToken = switch (kind) {
       'table' || 'entry' => _tableSourceToken(includeEntries: true),
-      'result' || 'global_knowledge' => _resultsSourceToken(),
+      'result' => _resultsSourceToken(),
       _ => throw StateError('unreachable'),
     };
     final queryToken = retrievalDigest({
@@ -845,10 +837,6 @@ class LocalRetrieval {
         tableIds: [snapshot.fields['table_id']?.toString() ?? ''],
       ),
       'result' => _policy.decisionFor(AiPermissionAction.contentRead),
-      'global_knowledge' => _policy.decisionFor(
-        AiPermissionAction.globalKnowledgeRead,
-        knowledgeId: id,
-      ),
       _ => AiPolicyDecision.deny,
     };
     final denied = _readDecisionFailure(policyDecision);
@@ -953,10 +941,7 @@ class LocalRetrieval {
       coverage: _coverage(
         complete: true,
         checkedTables: kind == 'table' || kind == 'entry' ? [id] : const [],
-        checkedEntries:
-            kind == 'entry' || kind == 'result' || kind == 'global_knowledge'
-            ? 1
-            : 0,
+        checkedEntries: kind == 'entry' || kind == 'result' ? 1 : 0,
         matchedEntries: 1,
         returnedEntries: 1,
         characters: _dataCharacters(data),
@@ -1000,10 +985,8 @@ class LocalRetrieval {
           },
         );
       case 'result':
-      case 'global_knowledge':
         final document = await _results.readDocument(id);
-        if (document == null ||
-            (kind == 'global_knowledge' && !document.isGlobalKnowledge)) {
+        if (document == null || document.isGlobalKnowledge) {
           return null;
         }
         return _VerificationSnapshot(
@@ -1340,6 +1323,7 @@ class LocalRetrieval {
     if (denied != null) return denied;
     final document = await _results.readDocument(id);
     if (document == null ||
+        document.isGlobalKnowledge ||
         document.deleted ||
         document.status != ResultStatus.canonical) {
       return _failure('not_found', '成果不存在或当前不可读取。');
@@ -1361,29 +1345,7 @@ class LocalRetrieval {
     int length = 1200,
     String? cursor,
   }) async {
-    final denied = _readDecisionFailure(
-      _policy.decisionFor(
-        AiPermissionAction.globalKnowledgeRead,
-        knowledgeId: id,
-      ),
-    );
-    if (denied != null) return denied;
-    final document = await _results.readDocument(id);
-    if (document == null ||
-        document.deleted ||
-        document.status != ResultStatus.canonical ||
-        !document.isGlobalKnowledge) {
-      return _failure('not_found', '全局知识不存在或当前不可读取。');
-    }
-    return _readResultLike(
-      document: document,
-      kind: 'global_knowledge_read',
-      source: 'global_knowledge',
-      requireGlobalKnowledge: true,
-      offset: offset,
-      length: length,
-      cursor: cursor,
-    );
+    return _failure('retired', '旧全局知识已退役，请先在设置中导出归档。');
   }
 
   Future<String> readOtherConversationMessage(
@@ -1859,12 +1821,9 @@ class LocalRetrieval {
 
   String _resultsSourceToken() => retrievalDigest([
     for (final document in _results.documents)
-      if (document.isGlobalKnowledge
-          ? _policy.decisionFor(AiPermissionAction.globalKnowledgeSearch) !=
-                    AiPolicyDecision.deny &&
-                _policy.knowledgeReadScope.covers(document.id)
-          : _policy.decisionFor(AiPermissionAction.contentRead) !=
-                AiPolicyDecision.deny)
+      if (!document.isGlobalKnowledge &&
+          _policy.decisionFor(AiPermissionAction.contentRead) !=
+              AiPolicyDecision.deny)
         [
           document.id,
           document.type.wireName,

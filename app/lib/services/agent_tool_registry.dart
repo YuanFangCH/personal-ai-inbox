@@ -29,6 +29,18 @@ class AgentToolRegistry {
       parallelSafe: true,
     ),
     AgentToolSpec(
+      operationName: 'agent_instructions_read',
+      wireName: 'agent_instructions_read',
+      access: AgentToolAccess.read,
+      parallelSafe: true,
+    ),
+    AgentToolSpec(
+      operationName: 'agent_instructions_edit',
+      wireName: 'agent_instructions_edit',
+      access: AgentToolAccess.write,
+      parallelSafe: false,
+    ),
+    AgentToolSpec(
       operationName: 'table.search',
       wireName: 'table_search',
       access: AgentToolAccess.read,
@@ -73,18 +85,6 @@ class AgentToolRegistry {
     AgentToolSpec(
       operationName: 'inbox.targets.read',
       wireName: 'inbox_targets_read',
-      access: AgentToolAccess.read,
-      parallelSafe: true,
-    ),
-    AgentToolSpec(
-      operationName: 'search_global_knowledge',
-      wireName: 'search_global_knowledge',
-      access: AgentToolAccess.read,
-      parallelSafe: true,
-    ),
-    AgentToolSpec(
-      operationName: 'read_global_knowledge',
-      wireName: 'read_global_knowledge',
       access: AgentToolAccess.read,
       parallelSafe: true,
     ),
@@ -193,12 +193,6 @@ class AgentToolRegistry {
     AgentToolSpec(
       operationName: 'recovery.restore',
       wireName: 'recovery_restore',
-      access: AgentToolAccess.write,
-      parallelSafe: false,
-    ),
-    AgentToolSpec(
-      operationName: 'propose_global_knowledge_change',
-      wireName: 'propose_global_knowledge_change',
       access: AgentToolAccess.write,
       parallelSafe: false,
     ),

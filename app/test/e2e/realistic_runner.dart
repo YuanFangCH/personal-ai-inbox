@@ -332,7 +332,10 @@ class _Harness {
     preferences = DevicePreferences(
       adapter: SettingsServiceDevicePreferencesAdapter(settings),
     );
-    results = ResultLibrary(repository: repository);
+    results = ResultLibrary(
+      repository: repository,
+      enableLegacyGlobalKnowledgeForTests: true,
+    );
     tables = TableLibrary(repository: repository.createTableRepository());
     final chatService = ChatService(
       settings: settings,

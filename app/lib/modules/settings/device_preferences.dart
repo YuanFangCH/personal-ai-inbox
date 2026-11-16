@@ -139,6 +139,14 @@ class DevicePreferences extends ChangeNotifier {
 
   Future<void> shutdown() => _queue;
 
+  /// Serializes instruction commits with the device-level permission switch,
+  /// including portable imports and reset.
+  Future<T> withInstructionAuthorization<T>(
+    Future<T> Function(bool enabled) action,
+  ) => _enqueue(
+    () async => action((_settings ?? await _adapter.load()).fullAgentMode),
+  );
+
   Future<Map<String, Object?>> exportPortableSettings() => _enqueue(
     () => _guard(
       code: 'settings_export_failed',

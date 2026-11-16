@@ -795,7 +795,7 @@ class ModelClient {
 - event：明确发生的日程；写入 start / end
 - matter：需要聚合多个行动的独立事项
 
-create_result 只用于新建。update_result 与 delete_result 只按用户明确要求操作普通成果；不得操作会话或历史消息。全局知识的变更只能提议，未获用户确认前不会生效。
+create_result 只用于新建。update_result 与 delete_result 只按用户明确要求操作普通成果；不得操作会话或历史消息。旧全局知识工具已停用；长期秘书规则通过当前请求提供的本机 AGENTS.md 维护。
 日期、金额、身份或指令含义不清楚时，不要调用工具。
 重复规则、敏感内容、过去日程不要自动创建。
 如果用户只是普通聊天，直接回答，不要强行提取。

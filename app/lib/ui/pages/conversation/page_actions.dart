@@ -514,19 +514,6 @@ mixin _ConversationPageActions on State<ConversationPage> {
             widget.onNavigate?.call('matters');
           },
         ),
-        ListTile(
-          key: const Key('conversation_global_knowledge'),
-          leading: const Icon(Icons.lightbulb_outline),
-          title: const Text('全局知识库'),
-          onTap: () {
-            if (inDrawer) Navigator.pop(context);
-            Navigator.of(this.context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const GlobalKnowledgePage(),
-              ),
-            );
-          },
-        ),
       ],
       const Divider(height: 1),
     ];

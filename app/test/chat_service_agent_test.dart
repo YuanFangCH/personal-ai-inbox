@@ -11,6 +11,7 @@ import 'package:personal_ai_inbox/core/ai_policy.dart';
 import 'package:personal_ai_inbox/core/models.dart';
 import 'package:personal_ai_inbox/core/table_models.dart';
 import 'package:personal_ai_inbox/data/chat_repository.dart';
+import 'package:personal_ai_inbox/data/agent_instructions_store.dart';
 import 'package:personal_ai_inbox/data/memory_attachment_store.dart';
 import 'package:personal_ai_inbox/data/memory_conversation_store.dart';
 import 'package:personal_ai_inbox/data/memory_index_database.dart';
@@ -144,7 +145,7 @@ void main() {
     },
   );
 
-  test('global knowledge instructions follow the effective policy', () async {
+  test('legacy global knowledge tools are not exposed', () async {
     final fixture = await _AgentFixture.create();
     final requests = <Map<String, dynamic>>[];
     final service = ChatService(
@@ -182,31 +183,93 @@ void main() {
             .cast<Map>()
             .firstWhere((message) => message['role'] == 'system')['content']
             .toString();
-    Map<String, dynamic> knowledgeTool(Map<String, dynamic> request) =>
-        (request['tools'] as List)
-            .cast<Map>()
-            .map((tool) => Map<String, dynamic>.from(tool))
-            .firstWhere(
-              (tool) =>
-                  (tool['function'] as Map)['name'] ==
-                  'propose_global_knowledge_change',
-            );
-
-    expect(systemPrompt(standard), contains('逐项确认'));
-    expect(systemPrompt(standard), isNot(contains('按当前策略直接生效')));
-    expect(
-      knowledgeTool(standard)['function']['description'],
-      contains('必须由用户逐项确认'),
-    );
-    expect(systemPrompt(fullAccess), contains('按当前策略直接执行'));
-    expect(systemPrompt(fullAccess), contains('向用户报告结果'));
-    expect(systemPrompt(fullAccess), contains('设置页完全体模式启动时会重新校验并自动处理'));
-    expect(systemPrompt(fullAccess), isNot(contains('全局知识仅能提议')));
-    expect(
-      knowledgeTool(fullAccess)['function']['description'],
-      contains('按当前策略直接执行'),
-    );
+    for (final request in [standard, fullAccess]) {
+      final toolNames = (request['tools'] as List)
+          .cast<Map>()
+          .map((tool) => (tool['function'] as Map)['name'])
+          .toList();
+      expect(toolNames, isNot(contains('search_global_knowledge')));
+      expect(toolNames, isNot(contains('read_global_knowledge')));
+      expect(toolNames, isNot(contains('propose_global_knowledge_change')));
+      expect(systemPrompt(request), isNot(contains('全局知识')));
+    }
   });
+
+  test(
+    'instruction edit tool is gated and exposes its full argument schema',
+    () async {
+      final fixture = await _AgentFixture.create();
+      final requests = <Map<String, dynamic>>[];
+      final service = ChatService(
+        instructionsStore: AgentInstructionsStore(MemoryVaultStore()),
+        settings: FakeSettingsService(
+          modelKey: 'test-key',
+          fullAgentMode: true,
+        ),
+        repository: fixture.chats,
+        results: fixture.results,
+        tables: fixture.tables,
+        modelClient: ModelClient(
+          client: MockClient.streaming((_, body) async {
+            requests.add(
+              jsonDecode(await body.bytesToString()) as Map<String, dynamic>,
+            );
+            return _textResponse('收到。');
+          }),
+        ),
+      );
+      addTearDown(() => fixture.close(service));
+
+      Future<void> send(String id, String text) async {
+        final conversation = (await fixture.chats.findConversation(
+          fixture.conversationId,
+        ))!;
+        await fixture.chats.saveMessage(
+          ChatMessage(
+            id: id,
+            conversationId: fixture.conversationId,
+            role: ChatRole.user,
+            content: text,
+            status: ChatMessageStatus.complete,
+            createdAt: conversation.createdAt.add(
+              Duration(seconds: requests.length + 1),
+            ),
+            updatedAt: conversation.updatedAt.add(
+              Duration(seconds: requests.length + 1),
+            ),
+          ),
+        );
+        await (await service.streamReply(
+          conversationId: fixture.conversationId,
+          userMessageId: id,
+        )).toList();
+      }
+
+      await send('msg_direct_instruction', '请修改 AGENTS.md：默认使用简体中文。');
+      await send('msg_instruction_question', '修改 AGENTS.md 吗？');
+
+      final directTools = (requests[0]['tools'] as List).cast<Map>();
+      final instructionTool = directTools
+          .map((tool) => Map<String, dynamic>.from(tool['function'] as Map))
+          .singleWhere((tool) => tool['name'] == 'agent_instructions_edit');
+      final parameters = instructionTool['parameters'] as Map;
+      final editItems =
+          ((parameters['properties'] as Map)['edits'] as Map)['items'] as Map;
+      expect(editItems['required'], ['old_text', 'new_text']);
+      expect((editItems['properties'] as Map)['old_text'], {
+        'type': ['string', 'null'],
+      });
+      expect((editItems['properties'] as Map)['new_text'], {'type': 'string'});
+      final questionTools = (requests[1]['tools'] as List).cast<Map>();
+      expect(
+        questionTools.any(
+          (tool) =>
+              (tool['function'] as Map)['name'] == 'agent_instructions_edit',
+        ),
+        isFalse,
+      );
+    },
+  );
 
   test(
     'table structure instructions follow each effective action policy',

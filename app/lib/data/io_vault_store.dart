@@ -6,7 +6,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'vault_store.dart';
 
-class IoVaultStore implements VaultStore {
+class IoVaultStore implements VaultStore, AtomicVaultStore {
   static final Map<String, Future<void>> _processWriteTails = {};
 
   IoVaultStore._(this._root);
@@ -82,6 +82,22 @@ class IoVaultStore implements VaultStore {
       await file.delete();
     }
     await temporary.rename(file.path);
+  }
+
+  @override
+  Future<List<int>?> readBytes(String relativePath) async {
+    final file = _resolve(relativePath);
+    return await file.exists() ? file.readAsBytes() : null;
+  }
+
+  @override
+  Future<void> replaceAtomically(String relativePath, String contents) async {
+    final target = _resolve(relativePath);
+    await target.parent.create(recursive: true);
+    final staging = File('${target.path}.staged');
+    await staging.writeAsString(contents, flush: true);
+    // Dart's native rename replaces an existing file on the same volume.
+    await staging.rename(target.path);
   }
 
   @override

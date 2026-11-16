@@ -50,7 +50,10 @@ class SyncEngine {
       final local = await _repository.listIndex();
       final localIds = local.map((entry) => entry.id).toSet();
       for (final indexed in local) {
-        if (indexed.status != ResultStatus.canonical) continue;
+        if (indexed.status != ResultStatus.canonical ||
+            indexed.globalKnowledge) {
+          continue;
+        }
         if (invalidIds.contains(indexed.id)) continue;
         final remoteObject = remote.remove(indexed.id);
         try {
@@ -297,9 +300,10 @@ class SyncEngine {
     final document = _codec.decode(remote.content);
     if (document.id != remote.id ||
         document.markdownPath != remote.path ||
+        document.isGlobalKnowledge ||
         document.status != ResultStatus.canonical ||
         remote.path != 'vault/${document.type.directory}/${remote.id}.md') {
-      throw FormatException('远端成果身份、类型、状态或路径不匹配：${remote.id}');
+      throw FormatException('远端成果身份、类型、范围、状态或路径不匹配：${remote.id}');
     }
     if (_repository.hashMarkdown(remote.content) != remote.hash) {
       throw FormatException('远端成果内容 hash 不匹配：${remote.id}');
@@ -309,10 +313,11 @@ class SyncEngine {
   void _validateLocal(ResultDocument document, IndexedResult indexed) {
     if (document.id != indexed.id ||
         document.markdownPath != indexed.mdPath ||
+        document.isGlobalKnowledge != indexed.globalKnowledge ||
         document.status != ResultStatus.canonical ||
         indexed.mdPath !=
             'vault/${document.type.directory}/${document.id}.md') {
-      throw StateError('本地成果身份、类型、状态或路径不匹配：${indexed.id}');
+      throw StateError('本地成果身份、类型、范围、状态或路径不匹配：${indexed.id}');
     }
   }
 

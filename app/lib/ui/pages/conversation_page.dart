@@ -21,8 +21,6 @@ import '../theme/app_design_tokens.dart';
 import '../widgets/common.dart';
 import 'document_detail_page.dart';
 import 'table_detail_page.dart';
-import 'global_knowledge_page.dart';
-import '../widgets/global_knowledge_candidate_card.dart';
 import 'conversation/conversation_permission_sheet.dart';
 import 'conversation/agent_task_status_card.dart';
 
@@ -145,7 +143,6 @@ class _ConversationPageState extends State<ConversationPage>
     final app = AppScope.conversations(context);
     final settings = AppScope.preferences(context).settings;
     final fullAgentMode = settings.fullAgentMode;
-    final results = AppScope.results(context);
     if (!_didResolveInitialConversation) {
       _didResolveInitialConversation = true;
       _conversationId ??= app.activeConversationId;
@@ -177,15 +174,7 @@ class _ConversationPageState extends State<ConversationPage>
     final imageCapability = modelCapabilities.vision;
     final desktopWideRoot =
         widget.isRoot && MediaQuery.sizeOf(context).width >= 1024;
-    final activeCandidates = results.globalKnowledgeCandidates
-        .where(
-          (candidate) =>
-              candidate.sourceConversationId == conversationId &&
-              candidate.status != GlobalKnowledgeCandidateStatus.rejected,
-        )
-        .toList(growable: false);
-    final desktopEmpty =
-        desktopWideRoot && messages.isEmpty && activeCandidates.isEmpty;
+    final desktopEmpty = desktopWideRoot && messages.isEmpty;
     final desktopInput =
         defaultTargetPlatform == TargetPlatform.windows ||
         defaultTargetPlatform == TargetPlatform.macOS ||
@@ -196,7 +185,7 @@ class _ConversationPageState extends State<ConversationPage>
         constraints: const BoxConstraints(
           maxWidth: AppDesignTokens.conversationContentMaxWidth,
         ),
-        child: messages.isEmpty && activeCandidates.isEmpty
+        child: messages.isEmpty
             ? desktopWideRoot
                   ? const SizedBox.shrink()
                   : Padding(
@@ -226,16 +215,6 @@ class _ConversationPageState extends State<ConversationPage>
                         key: ValueKey('message_${message.id}'),
                         child: _buildMessageRow(message, app),
                       ),
-                    for (final candidate in activeCandidates) ...[
-                      const SizedBox(height: 10),
-                      GlobalKnowledgeCandidateCard(
-                        candidate: candidate,
-                        results: results,
-                        showActions:
-                            candidate.status ==
-                            GlobalKnowledgeCandidateStatus.pending,
-                      ),
-                    ],
                   ],
                 ),
               ),

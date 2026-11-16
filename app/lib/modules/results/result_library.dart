@@ -35,12 +35,17 @@ ResultLibraryInternal resultLibraryInternal(ResultLibrary library) {
 /// Markdown parsing, SQLite indexing, revision handling, tombstones and raw
 /// conflict files remain behind [ResultRepository].
 class ResultLibrary extends ChangeNotifier {
-  ResultLibrary({required ResultRepository repository})
-    : _repository = repository,
-      _internal = _ResultLibraryInternal(repository);
+  ResultLibrary({
+    required ResultRepository repository,
+    @visibleForTesting bool enableLegacyGlobalKnowledgeForTests = false,
+  }) : _repository = repository,
+       _internal = _ResultLibraryInternal(repository),
+       _enableLegacyGlobalKnowledgeForTests =
+           enableLegacyGlobalKnowledgeForTests;
 
   final ResultRepository _repository;
   final ResultLibraryInternal _internal;
+  final bool _enableLegacyGlobalKnowledgeForTests;
 
   List<ResultDocument> _documents = const [];
   List<ResultDocument> _canonicalDocuments = const [];
@@ -113,8 +118,6 @@ class ResultLibrary extends ChangeNotifier {
 
   Future<void> initialize() async {
     await _repository.initialize();
-    await refresh();
-    await _resumeApprovedGlobalKnowledgeChanges();
     await refresh();
   }
 
@@ -197,6 +200,7 @@ class ResultLibrary extends ChangeNotifier {
     GlobalKnowledgeAuthorizationSource authorizationSource =
         GlobalKnowledgeAuthorizationSource.none,
   }) async {
+    _requireLegacyGlobalKnowledgeForTests();
     final normalized = _normalizeGlobalProposal(operation, proposal);
     final digest = _globalKnowledgeDigest(
       operation: operation,
@@ -273,6 +277,7 @@ class ResultLibrary extends ChangeNotifier {
     String candidateId, {
     required String displayedDigest,
   }) async {
+    _requireLegacyGlobalKnowledgeForTests();
     final candidate = await _requirePendingCandidate(
       candidateId,
       displayedDigest,
@@ -294,6 +299,7 @@ class ResultLibrary extends ChangeNotifier {
         GlobalKnowledgeAuthorizationSource.human,
     Future<bool> Function()? authorizationGuard,
   }) async {
+    _requireLegacyGlobalKnowledgeForTests();
     final candidate = await _requirePendingCandidate(
       candidateId,
       displayedDigest,
@@ -371,6 +377,7 @@ class ResultLibrary extends ChangeNotifier {
   Future<ResultActionResult> retryApprovedGlobalKnowledgeChange(
     String candidateId,
   ) async {
+    _requireLegacyGlobalKnowledgeForTests();
     final candidate = await _repository.findGlobalKnowledgeCandidate(
       candidateId,
     );
@@ -572,39 +579,15 @@ class ResultLibrary extends ChangeNotifier {
     if (proposal['timezone'] != null) 'global_timezone': proposal['timezone'],
   };
 
-  Future<void> _resumeApprovedGlobalKnowledgeChanges() async {
-    for (final candidate in await _repository.listGlobalKnowledgeCandidates()) {
-      if (candidate.status != GlobalKnowledgeCandidateStatus.approved) continue;
-      if (!_hasAuthorization(candidate.authorizationSource)) {
-        final unverified = candidate.copyWith(
-          status: GlobalKnowledgeCandidateStatus.failed,
-          updatedAt: DateTime.now(),
-          error: '旧候选没有可验证的人工或策略授权来源，未自动重放。',
-        );
-        await _repository.saveGlobalKnowledgeCandidate(unverified);
-        _setGlobalKnowledgeCandidate(unverified);
-        continue;
-      }
-      try {
-        await _applyApprovedGlobalCandidate(candidate);
-      } on StateError catch (error) {
-        if (candidate.operation != GlobalKnowledgeOperation.create &&
-            await _globalCandidateTargetChanged(candidate)) {
-          final stale = candidate.copyWith(
-            status: GlobalKnowledgeCandidateStatus.stale,
-            updatedAt: DateTime.now(),
-            error: error.message,
-          );
-          await _repository.saveGlobalKnowledgeCandidate(stale);
-          _setGlobalKnowledgeCandidate(stale);
-        }
-      }
-    }
-  }
-
   bool _hasAuthorization(GlobalKnowledgeAuthorizationSource source) =>
       source == GlobalKnowledgeAuthorizationSource.human ||
       source == GlobalKnowledgeAuthorizationSource.policy;
+
+  void _requireLegacyGlobalKnowledgeForTests() {
+    if (!_enableLegacyGlobalKnowledgeForTests) {
+      throw StateError('旧全局知识功能已退役。');
+    }
+  }
 
   void _setGlobalKnowledgeCandidate(GlobalKnowledgeCandidate candidate) {
     _globalKnowledgeCandidates = List.unmodifiable([
@@ -845,27 +828,23 @@ class ResultLibrary extends ChangeNotifier {
     String query = '',
     int offset = 0,
     int limit = 50,
-    bool globalOnly = false,
-  }) => _repository.searchDocuments(
+  }) async => (await _repository.searchDocuments(
     query: query,
     type: ResultType.knowledge,
     offset: offset,
     limit: limit,
-    globalKnowledgeOnly: globalOnly,
-  );
+  )).where((document) => !document.isGlobalKnowledge).toList(growable: false);
 
   Future<List<ResultDocument>> searchResults({
     required String query,
     ResultType? type,
-    bool globalKnowledgeOnly = false,
     int limit = 5,
-  }) => _repository.searchDocuments(
+  }) async => (await _repository.searchDocuments(
     query: query,
     type: type,
     offset: 0,
     limit: limit.clamp(1, 5),
-    globalKnowledgeOnly: globalKnowledgeOnly,
-  );
+  )).where((document) => !document.isGlobalKnowledge).toList(growable: false);
 
   Future<void> toggleTodo(ResultDocument document, bool done) async {
     final saved = await _repository.markTodo(document, done);
@@ -879,6 +858,21 @@ class ResultLibrary extends ChangeNotifier {
     }
     final deleted = await _repository.delete(id);
     if (deleted != null) _publishDocument(deleted);
+  }
+
+  Future<void> purgeArchivedGlobalKnowledge({
+    required Map<String, String> documentHashes,
+    required Map<String, String> documentIds,
+    required Map<String, ({String digest, String status})> candidateSnapshots,
+    required Map<String, String> conflictHashes,
+  }) async {
+    await _repository.purgeArchivedGlobalKnowledge(
+      documentHashes: documentHashes,
+      documentIds: documentIds,
+      candidateSnapshots: candidateSnapshots,
+      conflictHashes: conflictHashes,
+    );
+    await refresh();
   }
 
   /// Creates a canonical result from a captured or model-produced candidate.

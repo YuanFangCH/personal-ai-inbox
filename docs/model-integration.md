@@ -2,6 +2,8 @@
 
 > 2026-11-09 新增设置页设备级[完全体模式](adr/0026-device-full-agent-mode.md)。开启后所有现有和新会话通过运行层覆盖为应用内完全权限；关闭后恢复各会话原策略。完全体模式取消应用层累计历史、检索、耗时和附件上限，按模型容量自动压缩/分批、在 `finish_reason=length` 时续写，并对瞬时网络/限流/超时无限重试（退避最长 60 秒）。模型硬限额、磁盘、网络和系统生命周期仍是物理边界。API Key、模型端点、模型名、图片出网、权限策略和完全体开关本身不可由 AI 修改。
 
+> 2026-11-17 按 [ADR 0028](adr/0028-secretary-instructions-file.md) 退役活动全局知识，长期秘书规则改由本机 `AGENTS.md` 承载。每轮单独注入 system 消息；仅完全体模式下当前无附件用户消息明确要求修改时开放版本受控的读写工具。接口和落盘约定见[指令文件合同](agent-instructions-contract.md)。
+
 > 2026-11-08 起，累计请求/活动时长预算由 [ADR 0025](adr/0025-unbounded-flutter-agent-harness.md) 取消。完全权限下表结构和全局知识直接执行，工具结果逐步回传；无法证明为同一对象的查重冲突新建独立条目并标记待核对。单请求超时、上下文压缩和网络重试保留。基础权限规则继续见 [ADR 0024](adr/0024-secretary-agent-permissions-and-deduplication.md) 与[专用设计](secretary-agent-design.md)。
 
 > 2026-10-29 新产品目标见[表与笔记改版规划](table-notebook-redesign-plan.md)：AI 围绕表内内容读写，内容改动与跨表移动默认免逐次确认，表结构在对话内确认，移除独立待处理页；全局知识继续独立且人工确认。下文工具与四类成果仍为现行契约，新工具/schema/迁移尚未实现，模型接入和凭据边界不因此改变。
@@ -140,15 +142,15 @@
 
 官方技术依据：[Thinking Mode](https://api-docs.deepseek.com/guides/thinking_mode/)、[Tool Calls](https://api-docs.deepseek.com/guides/tool_calls/)、[Chat Completions API](https://api-docs.deepseek.com/api/create-chat-completion/)、[Search & Fetch](https://api-docs.deepseek.com/guides/search/)、[Responses API](https://api-docs.deepseek.com/guides/responses_api/)，核对日期 2026-10-04。真实模型 Key 尚未连接。
 
-## 12. 秘书角色与已确认基础事实
+## 12. 秘书角色与长期指令
 
 面向用户的默认角色改为“懒狗秘书”的秘书型助理，负责信息整理、事项/日历/待办和日期计算；内部分类器继续遵守原结构化职责。角色不赋予权限、不承诺未完成的提醒或后台能力。
 
-AI 可识别值得复用的全局基础事实，或按用户命令提出候选，但新增、修改、删除均必须展示内容并经人工确认后执行，不能走普通成果工具绕过审批。用户的“记住”指令不代替对最终候选的确认；只有已确认且适用的知识可供检索。
+每轮从本机 Vault 根目录读取 `AGENTS.md`，作为独立 system 消息放入当轮模型请求，不写入会话 transcript、成果或同步区。空文件不附加消息；无效 UTF-8 或超过 8 KiB 时请求失败关闭。设置页可编辑、导出和撤销；revision 使用源字节 SHA-256。
 
-全局知识以 `knowledge` 类型的显式范围元数据承载，候选与审批交互留在本端；AI 按需检索且受当前会话读取权限控制，不每轮自动附带基础事实，关闭读取时不触发新的外部读取。已在当前会话出现的内容不能因关权限被追溯撤回。同一已确认版本同步接收不重复要求审批，冲突按同步协议裁决；OneDrive 尚未接通，因此协议目标不代表真实云端已实现。
+完全体模式下，仅当前无附件用户消息直接要求长期规则变更时开放 `agent_instructions_read` / `agent_instructions_edit`。写入受用户消息、会话、模式状态和模式代际双重校验，重读 revision 后应用唯一原文编辑，保留 10 分钟撤销。Agent 指令不授予其他工具或系统权限。字段与函数合同见[指令文件合同](agent-instructions-contract.md)。
 
-时间类事实需要适用学期、日期/时区和周序计算口径；事实缺失、过期或冲突时应澄清，不凭模型生成时间表。核心审批、检索和管理界面已由 S3/S4/S5/S6 实现；真实跨端云盘同步仍待后续 Provider 接入。完整边界见 [ADR 0018](adr/0018-confirmed-global-knowledge-for-secretary.md) 与[补充计划](secretary-and-global-knowledge-plan.md)。
+旧全局知识仅为用户确认归档保留：归档包括旧条目、候选和相关冲突副本，写入并校验 ZIP 与源哈希后才清理活动数据；不会自动写入 `AGENTS.md` 或同步。详见 [ADR 0028](adr/0028-secretary-instructions-file.md) 与[同步协议第 17 节](sync-protocol.md)。
 
 ## 13. 非必要不检索
 

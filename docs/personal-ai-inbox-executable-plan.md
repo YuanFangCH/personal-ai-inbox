@@ -1,5 +1,7 @@
 # 个人 AI 收件箱与提醒系统：可执行方案
 
+> 2026-11-17 长期秘书规则采用本机 `AGENTS.md`，活动全局知识库退役。确认后的旧知识 ZIP 校验归档后从活动库移除；指令加载、编辑工具、撤销和权限代际见 [ADR 0028](adr/0028-secretary-instructions-file.md) 与[指令文件合同](agent-instructions-contract.md)。下方旧阶段对全局知识的目标描述属于历史方案，不再作为当前实现要求。
+
 > 2026-11-09 设置页新增设备级[完全体模式](adr/0026-device-full-agent-mode.md)：全局覆盖现有和新会话为应用内完全权限，取消应用层累计上下文、检索、附件和瞬时故障重试上限；关闭后恢复原策略。该模式不新增互联网搜索，不授予 API Key、模型控制面、系统文件、Root 或操作系统权限。
 
 > 2026-11-03 秘书升级以[专用 Agent 设计](secretary-agent-design.md)与 [ADR 0024](adr/0024-secretary-agent-permissions-and-deduplication.md) 为新目标：完全权限、可删除预置表、全局知识直接生效、统一写前查重和可恢复任务。实现已提交为 `111f996` 并进入 v1.3.0 Android 手机预发布；A01–A30、A34–A35、平板和 Windows 验收仍按各自范围处理。

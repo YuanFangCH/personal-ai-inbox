@@ -53,7 +53,12 @@ class FakeSettingsService extends SettingsService {
     if (replaceApiKey) {
       _modelKey = apiKey?.trim().isEmpty == true ? null : apiKey?.trim();
     }
-    _settings = configuration.copyWith(hasModelKey: _modelKey != null);
+    _settings = configuration.copyWith(
+      hasModelKey: _modelKey != null,
+      fullAgentModeRevision:
+          _settings.fullAgentModeRevision +
+          (_settings.fullAgentMode == configuration.fullAgentMode ? 0 : 1),
+    );
     return _settings;
   }
 
@@ -92,6 +97,11 @@ class FakeSettingsService extends SettingsService {
       contextMessageLimit: contextMessageLimit,
       imageMessageLimit: imageMessageLimit,
       imageLimit: imageLimit,
+      fullAgentModeRevision:
+          _settings.fullAgentModeRevision +
+          (_settings.fullAgentMode == (fullAgentMode ?? _settings.fullAgentMode)
+              ? 0
+              : 1),
     );
     if (defaultAiPolicy != null) {
       next = next.copyWith(defaultAiPolicy: defaultAiPolicy);

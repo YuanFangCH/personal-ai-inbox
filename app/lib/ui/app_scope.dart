@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 
 import '../data/home_widget_bridge.dart';
+import '../data/agent_instructions_store.dart';
+import '../data/legacy_global_knowledge_retirement.dart';
 import '../modules/home_widgets/widget_workspace.dart';
 import '../modules/capture/capture_workflow.dart';
 import '../modules/conversation/conversation_workspace.dart';
@@ -22,6 +24,8 @@ class AppModules {
     required this.capture,
     required this.conversations,
     required this.preferences,
+    required this.agentInstructions,
+    required this.legacyKnowledgeRetirement,
     required this.sync,
     required this.fileInputService,
     required this.voiceService,
@@ -35,6 +39,8 @@ class AppModules {
   final CaptureWorkflow capture;
   final ConversationWorkspace conversations;
   final DevicePreferences preferences;
+  final AgentInstructionsStore agentInstructions;
+  final LegacyGlobalKnowledgeRetirement legacyKnowledgeRetirement;
   final SyncWorkspace sync;
   final FileInputService fileInputService;
   final VoiceService voiceService;

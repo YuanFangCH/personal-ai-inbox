@@ -6,6 +6,8 @@ import 'package:path/path.dart' as p;
 import '../core/ai_policy.dart';
 import '../core/deterministic_parser.dart';
 import '../data/attachment_store.dart';
+import '../data/agent_instructions_store.dart';
+import '../data/legacy_global_knowledge_retirement.dart';
 import '../data/attachment_store_factory.dart';
 import '../data/chat_repository.dart';
 import '../data/conversation_store.dart';
@@ -17,6 +19,7 @@ import '../data/index_database.dart';
 import '../data/index_database_factory.dart';
 import '../data/memory_attachment_store.dart';
 import '../data/memory_conversation_store.dart';
+import '../data/memory_vault_store.dart';
 import '../data/result_repository.dart';
 import '../data/settings_service.dart';
 import '../data/migration_coordinator.dart';
@@ -299,6 +302,7 @@ final class AppRuntime {
             conversation.effectiveAiPolicy,
       );
       final chatService = ChatService(
+        instructionsStore: AgentInstructionsStore(vault),
         widgetTools: widgetTools,
         settings: settingsService,
         repository: chatRepository,
@@ -307,6 +311,8 @@ final class AppRuntime {
         modelClient: modelClient,
         writeToolExecutor: (call) => conversations.executeWriteTool(call),
         refreshSettings: preferences.initialize,
+        runWithInstructionAuthorization: (operation) =>
+            preferences.withInstructionAuthorization(operation),
         refreshConversationState: () async {
           await policySource?.refreshAgentManagedState();
         },
@@ -338,6 +344,7 @@ final class AppRuntime {
         results: results,
       );
       runtime = AppRuntime(
+        vaultStore: vault,
         homeWidgets: homeWidgets,
         homeWidgetBridge: homeWidgetBridge,
         preferences: preferences,
@@ -374,6 +381,7 @@ final class AppRuntime {
   }
 
   AppRuntime({
+    VaultStore? vaultStore,
     this.homeWidgets,
     this.homeWidgetBridge,
     required this.preferences,
@@ -388,11 +396,18 @@ final class AppRuntime {
     this.fileInputService = const FileInputService(),
     VoiceService? voiceService,
     this.closeAdapters,
-  }) : migrationGate = migrationGate ?? TableMigrationGate.disabled(),
+  }) : _runtimeVault = vaultStore ?? MemoryVaultStore(),
+       migrationGate = migrationGate ?? TableMigrationGate.disabled(),
        voiceService = voiceService ?? SystemVoiceService(),
        backgroundAgent = backgroundAgent ?? _defaultAgentBackground();
 
   final DevicePreferences preferences;
+  final VaultStore _runtimeVault;
+  late final AgentInstructionsStore agentInstructions = AgentInstructionsStore(
+    _runtimeVault,
+  );
+  late final LegacyGlobalKnowledgeRetirement legacyKnowledgeRetirement =
+      LegacyGlobalKnowledgeRetirement(_runtimeVault, results);
   final WidgetWorkspace? homeWidgets;
   final HomeWidgetBridge? homeWidgetBridge;
   final ResultLibrary results;

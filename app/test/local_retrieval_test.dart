@@ -54,7 +54,10 @@ void main() {
       index: MemoryIndexDatabase(),
       deviceId: 'retrieval-test',
     );
-    results = ResultLibrary(repository: repository);
+    results = ResultLibrary(
+      repository: repository,
+      enableLegacyGlobalKnowledgeForTests: true,
+    );
     await results.initialize();
     ordinary = await results.createManual(
       type: ResultType.knowledge,
@@ -201,17 +204,13 @@ void main() {
         'ok',
       );
 
-      final scopedResults = jsonMap(
+      final retiredResults = jsonMap(
         await retrieval.searchResults(query: '学期', globalKnowledgeOnly: true),
       );
-      final knowledgeIds = (jsonData(scopedResults)['hits'] as List)
-          .cast<Map>()
-          .map((hit) => hit['id']);
-      expect(knowledgeIds, contains(global.id));
-      expect(knowledgeIds, isNot(contains(hiddenGlobal.id)));
+      expect(retiredResults['status'], 'retired');
       expect(
         jsonMap(await retrieval.readGlobalKnowledge(hiddenGlobal.id))['status'],
-        'denied',
+        'retired',
       );
 
       final scopedHistory = jsonMap(
@@ -237,31 +236,30 @@ void main() {
   test(
     'valid reads are cached and invalidate when source revisions change',
     () async {
+      final regular = await results.createManual(
+        type: ResultType.knowledge,
+        title: '秋季学期安排',
+        body: '普通成果中的学期说明。',
+      );
       final retrieval = LocalRetrieval(
         conversationId: current.id,
         permissions: const AiPermissions(),
         chats: chats,
         results: results,
       );
-      final first = await retrieval.searchResults(
-        query: '秋季学期',
-        globalKnowledgeOnly: true,
-      );
+      final first = await retrieval.searchResults(query: '秋季学期');
       final firstJson = jsonMap(first);
       expect(firstJson['status'], 'ok');
       final hits = jsonData(firstJson)['hits'] as List;
       expect(hits, hasLength(1));
-      expect((hits.single as Map)['id'], global.id);
-      expect((hits.single as Map)['snippet'], contains('week_count'));
+      expect((hits.single as Map)['id'], regular.id);
+      expect((hits.single as Map)['snippet'], contains('普通成果'));
       expect(
         jsonCoverage(firstJson)['checkedEntries'],
         greaterThanOrEqualTo(1),
       );
 
-      final cached = await retrieval.searchResults(
-        query: '秋季学期',
-        globalKnowledgeOnly: true,
-      );
+      final cached = await retrieval.searchResults(query: '秋季学期');
       expect(cached, first);
       expect(retrieval.searchCalls, 2);
       expect(

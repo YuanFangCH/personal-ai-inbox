@@ -337,6 +337,11 @@ class MemoryIndexDatabase implements IndexDatabase {
   }
 
   @override
+  Future<void> removeGlobalKnowledgeCandidate(String id) async {
+    _globalKnowledgeCandidates.remove(id);
+  }
+
+  @override
   Future<SyncConflictRecord?> findConflict(String resultId) async =>
       _conflicts[resultId];
 

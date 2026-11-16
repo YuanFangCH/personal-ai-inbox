@@ -24,7 +24,8 @@ Android 手机 `v1.6.2` 使用 `phone-v1.6.2` 标签，只提供通用 APK 与 `
 - 笔记式表：首次初始化提供的待办、日程、事件收纳表均可调整、删除和恢复；每张表可写正文并混合收纳笔记、待办、未来日程和事件，支持六类自定义字段及整表回收恢复。
 - 首页与日历：首页保留安排、待办和笔记区块，并可排序展示表模块；日历只投影表内带业务时间的待办、日程与事件，支持按表筛选，不复制或存储日历条目。
 - 桌面小组件：支持跨表时间轴、业务时间排序、未完成待办与未来七日安排快捷来源；可选择简洁/详细显示，Android 12+ 支持上下滑动翻页。
-- 受控 AI 与知识：AI 按表检索、查重并执行表内内容增删改和跨表移动；完全权限可直接管理任意表、字段、内容、回收站批次、收纳目标与全局知识，无法证明重复时新建并标记待核对，标准模式继续在聊天卡片确认。普通知识进入表，全局知识保留独立审批路径。
+- Agent 长期指令：本机 Vault 根目录 `AGENTS.md` 每轮作为 system 指令加载，不进入成果、会话 transcript 或同步。设置页支持编辑和导出；完全体模式下，用户可在当前无附件消息中直接要求 Agent 修改它，所有变更按 revision 校验并可在 10 分钟内撤销。旧全局知识经用户确认后校验归档并从活动库清理，不再检索、写入或同步。
+- 受控 AI：AI 按表检索、查重并执行表内内容增删改和跨表移动；完全权限可直接管理任意表、字段、内容、回收站批次与收纳目标，无法证明重复时新建并标记待核对，标准模式继续在聊天卡片确认。普通知识进入表。
 - 行动与同步：保留捕获审核、旧草稿迁入、同步冲突处理和设置入口；没有独立待处理页。跨设备云盘同步、到点提醒和百度网盘归档尚未接入。
 - 系统接入：Android 注册 `ACTION_SEND` 与 `ACTION_PROCESS_TEXT`，支持从其他 App 分享文本和图片。
 - 多端形态：同一套 Flutter 代码适配手机、平板、Windows 和 Web 预览。
@@ -33,7 +34,11 @@ Android 手机 `v1.6.2` 使用 `phone-v1.6.2` 标签，只提供通用 APK 与 `
 
 每次在本项目开启新对话，先读本 README，再读 [RM_HANDOFF.md](RM_HANDOFF.md) 获取最新交接状态，并遵守 [AGENTS.md](AGENTS.md)。项目内正式修改同步更新 RM_HANDOFF。
 
+长期秘书指令的文件布局与 API 见[指令文件合同](docs/agent-instructions-contract.md)，架构决定见 [ADR 0028](docs/adr/0028-secretary-instructions-file.md)。
+
 ## 当前进展
+
+2026-11-17 已实施本机长期秘书指令 `AGENTS.md` 与旧全局知识退役：完全体模式下满足当前用户消息授权的请求可修改文件；旧知识仅经设置页确认、归档校验后清理。37 个目标静态分析通过；Flutter 测试因 Windows 缺少 Visual C++ 工具链未执行。合同见[指令文件合同](docs/agent-instructions-contract.md)，验证见 `test-results/agent-instructions-20261117/VALIDATION.md`。
 
 2026-11-16 `v1.6.2+16` Android 手机预览版已发布：[phone-v1.6.2](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.2)。main CI `43803812848` 与 Android Release `43805072945` 均 success。公开 APK 为 92,491,540 字节，SHA-256 `2488f15d442cd4cd0661bf55ce428167a9f3992b412fd59074c29ca620f59863`，API 24/36、非 Debuggable、v2 签名和长期证书复核通过；D 盘 API 35 升级 AVD 完成 `v1.6.1+15` 到 `v1.6.2+16` 的合成会话、表和桌面绑定覆盖升级。详见[验收记录](test-results/phone-release-v1.6.2/VALIDATION.md)与[手机验收合同](docs/phone-widget-preview-contract.md)。
 

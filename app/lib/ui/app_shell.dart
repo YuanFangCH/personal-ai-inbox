@@ -8,7 +8,7 @@ import '../core/table_models.dart';
 import '../modules/tables/table_migration_gate.dart';
 import 'app_scope.dart';
 import 'pages/calendar_page.dart';
-import 'pages/global_knowledge_page.dart';
+import 'pages/legacy_global_knowledge_retirement_page.dart';
 import 'pages/home_page.dart';
 import 'pages/inbox_page.dart';
 import 'pages/tables_page.dart';
@@ -25,7 +25,7 @@ enum AppPage {
   inbox('秘书', Icons.forum_outlined),
   calendar('日历', Icons.calendar_month_outlined),
   matters('表与笔记', Icons.table_chart_outlined),
-  knowledge('全局知识库', Icons.lightbulb_outline),
+  knowledge('旧知识归档', Icons.archive_outlined),
   sync('同步', Icons.sync_outlined),
   settings('设置', Icons.tune_outlined);
 
@@ -476,7 +476,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       AppPage.inbox => const SizedBox.shrink(),
       AppPage.calendar => const CalendarPage(),
       AppPage.matters => const TablesPage(),
-      AppPage.knowledge => const GlobalKnowledgePage(),
+      AppPage.knowledge => const LegacyGlobalKnowledgeRetirementPage(),
       AppPage.sync => const SyncPage(),
       AppPage.settings => const SettingsPage(),
     };
@@ -498,7 +498,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       return;
     }
     final route = switch (destination) {
-      'global_knowledge' => const GlobalKnowledgePage(),
+      'global_knowledge' => const LegacyGlobalKnowledgeRetirementPage(),
       _ => null,
     };
     if (route != null) {
@@ -567,7 +567,7 @@ class _MigratedSourceBanner extends StatelessWidget {
         backgroundColor: colors.primaryContainer,
         leading: Icon(Icons.lock_outline, color: colors.onPrimaryContainer),
         content: Text(
-          '表格式副本已生成。原始旧资料作为只读备份保留；全局知识仍按独立确认流程管理。',
+          '表格式副本已生成。原始旧资料作为只读备份保留；旧全局知识可在设置中归档。',
           style: TextStyle(color: colors.onPrimaryContainer),
         ),
         actions: [

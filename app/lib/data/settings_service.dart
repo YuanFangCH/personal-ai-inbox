@@ -202,6 +202,9 @@ class SettingsService {
     final effectivePolicy = configuration.effectiveDefaultAiPolicy;
     var next = configuration.copyWith(
       schemaVersion: AppSettings.currentSchemaVersion,
+      fullAgentModeRevision:
+          old.fullAgentModeRevision +
+          (old.fullAgentMode == configuration.fullAgentMode ? 0 : 1),
       defaultAiPolicy: effectivePolicy,
       defaultAiPermissions: AppSettings.aiPermissionsForPolicy(effectivePolicy),
     );
@@ -441,6 +444,7 @@ class SettingsService {
     ).toJson(),
     'default_ai_policy': settings.effectiveDefaultAiPolicy.toJson(),
     'full_agent_mode': settings.fullAgentMode,
+    'full_agent_mode_revision': settings.fullAgentModeRevision,
     'capability_overrides': {
       'vision': settings.capabilityOverrides.vision,
       'tool_calls': settings.capabilityOverrides.toolCalls,
@@ -480,6 +484,7 @@ class SettingsService {
       defaultAiPermissions: permissions,
       defaultAiPolicy: _readAiPolicy(map, permissions),
       fullAgentMode: _boolValue(map, 'full_agent_mode') ?? false,
+      fullAgentModeRevision: _intValue(map, 'full_agent_mode_revision') ?? 0,
       schemaVersion: map['schema_version'] as int,
       modelKeySlotId: modelKeySlotId as String?,
       capabilityOverrides: ModelCapabilityOverrides(

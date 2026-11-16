@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_ai_inbox/core/markdown_codec.dart';
 import 'package:personal_ai_inbox/core/models.dart';
@@ -7,6 +8,7 @@ import 'package:personal_ai_inbox/data/index_database.dart';
 import 'package:personal_ai_inbox/data/io_vault_store.dart';
 import 'package:personal_ai_inbox/data/memory_index_database.dart';
 import 'package:personal_ai_inbox/data/memory_vault_store.dart';
+import 'package:personal_ai_inbox/data/legacy_global_knowledge_retirement.dart';
 import 'package:personal_ai_inbox/data/result_repository.dart';
 import 'package:personal_ai_inbox/data/vault_store.dart';
 import 'package:personal_ai_inbox/modules/results/result_library.dart';
@@ -63,10 +65,33 @@ void main() {
     expect(await repository.listDocuments(), isEmpty);
   });
 
+  test('legacy global knowledge mutation is disabled by default', () async {
+    final library = ResultLibrary(repository: repository);
+    await library.initialize();
+
+    await expectLater(
+      library.proposeGlobalKnowledgeChange(
+        operation: GlobalKnowledgeOperation.create,
+        proposal: const {
+          'title': '不可写入',
+          'body': '旧库已经退役。',
+          'facts': {'disabled': true},
+        },
+      ),
+      throwsStateError,
+    );
+    expect(library.globalKnowledgeCandidates, isEmpty);
+    await library.shutdown();
+    library.dispose();
+  });
+
   test(
     'global knowledge requires exact human approval at every write path',
     () async {
-      final library = ResultLibrary(repository: repository);
+      final library = ResultLibrary(
+        repository: repository,
+        enableLegacyGlobalKnowledgeForTests: true,
+      );
       await library.initialize();
       final candidate = await library.proposeGlobalKnowledgeChange(
         operation: GlobalKnowledgeOperation.create,
@@ -178,42 +203,169 @@ void main() {
     },
   );
 
-  test('legacy approved candidate without source is never replayed', () async {
-    final initial = ResultLibrary(repository: repository);
-    await initial.initialize();
-    final pending = await initial.proposeGlobalKnowledgeChange(
-      operation: GlobalKnowledgeOperation.create,
-      candidateId: 'gkc_legacy_approved',
-      proposal: const {
-        'title': '来源不明的旧审批',
-        'body': '启动恢复不得自动应用。',
-        'facts': {'legacy': true},
-      },
-    );
-    await index.upsertGlobalKnowledgeCandidate(
-      pending.copyWith(
-        status: GlobalKnowledgeCandidateStatus.approved,
-        authorizationSource: GlobalKnowledgeAuthorizationSource.legacyUnknown,
-      ),
-    );
+  test(
+    'legacy approved candidate remains archived data and is never replayed',
+    () async {
+      final initial = ResultLibrary(
+        repository: repository,
+        enableLegacyGlobalKnowledgeForTests: true,
+      );
+      await initial.initialize();
+      final pending = await initial.proposeGlobalKnowledgeChange(
+        operation: GlobalKnowledgeOperation.create,
+        candidateId: 'gkc_legacy_approved',
+        proposal: const {
+          'title': '来源不明的旧审批',
+          'body': '启动恢复不得自动应用。',
+          'facts': {'legacy': true},
+        },
+      );
+      await index.upsertGlobalKnowledgeCandidate(
+        pending.copyWith(
+          status: GlobalKnowledgeCandidateStatus.approved,
+          authorizationSource: GlobalKnowledgeAuthorizationSource.legacyUnknown,
+        ),
+      );
 
-    final recovered = ResultLibrary(repository: repository);
-    await recovered.initialize();
+      final recovered = ResultLibrary(
+        repository: repository,
+        enableLegacyGlobalKnowledgeForTests: true,
+      );
+      await recovered.initialize();
 
-    expect(await repository.listDocuments(), isEmpty);
-    expect(
-      (await repository.findGlobalKnowledgeCandidate(pending.id))?.status,
-      GlobalKnowledgeCandidateStatus.failed,
-    );
-    expect(
-      (await repository.findGlobalKnowledgeCandidate(pending.id))?.error,
-      contains('未自动重放'),
-    );
-    await recovered.shutdown();
-    recovered.dispose();
-    await initial.shutdown();
-    initial.dispose();
-  });
+      expect(await repository.listDocuments(), isEmpty);
+      expect(
+        (await repository.findGlobalKnowledgeCandidate(pending.id))?.status,
+        GlobalKnowledgeCandidateStatus.approved,
+      );
+      await recovered.shutdown();
+      recovered.dispose();
+      await initial.shutdown();
+      initial.dispose();
+    },
+  );
+
+  test(
+    'archives legacy knowledge before removing active documents and candidates',
+    () async {
+      final library = ResultLibrary(
+        repository: repository,
+        enableLegacyGlobalKnowledgeForTests: true,
+      );
+      await library.initialize();
+      final candidate = await library.proposeGlobalKnowledgeChange(
+        operation: GlobalKnowledgeOperation.create,
+        candidateId: 'gkc_retirement',
+        proposal: const {
+          'title': '旧知识',
+          'body': '仅用于归档测试。',
+          'facts': {'key': 'value'},
+        },
+      );
+      final created = await library.confirmGlobalKnowledgeChange(
+        candidate.id,
+        displayedDigest: candidate.digest,
+      );
+      final retirement = LegacyGlobalKnowledgeRetirement(vault, library);
+      final preview = await retirement.preview();
+
+      await retirement.archive(expectedRevision: preview.revision);
+
+      expect(library.documents, isEmpty);
+      expect(library.globalKnowledgeCandidates, isEmpty);
+      final bytes = await retirement.exportArchive();
+      expect(bytes, isNotNull);
+      final zip = ZipDecoder().decodeBytes(bytes!);
+      expect(
+        zip.files.map((file) => file.name),
+        contains(created.document.markdownPath),
+      );
+      expect(zip.files.map((file) => file.name), contains('candidates.json'));
+      expect(zip.files.map((file) => file.name), contains('manifest.json'));
+      await library.shutdown();
+      library.dispose();
+    },
+  );
+
+  test(
+    'archives conflicts referenced only by a legacy candidate target',
+    () async {
+      final library = ResultLibrary(
+        repository: repository,
+        enableLegacyGlobalKnowledgeForTests: true,
+      );
+      await library.initialize();
+      final now = DateTime(2026, 11, 17);
+      await index.upsertGlobalKnowledgeCandidate(
+        GlobalKnowledgeCandidate(
+          id: 'gkc_retired_update',
+          operation: GlobalKnowledgeOperation.update,
+          status: GlobalKnowledgeCandidateStatus.pending,
+          proposal: const {'title': '旧目标更新'},
+          digest: 'sha256:legacy-candidate',
+          targetId: 'legacy_target_only',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      const conflictPath = 'vault/conflicts/legacy-target.md';
+      vault.files[conflictPath] = 'conflict references legacy_target_only';
+      await library.refresh();
+      final retirement = LegacyGlobalKnowledgeRetirement(vault, library);
+      final preview = await retirement.preview();
+
+      expect(preview.conflicts, 1);
+      await retirement.archive(expectedRevision: preview.revision);
+
+      final zip = ZipDecoder().decodeBytes((await retirement.exportArchive())!);
+      expect(zip.files.map((file) => file.name), contains(conflictPath));
+      expect(vault.files.containsKey(conflictPath), isFalse);
+      await library.shutdown();
+      library.dispose();
+    },
+  );
+
+  test(
+    'does not purge a legacy candidate changed after archive snapshot',
+    () async {
+      final now = DateTime(2026, 11, 17);
+      final pending = GlobalKnowledgeCandidate(
+        id: 'gkc_changed_during_retirement',
+        operation: GlobalKnowledgeOperation.create,
+        status: GlobalKnowledgeCandidateStatus.pending,
+        proposal: const {'title': '待确认'},
+        digest: 'sha256:unchanged-payload',
+        createdAt: now,
+        updatedAt: now,
+      );
+      await index.upsertGlobalKnowledgeCandidate(pending);
+      await index.upsertGlobalKnowledgeCandidate(
+        pending.copyWith(
+          status: GlobalKnowledgeCandidateStatus.rejected,
+          updatedAt: now.add(const Duration(seconds: 1)),
+        ),
+      );
+
+      await expectLater(
+        repository.purgeArchivedGlobalKnowledge(
+          documentHashes: const {},
+          documentIds: const {},
+          candidateSnapshots: {
+            pending.id: (
+              digest: pending.digest,
+              status: GlobalKnowledgeCandidateStatus.pending.name,
+            ),
+          },
+          conflictHashes: const {},
+        ),
+        throwsStateError,
+      );
+      expect(
+        (await index.findGlobalKnowledgeCandidate(pending.id))?.status,
+        GlobalKnowledgeCandidateStatus.rejected,
+      );
+    },
+  );
 
   test(
     'reversible result operations use CAS and undo with new revisions',

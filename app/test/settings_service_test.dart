@@ -207,6 +207,7 @@ void main() {
       );
 
       expect(enabled.fullAgentMode, isTrue);
+      expect(enabled.fullAgentModeRevision, 1);
       expect(enabled.schemaVersion, AppSettings.currentSchemaVersion);
       final portable = await service.exportPortableSettings();
       expect(portable['portable_schema_version'], 2);
@@ -216,6 +217,12 @@ void main() {
         ..remove('full_agent_mode');
       final imported = await service.importPortableSettings(legacy);
       expect(imported.fullAgentMode, isFalse);
+      expect(imported.fullAgentModeRevision, 2);
+
+      final reenabled = await service.saveConfiguration(
+        imported.copyWith(fullAgentMode: true),
+      );
+      expect(reenabled.fullAgentModeRevision, 3);
     },
   );
 
@@ -324,7 +331,7 @@ void main() {
     final persisted = jsonDecode(
       preferences.strings['settings_snapshot']!,
     ) as Map<String, dynamic>;
-    expect(persisted['schema_version'], 6);
+    expect(persisted['schema_version'], AppSettings.currentSchemaVersion);
     expect(persisted['default_ai_policy'], isA<Map>());
   });
 
