@@ -13,6 +13,8 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'lib\android-phone-validation.ps1')
 $repo=(Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $app=Join-Path $repo 'app'
+$ghPath=(Get-Command gh.exe -ErrorAction SilentlyContinue|Select-Object -First 1 -ExpandProperty Source)
+if(-not $ghPath){$ghPath='C:\Program Files\GitHub CLI\gh.exe'}
 $version='1.6.2';$build=16;$tag='phone-v1.6.2';$package='com.yuanfang.aitext.personal_ai_inbox'
 $certificate='51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816'
 $required=if($Stage -eq 'Candidate'){@('device.home-order','device.todo-order','device.widget-source-merge','device.widget-exclusions','device.widget-seven-day-boundary','device.widget-privacy','device.widget-2x2','device.widget-4x2','device.widget-large','device.widget-light','device.widget-dark','device.widget-large-font','device.widget-swipe','device.widget-page-taps','device.widget-resize-reset','device.widget-instance-isolation','device.widget-cold-click')}else{@('release.metadata','apk.current','apk.previous','upgrade.previous-install','upgrade.synthetic-state','upgrade.cover-install','upgrade.data-retained','upgrade.widget-binding','upgrade.widget-paging')}
@@ -194,15 +196,20 @@ try {
             $dest=Join-Path $OutputDir 'candidate-app-debug.apk';Copy-Item -LiteralPath $apk -Destination $dest -Force;$facts=Get-PhoneApkFacts -ApkPath $dest -SdkRoot $SdkRoot
             $artifactHash=$facts.sha256;$machine.Add((Get-MachineCheck 'apk.candidate' "sha256=$artifactHash; package=$($facts.packageName); version=$version+$build; min/target SDK=$($facts.minSdk)/$($facts.targetSdk); debuggable=$($facts.debuggable)" @('candidate-app-debug.apk')))
         }else{
-            $release=gh release view $tag --repo YuanFangCH/personal-ai-inbox --json tagName,isPrerelease,isDraft,assets 2> (Join-Path $OutputDir 'release-metadata.log')|ConvertFrom-Json
+            if(-not(Test-Path -LiteralPath $ghPath -PathType Leaf)){throw "GitHub CLI is missing: $ghPath"}
+            $release=& $ghPath release view $tag --repo YuanFangCH/personal-ai-inbox --json tagName,isPrerelease,isDraft,assets 2> (Join-Path $OutputDir 'release-metadata.log')|ConvertFrom-Json
             if($LASTEXITCODE -ne 0 -or $release.tagName -ne $tag -or -not $release.isPrerelease -or $release.isDraft){throw 'GitHub release must be the public non-draft v1.6.2 pre-release.'}
-            $names=@($release.assets|ForEach-Object name);if(($names|Sort-Object) -join ',' -ne 'SHA256SUMS.txt,personal-ai-inbox-v1.6.2-android.apk'){throw 'Unexpected public release assets.'}
+            $names=@($release.assets|ForEach-Object name)
+            $expectedNames=@('SHA256SUMS.txt','personal-ai-inbox-v1.6.2-android.apk')
+            if((($names|Sort-Object) -join ',') -ne (($expectedNames|Sort-Object) -join ',')){throw 'Unexpected public release assets.'}
             $published=Join-Path $OutputDir 'published';New-Item -ItemType Directory $published -Force|Out-Null
-            gh release download $tag --repo YuanFangCH/personal-ai-inbox --pattern 'personal-ai-inbox-v1.6.2-android.apk' --pattern SHA256SUMS.txt --dir $published --clobber *> (Join-Path $OutputDir 'published-assets-download.log');if($LASTEXITCODE -ne 0){throw 'Unable to download public v1.6.2 assets.'}
+            $exitCode=Invoke-NativeWithLog $ghPath @('release','download',$tag,'--repo','YuanFangCH/personal-ai-inbox','--pattern','personal-ai-inbox-v1.6.2-android.apk','--pattern','SHA256SUMS.txt','--dir',$published,'--clobber') (Join-Path $OutputDir 'published-assets-download.log')
+            if($exitCode -ne 0){throw 'Unable to download public v1.6.2 assets.'}
             $apk=Join-Path $published 'personal-ai-inbox-v1.6.2-android.apk';$currentFacts=Test-PhoneApk -ApkPath $apk -ChecksumsPath (Join-Path $published 'SHA256SUMS.txt') -SdkRoot $SdkRoot -Version $version -Build $build -CertificateSha256 $certificate
             $artifactHash=$currentFacts.sha256;$machine.Add((Get-MachineCheck 'release.metadata' 'Public non-draft pre-release and expected assets verified.' @('published\SHA256SUMS.txt')));$machine.Add((Get-MachineCheck 'apk.current' "sha256=$artifactHash; v2 signature and long-term certificate verified." @('published\personal-ai-inbox-v1.6.2-android.apk')))
             $oldDir=Join-Path $OutputDir 'previous';New-Item -ItemType Directory $oldDir -Force|Out-Null
-            gh release download phone-v1.6.1 --repo YuanFangCH/personal-ai-inbox --pattern 'personal-ai-inbox-v1.6.1-android.apk' --pattern SHA256SUMS.txt --dir $oldDir --clobber *> (Join-Path $OutputDir 'previous-assets-download.log');if($LASTEXITCODE -ne 0){throw 'Unable to download v1.6.1 public APK.'}
+            $exitCode=Invoke-NativeWithLog $ghPath @('release','download','phone-v1.6.1','--repo','YuanFangCH/personal-ai-inbox','--pattern','personal-ai-inbox-v1.6.1-android.apk','--pattern','SHA256SUMS.txt','--dir',$oldDir,'--clobber') (Join-Path $OutputDir 'previous-assets-download.log')
+            if($exitCode -ne 0){throw 'Unable to download v1.6.1 public APK.'}
             $oldApk=Join-Path $oldDir 'personal-ai-inbox-v1.6.1-android.apk';$previousFacts=Test-PhoneApk -ApkPath $oldApk -ChecksumsPath (Join-Path $oldDir 'SHA256SUMS.txt') -SdkRoot $SdkRoot -Version '1.6.1' -Build 15 -CertificateSha256 $certificate
             $machine.Add((Get-MachineCheck 'apk.previous' "sha256=$($previousFacts.sha256); v1.6.1+15 verified." @('previous\personal-ai-inbox-v1.6.1-android.apk')))
         }

@@ -112,3 +112,5 @@ Candidate 全部必验项通过后，保留 `c1d0c1b`，更新 README、发行�
 API 35 最终候选会话 `91805fc9-169e-49ec-be09-6756b31e9e5d` 的 21 个机器与设备检查全部 `passed`。Debug APK `1.6.2+16` SHA-256 为 `0d11c2805742e77eb4686cd1bb1b3f1b7abdaf4a789e4a339516cb5f12182fb1`。冷进程单次点击、标准 StackView 双向滑动、前后按钮、多实例隔离和尺寸调整均已实测；2×2、4×2、大尺寸、浅色、深色、大字体、简洁、详细和隐藏模式均有证据。API 24–30 固定行与荣耀 90 仍缺设备，未计入 API 35 门禁。
 
 本轮同时修复了 Windows PowerShell 5.1 将无 BOM UTF-8 证据误按本地代码页读取的问题；证据 JSON 现显式按 UTF-8 解码。候选通过后才允许推送 main、等待同提交 CI、创建 `phone-v1.6.2` 标签并执行公开包覆盖升级。
+
+提交 `9614a03` 已通过 main CI `43803812848`，`phone-v1.6.2` 标签由 Android Release `43805072945` 发布。公开包为非草稿 pre-release，APK SHA-256 为 `2488f15d442cd4cd0661bf55ce428167a9f3992b412fd59074c29ca620f59863`。Published 会话 `b45f9f8c-a284-4689-9062-07918cde72fe` 从 `v1.6.1+15` 覆盖升级后，合成 Markdown 哈希、3 表/3 条目/1 会话、`appWidgetId=2` 绑定、2/3 翻页和冷点击均保留并通过。

@@ -8,11 +8,11 @@
 
 首个预发布版本从 [GitHub Releases](https://github.com/YuanFangCH/personal-ai-inbox/releases) 下载：
 
-- 本次 `v1.6.1`：Android 7.0 及以上安装通用 APK，不提供新的 Windows 资产。
+- 本次 `v1.6.2`：Android 7.0 及以上安装通用 APK，不提供新的 Windows 资产。
 - Windows 11 x64 继续使用上一版全平台预发布中的安装包或便携 ZIP。
 - 发布页同时提供 `SHA256SUMS.txt`，下载后应校验文件哈希。
 
-Android 手机 `v1.6.1` 使用 `phone-v1.6.1` 标签，只提供通用 APK 与 `SHA256SUMS.txt`：[GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.1)。本版新增秘书运行阶段与工具活动实时反馈、折叠回看和浅蓝主题；`v1.6.0` 继续作为上一版 Android 手机预发布保留，`v1.2.1` 是上一版全平台预发布。升级前请完整备份应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.6.1.md)；真实资料迁移需要在应用内确认。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
+Android 手机 `v1.6.2` 使用 `phone-v1.6.2` 标签，只提供通用 APK 与 `SHA256SUMS.txt`：[GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.2)。本版改进首页和小组件时间排序、跨表时间轴、简洁/详细显示、桌面隐私与 StackView 上下翻页；`v1.6.1` 继续作为上一版 Android 手机预发布保留，`v1.2.1` 是上一版全平台预发布。升级前请完整备份应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.6.2.md)；真实资料迁移需要在应用内确认。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
 
 ## 核心能力
 
@@ -35,7 +35,7 @@ Android 手机 `v1.6.1` 使用 `phone-v1.6.1` 标签，只提供通用 APK 与 `
 
 ## 当前进展
 
-2026-11-16 `v1.6.2+16` 候选在 D 盘 API 35 模拟器通过正式门禁：定向用例 38/38，冷进程单次点击、StackView 双向滑动、按钮翻页、多实例、尺寸调整、2×2、4×2、大尺寸、深浅色、大字体、简洁/详细/隐藏模式均有实测证据。最终 Debug APK SHA-256 为 `0d11c2805742e77eb4686cd1bb1b3f1b7abdaf4a789e4a339516cb5f12182fb1`。E 盘再次出现存储 I/O 错误后按合同使用 D 盘独立环境；确认 `phone-v1.6.2` 公开包覆盖升级后再更新下载说明。详见[验收记录](test-results/phone-release-v1.6.2/VALIDATION.md)与[手机验收合同](docs/phone-widget-preview-contract.md)。
+2026-11-16 `v1.6.2+16` Android 手机预览版已发布：[phone-v1.6.2](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.2)。main CI `43803812848` 与 Android Release `43805072945` 均 success。公开 APK 为 92,491,540 字节，SHA-256 `2488f15d442cd4cd0661bf55ce428167a9f3992b412fd59074c29ca620f59863`，API 24/36、非 Debuggable、v2 签名和长期证书复核通过；D 盘 API 35 升级 AVD 完成 `v1.6.1+15` 到 `v1.6.2+16` 的合成会话、表和桌面绑定覆盖升级。详见[验收记录](test-results/phone-release-v1.6.2/VALIDATION.md)与[手机验收合同](docs/phone-widget-preview-contract.md)。
 
 2026-11-12 首页、表详情与 Android 小组件已接入业务时间排序、跨表快捷来源、简洁/详细模式和桌面翻页。定向测试与设备验收见 [本轮验证记录](test-results/widget-timeline/VALIDATION.md)。
 
