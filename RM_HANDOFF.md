@@ -24,7 +24,7 @@
 当前公开下载为 `https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.1`，验证入口为 `test-results/phone-release-v1.6.1/VALIDATION.md`，运行活动合同见 `docs/secretary-activity-contract.md`，发行说明见 `docs/releases/v1.6.1.md`。
 ## 3. 当前目标与范围
 
-- 当前任务：`v1.6.2+16` 候选、main CI、标签发布和公开包覆盖升级均完成；创建发布后文档/脚本收尾提交并推送 main。
+- 当前任务：`v1.6.2+16` 候选、main CI、标签发布、公开包覆盖升级和发布后收尾提交均完成；本轮无阻塞。
 
 - Android 手机、Android 平板和 Windows 作为独立客户端运行。
 - 每个成果保存为一个 Markdown 文件；本地索引由 SQLite 管理。
@@ -79,6 +79,7 @@
 
 - 2026-11-16 `v1.6.2+16` 最终候选通过：E 盘再次出现可复现 I/O 错误后，D 盘 256 MiB 读写预检、API 35 AVD、SDK/NDK/镜像和 Gradle 独立路径通过。定向用例 38/38；最终 Candidate session `91805fc9-169e-49ec-be09-6756b31e9e5d` 的 21 个机器/设备检查全部 passed。APK SHA-256 为 `0d11c2805742e77eb4686cd1bb1b3f1b7abdaf4a789e4a339516cb5f12182fb1`。详见 `test-results/phone-release-v1.6.2/VALIDATION.md`。
 - 2026-11-16 `v1.6.2` 发布与公开包复核：提交 `9614a03` 的 main CI `43803812848` success，`phone-v1.6.2` 标签指向同一提交，Android Release `43805072945` success。Release 为非草稿 pre-release，资产仅 APK 与 `SHA256SUMS.txt`；公开 APK 92,491,540 字节，SHA-256 `2488f15d442cd4cd0661bf55ce428167a9f3992b412fd59074c29ca620f59863`。D 盘升级 AVD session `b45f9f8c-a284-4689-9062-07918cde72fe` 的 10 个 Published 检查全部 passed，合成 Markdown 哈希、逻辑计数、会话、`appWidgetId=2` 绑定、2/3 翻页及冷点击均保留。
+- 2026-11-16 发布后收尾提交 `3209ed4` 已推送，main CI `43831812245` success；仓库工作区干净，`origin/main` 指向收尾提交，`phone-v1.6.2` 标签和 Release 资产保持原位置。
 - 2026-11-12 小组件时间轴已实现：共享时间比较器、Dart 跨来源投影、简洁/详细配置、秘书全表权限门槛、Android StackView/固定行翻页和合同文档完成。定向测试 31/31、9 个 Dart 分析目标和 Debug APK 构建通过。首页 UI 测试有 4 项因既有后台生命周期两秒定时器未在 teardown 清理而失败；app_runtime 迁移用例通过。长期签名 AVD 因证书不同未覆盖安装，干净 API 35 AVD 的 ADB 尚未就绪，因此设备视觉/分页验证未完成。详见 `test-results/widget-timeline/VALIDATION.md`。
 - 2026-11-10 Android 多表桌面小组件 API 35 验收通过：2×2 摘要、4×2 短列表、4×4 滚动、多表/自定义字段/日期筛选、深色、同卡多实例同步、不同卡独立绑定、取消固定、归档恢复、标题/条目点击、`am kill` 冷进程点击均通过。荣耀 90 真机延期；API 24–30 未在对应 AVD 实测。详见 [发布验证](test-results/phone-release-v1.6.0/VALIDATION.md)。
 - 2026-11-10 Android 手机发布门禁重跑：50/50 个唯一秘书用例通过，用时约 4 分 06 秒；900 秒长测实际 921 秒，47 条写入/读回、219 次请求，切后台、锁屏 12 秒、唤醒、重开和最终流式答复通过。长测 runner 修正成功 `.bat` 进程空退出码与正常 stderr 的 Windows PowerShell 兼容问题。
@@ -262,6 +263,7 @@
 - 候选提交 `9614a03` 已推送；main CI `43803812848` success 后推送 `phone-v1.6.2` 标签，Android Release `43805072945` success。Release ID `446618714`，非草稿 pre-release，资产恰为 92,491,540 字节通用 APK 与 `SHA256SUMS.txt`。
 - 公开 APK SHA-256 `2488f15d442cd4cd0661bf55ce428167a9f3992b412fd59074c29ca620f59863`，包信息 API 24/36、非 Debuggable、v2 签名和长期证书通过。Published session `b45f9f8c-a284-4689-9062-07918cde72fe` 全部门禁通过。
 - D 盘 API 35 升级 AVD 先用公开 `v1.6.1+15` 建立 3 表、3 条目、1 会话和 `appWidgetId=2` 桌面绑定；覆盖安装后 Markdown 哈希与逻辑计数一致，绑定文件逐字节一致，新 StackView 可翻页并单次冷点击条目进入详情。API 24–30 与荣耀 90 仍缺设备。
+- 发布后脚本与交接提交 `3209ed4` 已推送，main CI `43831812245` success；`phone-v1.6.2` 标签仍指向候选提交 `9614a03`，未移动标签。
 
 ### 2026-11-16 / v1.6.2 API 35 候选门禁通过
 
