@@ -33,6 +33,7 @@ android {
     val releaseStorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
     val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
     val releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+    val validationDebugKeystore = System.getenv("AITEXT_DEBUG_KEYSTORE_PATH")
     val hasReleaseSigning = listOf(
         releaseStorePath,
         releaseStorePassword,
@@ -46,6 +47,14 @@ android {
             storePassword = releaseStorePassword
             keyAlias = releaseKeyAlias
             keyPassword = releaseKeyPassword
+        }
+    }
+    if (!validationDebugKeystore.isNullOrBlank()) {
+        signingConfigs.getByName("debug").apply {
+            storeFile = file(validationDebugKeystore)
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
         }
     }
 

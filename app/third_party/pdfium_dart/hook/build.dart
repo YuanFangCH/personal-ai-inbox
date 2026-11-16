@@ -15,6 +15,14 @@ const _assetName = 'libpdfium';
 void main(List<String> args) async {
   await build(args, (input, output) async {
     if (!input.config.buildCodeAssets) return;
+    final skipWindowsTestGate = File.fromUri(
+      input.packageRoot.resolve(
+        '../../.dart_tool/aitext_skip_windows_pdfium_gate',
+      ),
+    ).existsSync();
+    if (skipWindowsTestGate && input.config.code.targetOS == OS.windows) {
+      return;
+    }
 
     // Process-wide PDFium gate: a tiny dylib whose statics are shared across
     // Flutter engines in one OS process. Built on every platform, including iOS

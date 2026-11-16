@@ -12,6 +12,7 @@
         android:layout_weight="1"
         android:orientation="vertical" />
     <LinearLayout
+        android:id="@+id/widget_page_footer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"

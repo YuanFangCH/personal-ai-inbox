@@ -52,7 +52,7 @@ Future<WidgetPublishResult> refreshWidgets();
 
 openTargetAvailable 为原生发出的拉取提示，冷启动首帧也主动拉取。入口与现有分享通道分开。快照示例见 `app/test/fixtures/widget_snapshot_v1.json`。新快照每卡至多 48 条 entry 行；整包最多 512 KiB，从末尾卡片的末尾条目裁剪并设置 has_more，保留卡片和桌面绑定。只传显示用短文本与 ID。
 
-Kotlin 的 bind(widgetId, cardId) 和 render(widgetId) 返回 Boolean；校验本 Provider 实例及有效卡片。取消配置不写绑定；固定请求只由用户发起，收到系统成功回调后绑定。移除实例只清绑定；系统恢复的实例重新选卡。归档实例显示占位。API 31+ 使用 `StackView` 和 RemoteCollectionItems 按条目分页，原生广播翻页；API 24–30 使用固定行与同 receiver 的按钮翻页。新快照只含条目行，原生仍读旧缓存中的 section 并跳过。条目点击沿用卡片 revision 与行 hash 校验后导航。日期筛选显示数据日期；数据在 App 启动、恢复前台和内容提交后刷新。
+Kotlin 的 bind(widgetId, cardId) 和 render(widgetId) 返回 Boolean；校验本 Provider 实例及有效卡片。取消配置不写绑定；固定请求只由用户发起，收到系统成功回调后绑定。移除实例只清绑定；系统恢复的实例重新选卡。归档实例显示占位。API 31+ 使用标准 `StackView` 和 RemoteCollectionItems 按条目分页；集合项模板统一由透明 `HomeWidgetOpenActivity` 接收，`entry` 目标进入 App，`page` 目标只更新目标页后退出。API 24–30 使用固定行，点按翻页由内部 receiver 更新。新快照只含条目行，原生仍读旧缓存中的 section 并跳过。条目点击沿用卡片 revision 与行 hash 校验后导航。日期筛选显示数据日期；数据在 App 启动、恢复前台和内容提交后刷新。
 
 ## 时间轴与首页排序
 
@@ -79,7 +79,7 @@ int compareTableEntriesByBusinessTime(
 
 ## Android 分页 Kotlin API
 
-`HomeWidgetPager.kt` 提供纯分页，`HomeWidgetRenderer.kt` 提供原生渲染及目标页提交，翻页沿用 `HomeWidgetNavigation.kt` 与非导出 `HomeWidgetClickReceiver.kt`。
+`HomeWidgetPager.kt` 提供纯分页，`HomeWidgetRenderer.kt` 提供原生渲染及目标页提交，`HomeWidgetNavigation.kt` 提供目标编码，`HomeWidgetOpenActivity.kt` 处理集合项与页目标，`HomeWidgetClickReceiver.kt` 继续处理固定行翻页。
 
 ```kotlin
 internal data class HomeWidgetPage(val index: Int, val rows: List<HomeWidgetRow>)

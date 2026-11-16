@@ -7,13 +7,15 @@
 | 字段 | 当前值 |
 |---|---|
 | 项目名称 | 懒狗秘书 |
-| 最后更新时间 | 2026-11-12 |
+| 最后更新时间 | 2026-11-16 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.6.1+15` Android 手机预览版已发布并完成公开 APK、长期签名及 `v1.6.0+14` 覆盖升级复核。荣耀 90 真机、API 24–30 与平板/Windows 专项继续延期 |
+| 当前阶段 | `v1.6.1+15` 仍是最新公开 Android 手机预览版。`v1.6.2+16` 候选已在 D 盘 API 35 模拟器通过全部合同门禁；等待提交、main CI、标签发布和公开包覆盖升级 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.6.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
+
+2026-11-16 `v1.6.2+16` 最终候选定向用例 38/38、D 盘 API 35 Debug 构建与安装通过。冷进程单次点击、StackView 双向滑动、前后按钮、多实例隔离、尺寸调整、2×2、4×2、大尺寸、深浅色、大字体及简洁/详细/隐藏模式全部通过；Candidate session `91805fc9-169e-49ec-be09-6756b31e9e5d` 为 passed，APK SHA-256 `0d11c2805742e77eb4686cd1bb1b3f1b7abdaf4a789e4a339516cb5f12182fb1`。记录：`test-results/phone-release-v1.6.2/VALIDATION.md`。
 
 2026-11-12 `v1.6.1+15` Android 手机预览版已发布：秘书聊天显示真实运行阶段和工具活动，完成/停止/失败后保留折叠历史，界面换用浅蓝强调色。E 盘 API 35 AVD 候选活动场景 4/4，公开包从 `v1.6.0+14` 同签名覆盖安装且合成会话/表数据保留。Release：[phone-v1.6.1](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.1)；验证：[本轮结果](test-results/phone-release-v1.6.1/VALIDATION.md)。
 
@@ -22,7 +24,7 @@
 当前公开下载为 `https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.1`，验证入口为 `test-results/phone-release-v1.6.1/VALIDATION.md`，运行活动合同见 `docs/secretary-activity-contract.md`，发行说明见 `docs/releases/v1.6.1.md`。
 ## 3. 当前目标与范围
 
-- 当前任务：已实现首页/表详情按业务时间排序、Android 桌面时间轴跨表来源、显示模式与分页；定向测试、Dart 分析和 Debug APK 构建完成，验证记录见 `test-results/widget-timeline/VALIDATION.md`。本轮原子提交，不发布。
+- 当前任务：`v1.6.2+16` 候选已通过，更新文档并创建单一提交；推送 main 后等待同一提交 CI，成功再推 `phone-v1.6.2` 标签，确认公开 Release 资产后用 `v1.6.1+15` 的独立 AVD 做覆盖升级。
 
 - Android 手机、Android 平板和 Windows 作为独立客户端运行。
 - 每个成果保存为一个 Markdown 文件；本地索引由 SQLite 管理。
@@ -75,6 +77,7 @@
 
 ## 6. 当前进度与验证
 
+- 2026-11-16 `v1.6.2+16` 最终候选通过：E 盘再次出现可复现 I/O 错误后，D 盘 256 MiB 读写预检、API 35 AVD、SDK/NDK/镜像和 Gradle 独立路径通过。定向用例 38/38；最终 Candidate session `91805fc9-169e-49ec-be09-6756b31e9e5d` 的 21 个机器/设备检查全部 passed。APK SHA-256 为 `0d11c2805742e77eb4686cd1bb1b3f1b7abdaf4a789e4a339516cb5f12182fb1`。详见 `test-results/phone-release-v1.6.2/VALIDATION.md`。
 - 2026-11-12 小组件时间轴已实现：共享时间比较器、Dart 跨来源投影、简洁/详细配置、秘书全表权限门槛、Android StackView/固定行翻页和合同文档完成。定向测试 31/31、9 个 Dart 分析目标和 Debug APK 构建通过。首页 UI 测试有 4 项因既有后台生命周期两秒定时器未在 teardown 清理而失败；app_runtime 迁移用例通过。长期签名 AVD 因证书不同未覆盖安装，干净 API 35 AVD 的 ADB 尚未就绪，因此设备视觉/分页验证未完成。详见 `test-results/widget-timeline/VALIDATION.md`。
 - 2026-11-10 Android 多表桌面小组件 API 35 验收通过：2×2 摘要、4×2 短列表、4×4 滚动、多表/自定义字段/日期筛选、深色、同卡多实例同步、不同卡独立绑定、取消固定、归档恢复、标题/条目点击、`am kill` 冷进程点击均通过。荣耀 90 真机延期；API 24–30 未在对应 AVD 实测。详见 [发布验证](test-results/phone-release-v1.6.0/VALIDATION.md)。
 - 2026-11-10 Android 手机发布门禁重跑：50/50 个唯一秘书用例通过，用时约 4 分 06 秒；900 秒长测实际 921 秒，47 条写入/读回、219 次请求，切后台、锁屏 12 秒、唤醒、重开和最终流式答复通过。长测 runner 修正成功 `.bat` 进程空退出码与正常 stderr 的 Windows PowerShell 兼容问题。
@@ -198,8 +201,8 @@
 
 ## 7. 风险、阻塞与下一步
 
-- API 35 模拟器的小组件门禁已完成；荣耀 90 真机、API 24–30 固定行、平板与 Windows 专项仍未覆盖。荣耀真机未验收不阻塞本轮模拟器通过的 Android 预览发布，但发行说明必须明确标注。
-- 本轮新小组件候选尚未在 API 35 启动器验证：不得将既有 v1.6.0 小组件通过记录视作本次 StackView 代码的设备验收。继续验证前使用干净 AVD/可访问的 ADB transport，核对 2×2、4×2、大尺寸、滑动、点按和实例隔离；不要卸载长期签名 AVD 上的不同证书应用。
+- `v1.6.2+16` Candidate 门禁未通过：冷启动首击需要第二次点按才能进入详情，滑动页码没有稳定证据；排除表、七天边界、详细/隐藏、4×2/大尺寸、深色、大字体、尺寸重置及多实例未测。既有 v1.6.0 设备记录不能替代当前候选证据。
+- E 盘发生卷/物理盘 I/O 事件；本轮已将 SDK、API 35 AVD、运行时临时目录、Gradle 缓存和原始证据放到 D 盘。D 盘当前剩余约 3.4 GB；后续重跑需先检查空间，保持不把模拟器或证据移回 C 盘。
 
 
 ### 风险与边界
@@ -228,7 +231,7 @@
 
 - 本机 Android Emulator 需要将 `ANDROID_EMULATOR_HOME` 指向可写的隔离目录，否则 `C:\Users\18377\.android` 的异常会使其反复创建特性标志锁失败。两个模拟器同时运行时资源不足，应按手机、平板串行执行。
 
-- D 盘容量极低，当前生成的 `app/build` 已迁到 `C:\CodexBuild\app-build` 并以目录联接保留原路径；这是本机构建环境安排，不进入 Git。D 盘后续仍不宜承载大型 Flutter/Gradle 产物。
+- D 盘空间较紧（本轮结束约 3.4 GB 可用）；`app/build` 当前位于 D 盘仓库，模拟器 SDK/AVD/临时目录/证据也位于 D 盘。下轮复验前先检查空间，不把模拟器工作目录迁到 C 盘。
 
 - 2026-11-02 为定位 HTTP 400，真机设置页 Base URL 曾临时切到 `http://127.0.0.1:7077`，通过 ADB reverse 让电脑代理转发到 DeepSeek；诊断结束后无线调试掉线，尚未恢复手机配置。重新连上设备后的第一步必须覆盖安装当次同签名 APK，并把 Base URL 恢复为 `https://api.deepseek.com`。代理与诊断临时文件不得提交。
 
@@ -247,10 +250,36 @@
 
 ### 下一步
 
-1. 荣耀 90、API 24–30、平板/Windows、云盘同步和到点提醒继续单独验收。
-2. 后续 Android 发布继续复核 `phone-v1.6.0` 作为上一版同签名覆盖安装来源。
+1. 暂存全部本轮文件，创建单一 Conventional Commit 并推送 main。
+2. 等待同一提交 Flutter CI 通过，再推送 `phone-v1.6.2` 标签并核验非草稿 pre-release、两个资产和公开 APK 元数据。
+3. 通过公开 APK 复核 `v1.6.1+15` 合成会话与桌面绑定覆盖升级；API 24–30 与荣耀 90 如缺设备仍标未覆盖。
+4. 平板/Windows、云盘同步和到点提醒继续单独验收。
 
 ## 8. 变更记录
+
+### 2026-11-16 / v1.6.2 API 35 候选门禁通过
+
+- 修复桌面首击与翻页：集合项统一使用 Activity pending-intent template，`entry` 目标启动 App，`page` 目标由透明 Activity 更新 StackView 后退出；页根不再抢占条目和页脚点击。
+- 修复宽泛的 I/O 回退与 PowerShell 兼容：D 盘已有完整 SDK 时不再覆盖复制；为 Debug keystore、AVD、Gradle 和临时目录注入 D 盘路径；证据 JSON 显式 UTF-8 解码，隔离测试无需 Windows MSVC 构建 PDFium gate。
+- 验证：37 个首页/小组件/配置/桥接/秘书工具用例和 1 个表详情排序用例通过；新增七日边界与排除表用例。API 35 Candidate session `91805fc9-169e-49ec-be09-6756b31e9e5d` 的 21 个检查全部 passed，Debug APK SHA-256 `0d11c2805742e77eb4686cd1bb1b3f1b7abdaf4a789e4a339516cb5f12182fb1`。
+- 设备实测：冷进程单次点击、双向滑动、前后按钮、多实例隔离、2×2/4×2/大尺寸、浅/深色、1.3 倍字体、简洁/详细/隐藏和尺寸调整重置通过。API 24–30 和荣耀 90 仍缺设备。
+- 风险/下一步：E 盘仍返回可复现 I/O 错误，本轮全部使用 D 盘独立环境；公开包覆盖升级需在 Release 后执行。详见 `test-results/phone-release-v1.6.2/VALIDATION.md`。
+
+### 2026-11-15 / 重建 v1.6.2 复验顺序
+
+- 区分强停和普通冷进程，滑动以当前页标识为准；详见手机预览合同。修正升级安装回执来源和 Abort 退出行为。仅完成脚本语法和 diff 检查，设备交互仍待复验，发布门禁保持关闭。
+
+### 2026-11-13 / v1.6.2 候选转 D 盘并完成部分设备检查
+
+- E 盘读写检查触发回退；D 盘独立 API 35 SDK、AVD、Gradle 缓存和证据目录预检通过。构建并安装 `1.6.2+16`，首页/表详情排序、来源合并预览、紧凑浅色小组件、数据日期页脚及翻页按钮部分通过。集合项点击改用 pending-intent template 填充。
+- Candidate 结果为 failed：强停后条目首击未进入应用，第二击才打开详情；上下滑没有稳定页码证据；排除表、七天边界、详细/隐藏、4×2/大尺寸、深色、大字体、调整尺寸和多实例均未覆盖。PowerShell Finish 已保存机器/设备检查并关闭本次 AVD。完整记录见 `test-results/phone-release-v1.6.2/VALIDATION.md` 与 D 盘输出目录。
+- 未推送、未创建标签、未发布；公开包和覆盖升级未执行。下一步修复交互并重跑完整 Candidate 门禁；发布认证仍需重新核实。
+
+### 2026-11-13 / v1.6.2 小组件候选验收被 E 盘 I/O 阻断
+
+- 新增 E 盘 Android 手机验收脚本库与候选/公开版验收合同；版本号和 v1.6.2 发行说明已准备，Android 小组件 API 31+ 小尺寸也统一走 StackView。修复首页 UI 测试 teardown，使相关测试可稳定结束。
+- 验证：七个 Flutter 定向测试文件共 35/35 通过。Gradle 重建失败于 E 盘 NDK 文件读取，E 盘新 AVD 配置无法读取；未能启动、安装或进行桌面验收。无代码推送、标签或 Release。
+- 风险/下一步：E 盘报告健康且剩余约 12.4 GiB，但多份现有/新建文件返回“指定不存在的设备”；恢复 E 盘读写后重建并完成 API 35 设备门禁。GitHub CLI 前次检查未认证，届时须先解决写入认证。
 
 ### 2026-11-12 / 完成首页排序和 Android 桌面时间轴候选
 

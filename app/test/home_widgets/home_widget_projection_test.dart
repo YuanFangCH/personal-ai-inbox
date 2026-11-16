@@ -311,6 +311,71 @@ void main() {
     },
   );
 
+  test('recent events use seven local days and skip excluded tables', () {
+    final visible = _table(id: 'table_visible', title: '可见');
+    final excluded = _table(id: 'table_excluded', title: '排除');
+    final entries = [
+      _entry(
+        id: 'window_start',
+        tableId: visible.id,
+        type: TableContentType.schedule,
+        title: '今天零点',
+        start: DateTime(2026, 11, 10),
+      ),
+      _entry(
+        id: 'window_end',
+        tableId: visible.id,
+        type: TableContentType.schedule,
+        title: '第七天末尾',
+        start: DateTime(2026, 11, 16, 23, 59),
+      ),
+      _entry(
+        id: 'outside_window',
+        tableId: visible.id,
+        type: TableContentType.schedule,
+        title: '第八天零点',
+        start: DateTime(2026, 11, 17),
+      ),
+      _entry(
+        id: 'excluded_schedule',
+        tableId: excluded.id,
+        type: TableContentType.schedule,
+        title: '排除表安排',
+        start: DateTime(2026, 11, 11, 9),
+      ),
+      _entry(
+        id: 'open_without_time',
+        tableId: visible.id,
+        type: TableContentType.todo,
+        title: '无时间待办',
+      ),
+    ];
+    final projection = projectCardDetails(
+      CardDefinition(
+        cardId: 'windowed',
+        revision: 1,
+        archived: false,
+        visibility: WidgetVisibility.titleTime,
+        spec: CardSpec(
+          title: '七日',
+          sourceMode: WidgetSourceMode.selectedTables,
+          excludedTableIds: [excluded.id],
+          includeOpenTodos: true,
+          includeRecentEvents: true,
+        ),
+      ),
+      source: _source([visible, excluded], entries),
+      localNow: now,
+    );
+
+    expect(projection.snapshot.rows.map((row) => row.entryId), [
+      'window_start',
+      'window_end',
+      'open_without_time',
+    ]);
+    expect(projection.matchingCount, 3);
+  });
+
   test('returns Chinese warnings for removed tables and fields', () {
     final table = _table(id: 'tb_work', title: '作业');
     final card = CardDefinition(

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_ai_inbox/app.dart';
@@ -9,6 +10,7 @@ import 'package:personal_ai_inbox/core/table_models.dart';
 import 'package:personal_ai_inbox/data/memory_index_database.dart';
 import 'package:personal_ai_inbox/data/memory_vault_store.dart';
 import 'package:personal_ai_inbox/data/table_repository.dart';
+import 'package:personal_ai_inbox/services/agent_background_service.dart';
 
 import 'test_support.dart';
 
@@ -85,7 +87,12 @@ void main() {
     );
     await runtime.tables.initialize();
     expect(await runtime.tables.recoveryBatches(), isNotEmpty);
-    await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+    await tester.pumpWidget(
+      PersonalAiInboxApp(
+        runtime: runtime,
+        backgroundAgent: _NoopBackgroundPort(),
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('nav_more')));
     await tester.pumpAndSettle();
@@ -184,7 +191,12 @@ void main() {
         body: '归档后的复习提纲。',
       ),
     );
-    await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+    await tester.pumpWidget(
+      PersonalAiInboxApp(
+        runtime: runtime,
+        backgroundAgent: _NoopBackgroundPort(),
+      ),
+    );
     await tester.pumpAndSettle();
 
     // The existing home agenda remains in place.
@@ -440,6 +452,85 @@ void main() {
     expect(moved.body, note.body);
     await tester.pumpWidget(const SizedBox.shrink());
     await runtime.shutdown();
+  });
+
+  testWidgets('table detail sorts dated entries before entries without time', (
+    tester,
+  ) async {
+    final runtime = await AppRuntime.bootstrap(
+      vaultOverride: MemoryVaultStore(),
+      indexOverride: MemoryIndexDatabase(),
+      settingsOverride: FakeSettingsService(
+        deviceId: 'table-detail-time-order',
+      ),
+    );
+    final table = await runtime.tables.createTable(title: '时间排序表');
+    final now = DateTime.now();
+    for (final entry in [
+      TableEntryDocument(
+        id: 'td_detail_late',
+        type: TableContentType.todo,
+        tableId: table.id,
+        title: '较晚截止',
+        body: '',
+        revision: 1,
+        createdAt: now,
+        updatedAt: now,
+        due: now.add(const Duration(days: 2)),
+      ),
+      TableEntryDocument(
+        id: 'td_detail_undated',
+        type: TableContentType.note,
+        tableId: table.id,
+        title: '无业务时间',
+        body: '',
+        revision: 1,
+        createdAt: now,
+        updatedAt: now,
+      ),
+      TableEntryDocument(
+        id: 'td_detail_early',
+        type: TableContentType.schedule,
+        tableId: table.id,
+        title: '较早开始',
+        body: '',
+        revision: 1,
+        createdAt: now,
+        updatedAt: now,
+        start: now.add(const Duration(days: 1)),
+      ),
+    ]) {
+      await runtime.tables.createEntry(entry);
+    }
+    await tester.pumpWidget(
+      PersonalAiInboxApp(
+        runtime: runtime,
+        backgroundAgent: _NoopBackgroundPort(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav_more')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('sheet_nav_matters')));
+    await tester.pumpAndSettle();
+    await _openTablesView(tester);
+    await tester.scrollUntilVisible(
+      find.text('时间排序表'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('时间排序表').first);
+    await tester.pumpAndSettle();
+
+    final early = tester.getTopLeft(find.text('较早开始')).dy;
+    final late = tester.getTopLeft(find.text('较晚截止')).dy;
+    final undated = tester.getTopLeft(find.text('无业务时间')).dy;
+    expect(early, lessThan(late));
+    expect(late, lessThan(undated));
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    runtime.dispose();
+    await tester.pump(const Duration(seconds: 3));
   });
 
   testWidgets(
@@ -766,6 +857,21 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await runtime.shutdown();
   });
+}
+
+class _NoopBackgroundPort implements AgentBackgroundPort {
+  final _status = ValueNotifier<AgentBackgroundSnapshot>(
+    const AgentBackgroundSnapshot(state: AgentBackgroundState.running),
+  );
+
+  @override
+  ValueListenable<AgentBackgroundSnapshot> get status => _status;
+
+  @override
+  Stream<AgentBackgroundCommand> get commands => const Stream.empty();
+
+  @override
+  Future<void> initialize() async {}
 }
 
 Future<void> _openTablesView(WidgetTester tester) async {

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_ai_inbox/app.dart';
 import 'package:personal_ai_inbox/bootstrap/app_runtime.dart';
 import 'package:personal_ai_inbox/core/table_models.dart';
 import 'package:personal_ai_inbox/data/memory_index_database.dart';
 import 'package:personal_ai_inbox/data/memory_vault_store.dart';
+import 'package:personal_ai_inbox/services/agent_background_service.dart';
 
 import 'test_support.dart';
 
@@ -21,8 +23,13 @@ void main() {
       indexOverride: MemoryIndexDatabase(),
       settingsOverride: FakeSettingsService(deviceId: 'wide-home-capture-ui'),
     );
-    addTearDown(runtime.dispose);
-    await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+    addTearDown(() => _disposeRuntime(tester, runtime));
+    await tester.pumpWidget(
+      PersonalAiInboxApp(
+        runtime: runtime,
+        backgroundAgent: _NoopBackgroundPort(),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('capture_button')), findsNothing);
     await tester.tap(find.byKey(const Key('nav_knowledge')));
@@ -45,7 +52,7 @@ void main() {
       indexOverride: MemoryIndexDatabase(),
       settingsOverride: FakeSettingsService(deviceId: 'home-page-ui'),
     );
-    addTearDown(runtime.dispose);
+    addTearDown(() => _disposeRuntime(tester, runtime));
 
     final now = DateTime.now();
     final scheduleTable = runtime.tables.tables.singleWhere(
@@ -92,7 +99,12 @@ void main() {
       );
     }
 
-    await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+    await tester.pumpWidget(
+      PersonalAiInboxApp(
+        runtime: runtime,
+        backgroundAgent: _NoopBackgroundPort(),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('首页'), findsWidgets);
@@ -136,6 +148,64 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('home sorts dated todos first and puts missing dates last', (
+    tester,
+  ) async {
+    final runtime = await AppRuntime.bootstrap(
+      vaultOverride: MemoryVaultStore(),
+      indexOverride: MemoryIndexDatabase(),
+      settingsOverride: FakeSettingsService(deviceId: 'home-todo-time-order'),
+    );
+    addTearDown(() => _disposeRuntime(tester, runtime));
+    final now = DateTime.now();
+    final table = runtime.tables.tables.singleWhere(
+      (item) => item.role == TableRole.inboxTodo,
+    );
+    await runtime.tables.createEntry(
+      _entry(
+        id: 'td_home_order_late',
+        tableId: table.id,
+        type: TableContentType.todo,
+        title: '较晚截止',
+        now: now,
+        due: now.add(const Duration(days: 2)),
+      ),
+    );
+    await runtime.tables.createEntry(
+      _entry(
+        id: 'td_home_order_without_date',
+        tableId: table.id,
+        type: TableContentType.todo,
+        title: '没有截止日期',
+        now: now,
+      ),
+    );
+    await runtime.tables.createEntry(
+      _entry(
+        id: 'td_home_order_early',
+        tableId: table.id,
+        type: TableContentType.todo,
+        title: '较早截止',
+        now: now,
+        due: now.add(const Duration(days: 1)),
+      ),
+    );
+
+    await tester.pumpWidget(
+      PersonalAiInboxApp(
+        runtime: runtime,
+        backgroundAgent: _NoopBackgroundPort(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final early = tester.getTopLeft(find.text('较早截止')).dy;
+    final late = tester.getTopLeft(find.text('较晚截止')).dy;
+    final undated = tester.getTopLeft(find.text('没有截止日期')).dy;
+    expect(early, lessThan(late));
+    expect(late, lessThan(undated));
+  });
+
   testWidgets('home keeps a todo row when saving completion fails', (
     tester,
   ) async {
@@ -149,7 +219,7 @@ void main() {
       indexOverride: MemoryIndexDatabase(),
       settingsOverride: FakeSettingsService(deviceId: 'home-todo-failure-ui'),
     );
-    addTearDown(runtime.dispose);
+    addTearDown(() => _disposeRuntime(tester, runtime));
     final table = runtime.tables.tables.singleWhere(
       (candidate) => candidate.role == TableRole.inboxTodo,
     );
@@ -164,7 +234,12 @@ void main() {
     );
     vault.failWrites = true;
 
-    await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+    await tester.pumpWidget(
+      PersonalAiInboxApp(
+        runtime: runtime,
+        backgroundAgent: _NoopBackgroundPort(),
+      ),
+    );
     await tester.pumpAndSettle();
     final checkbox = find.byKey(Key('home_todo_checkbox_${todo.id}'));
     await tester.ensureVisible(checkbox);
@@ -191,7 +266,7 @@ void main() {
           deviceId: 'home-table-modules-ui',
         ),
       );
-      addTearDown(runtime.dispose);
+      addTearDown(() => _disposeRuntime(tester, runtime));
       final first = await runtime.tables.createTable(title: '作业表');
       final second = await runtime.tables.createTable(title: '考试表');
       final now = DateTime.now();
@@ -207,7 +282,12 @@ void main() {
         );
       }
 
-      await tester.pumpWidget(PersonalAiInboxApp(runtime: runtime));
+      await tester.pumpWidget(
+        PersonalAiInboxApp(
+          runtime: runtime,
+          backgroundAgent: _NoopBackgroundPort(),
+        ),
+      );
       await tester.pumpAndSettle();
       await tester.ensureVisible(
         find.byKey(const Key('home_add_table_module')),
@@ -288,4 +368,25 @@ class _FailingWriteVaultStore extends MemoryVaultStore {
     if (failWrites) throw StateError('simulated vault write failure');
     await super.write(relativePath, contents);
   }
+}
+
+class _NoopBackgroundPort implements AgentBackgroundPort {
+  final _status = ValueNotifier<AgentBackgroundSnapshot>(
+    const AgentBackgroundSnapshot(state: AgentBackgroundState.running),
+  );
+
+  @override
+  ValueListenable<AgentBackgroundSnapshot> get status => _status;
+
+  @override
+  Stream<AgentBackgroundCommand> get commands => const Stream.empty();
+
+  @override
+  Future<void> initialize() async {}
+}
+
+Future<void> _disposeRuntime(WidgetTester tester, AppRuntime runtime) async {
+  await tester.pumpWidget(const SizedBox.shrink());
+  runtime.dispose();
+  await tester.pump(const Duration(seconds: 3));
 }

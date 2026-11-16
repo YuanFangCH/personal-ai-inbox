@@ -119,13 +119,12 @@ internal object HomeWidgetNavigation {
         context: Context,
         widgetId: Int,
     ): PendingIntent {
-        val intent = Intent(context, HomeWidgetClickReceiver::class.java)
-            .setAction(ACTION_OPEN_TARGET)
+        val intent = Intent(context, HomeWidgetOpenActivity::class.java)
         var flags = PendingIntent.FLAG_UPDATE_CURRENT
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             flags = flags or PendingIntent.FLAG_MUTABLE
         }
-        return PendingIntent.getBroadcast(
+        return PendingIntent.getActivity(
             context,
             0x48470000 xor widgetId,
             intent,

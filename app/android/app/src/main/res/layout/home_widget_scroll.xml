@@ -83,4 +83,13 @@
         android:textColor="@color/home_widget_accent_light"
         android:textSize="10sp"
         android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/scroll_data_date"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingTop="3dp"
+        android:textColor="@color/home_widget_text_secondary_light"
+        android:textSize="10sp" />
 </LinearLayout>

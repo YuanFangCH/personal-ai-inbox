@@ -13,6 +13,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'lib\android-phone-validation.ps1')
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $appRoot = Join-Path $repoRoot 'app'
 $expectedVersion = '1.6.1'
@@ -69,24 +70,7 @@ function Write-ValidationResult {
 
 function Assert-AbsoluteETarget {
     param([string]$Path, [string]$Label)
-    if (-not [IO.Path]::IsPathRooted($Path)) {
-        throw "$Label must be an absolute path: $Path"
-    }
-    $full = [IO.Path]::GetFullPath($Path)
-    if ([IO.Path]::GetPathRoot($full) -ne 'E:\') {
-        throw "$Label must resolve on drive E: $full"
-    }
-    $cursor = $full
-    while ($cursor) {
-        $item = Get-Item -LiteralPath $cursor -Force -ErrorAction SilentlyContinue
-        if ($item -and ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
-            throw "$Label must not use a reparse point or directory junction: $cursor"
-        }
-        $parent = Split-Path -Parent $cursor
-        if (-not $parent -or $parent -eq $cursor) { break }
-        $cursor = $parent
-    }
-    return $full.TrimEnd('\')
+    Resolve-AbsoluteEPath -Path $Path -Label $Label
 }
 
 function Assert-EPathExists {
