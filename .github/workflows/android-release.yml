@@ -53,6 +53,12 @@ jobs:
           }
           $buildNumber = $Matches.build
 
+          if ($tagVersion -eq '1.6.3') {
+              'RELEASE_AS_DRAFT=true' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          } else {
+              'RELEASE_AS_DRAFT=false' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
+
           $notesPath = Join-Path (Resolve-Path '..').Path "docs\releases\v$tagVersion.md"
           if (-not (Test-Path -LiteralPath $notesPath -PathType Leaf)) {
               throw "Release notes are missing: $notesPath"
@@ -248,10 +254,13 @@ jobs:
               gh release upload $tag @assets --clobber
               if ($LASTEXITCODE -ne 0) { throw 'Unable to upload Android GitHub Release assets.' }
           } else {
-              gh release create $tag @assets `
-                  --verify-tag `
-                  --title "懒狗秘书 v$version Android 预览版" `
-                  --notes-file $env:RELEASE_NOTES `
-                  --prerelease
+              $releaseOptions = @(
+                  '--verify-tag',
+                  '--title', "懒狗秘书 v$version Android 预览版",
+                  '--notes-file', $env:RELEASE_NOTES,
+                  '--prerelease'
+              )
+              if ($env:RELEASE_AS_DRAFT -eq 'true') { $releaseOptions += '--draft' }
+              gh release create $tag @assets @releaseOptions
               if ($LASTEXITCODE -ne 0) { throw 'Unable to create Android GitHub Release.' }
           }

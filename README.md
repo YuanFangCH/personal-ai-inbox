@@ -38,6 +38,8 @@ Android 手机 `v1.6.2` 使用 `phone-v1.6.2` 标签，只提供通用 APK 与 `
 
 ## 当前进展
 
+2026-11-17 `v1.6.3+17` Android 验收推进中：D 盘 API 35 候选 APK 构建、安装成功，模拟器发现并复现秘书指令页缺少 Material 祖先的红屏，已修复并在模拟器复核通过；设置页新增回归测试且定向 analyze 通过。完整测试、覆盖升级和 GitHub 发布仍未完成，详见 `test-results/phone-release-v1.6.3/VALIDATION.md`。
+
 2026-11-17 已实施本机长期秘书指令 `AGENTS.md` 与旧全局知识退役：完全体模式下满足当前用户消息授权的请求可修改文件；旧知识仅经设置页确认、归档校验后清理。37 个目标静态分析通过；Flutter 测试因 Windows 缺少 Visual C++ 工具链未执行。合同见[指令文件合同](docs/agent-instructions-contract.md)，验证见 `test-results/agent-instructions-20261117/VALIDATION.md`。
 
 2026-11-16 `v1.6.2+16` Android 手机预览版已发布：[phone-v1.6.2](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.2)。main CI `43803812848` 与 Android Release `43805072945` 均 success。公开 APK 为 92,491,540 字节，SHA-256 `2488f15d442cd4cd0661bf55ce428167a9f3992b412fd59074c29ca620f59863`，API 24/36、非 Debuggable、v2 签名和长期证书复核通过；D 盘 API 35 升级 AVD 完成 `v1.6.1+15` 到 `v1.6.2+16` 的合成会话、表和桌面绑定覆盖升级。详见[验收记录](test-results/phone-release-v1.6.2/VALIDATION.md)与[手机验收合同](docs/phone-widget-preview-contract.md)。

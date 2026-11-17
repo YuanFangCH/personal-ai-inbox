@@ -11,6 +11,37 @@ import 'package:personal_ai_inbox/services/agent_background_service.dart';
 import 'test_support.dart';
 
 void main() {
+  testWidgets('agent instructions editor has a Material ancestor', (
+    tester,
+  ) async {
+    final runtime = await AppRuntime.bootstrap(
+      vaultOverride: MemoryVaultStore(),
+      indexOverride: MemoryIndexDatabase(),
+      settingsOverride: FakeSettingsService(deviceId: 'agent-instructions-ui'),
+    );
+    addTearDown(runtime.dispose);
+    await tester.pumpWidget(
+      PersonalAiInboxApp(
+        runtime: runtime,
+        backgroundAgent: _NoopBackgroundPort(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav_more')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('sheet_nav_settings')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const Key('settings_agent_instructions')),
+    );
+    await tester.tap(find.byKey(const Key('settings_agent_instructions')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await _disposeApp(tester);
+  });
+
   testWidgets(
     'full-agent switch overrides existing and new conversations then restores',
     (tester) async {

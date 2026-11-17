@@ -48,47 +48,52 @@ class _AgentInstructionsPageState extends State<AgentInstructionsPage> {
   }
 
   @override
-  Widget build(BuildContext context) => PageFrame(
-    title: '秘书指令（AGENTS.md）',
-    subtitle: '每次发送消息时自动加载。文件内容会随请求发送给当前模型，不会同步到其他设备。',
-    actions: [
-      IconButton(
-        onPressed: _saving ? null : _export,
-        tooltip: '导出 AGENTS.md',
-        icon: const Icon(Icons.download),
-      ),
-      FilledButton(onPressed: _saving ? null : _save, child: const Text('保存')),
-    ],
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        TextField(
-          controller: _editor,
-          minLines: 12,
-          maxLines: 30,
-          decoration: const InputDecoration(
-            hintText: '写入长期偏好、默认规则和事实口径',
-            border: OutlineInputBorder(),
-          ),
+  Widget build(BuildContext context) => Material(
+    child: PageFrame(
+      title: '秘书指令（AGENTS.md）',
+      subtitle: '每次发送消息时自动加载。文件内容会随请求发送给当前模型，不会同步到其他设备。',
+      actions: [
+        IconButton(
+          onPressed: _saving ? null : _export,
+          tooltip: '导出 AGENTS.md',
+          icon: const Icon(Icons.download),
         ),
-        if (_error != null)
-          Text(
-            _error!,
-            style: TextStyle(color: Theme.of(context).colorScheme.error),
-          ),
-        if (_conflicted)
-          TextButton.icon(
-            onPressed: _saving ? null : _reloadLatest,
-            icon: const Icon(Icons.refresh),
-            label: const Text('放弃本地修改并重新加载最新版本'),
-          ),
-        if (_revision != 'missing')
-          TextButton.icon(
-            onPressed: _saving ? null : _undo,
-            icon: const Icon(Icons.undo),
-            label: const Text('撤销最近一次改动'),
-          ),
+        FilledButton(
+          onPressed: _saving ? null : _save,
+          child: const Text('保存'),
+        ),
       ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _editor,
+            minLines: 12,
+            maxLines: 30,
+            decoration: const InputDecoration(
+              hintText: '写入长期偏好、默认规则和事实口径',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          if (_error != null)
+            Text(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          if (_conflicted)
+            TextButton.icon(
+              onPressed: _saving ? null : _reloadLatest,
+              icon: const Icon(Icons.refresh),
+              label: const Text('放弃本地修改并重新加载最新版本'),
+            ),
+          if (_revision != 'missing')
+            TextButton.icon(
+              onPressed: _saving ? null : _undo,
+              icon: const Icon(Icons.undo),
+              label: const Text('撤销最近一次改动'),
+            ),
+        ],
+      ),
     ),
   );
 
