@@ -243,7 +243,6 @@ void main() {
       settingsOverride: FakeSettingsService(deviceId: 'settings-policy-phone'),
     );
     addTearDown(runtime.dispose);
-    addTearDown(runtime.dispose);
     await tester.pumpWidget(
       PersonalAiInboxApp(
         runtime: runtime,
@@ -267,7 +266,7 @@ void main() {
       'create',
       'modify',
       'structure',
-      'knowledge',
+      'app',
     ]) {
       expect(find.byKey(Key('settings_ai_group_$group')), findsOneWidget);
     }

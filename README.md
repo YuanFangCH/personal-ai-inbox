@@ -38,7 +38,7 @@ Android 手机 `v1.6.2` 使用 `phone-v1.6.2` 标签，只提供通用 APK 与 `
 
 ## 当前进展
 
-2026-11-17 `v1.6.3+17` Android 验收推进中：D 盘 API 35 候选 APK 构建、安装成功；模拟器发现并修复秘书指令页 Material 红屏及状态栏重叠。Android integration test 两次通过保存/撤销，强停重启读回通过。GitHub CI 暴露的测试 fake 接口缺失已修复，本地 analyze 通过，等待 CI 复验；覆盖升级和发布未完成，详见 `test-results/phone-release-v1.6.3/VALIDATION.md`。
+2026-11-17 `v1.6.3+17` Android 验收推进中：D 盘 API 35 候选与升级模拟器已运行，指令页红屏/状态栏重叠已修复，Android 保存/撤销集成测试通过。CI 全量 analyze 通过；两项过期测试断言已更新，本地 analyze 通过，待 CI 复验。公开 v1.6.2 升级包已核验并安装到 D 盘升级 AVD，覆盖升级及发布仍未完成，详见验证记录。
 
 2026-11-17 已实施本机长期秘书指令 `AGENTS.md` 与旧全局知识退役：完全体模式下满足当前用户消息授权的请求可修改文件；旧知识仅经设置页确认、归档校验后清理。37 个目标静态分析通过；Flutter 测试因 Windows 缺少 Visual C++ 工具链未执行。合同见[指令文件合同](docs/agent-instructions-contract.md)，验证见 `test-results/agent-instructions-20261117/VALIDATION.md`。
 

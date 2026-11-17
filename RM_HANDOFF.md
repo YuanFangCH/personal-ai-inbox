@@ -24,7 +24,7 @@
 当前公开下载为 `https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.1`，验证入口为 `test-results/phone-release-v1.6.1/VALIDATION.md`，运行活动合同见 `docs/secretary-activity-contract.md`，发行说明见 `docs/releases/v1.6.1.md`。
 ## 3. 当前目标与范围
 
-- 当前任务：准备 `v1.6.3+17` Android 预览版。D 盘预检、候选构建与 API 35 AVD 安装通过；修复指令页 Material 红屏和系统栏重叠。Android integration test 在 API 35 两次通过页面打开、保存、Vault 读回与撤销，冷启动读回也通过。CI 两次在 analyze 阶段发现 `capture_workflow_test.dart` 的 `_RecordingIndexDatabase` 未实现新接口；已补齐转发实现且本地 analyze 通过，修复提交待推送复验。功能矩阵、旧版覆盖升级、CI、标签和发布尚未完成。GitHub CLI 当前可用。详见验证记录。
+- 当前任务：准备 `v1.6.3+17` Android 预览版。D 盘预检、候选构建与 API 35 AVD 安装通过；指令页红屏和状态栏重叠已修复。Android integration test 在 API 35 两次通过页面打开、保存、Vault 读回与撤销，冷启动读回也通过。CI 已通过全量 analyze，但两项测试发现迁移 schema 期望仍写 6（现行为 7）以及自定义权限组断言仍查已退役的 knowledge 组；已按当前实现更新为 7 和 app 组，本地 analyze/格式检查通过，待推送后 CI 复验。功能矩阵、覆盖升级、标签与发布尚未完成。D 盘升级 AVD 已安装哈希核验通过的公开 `v1.6.2+16`，正在准备合成数据基线。
 - `v1.6.2+16` 候选、main CI、标签发布、公开包覆盖升级和发布后收尾提交均完成。
 - 本轮范围：设置页管理本机 `AGENTS.md`，每轮请求独立加载；完全体模式下当前无附件用户请求可驱动版本受控修改；旧全局知识经用户确认、ZIP 与源哈希校验后归档清理。合同见 [ADR 0028](docs/adr/0028-secretary-instructions-file.md) 和[指令文件合同](docs/agent-instructions-contract.md)。
 
@@ -275,6 +275,8 @@
 - 新增 `integration_test/agent_instructions_phone_test.dart`；D 盘 API 35 AVD 执行通过（1/1）：秘书指令页面无 Flutter 异常、UI 保存写入 Vault、撤销移除文件。相关 Dart 文件定向 `flutter analyze --no-pub` 通过。
 - 复查发现独立路由页面标题侵入系统状态栏，补 SafeArea；再次运行同一 API 35 integration test 1/1 通过，截图 `D:\DevTools\Android\aitext-validation\phone-v1.6.3\candidate\instructions-safe.png` 确认系统栏与页面分离。提交 `46cc500` 已推送。
 - GitHub Flutter CI #55（`1253a9a`）和 #56（`46cc500`）均在全量 analyze 阶段失败，原因是测试 fake 漏实现 `removeGlobalKnowledgeCandidate`。现已补齐 `_RecordingIndexDatabase` 转发并通过本地定向 analyze；待提交后重跑 CI。D 盘原始 APK、截图和 UI 树保存在 `D:\DevTools\Android\aitext-validation\phone-v1.6.3\candidate`。完整功能矩阵、覆盖升级、标签与发布未完成。
+- CI #57（`1caeff0`）全量 analyze 通过，定向测试失败于两个过期断言：设置 schema 版本预期 6，应为 7；自定义权限分组仍查 `knowledge`，当前界面组为 `app`。已修正并通过本地 analyze/格式检查，待 CI 复验。
+- 已下载并核验公开 v1.6.2 APK：SHA-256 `2488f15d442cd4cd0661bf55ce428167a9f3992b412fd59074c29ca620f59863`、签名证书和 v2 签名通过；隔离 D 盘 API 35 升级 AVD 已安装旧版。覆盖升级尚未开始。
 
 ### 2026-11-17 / 补齐本机指令与退役合同审计项
 

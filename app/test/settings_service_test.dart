@@ -314,7 +314,7 @@ void main() {
     final settings = await service.load();
     final policy = settings.effectiveDefaultAiPolicy;
 
-    expect(settings.schemaVersion, 6);
+    expect(settings.schemaVersion, 7);
     expect(policy.preset, AiPolicyPreset.custom);
     expect(
       policy.decisionFor(AiPermissionAction.tableRead),
