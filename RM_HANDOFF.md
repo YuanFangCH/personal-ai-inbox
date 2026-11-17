@@ -10,7 +10,7 @@
 | 最后更新时间 | 2026-11-17 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.6.2+16` 已发布；`v1.6.3+17` D 盘 API 35 候选模拟器验收中；修复并复核秘书指令页 Material 红屏；GitHub CLI 凭据失效 |
+| 当前阶段 | `v1.6.2+16` 已发布；`v1.6.3+17` D 盘 API 35 候选及覆盖升级验收中；候选指令页修复通过，GitHub CLI 已认证 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.6.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
@@ -24,7 +24,7 @@
 当前公开下载为 `https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.1`，验证入口为 `test-results/phone-release-v1.6.1/VALIDATION.md`，运行活动合同见 `docs/secretary-activity-contract.md`，发行说明见 `docs/releases/v1.6.1.md`。
 ## 3. 当前目标与范围
 
-- 当前任务：准备 `v1.6.3+17` Android 预览版。D 盘预检、候选构建与 API 35 AVD 安装通过；指令页红屏和状态栏重叠已修复。Android integration test 在 API 35 两次通过页面打开、保存、Vault 读回与撤销，冷启动读回也通过。CI 已通过全量 analyze，但两项测试发现迁移 schema 期望仍写 6（现行为 7）以及自定义权限组断言仍查已退役的 knowledge 组；已按当前实现更新为 7 和 app 组，本地 analyze/格式检查通过，待推送后 CI 复验。功能矩阵、覆盖升级、标签与发布尚未完成。D 盘升级 AVD 已安装哈希核验通过的公开 `v1.6.2+16`，正在准备合成数据基线。
+- 当前任务：准备 `v1.6.3+17` Android 预览版。D 盘预检、候选构建与 API 35 AVD 安装通过；指令页红屏和状态栏重叠已修复。Android integration test 在 API 35 两次通过页面打开、保存、Vault 读回与撤销，冷启动读回也通过。CI #59 对 `6dbf781` 的 Analyze 与当时配置的回归测试通过。现将指令 Store、旧知识归档和同步隔离三项回归纳入 Flutter CI 与 Android Release 工作流，待提交后运行更新后的 CI。功能矩阵、覆盖升级、标签与发布尚未完成。D 盘升级 AVD 已安装并创建旧版合成知识数据。
 - `v1.6.2+16` 候选、main CI、标签发布、公开包覆盖升级和发布后收尾提交均完成。
 - 本轮范围：设置页管理本机 `AGENTS.md`，每轮请求独立加载；完全体模式下当前无附件用户请求可驱动版本受控修改；旧全局知识经用户确认、ZIP 与源哈希校验后归档清理。合同见 [ADR 0028](docs/adr/0028-secretary-instructions-file.md) 和[指令文件合同](docs/agent-instructions-contract.md)。
 
@@ -277,6 +277,8 @@
 - GitHub Flutter CI #55（`1253a9a`）和 #56（`46cc500`）均在全量 analyze 阶段失败，原因是测试 fake 漏实现 `removeGlobalKnowledgeCandidate`。现已补齐 `_RecordingIndexDatabase` 转发并通过本地定向 analyze；待提交后重跑 CI。D 盘原始 APK、截图和 UI 树保存在 `D:\DevTools\Android\aitext-validation\phone-v1.6.3\candidate`。完整功能矩阵、覆盖升级、标签与发布未完成。
 - CI #57（`1caeff0`）全量 analyze 通过，定向测试失败于两个过期断言：设置 schema 版本预期 6，应为 7；自定义权限分组仍查 `knowledge`，当前界面组为 `app`。已修正并通过本地 analyze/格式检查，待 CI 复验。
 - 已下载并核验公开 v1.6.2 APK：SHA-256 `2488f15d442cd4cd0661bf55ce428167a9f3992b412fd59074c29ca620f59863`、签名证书和 v2 签名通过；隔离 D 盘 API 35 升级 AVD 已安装旧版。覆盖升级尚未开始。
+- Flutter CI 与 Android Release 回归清单现在加入 `agent_instructions_store_test.dart`、`result_repository_test.dart`、`sync_engine_test.dart`，确保本次指令文件、旧知识归档和同步隔离代码进入自动发布验证。
+- CI #59（`6dbf781`）的 `analyze-and-test` 已成功；新增三项回归文件的工作流调整尚未进入该运行，须由下一次 main CI 复验。
 
 ### 2026-11-17 / 补齐本机指令与退役合同审计项
 

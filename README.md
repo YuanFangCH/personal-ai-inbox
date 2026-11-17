@@ -14,6 +14,8 @@
 
 Android 手机 `v1.6.2` 使用 `phone-v1.6.2` 标签，只提供通用 APK 与 `SHA256SUMS.txt`：[GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.2)。本版改进首页和小组件时间排序、跨表时间轴、简洁/详细显示、桌面隐私与 StackView 上下翻页；`v1.6.1` 继续作为上一版 Android 手机预发布保留，`v1.2.1` 是上一版全平台预发布。升级前请完整备份应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.6.2.md)；真实资料迁移需要在应用内确认。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
 
+`v1.6.3+17` Android 手机预览版正在进行 API 35 模拟器验收；在 GitHub Release 草稿及覆盖升级验收完成前，`v1.6.2` 仍是当前公开版本。
+
 ## 核心能力
 
 - 本地优先：文本、分享内容和图片先在本端落盘，离线时捕获、编辑和查看不受影响。
