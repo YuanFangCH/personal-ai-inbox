@@ -24,7 +24,7 @@
 当前公开下载为 `https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.1`，验证入口为 `test-results/phone-release-v1.6.1/VALIDATION.md`，运行活动合同见 `docs/secretary-activity-contract.md`，发行说明见 `docs/releases/v1.6.1.md`。
 ## 3. 当前目标与范围
 
-- 当前任务：准备 `v1.6.3+17` Android 预览版。D 盘预检、候选构建与 API 35 AVD 安装通过；修复模拟器发现的秘书指令页 Material 红屏。新增 Android integration test 在 API 35 通过页面打开、保存、Vault 读回与撤销；设置后强停/重启读回另以 ADB UI 验证通过，定向 analyze 无诊断。Windows Flutter Widget 测试仍被 PDFium hook 的 Visual C++ 缺失阻断。Agent 实际授权工具、旧知识归档、旧版覆盖升级、CI、推送和发布尚未完成；GitHub CLI 凭据失效。详见 `test-results/phone-release-v1.6.3/VALIDATION.md`。
+- 当前任务：准备 `v1.6.3+17` Android 预览版。D 盘预检、候选构建与 API 35 AVD 安装通过；修复模拟器发现的秘书指令页 Material 红屏并加入 SafeArea。新增 Android integration test 在 API 35 两次通过页面打开、保存、Vault 读回与撤销；独立路由截图确认避开系统状态栏；保存后强停/重启读回也通过，定向 analyze 无诊断。Flutter Widget 测试仍被 PDFium hook 的 Visual C++ 缺失阻断。功能矩阵、旧版覆盖升级、CI、标签和发布尚未完成；首提交 `1253a9a` 已推送，SafeArea 后续修复待提交。详见 `test-results/phone-release-v1.6.3/VALIDATION.md`。
 - `v1.6.2+16` 候选、main CI、标签发布、公开包覆盖升级和发布后收尾提交均完成。
 - 本轮范围：设置页管理本机 `AGENTS.md`，每轮请求独立加载；完全体模式下当前无附件用户请求可驱动版本受控修改；旧全局知识经用户确认、ZIP 与源哈希校验后归档清理。合同见 [ADR 0028](docs/adr/0028-secretary-instructions-file.md) 和[指令文件合同](docs/agent-instructions-contract.md)。
 
@@ -273,6 +273,7 @@
 - 模拟器走查发现秘书指令编辑页 `TextField` 缺少 Material 祖先并出现红屏；页面增加 Material 容器后重建安装，设置页与编辑页运行复核通过。新增设置页回归用例，两个 Dart 文件定向 analyze 无诊断。Flutter 测试因 Windows 缺少 `Microsoft.VisualStudio.Component.VC.Tools.x86.x64` 在 PDFium hook 阶段未运行。
 - 在 D 盘 API 35 AVD 手工保存合成规则 `V163_TEST_RULE`，强停并重启 App，再打开指令页，UI 树仍读到该规则，证明本轮设备端保存/冷启动读回通过。
 - 新增 `integration_test/agent_instructions_phone_test.dart`；D 盘 API 35 AVD 执行通过（1/1）：秘书指令页面无 Flutter 异常、UI 保存写入 Vault、撤销移除文件。相关 Dart 文件定向 `flutter analyze --no-pub` 通过。
+- 复查发现独立路由页面标题侵入系统状态栏，补 SafeArea；再次运行同一 API 35 integration test 1/1 通过，截图 `D:\DevTools\Android\aitext-validation\phone-v1.6.3\candidate\instructions-safe.png` 确认系统栏与页面分离。新增修复尚待提交及 CI。
 - D 盘原始日志、APK、截图和 UI 树保存在 `D:\DevTools\Android\aitext-validation\phone-v1.6.3\candidate`。当前仅完成候选页烟测，不等于完整功能矩阵或覆盖升级验收。`gh auth status` 显示令牌无效；未推送、未打标签、未发布。下一步补齐归档/Agent 场景和旧版覆盖升级，再处理认证、CI 与草稿发布。
 
 ### 2026-11-17 / 补齐本机指令与退役合同审计项
