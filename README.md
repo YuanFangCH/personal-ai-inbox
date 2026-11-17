@@ -14,7 +14,7 @@
 
 Android 手机 `v1.6.2` 使用 `phone-v1.6.2` 标签，只提供通用 APK 与 `SHA256SUMS.txt`：[GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.2)。本版改进首页和小组件时间排序、跨表时间轴、简洁/详细显示、桌面隐私与 StackView 上下翻页；`v1.6.1` 继续作为上一版 Android 手机预发布保留，`v1.2.1` 是上一版全平台预发布。升级前请完整备份应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.6.2.md)；真实资料迁移需要在应用内确认。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
 
-`v1.6.3+17` Android 手机预览版正在进行 API 35 模拟器验收；在 GitHub Release 草稿及覆盖升级验收完成前，`v1.6.2` 仍是当前公开版本。
+`v1.6.3+17` Android 手机预览版已发布：[phone-v1.6.3](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.3)。通用 APK SHA-256 为 `db4ba5da0f10113b43ab5b0235a41c4484a63ba152c2d41d8570ed1e1d0005e6`；GitHub Release CI、签名/版本核验、D 盘 API 35 覆盖升级、旧全局知识归档及 ZIP 哈希验证通过。详细结果见 [v1.6.3 验证记录](test-results/phone-release-v1.6.3/VALIDATION.md)。
 
 ## 核心能力
 
@@ -40,7 +40,7 @@ Android 手机 `v1.6.2` 使用 `phone-v1.6.2` 标签，只提供通用 APK 与 `
 
 ## 当前进展
 
-2026-11-17 `v1.6.3+17` Android 验收推进中：D 盘 API 35 候选与升级模拟器已运行，指令页红屏/状态栏重叠已修复，Android 保存/撤销集成测试通过。CI 全量 analyze 通过；两项过期测试断言已更新，本地 analyze 通过，待 CI 复验。公开 v1.6.2 升级包已核验并安装到 D 盘升级 AVD，覆盖升级及发布仍未完成，详见验证记录。
+2026-11-17 `v1.6.3+17` Android 手机预览版已发布。D 盘 API 35 模拟器完成指令编辑保存/撤销、旧版覆盖升级、旧全局知识显式归档和 ZIP 导出校验；Android Release CI 完整通过。荣耀 90 真机、API 24–30 固定行、平板和 Windows 仍未在本轮覆盖，详见验证记录。
 
 2026-11-17 已实施本机长期秘书指令 `AGENTS.md` 与旧全局知识退役：完全体模式下满足当前用户消息授权的请求可修改文件；旧知识仅经设置页确认、归档校验后清理。37 个目标静态分析通过；Flutter 测试因 Windows 缺少 Visual C++ 工具链未执行。合同见[指令文件合同](docs/agent-instructions-contract.md)，验证见 `test-results/agent-instructions-20261117/VALIDATION.md`。
 

@@ -10,10 +10,12 @@
 | 最后更新时间 | 2026-11-17 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.6.2+16` 已发布；`v1.6.3+17` D 盘 API 35 候选及覆盖升级验收中；候选指令页修复通过，GitHub CLI 已认证 |
+| 当前阶段 | `v1.6.3+17` Android 手机预览版已公开发布；D 盘 API 35 覆盖升级、旧全局知识归档和 ZIP 校验通过 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.6.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
+
+2026-11-17 `phone-v1.6.3` 已公开发布：[phone-v1.6.3](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.3)。Android Release `44002331180` 与 main CI `44002023767` success；公开 APK SHA-256 `db4ba5da0f10113b43ab5b0235a41c4484a63ba152c2d41d8570ed1e1d0005e6`。D 盘 API 35 AVD 完成旧版覆盖升级、旧全局知识归档与 ZIP 源哈希校验；新 AGENTS.md 保持空白。记录：`test-results/phone-release-v1.6.3/VALIDATION.md`。
 
 2026-11-16 `phone-v1.6.2` 已发布：[phone-v1.6.2](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.2)。main CI `43803812848` 与 Android Release `43805072945` success；公开 APK SHA-256 `2488f15d442cd4cd0661bf55ce428167a9f3992b412fd59074c29ca620f59863`。D 盘 API 35 升级 AVD 完成 `v1.6.1+15` 覆盖升级，合成 Markdown、会话、表、`appWidgetId=2` 绑定、翻页和条目点击均保留并通过。记录：`test-results/phone-release-v1.6.2/VALIDATION.md`。
 
@@ -21,10 +23,10 @@
 
 2026-11-10 `v1.6.0+14` Android 手机预览版已发布到 GitHub：API 35 模拟器完成手机适用秘书矩阵 50/50、921 秒长测与 47 条写入/读回，并完成多表桌面小组件的尺寸、滚动、深色、多实例、独立绑定、归档恢复、冷进程点击和 `v1.5.1+13` 同签名覆盖升级。荣耀 90 真机与 API 24–30 固定行仍明确未覆盖。
 
-当前公开下载为 `https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.1`，验证入口为 `test-results/phone-release-v1.6.1/VALIDATION.md`，运行活动合同见 `docs/secretary-activity-contract.md`，发行说明见 `docs/releases/v1.6.1.md`。
+当前公开下载为 [phone-v1.6.3](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.3)，验证入口为 `test-results/phone-release-v1.6.3/VALIDATION.md`；运行活动合同见 `docs/secretary-activity-contract.md`。
 ## 3. 当前目标与范围
 
-- 当前任务：准备 `v1.6.3+17` Android 预览版。D 盘预检、候选构建与 API 35 AVD 安装通过；指令页红屏和状态栏重叠已修复。Android integration test 在 API 35 两次通过页面打开、保存、Vault 读回与撤销，冷启动读回也通过。CI #59 通过旧清单；CI #60（`86a67e1`）Analyze/格式通过，新增三项回归中两项暴露旧问题：撤销过期后清理账本导致返回冲突而非“过期拒绝”，以及测试直接写入只读 MemoryVault map。已修复两处，并增加 Agent 工具实际调用写入 Vault 的服务回归，待新提交 CI 复验。功能矩阵、覆盖升级、标签与发布尚未完成。D 盘升级 AVD 已安装并创建旧版合成知识数据。
+- 当前任务：`v1.6.3+17` Android 预览版发布与 D 盘 API 35 模拟器验收已完成。覆盖升级保留应用安装身份；旧全局知识在明确确认后移入本地 ZIP 并从活动数据清理，manifest 源哈希逐项吻合；完全体 Agent 指令编辑页保持空白。Release `44002331180`、Flutter CI `44002023767` 均成功，公开 APK 与草稿核验哈希一致。验证记录见 `test-results/phone-release-v1.6.3/VALIDATION.md`。
 - `v1.6.2+16` 候选、main CI、标签发布、公开包覆盖升级和发布后收尾提交均完成。
 - 本轮范围：设置页管理本机 `AGENTS.md`，每轮请求独立加载；完全体模式下当前无附件用户请求可驱动版本受控修改；旧全局知识经用户确认、ZIP 与源哈希校验后归档清理。合同见 [ADR 0028](docs/adr/0028-secretary-instructions-file.md) 和[指令文件合同](docs/agent-instructions-contract.md)。
 
@@ -209,10 +211,8 @@
 
 ## 7. 风险、阻塞与下一步
 
-- E 盘发生卷/物理盘 I/O 事件；本轮已将 SDK、API 35 AVD、运行时临时目录、Gradle 缓存和原始证据放到 D 盘。D 盘当前剩余约 3.4 GB；后续重跑需先检查空间，保持不把模拟器或证据移回 C 盘。
-- 本轮新增指令存储、旧知识归档、同步拒绝和设置代际回归用例已通过静态分析但未运行。`flutter test` 的 `pdfium_dart` Windows hook 需要缺失的 Visual C++ 组件；应在具备该组件的 Windows 主机或 CI 上运行[验证记录中的定向命令](test-results/agent-instructions-20261117/VALIDATION.md)。
-- 新增授权触发、工具参数 schema、编辑项不变量、归档关联/候选快照和默认退役门禁回归用例同样未运行；须在具备该工具链的 Windows 主机或 CI 上补跑。
-- 仓库现有脚本会在定向测试时临时创建 `.dart_tool/aitext_skip_windows_pdfium_gate` 并随后清理。本轮同用途命令被执行器自动审批拒绝（`blocked by policy`），因此未使用该路径。
+- `v1.6.3+17` 发布验收限于 Android API 35 模拟器；荣耀 90 真机、API 24–30 固定行、Android 平板及 Windows UI 本轮未覆盖。
+- Windows 本地 Flutter 测试 runner 仍受缺少 `Microsoft.VisualStudio.Component.VC.Tools.x86.x64` 阻塞；本次相关定向回归由 GitHub Flutter CI #61 实际执行并通过。后续 Windows 本机复验需补装该工具链。
 
 
 ### 风险与边界
@@ -260,11 +260,18 @@
 
 ### 下一步
 
-1. 在具备 Visual C++ 工具链的 Windows 主机或 CI 上运行长期指令、设置、归档、Agent 与同步定向回归；当前提交已完成，补跑结果后更新交接。
-2. API 24–30 和荣耀 90 有设备时补验固定行、厂商桌面滑动；当前继续标未覆盖。
-3. 平板/Windows、云盘同步和到点提醒继续单独验收。
+1. API 24–30 和荣耀 90 有设备时补验 Android 兼容固定行及厂商桌面滑动。
+2. 平板与 Windows UI 单独验收；云盘同步和到点提醒按各自产品计划推进。
 
 ## 8. 变更记录
+
+### 2026-11-17 / 发布 v1.6.3 Android 手机预览版并完成升级验收
+
+- GitHub main CI #61（`44002023767`，`132b058`）通过格式、Analyze 和定向发布回归；Android Release #`44002331180` 完整成功，包含 APK 构建、签名/API/版本核验与 Release 资产发布。草稿经模拟器验收后公开为 prerelease `phone-v1.6.3`。
+- 公开 APK SHA-256 为 `db4ba5da0f10113b43ab5b0235a41c4484a63ba152c2d41d8570ed1e1d0005e6`，与签名草稿、GitHub `SHA256SUMS.txt` 一致；APK 为 1.6.3+17、API 24/36、非 debuggable、v2 签名，长期证书 SHA-256 `51b5e2f3f44ce9374cb680a0173c6498a4e13c718c602a355a8b6a50523f4816`。
+- D 盘 API 35 升级 AVD 从旧版创建合成 `V163_legacy` 事实，覆盖安装后版本为 1.6.3 且 `firstInstallTime` 未变；归档预览为 1 条旧记录/1 条待处理/0 冲突。用户确认归档后计数均为 0；新 AGENTS.md 编辑器为空，未自动导入旧知识。
+- 设备导出的 `legacy-global-knowledge.zip` 可解包，含旧知识 Markdown、`candidates.json` 和 `manifest.json`；两条源哈希均与 ZIP 内实算 SHA-256 一致。ZIP 与截图、UI 树保存在 `D:\DevTools\Android\aitext-validation\phone-v1.6.3\upgrade`，公开资产复核副本在其 `public-release` 子目录。
+- 详细命令、结果和未覆盖范围见 `test-results/phone-release-v1.6.3/VALIDATION.md`。D 盘 AVD/SDK/构建与验收产物全程未移至 C 盘；API 24–30、真机、平板和 Windows UI 未覆盖。
 
 ### 2026-11-17 / 启动 v1.6.3 Android 模拟器验收与预览发布
 
