@@ -406,6 +406,10 @@ class _RecordingIndexDatabase implements IndexDatabase {
   ) => _delegate.upsertGlobalKnowledgeCandidate(candidate);
 
   @override
+  Future<void> removeGlobalKnowledgeCandidate(String id) =>
+      _delegate.removeGlobalKnowledgeCandidate(id);
+
+  @override
   Future<SyncConflictRecord?> findConflict(String resultId) =>
       _delegate.findConflict(resultId);
 
