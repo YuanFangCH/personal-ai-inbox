@@ -270,7 +270,11 @@ class AgentInstructionsStore {
     final last = await _readJson(_latest);
     final expiry = last?['undo_until'] as String?;
     if (expiry != null && !_clock().isBefore(DateTime.parse(expiry))) {
-      await _vault.delete(_latest);
+      await _writeJson(_latest, {
+        'id': last!['id'],
+        'after_revision': last['after_revision'],
+        'undo_until': expiry,
+      });
     }
   }
 

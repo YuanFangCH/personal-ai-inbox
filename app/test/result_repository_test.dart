@@ -309,7 +309,7 @@ void main() {
         ),
       );
       const conflictPath = 'vault/conflicts/legacy-target.md';
-      vault.files[conflictPath] = 'conflict references legacy_target_only';
+      await vault.write(conflictPath, 'conflict references legacy_target_only');
       await library.refresh();
       final retirement = LegacyGlobalKnowledgeRetirement(vault, library);
       final preview = await retirement.preview();

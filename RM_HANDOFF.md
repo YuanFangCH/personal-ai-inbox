@@ -24,7 +24,7 @@
 当前公开下载为 `https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.1`，验证入口为 `test-results/phone-release-v1.6.1/VALIDATION.md`，运行活动合同见 `docs/secretary-activity-contract.md`，发行说明见 `docs/releases/v1.6.1.md`。
 ## 3. 当前目标与范围
 
-- 当前任务：准备 `v1.6.3+17` Android 预览版。D 盘预检、候选构建与 API 35 AVD 安装通过；指令页红屏和状态栏重叠已修复。Android integration test 在 API 35 两次通过页面打开、保存、Vault 读回与撤销，冷启动读回也通过。CI #59 对 `6dbf781` 的 Analyze 与当时配置的回归测试通过。现将指令 Store、旧知识归档和同步隔离三项回归纳入 Flutter CI 与 Android Release 工作流，待提交后运行更新后的 CI。功能矩阵、覆盖升级、标签与发布尚未完成。D 盘升级 AVD 已安装并创建旧版合成知识数据。
+- 当前任务：准备 `v1.6.3+17` Android 预览版。D 盘预检、候选构建与 API 35 AVD 安装通过；指令页红屏和状态栏重叠已修复。Android integration test 在 API 35 两次通过页面打开、保存、Vault 读回与撤销，冷启动读回也通过。CI #59 通过旧清单；CI #60（`86a67e1`）Analyze/格式通过，新增三项回归中两项暴露旧问题：撤销过期后清理账本导致返回冲突而非“过期拒绝”，以及测试直接写入只读 MemoryVault map。已修复两处，并增加 Agent 工具实际调用写入 Vault 的服务回归，待新提交 CI 复验。功能矩阵、覆盖升级、标签与发布尚未完成。D 盘升级 AVD 已安装并创建旧版合成知识数据。
 - `v1.6.2+16` 候选、main CI、标签发布、公开包覆盖升级和发布后收尾提交均完成。
 - 本轮范围：设置页管理本机 `AGENTS.md`，每轮请求独立加载；完全体模式下当前无附件用户请求可驱动版本受控修改；旧全局知识经用户确认、ZIP 与源哈希校验后归档清理。合同见 [ADR 0028](docs/adr/0028-secretary-instructions-file.md) 和[指令文件合同](docs/agent-instructions-contract.md)。
 
@@ -279,6 +279,8 @@
 - 已下载并核验公开 v1.6.2 APK：SHA-256 `2488f15d442cd4cd0661bf55ce428167a9f3992b412fd59074c29ca620f59863`、签名证书和 v2 签名通过；隔离 D 盘 API 35 升级 AVD 已安装旧版。覆盖升级尚未开始。
 - Flutter CI 与 Android Release 回归清单现在加入 `agent_instructions_store_test.dart`、`result_repository_test.dart`、`sync_engine_test.dart`，确保本次指令文件、旧知识归档和同步隔离代码进入自动发布验证。
 - CI #59（`6dbf781`）的 `analyze-and-test` 已成功；新增三项回归文件的工作流调整尚未进入该运行，须由下一次 main CI 复验。
+- `chat_service_agent_test.dart` 新增授权工具调用后写入 `AGENTS.md` Vault 的回归；D 盘 Flutter 3.47.6 定向格式化与 analyze 通过，实际测试等待推送后的 Linux CI 执行。
+- CI #60（`44001010607`）的测试阶段暴露 `agent_instructions_store_test.dart` 过期撤销状态与 `result_repository_test.dart` 只读 map 写入两处失败；实现现保留不含正文的过期撤销标记，让调用返回 `rejected/undo_expired`，回归夹具改用 `MemoryVaultStore.write()`。修复后尚待 CI 重跑。
 
 ### 2026-11-17 / 补齐本机指令与退役合同审计项
 

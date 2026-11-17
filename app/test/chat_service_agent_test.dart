@@ -272,6 +272,69 @@ void main() {
   );
 
   test(
+    'authorized instruction tool call writes AGENTS.md to the Vault',
+    () async {
+      final fixture = await _AgentFixture.create();
+      final vault = MemoryVaultStore();
+      final settings = FakeSettingsService(
+        modelKey: 'test-key',
+        fullAgentMode: true,
+      );
+      var requests = 0;
+      final service = ChatService(
+        instructionsStore: AgentInstructionsStore(vault),
+        settings: settings,
+        repository: fixture.chats,
+        results: fixture.results,
+        tables: fixture.tables,
+        modelClient: ModelClient(
+          client: MockClient.streaming((_, body) async {
+            await body.bytesToString();
+            requests++;
+            if (requests == 1) {
+              return _toolCallResponse(
+                id: 'edit-instructions',
+                name: 'agent_instructions_edit',
+                arguments: {
+                  'expected_revision': 'missing',
+                  'edits': [
+                    {'old_text': null, 'new_text': '默认使用简体中文。'},
+                  ],
+                },
+              );
+            }
+            return _textResponse('已更新长期指令。');
+          }),
+        ),
+      );
+      addTearDown(() => fixture.close(service));
+
+      final conversation = (await fixture.chats.findConversation(
+        fixture.conversationId,
+      ))!;
+      await fixture.chats.saveMessage(
+        ChatMessage(
+          id: 'msg_agent_instructions_write',
+          conversationId: fixture.conversationId,
+          role: ChatRole.user,
+          content: '请修改 AGENTS.md：默认使用简体中文。',
+          status: ChatMessageStatus.complete,
+          createdAt: conversation.createdAt.add(const Duration(seconds: 1)),
+          updatedAt: conversation.updatedAt.add(const Duration(seconds: 1)),
+        ),
+      );
+      final deltas = await (await service.streamReply(
+        conversationId: fixture.conversationId,
+        userMessageId: 'msg_agent_instructions_write',
+      )).toList();
+
+      expect(requests, 2);
+      expect(vault.files['AGENTS.md'], '默认使用简体中文。');
+      expect(deltas.map((delta) => delta.content).join(), '已更新长期指令。');
+    },
+  );
+
+  test(
     'table structure instructions follow each effective action policy',
     () async {
       final fixture = await _AgentFixture.create();
