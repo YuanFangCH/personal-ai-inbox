@@ -53,7 +53,7 @@ jobs:
           }
           $buildNumber = $Matches.build
 
-          if ($tagVersion -eq '1.6.3') {
+          if ($tagVersion -in @('1.6.3', '1.6.4')) {
               'RELEASE_AS_DRAFT=true' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           } else {
               'RELEASE_AS_DRAFT=false' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
