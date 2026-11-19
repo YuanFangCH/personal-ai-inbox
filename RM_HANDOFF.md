@@ -25,10 +25,10 @@
 
 2026-11-10 `v1.6.0+14` Android 手机预览版已发布到 GitHub：API 35 模拟器完成手机适用秘书矩阵 50/50、921 秒长测与 47 条写入/读回，并完成多表桌面小组件的尺寸、滚动、深色、多实例、独立绑定、归档恢复、冷进程点击和 `v1.5.1+13` 同签名覆盖升级。荣耀 90 真机与 API 24–30 固定行仍明确未覆盖。
 
-当前公开下载为 [phone-v1.6.3](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.3)，验证入口为 `test-results/phone-release-v1.6.3/VALIDATION.md`；运行活动合同见 `docs/secretary-activity-contract.md`。
+当前公开下载为 [phone-v1.6.4](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.4)，验证入口为 `test-results/phone-release-v1.6.4/VALIDATION.md`；运行活动合同见 `docs/secretary-activity-contract.md`。
 ## 3. 当前目标与范围
 
-- 当前任务：实现首页表模块与 Android 桌面小组件的业务时间排序、完成待办自动消除和传统单列时间轴。Dart 定向测试、8 个目标静态分析、Android Debug APK 构建和 APK Manifest 检查已通过；设备端桌面视觉与真实启动器交互尚未验证。
+- 当前任务：实现首页表模块与 Android 桌面小组件的业务时间排序、完成待办自动消除和传统单列时间轴。Dart 定向测试、8 个目标静态分析、Android Debug APK 构建和 APK Manifest 检查已通过；API 35 已验证启动器绑定、默认仅标题、点击打开编辑及完成后自动移除。滚动、详细模式和真机仍待验证。
 - 本轮范围：首页表模块、共享可见条目规则、小组件投影/配置 UI、Android `RemoteViewsService` 列表、点击目标、合同/ADR 和交接。`v1.6.3+17` 发布与旧全局知识归档保持已完成状态。
 
 - Android 手机、Android 平板和 Windows 作为独立客户端运行。
@@ -268,6 +268,10 @@
 2. 平板与 Windows UI 单独验收；云盘同步和到点提醒按各自产品计划推进。
 
 ## 8. 变更记录
+
+### 2026-11-19 / 公开 v1.6.4 Android 手机预览版
+
+- main CI 44503312733 与 Android Release 44503312635 成功。公开 APK 复核通过项目长期证书、v2 签名、版本和 SHA-256；API 35 覆盖升级与桌面待办交互冒烟通过。详见 `test-results/phone-release-v1.6.4/VALIDATION.md`。
 
 ### 2026-11-19 / 准备 v1.6.4 Android 手机预览版
 

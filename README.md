@@ -6,15 +6,9 @@
 
 ## 下载与安装
 
-首个预发布版本从 [GitHub Releases](https://github.com/YuanFangCH/personal-ai-inbox/releases) 下载：
+最新 Android 手机预览版为 [v1.6.4+18](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.4)，适用于 Android 7.0 及以上。发布页提供通用 APK 与 `SHA256SUMS.txt`。APK 使用项目长期签名，已验证从 v1.6.3 覆盖升级。详见[发行说明](docs/releases/v1.6.4.md)和[验证记录](test-results/phone-release-v1.6.4/VALIDATION.md)。
 
-- 本次 `v1.6.2`：Android 7.0 及以上安装通用 APK，不提供新的 Windows 资产。
-- Windows 11 x64 继续使用上一版全平台预发布中的安装包或便携 ZIP。
-- 发布页同时提供 `SHA256SUMS.txt`，下载后应校验文件哈希。
-
-Android 手机 `v1.6.2` 使用 `phone-v1.6.2` 标签，只提供通用 APK 与 `SHA256SUMS.txt`：[GitHub Release](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.2)。本版改进首页和小组件时间排序、跨表时间轴、简洁/详细显示、桌面隐私与 StackView 上下翻页；`v1.6.1` 继续作为上一版 Android 手机预发布保留，`v1.2.1` 是上一版全平台预发布。升级前请完整备份应用数据与 Markdown 主库，并先阅读[发行说明](docs/releases/v1.6.2.md)；真实资料迁移需要在应用内确认。v1.1.3 及之前的包无法保证与固定签名版本直接覆盖安装。
-
-`v1.6.3+17` Android 手机预览版已发布：[phone-v1.6.3](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.3)。通用 APK SHA-256 为 `db4ba5da0f10113b43ab5b0235a41c4484a63ba152c2d41d8570ed1e1d0005e6`；GitHub Release CI、签名/版本核验、D 盘 API 35 覆盖升级、旧全局知识归档及 ZIP 哈希验证通过。详细结果见 [v1.6.3 验证记录](test-results/phone-release-v1.6.3/VALIDATION.md)。
+Windows 11 x64 继续使用 [v1.2.1 全平台预览版](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/v1.2.1)的安装包或便携 ZIP。
 
 ## 核心能力
 
