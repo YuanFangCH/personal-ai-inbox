@@ -271,7 +271,7 @@
 
 ### 2026-11-19 / 公开 v1.6.4 Android 手机预览版
 
-- main CI 44503312733 与 Android Release 44503312635 成功。公开 APK 复核通过项目长期证书、v2 签名、版本和 SHA-256；API 35 覆盖升级与桌面待办交互冒烟通过。详见 `test-results/phone-release-v1.6.4/VALIDATION.md`。
+- main CI 44503312733 与 Android Release 44503312635 成功。公开 APK 复核通过项目长期证书、v2 签名、版本和 SHA-256；API 35 覆盖升级与桌面待办交互冒烟通过。签名指纹、公开资产哈希及设备覆盖范围记录于 `test-results/phone-release-v1.6.4/VALIDATION.md`。
 
 ### 2026-11-19 / 准备 v1.6.4 Android 手机预览版
 
