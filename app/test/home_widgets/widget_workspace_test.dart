@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:personal_ai_inbox/core/table_models.dart';
 import 'package:personal_ai_inbox/data/memory_index_database.dart';
 import 'package:personal_ai_inbox/data/memory_vault_store.dart';
 import 'package:personal_ai_inbox/data/table_repository.dart';
@@ -323,6 +324,49 @@ void main() {
       expect(published, hasLength(before + 1));
     },
   );
+
+  test('republishes the widget without a completed todo', () async {
+    final table = await repository.createTable(title: '待办表');
+    final todo = await repository.createEntry(
+      TableEntryDocument(
+        id: 'todo_widget_completion',
+        tableId: table.id,
+        type: TableContentType.todo,
+        title: '完成后自动消失',
+        revision: 1,
+        createdAt: DateTime(2026, 11, 19, 8),
+        updatedAt: DateTime(2026, 11, 19, 8),
+        body: '',
+        due: DateTime(2026, 11, 19, 18),
+      ),
+    );
+    await tables.refresh();
+    await workspace.initialize();
+    await workspace.applyCardCommand(
+      CardCommand.create(CardSpec(title: '待办', includeOpenTodos: true)),
+      operationId: 'op_todo_completion',
+      authorize: () async => true,
+    );
+
+    var envelope = WidgetSnapshotEnvelope.parseJson(published.last);
+    expect(
+      envelope.cards.single.rows.map((row) => row.entryId),
+      contains(todo.id),
+    );
+
+    await repository.updateEntry(
+      todo.copyWith(done: true),
+      expectedRevision: todo.revision,
+    );
+    await tables.refresh();
+    await Future<void>.delayed(const Duration(milliseconds: 360));
+
+    envelope = WidgetSnapshotEnvelope.parseJson(published.last);
+    expect(
+      envelope.cards.single.rows.map((row) => row.entryId),
+      isNot(contains(todo.id)),
+    );
+  });
 
   test('serializes overlapping refresh requests', () async {
     final firstStarted = Completer<void>();

@@ -101,6 +101,70 @@ void main() {
     expect(row.detail, contains('课程: 数学'));
   });
 
+  test(
+    'legacy any-state sections hide completed todos and keep time order',
+    () {
+      final table = _table(id: 'tb_work', title: '作业');
+      final entries = [
+        _entry(
+          id: 'done_early',
+          tableId: table.id,
+          type: TableContentType.todo,
+          title: '已完成较早',
+          due: DateTime(2026, 11, 10, 8),
+          done: true,
+        ),
+        _entry(
+          id: 'open_later',
+          tableId: table.id,
+          type: TableContentType.todo,
+          title: '未完成较晚',
+          due: DateTime(2026, 11, 10, 11),
+        ),
+        _entry(
+          id: 'schedule_middle',
+          tableId: table.id,
+          type: TableContentType.schedule,
+          title: '中间安排',
+          start: DateTime(2026, 11, 10, 9),
+        ),
+        _entry(
+          id: 'note_last',
+          tableId: table.id,
+          type: TableContentType.note,
+          title: '无时间笔记',
+        ),
+      ];
+      final projection = projectCardDetails(
+        CardDefinition(
+          cardId: 'legacy',
+          revision: 1,
+          archived: false,
+          spec: CardSpec(
+            title: '旧配置',
+            sections: [
+              SectionSpec(
+                tableId: table.id,
+                todoState: WidgetTodoState.any,
+                sort: const WidgetSort.updatedAtDescending(),
+                limit: 10,
+              ),
+            ],
+          ),
+        ),
+        source: _source([table], entries),
+        localNow: now,
+      );
+
+      expect(projection.matchingCount, 3);
+      expect(projection.snapshot.rows.map((row) => row.entryId), [
+        'schedule_middle',
+        'open_later',
+        'note_last',
+      ]);
+    },
+  );
+
   test('projectCard enforces hidden and titles visibility itself', () {
     final table = _table(id: 'tb_work', title: '作业');
     final entry = _entry(

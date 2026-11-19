@@ -336,6 +336,98 @@ void main() {
       expect(runtime.tables.findTable(second.id), isNotNull);
     },
   );
+
+  testWidgets(
+    'home table modules sort by business time and remove completed todos',
+    (tester) async {
+      final runtime = await AppRuntime.bootstrap(
+        vaultOverride: MemoryVaultStore(),
+        indexOverride: MemoryIndexDatabase(),
+        settingsOverride: FakeSettingsService(
+          deviceId: 'home-table-business-time',
+        ),
+      );
+      addTearDown(() => _disposeRuntime(tester, runtime));
+      final table = await runtime.tables.createTable(title: '时间表');
+      final now = DateTime.now();
+      await runtime.tables.createEntry(
+        _entry(
+          id: 'home_card_note',
+          tableId: table.id,
+          type: TableContentType.note,
+          title: '无时间笔记',
+          now: now,
+        ),
+      );
+      final late = await runtime.tables.createEntry(
+        _entry(
+          id: 'home_card_late',
+          tableId: table.id,
+          type: TableContentType.todo,
+          title: '较晚待办',
+          now: now,
+          due: now.add(const Duration(days: 2)),
+        ),
+      );
+      await runtime.tables.createEntry(
+        _entry(
+          id: 'home_card_early',
+          tableId: table.id,
+          type: TableContentType.schedule,
+          title: '较早安排',
+          now: now,
+          start: now.add(const Duration(days: 1)),
+        ),
+      );
+      await runtime.tables.createEntry(
+        _entry(
+          id: 'home_card_done',
+          tableId: table.id,
+          type: TableContentType.todo,
+          title: '已完成待办',
+          now: now,
+          done: true,
+        ),
+      );
+      await runtime.preferences.update(homeTableOrder: [table.id]);
+
+      await tester.pumpWidget(
+        PersonalAiInboxApp(
+          runtime: runtime,
+          backgroundAgent: _NoopBackgroundPort(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final card = find.byKey(ValueKey('home_table_card_${table.id}'));
+      await tester.ensureVisible(card);
+      final earlyY = tester
+          .getTopLeft(find.descendant(of: card, matching: find.text('较早安排')))
+          .dy;
+      final lateY = tester
+          .getTopLeft(find.descendant(of: card, matching: find.text('较晚待办')))
+          .dy;
+      final noteY = tester
+          .getTopLeft(find.descendant(of: card, matching: find.text('无时间笔记')))
+          .dy;
+      expect(earlyY, lessThan(lateY));
+      expect(lateY, lessThan(noteY));
+      expect(
+        find.descendant(of: card, matching: find.text('已完成待办')),
+        findsNothing,
+      );
+
+      await runtime.tables.updateEntry(
+        late.copyWith(done: true),
+        expectedRevision: late.revision,
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(of: card, matching: find.text('较晚待办')),
+        findsNothing,
+      );
+    },
+  );
 }
 
 TableEntryDocument _entry({
@@ -347,6 +439,7 @@ TableEntryDocument _entry({
   DateTime? due,
   DateTime? start,
   String body = '',
+  bool done = false,
 }) => TableEntryDocument(
   id: id,
   type: type,
@@ -358,6 +451,7 @@ TableEntryDocument _entry({
   body: body,
   due: due,
   start: start,
+  done: done,
 );
 
 class _FailingWriteVaultStore extends MemoryVaultStore {

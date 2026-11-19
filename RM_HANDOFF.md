@@ -7,13 +7,15 @@
 | 字段 | 当前值 |
 |---|---|
 | 项目名称 | 懒狗秘书 |
-| 最后更新时间 | 2026-11-17 |
+| 最后更新时间 | 2026-11-19 |
 | 时区 | Asia/Singapore |
 | 最后修改 Agent | Codex |
-| 当前阶段 | `v1.6.3+17` Android 手机预览版已公开发布；D 盘 API 35 覆盖升级、旧全局知识归档和 ZIP 校验通过 |
+| 当前阶段 | 首页/桌面时间轴 v2 已实现并通过 Dart 定向测试、目标分析与 Android Debug 构建；Android 启动器视觉验收待补 |
 | 总体状态 | Android、Windows 与 Web 共用 Flutter 客户端。本地 Markdown 为成果正文权威副本，SQLite 保存索引与操作状态。Android 发布包自 v1.1.4 起使用固定长期签名；Windows 安装包未做代码签名。v1.6.0 本次只发布 Android；OneDrive 双向同步、百度网盘归档和到点提醒尚未接入 |
 
 ## 2. 一句话交接
+
+2026-11-19 首页表模块与桌面小组件已改为同一业务时间轴：完成待办自动移除，无时间条目置后；Android 小组件改为单一可滚动 `ListView`，默认只显示标题，详细模式时间放在标题下一行，不再使用 `StackView` 页和内层小卡。合同见 `docs/home-widget-contract.md` 与 [ADR 0029](docs/adr/0029-flat-scrollable-widget-timeline.md)，验证见 `test-results/home-flat-timeline-20261119/VALIDATION.md`。
 
 2026-11-17 `phone-v1.6.3` 已公开发布：[phone-v1.6.3](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.3)。Android Release `44002331180` 与 main CI `44002023767` success；公开 APK SHA-256 `db4ba5da0f10113b43ab5b0235a41c4484a63ba152c2d41d8570ed1e1d0005e6`。D 盘 API 35 AVD 完成旧版覆盖升级、旧全局知识归档与 ZIP 源哈希校验；新 AGENTS.md 保持空白。记录：`test-results/phone-release-v1.6.3/VALIDATION.md`。
 
@@ -26,9 +28,8 @@
 当前公开下载为 [phone-v1.6.3](https://github.com/YuanFangCH/personal-ai-inbox/releases/tag/phone-v1.6.3)，验证入口为 `test-results/phone-release-v1.6.3/VALIDATION.md`；运行活动合同见 `docs/secretary-activity-contract.md`。
 ## 3. 当前目标与范围
 
-- 当前任务：`v1.6.3+17` Android 预览版发布与 D 盘 API 35 模拟器验收已完成。覆盖升级保留应用安装身份；旧全局知识在明确确认后移入本地 ZIP 并从活动数据清理，manifest 源哈希逐项吻合；完全体 Agent 指令编辑页保持空白。Release `44002331180`、Flutter CI `44002023767` 均成功，公开 APK 与草稿核验哈希一致。验证记录见 `test-results/phone-release-v1.6.3/VALIDATION.md`。
-- `v1.6.2+16` 候选、main CI、标签发布、公开包覆盖升级和发布后收尾提交均完成。
-- 本轮范围：设置页管理本机 `AGENTS.md`，每轮请求独立加载；完全体模式下当前无附件用户请求可驱动版本受控修改；旧全局知识经用户确认、ZIP 与源哈希校验后归档清理。合同见 [ADR 0028](docs/adr/0028-secretary-instructions-file.md) 和[指令文件合同](docs/agent-instructions-contract.md)。
+- 当前任务：实现首页表模块与 Android 桌面小组件的业务时间排序、完成待办自动消除和传统单列时间轴。Dart 定向测试、8 个目标静态分析、Android Debug APK 构建和 APK Manifest 检查已通过；设备端桌面视觉与真实启动器交互尚未验证。
+- 本轮范围：首页表模块、共享可见条目规则、小组件投影/配置 UI、Android `RemoteViewsService` 列表、点击目标、合同/ADR 和交接。`v1.6.3+17` 发布与旧全局知识归档保持已完成状态。
 
 - Android 手机、Android 平板和 Windows 作为独立客户端运行。
 - 每个成果保存为一个 Markdown 文件；本地索引由 SQLite 管理。
@@ -79,10 +80,12 @@
 - 秘书导航更新：秘书页在 AppShell 中常驻；主页面切换保留会话、未发送草稿、已选附件、思考选项和阅读位置，回复生成不中断。手机保留底部导航，宽屏用统一应用侧栏；新建/历史/分享定位不增加对话路由。全局约定见 ADR 0022。
 - 2026-11-09 完全体模式采用设置页设备级覆盖层：默认关闭，开启后统一覆盖全部现有和新会话为应用内完全权限，关闭后恢复会话原策略；不批量改写持久授权。取消应用层累计上下文、检索、附件和瞬时故障重试上限，但保留模型硬限额、磁盘、网络、系统生命周期、幂等、CAS、写日志和不确定副作用核对。会话/附件删除保留 30 天；单条消息、推理内容和工具回执不可改写。见 [ADR 0026](docs/adr/0026-device-full-agent-mode.md)。
 - 2026-11-10 Android 多表桌面小组件采用逻辑卡片、Flutter 快照和原生实例三层模型；API 31+ 使用标准集合滚动并采用可变广播模板处理行点击，固定尺寸使用直接 RemoteViews。日期只在 App 活跃时重算，配置和快照留在本机 `noBackupFilesDir`。见 [ADR 0027](docs/adr/0027-android-table-widget-projection.md)。
-- 2026-11-12 小组件时间轴从表和快捷来源合并去重，按待办截止/日程开始/事件发生时间升序，无时间最后；快捷来源需要全表读取授权。卡片提供仅标题/标题加时间，旧 fields 可见性保留到人工切换。API31+ StackView 上下滑，API24–30 固定行点按翻页。
+- 2026-11-12 小组件时间轴从表和快捷来源合并去重，按待办截止/日程开始/事件发生时间升序，无时间最后；快捷来源需要全表读取授权。卡片提供仅标题/标题加时间，旧 fields 可见性保留到人工切换。
+- 2026-11-19 首页表模块和桌面投影统一隐藏完成待办。Android 原生渲染改由 `RemoteViewsService` 驱动的单一 `ListView` 承担，放弃 `StackView` 帧页、页号和翻页按钮；详细模式只把业务时间作为标题下一行小字。见 [ADR 0029](docs/adr/0029-flat-scrollable-widget-timeline.md)。
 
 ## 6. 当前进度与验证
 
+- 2026-11-19 首页/桌面时间轴 v2：共享显示列表过滤完成待办，首页表卡改按业务时间；Dart 投影固定业务时间顺序，旧配置的 `todo_state=any/done` 和更新时间排序也不会恢复完成项。Android 小组件改为 `RemoteViewsService` + `ListView`，删除 `StackView`、页索引、翻页 receiver/目标、固定行/紧凑/宽行资源和内层卡片表面。定向 Dart 33/33、9 个目标 analyze 0 issue、`git diff --check` 通过；Android arm64 Debug APK 构建通过，APK Manifest 含新服务且不再含旧翻页 receiver。详见 `test-results/home-flat-timeline-20261119/VALIDATION.md`。
 - 2026-11-17 本机长期秘书指令与旧全局知识退役：设置页可编辑/导出/撤销 Vault 根 `AGENTS.md`；ChatService 每轮注入独立 system 消息；完全体写入要求当前无附件用户消息直接请求、revision 匹配且授权代际未变化，并通过 DevicePreferences 串行化授权撤销。删除旧知识管理页与候选卡，关闭旧 Agent 工具、自动审批和同步上传/接收；设置页确认后生成并校验 ZIP，再清理活动旧条目、候选和冲突副本。定向 analyze 目标无诊断，格式和 `git diff --check` 通过；Flutter 测试因 Windows 缺少 `Microsoft.VisualStudio.Component.VC.Tools.x86.x64` 在 PDFium hook 阶段中止，未运行到测试代码。随后尝试使用仓库脚本采用的临时 marker 运行非 PDFium 定向测试，但自动审批拒绝了创建 marker 并运行测试的命令，命令未执行。详见[验证记录](test-results/agent-instructions-20261117/VALIDATION.md)、[ADR 0028](docs/adr/0028-secretary-instructions-file.md)和[代码合同](docs/agent-instructions-contract.md)。
 
 - 2026-11-16 `v1.6.2+16` 最终候选通过：E 盘再次出现可复现 I/O 错误后，D 盘 256 MiB 读写预检、API 35 AVD、SDK/NDK/镜像和 Gradle 独立路径通过。定向用例 38/38；最终 Candidate session `91805fc9-169e-49ec-be09-6756b31e9e5d` 的 21 个机器/设备检查全部 passed。APK SHA-256 为 `0d11c2805742e77eb4686cd1bb1b3f1b7abdaf4a789e4a339516cb5f12182fb1`。详见 `test-results/phone-release-v1.6.2/VALIDATION.md`。
@@ -211,6 +214,7 @@
 
 ## 7. 风险、阻塞与下一步
 
+- 2026-11-19 本轮已完成 Android Debug 编译、Manifest 和 Dart 行为验证，但未在 API 24/35 启动器实际固定小组件并截图；`RemoteViewsService` 绑定、滚动、点击和大字体仍需要下一轮设备 UI 验收。Windows 本机 Flutter 测试继续依赖仓库已有的 PDFium 跳过标记绕开缺少 Visual C++ 工具链的 Hook；标记已在本轮测试后删除，未进入源码。
 - `v1.6.3+17` 发布验收限于 Android API 35 模拟器；荣耀 90 真机、API 24–30 固定行、Android 平板及 Windows UI 本轮未覆盖。
 - Windows 本地 Flutter 测试 runner 仍受缺少 `Microsoft.VisualStudio.Component.VC.Tools.x86.x64` 阻塞；本次相关定向回归由 GitHub Flutter CI #61 实际执行并通过。后续 Windows 本机复验需补装该工具链。
 
@@ -260,10 +264,19 @@
 
 ### 下一步
 
-1. API 24–30 和荣耀 90 有设备时补验 Android 兼容固定行及厂商桌面滑动。
+1. 在 API 35 和至少一个 API 24–30 AVD 固定新旧小组件，验收单一列表滚动、标题/时间两行、完成待办自动消失、大字体与冷进程点击。
 2. 平板与 Windows UI 单独验收；云盘同步和到点提醒按各自产品计划推进。
 
 ## 8. 变更记录
+
+### 2026-11-19 / 首页与桌面统一业务时间轴并改为单一滚动列表
+
+- 新增 `visibleTableEntriesByBusinessTime`，首页表卡和桌面投影统一过滤完成待办、按业务时间升序并在无时间时按更新时间倒序。
+- `SectionSpec` 新默认值为 `todo_state=open`、`sort=business_time/asc`；旧 `any/done/updated_at` 配置仍可解析，但投影始终排除完成待办并保持统一时间顺序。
+- Android 小组件删除 `StackView`、`HomeWidgetPager`、页索引、翻页 receiver/目标和固定行/紧凑/宽行/内层 section 资源，改为 `HomeWidgetListService` 驱动的单一 `ListView`；标题可见，详细模式时间固定为下一行小字。
+- `HomeWidgetProvider` 和 Renderer 在更新后通知集合数据变化。表格完成状态提交会经 `TableLibrary -> WidgetWorkspace` 刷新快照，无需重开 App。
+- 合同更新为[桌面小组件 v2](docs/home-widget-contract.md)，新增 [ADR 0029](docs/adr/0029-flat-scrollable-widget-timeline.md)，并标注 ADR 0027 和 v1.6.2 StackView 门禁仅保留历史。
+- 验证：Dart 定向 33/33、9 个目标 analyze 0 issue、`git diff --check` 通过；Android arm64 Debug APK 构建成功，大小 203,460,625 字节，SHA-256 `987F40F5A56B8F8AB29D90EA5E4CD494881391CAD6C7F4E911954176E5D1929B`；APK Manifest 含 `HomeWidgetListService`、不再含 `HomeWidgetClickReceiver`；`:app:lintAnalyzeDebug --offline` 通过。全模块 `lintDebug` 因插件测试依赖下载 TLS 握手终止而未完成；未执行 API 24/35 启动器视觉验收。详见 `test-results/home-flat-timeline-20261119/VALIDATION.md`。
 
 ### 2026-11-17 / 发布 v1.6.3 Android 手机预览版并完成升级验收
 

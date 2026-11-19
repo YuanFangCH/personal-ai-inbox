@@ -84,11 +84,11 @@ WidgetProjection projectCardDetails(
         .where((field) => !invalidFields.contains(field))
         .toList(growable: false);
 
-    final matching =
-        (entriesByTable[table.id] ?? const <TableEntryDocument>[])
-            .where((entry) => _matchesSection(entry, section, localNow))
-            .toList(growable: false)
-          ..sort(compareTableEntriesByBusinessTime);
+    final matching = visibleTableEntriesByBusinessTime(
+      (entriesByTable[table.id] ?? const <TableEntryDocument>[]).where(
+        (entry) => _matchesSection(entry, section, localNow),
+      ),
+    );
 
     for (final entry in matching.take(section.limit)) {
       selectedEntries.putIfAbsent(
@@ -294,6 +294,7 @@ bool _matchesSection(
   DateTime localNow,
 ) {
   if (!section.types.contains(entry.type)) return false;
+  if (entry.type == TableContentType.todo && entry.done) return false;
   if (entry.type == TableContentType.todo) {
     if (section.todoState == WidgetTodoState.open && entry.done) return false;
     if (section.todoState == WidgetTodoState.done && !entry.done) return false;

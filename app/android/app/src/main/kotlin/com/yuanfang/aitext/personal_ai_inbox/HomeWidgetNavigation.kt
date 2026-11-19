@@ -17,8 +17,6 @@ internal data class HomeWidgetOpenTarget(
     val tableId: String? = null,
     val entryId: String? = null,
     val rowHash: String? = null,
-    val generatedAtMs: Long? = null,
-    val pageIndex: Int? = null,
 ) {
     fun toMap(): Map<String, Any> = buildMap {
         put("kind", kind)
@@ -57,8 +55,6 @@ internal object HomeWidgetNavigation {
     private const val EXTRA_TABLE_ID = "home_widget_table_id"
     private const val EXTRA_ENTRY_ID = "home_widget_entry_id"
     private const val EXTRA_ROW_HASH = "home_widget_row_hash"
-    private const val EXTRA_GENERATED_AT = "home_widget_generated_at"
-    private const val EXTRA_PAGE_INDEX = "home_widget_page_index"
 
     fun targetIntent(context: Context, target: HomeWidgetOpenTarget): Intent {
         val data = Uri.Builder()
@@ -70,8 +66,6 @@ internal object HomeWidgetNavigation {
             .appendQueryParameter("table_id", target.tableId.orEmpty())
             .appendQueryParameter("entry_id", target.entryId.orEmpty())
             .appendQueryParameter("row_hash", target.rowHash.orEmpty())
-            .appendQueryParameter("generated_at", target.generatedAtMs?.toString().orEmpty())
-            .appendQueryParameter("page_index", target.pageIndex?.toString().orEmpty())
             .build()
         return Intent(context, HomeWidgetOpenActivity::class.java)
             .setAction(ACTION_OPEN_TARGET)
@@ -84,8 +78,6 @@ internal object HomeWidgetNavigation {
                 target.tableId?.let { putExtra(EXTRA_TABLE_ID, it) }
                 target.entryId?.let { putExtra(EXTRA_ENTRY_ID, it) }
                 target.rowHash?.let { putExtra(EXTRA_ROW_HASH, it) }
-                target.generatedAtMs?.let { putExtra(EXTRA_GENERATED_AT, it) }
-                target.pageIndex?.let { putExtra(EXTRA_PAGE_INDEX, it) }
             }
     }
 
@@ -132,17 +124,6 @@ internal object HomeWidgetNavigation {
         )
     }
 
-    fun pagePendingIntent(context: Context, target: HomeWidgetOpenTarget): PendingIntent =
-        PendingIntent.getBroadcast(
-            context,
-            target.widgetId xor (target.pageIndex ?: 0),
-            Intent(context, HomeWidgetClickReceiver::class.java)
-                .setAction(ACTION_OPEN_TARGET)
-                .setData(targetIntent(context, target).data)
-                .putExtras(fillInIntent(context, target)),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-
     fun fillInIntent(
         context: Context,
         target: HomeWidgetOpenTarget,
@@ -158,8 +139,6 @@ internal object HomeWidgetNavigation {
                 target.rowHash?.let { putExtra(EXTRA_ROW_HASH, it) }
                 putExtra(EXTRA_KIND, target.kind)
                 putExtra(EXTRA_WIDGET_ID, target.widgetId)
-                target.generatedAtMs?.let { putExtra(EXTRA_GENERATED_AT, it) }
-                target.pageIndex?.let { putExtra(EXTRA_PAGE_INDEX, it) }
             }
 
     fun openQueuedTarget(context: Context, target: HomeWidgetOpenTarget) {
@@ -178,7 +157,8 @@ internal object HomeWidgetNavigation {
     }
 
     fun validate(context: Context, target: HomeWidgetOpenTarget): Boolean {
-        if (target.widgetId <= 0 || target.kind !in setOf("settings", "table", "entry", "page")) {
+        if (target.widgetId <= 0 ||
+            target.kind !in setOf("settings", "table", "entry")) {
             return false
         }
         val manager = AppWidgetManager.getInstance(context)
@@ -197,22 +177,6 @@ internal object HomeWidgetNavigation {
         val card = HomeWidgetSnapshotStore.load(context)?.card(cardId) ?: return false
         if (card.revision != revision) {
             return false
-        }
-        if (target.kind == "page") {
-            val generatedAt = target.generatedAtMs ?: return false
-            val pageIndex = target.pageIndex ?: return false
-            if (card.generatedAtMs != generatedAt) return false
-            val options = manager.getAppWidgetOptions(target.widgetId)
-            val height = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 220)
-            val pageCount = HomeWidgetPager.paginate(
-                card.rows,
-                HomeWidgetRenderer.rowsPerPage(
-                    height,
-                    context.resources.configuration.fontScale,
-                    android.os.Build.VERSION.SDK_INT,
-                ),
-            ).size
-            return pageIndex in 0 until pageCount
         }
         val tableId = target.tableId ?: return false
         val row = when (target.kind) {
@@ -233,20 +197,6 @@ internal object HomeWidgetNavigation {
 
     fun handleCollectionClick(context: Context, intent: Intent) {
         val target = fromOpenActivityIntent(intent)
-        if (target?.kind == "page") {
-            HomeWidgetRenderer.showPage(
-                context,
-                AppWidgetManager.getInstance(context),
-                HomeWidgetPageRequest(
-                    target.widgetId,
-                    target.cardId ?: return,
-                    target.cardRevision ?: return,
-                    target.generatedAtMs ?: return,
-                    target.pageIndex ?: return,
-                ),
-            )
-            return
-        }
         if (target == null || !validate(context, target)) {
             return
         }
@@ -276,10 +226,6 @@ internal object HomeWidgetNavigation {
             tableId = intent.getStringExtra(EXTRA_TABLE_ID),
             entryId = intent.getStringExtra(EXTRA_ENTRY_ID),
             rowHash = intent.getStringExtra(EXTRA_ROW_HASH),
-            generatedAtMs = intent.takeIf { it.hasExtra(EXTRA_GENERATED_AT) }
-                ?.getLongExtra(EXTRA_GENERATED_AT, 0L),
-            pageIndex = intent.takeIf { it.hasExtra(EXTRA_PAGE_INDEX) }
-                ?.getIntExtra(EXTRA_PAGE_INDEX, -1),
         )
     }
 }

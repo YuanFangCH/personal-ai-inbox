@@ -271,13 +271,17 @@ class WidgetField {
 
 class WidgetSort {
   const WidgetSort({
-    this.key = WidgetSortKey.updatedAt,
-    this.direction = WidgetSortDirection.desc,
+    this.key = WidgetSortKey.businessTime,
+    this.direction = WidgetSortDirection.asc,
   });
 
   const WidgetSort.updatedAtDescending()
     : key = WidgetSortKey.updatedAt,
       direction = WidgetSortDirection.desc;
+
+  const WidgetSort.businessTimeAscending()
+    : key = WidgetSortKey.businessTime,
+      direction = WidgetSortDirection.asc;
 
   final WidgetSortKey key;
   final WidgetSortDirection direction;
@@ -307,9 +311,9 @@ class SectionSpec {
       TableContentType.schedule,
       TableContentType.event,
     ],
-    WidgetTodoState todoState = WidgetTodoState.any,
+    WidgetTodoState todoState = WidgetTodoState.open,
     int? daysAhead,
-    WidgetSort sort = const WidgetSort.updatedAtDescending(),
+    WidgetSort sort = const WidgetSort.businessTimeAscending(),
     int limit = 4,
     List<WidgetField> fields = const [],
   }) {
@@ -386,7 +390,7 @@ class SectionSpec {
           : WidgetTodoState.parse(json['todo_state']),
       daysAhead: _optionalInt(json['days_ahead'], 'days_ahead'),
       sort: json['sort'] == null
-          ? const WidgetSort.updatedAtDescending()
+          ? const WidgetSort.businessTimeAscending()
           : WidgetSort.parse(json['sort']),
       limit: _optionalInt(json['limit'], 'limit') ?? 4,
       fields: json['fields'] == null

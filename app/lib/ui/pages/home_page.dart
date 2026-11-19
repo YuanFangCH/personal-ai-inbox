@@ -653,11 +653,11 @@ class _HomeTableModulesState extends State<_HomeTableModules> {
                 _HomeTableCard(
                   key: ValueKey('home_table_${order[index]}'),
                   table: library.findTable(order[index])!,
-                  entries:
-                      library.entries
-                          .where((entry) => entry.tableId == order[index])
-                          .toList()
-                        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt)),
+                  entries: visibleTableEntriesByBusinessTime(
+                    library.entries.where(
+                      (entry) => entry.tableId == order[index],
+                    ),
+                  ),
                   expanded: _expanded.contains(order[index]),
                   onToggleExpanded: () => setState(() {
                     if (!_expanded.add(order[index])) {

@@ -63,7 +63,8 @@ class _WidgetSettingsPageState extends State<WidgetSettingsPage> {
                   Expanded(
                     child: Text(
                       '卡片只保存显示用短文本和对象 ID。默认仅显示标题，'
-                      '字段内容需在每张卡片中单独开启。',
+                      '选择详细显示后时间会以一行小字放在标题下方。'
+                      '已完成待办会自动从卡片移除。',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),
@@ -1029,28 +1030,6 @@ class _SectionEditor extends StatelessWidget {
           runSpacing: 10,
           children: [
             SizedBox(
-              width: 178,
-              child: DropdownButtonFormField<WidgetTodoState>(
-                initialValue: draft.todoState,
-                decoration: const InputDecoration(
-                  labelText: '待办状态',
-                  isDense: true,
-                ),
-                items: [
-                  for (final state in WidgetTodoState.values)
-                    DropdownMenuItem(
-                      value: state,
-                      child: Text(_todoStateLabel(state)),
-                    ),
-                ],
-                onChanged: (value) {
-                  if (value == null) return;
-                  draft.todoState = value;
-                  onChanged();
-                },
-              ),
-            ),
-            SizedBox(
               width: 170,
               child: DropdownButtonFormField<int?>(
                 initialValue: draft.daysAhead,
@@ -1092,59 +1071,10 @@ class _SectionEditor extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            SizedBox(
-              width: 180,
-              child: DropdownButtonFormField<WidgetSortKey>(
-                initialValue: draft.sortKey,
-                decoration: const InputDecoration(
-                  labelText: '排序',
-                  isDense: true,
-                ),
-                items: [
-                  for (final key in WidgetSortKey.values)
-                    DropdownMenuItem(
-                      value: key,
-                      child: Text(_sortKeyLabel(key)),
-                    ),
-                ],
-                onChanged: (value) {
-                  if (value == null) return;
-                  draft.sortKey = value;
-                  onChanged();
-                },
-              ),
-            ),
-            SizedBox(
-              width: 140,
-              child: DropdownButtonFormField<WidgetSortDirection>(
-                initialValue: draft.sortDirection,
-                decoration: const InputDecoration(
-                  labelText: '方向',
-                  isDense: true,
-                ),
-                items: const [
-                  DropdownMenuItem(
-                    value: WidgetSortDirection.desc,
-                    child: Text('降序'),
-                  ),
-                  DropdownMenuItem(
-                    value: WidgetSortDirection.asc,
-                    child: Text('升序'),
-                  ),
-                ],
-                onChanged: (value) {
-                  if (value == null) return;
-                  draft.sortDirection = value;
-                  onChanged();
-                },
-              ),
-            ),
-          ],
+        const SizedBox(height: 6),
+        Text(
+          '按业务时间升序显示，无时间条目置后；已完成待办自动隐藏。',
+          style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 12),
         Text('显示字段（最多 3 项）', style: Theme.of(context).textTheme.labelLarge),
@@ -1230,10 +1160,10 @@ class _SectionDraft {
     required this.tableId,
     String label = '',
     Set<TableContentType>? types,
-    this.todoState = WidgetTodoState.any,
+    this.todoState = WidgetTodoState.open,
     this.daysAhead,
-    this.sortKey = WidgetSortKey.updatedAt,
-    this.sortDirection = WidgetSortDirection.desc,
+    this.sortKey = WidgetSortKey.businessTime,
+    this.sortDirection = WidgetSortDirection.asc,
     this.limit = 4,
     Set<String>? fields,
   }) : label = TextEditingController(text: label),
@@ -1244,10 +1174,10 @@ class _SectionDraft {
     tableId: spec.tableId,
     label: spec.label ?? '',
     types: spec.types.toSet(),
-    todoState: spec.todoState,
+    todoState: WidgetTodoState.open,
     daysAhead: spec.daysAhead,
-    sortKey: spec.sort.key,
-    sortDirection: spec.sort.direction,
+    sortKey: WidgetSortKey.businessTime,
+    sortDirection: WidgetSortDirection.asc,
     limit: spec.limit,
     fields: spec.fields.map((field) => field.wireName).toSet(),
   );
@@ -1294,18 +1224,6 @@ String _visibilityLabel(WidgetVisibility visibility) => switch (visibility) {
   WidgetVisibility.titles => '简洁显示（仅标题）',
   WidgetVisibility.titleTime => '详细显示（标题和时间）',
   WidgetVisibility.fields => '标题和字段',
-};
-
-String _todoStateLabel(WidgetTodoState state) => switch (state) {
-  WidgetTodoState.any => '全部',
-  WidgetTodoState.open => '未完成',
-  WidgetTodoState.done => '已完成',
-};
-
-String _sortKeyLabel(WidgetSortKey key) => switch (key) {
-  WidgetSortKey.updatedAt => '更新时间',
-  WidgetSortKey.businessTime => '业务时间',
-  WidgetSortKey.title => '标题',
 };
 
 String _typeLabel(TableContentType type) => switch (type) {

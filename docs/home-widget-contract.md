@@ -1,14 +1,45 @@
-# Android 桌面小组件 v1 合同
+# Android 桌面小组件 v2 合同
 
-状态：v1 实现合同。2026-11-10 已随 Android 手机 `v1.6.0+14` 发布；已完成 Android 15 / API 35 手机模拟器桌面验收。荣耀 90 真机仍延后，属于后续复核项。
+状态：2026-11-19 实施合同。逻辑卡片、Flutter 快照和启动器实例仍是三个独立对象；原生渲染由单一可滚动 `ListView` 承担，不再使用 `StackView`、页号、翻页按钮或卡片套卡片。
 
-逻辑卡片、渲染快照和启动器实例是三个对象。Flutter 持有逻辑卡片，从 TableLibrary 投影快照；Kotlin 只保存快照及本机绑定，使用标准 RemoteViews。表内内容继续以 Markdown 为权威。卡片与快照不参与成果同步、设置导出或系统备份。
+## 目标与不变量
 
-## Dart
+- 首页表模块和桌面小组件只显示未完成待办，以及笔记、日程和事件；待办完成后从下一次数据通知中自动消失。
+- 业务时间取待办 `due`、日程 `start`、事件 `occurredAt`。有时间条目按升序，无时间条目最后；同时间按 ID，无时间同组按更新时间倒序。
+- 卡片默认 `titles`，只投影标题。选择 `title_time` 时，时间作为标题下一行的小字；不生成右侧时间栏。
+- Android 使用一个连续时间轴，超过可视高度的内容由 `ListView` 滚动。快捷来源、ID 去重、每卡 48 条和整包 512 KiB 上限保持。
+- 配置、快照和绑定留在本机，不进入成果同步、可移植设置或系统备份。表变更由现有 Flutter 监听去抖刷新。
 
-在 `modules/home_widgets` 分离合同、投影、持久化及 workspace：
+## 文件结构
+
+| 层次 | 文件 | 职责 |
+|---|---|---|
+| 共享排序 | `app/lib/core/table_entry_order.dart` | 业务时间、统一比较器、首页/桌面可见条目 |
+| 首页 | `app/lib/ui/pages/home_page.dart` | 表模块调用共享可见条目规则 |
+| Dart 合同 | `app/lib/modules/home_widgets/home_widget_contract.dart` | 卡片、分区、可见性、快照 JSON 和兼容解析 |
+| Dart 投影 | `app/lib/modules/home_widgets/home_widget_projection.dart` | 来源筛选、完成待办排除、统一时间排序和隐私投影 |
+| Dart 工作区 | `app/lib/modules/home_widgets/widget_workspace.dart` | 配置提交、快照限制、数据变更后发布 |
+| 配置 UI | `app/lib/ui/pages/widget_settings_page.dart` | 新建/编辑卡片和显示方式 |
+| Android 渲染 | `app/android/app/src/main/kotlin/com/yuanfang/aitext/personal_ai_inbox/HomeWidgetRenderer.kt` | RemoteViews 外壳、空态、占位和集合项 |
+| Android 集合 | `app/android/app/src/main/kotlin/com/yuanfang/aitext/personal_ai_inbox/HomeWidgetListService.kt` | 只读行数据源与滚动列表 |
+| Android 实例 | `app/android/app/src/main/kotlin/com/yuanfang/aitext/personal_ai_inbox/HomeWidgetProvider.kt` | 绑定、更新、重建和发布后通知 |
+| Android 点击 | `app/android/app/src/main/kotlin/com/yuanfang/aitext/personal_ai_inbox/HomeWidgetOpenActivity.kt` | 校验快照版本并把目标送入 Flutter |
+| Android 布局 | `app/android/app/src/main/res/layout/home_widget_scroll.xml`、`home_widget_entry_item.xml` | 外壳、连续行和标题下一行时间 |
+
+`home_widget_page.xml`、`home_widget_entry_item_wide.xml`、固定行/紧凑布局、`HomeWidgetPager.kt` 和 `HomeWidgetClickReceiver.kt` 不再属于 v2 运行链。
+
+## Dart API
 
 ```dart
+DateTime? businessTimeOf(TableEntryDocument entry);
+int compareTableEntriesByBusinessTime(
+  TableEntryDocument left,
+  TableEntryDocument right,
+);
+List<TableEntryDocument> visibleTableEntriesByBusinessTime(
+  Iterable<TableEntryDocument> entries,
+);
+
 WidgetSnapshot projectCard(CardDefinition card, {
   required TableContentSnapshot source,
   required DateTime localNow,
@@ -18,94 +49,76 @@ WidgetProjection projectCardDetails(CardDefinition card, {
   required DateTime localNow,
 });
 WidgetSnapshotEnvelope constrainWidgetSnapshots(List<WidgetSnapshot> snapshots);
-Future<List<CardSummary>> listCards({bool includeArchived = false});
-Future<CardDefinition?> getCard(String cardId);
-Future<CardPreview> previewCard(CardSpec spec, {String? cardId});
-Future<CardWriteReceipt> applyCardCommand(CardCommand command, {
-  required String operationId,
-  required Future<bool> Function() authorize,
-});
 Future<WidgetPublishResult> refreshWidgets();
 ```
 
-`WidgetProjection` 与 `CardPreview` 均返回 `snapshot`、`matchingCount`、`warnings`；匹配数在过滤、ID 去重后且应用 48 条卡片上限前统计。`projectCard` 只返回快照。无效旧表和旧字段以 warnings 表示。`constrainWidgetSnapshots` 返回满足 schema v1、512 KiB 总字节上限的 envelope，并从末尾卡片末尾条目开始裁剪，保留卡片记录及绑定语义。
+`visibleTableEntriesByBusinessTime` 返回不可变列表，过滤已完成待办后排序；首页表模块和投影直接使用同一结果语义。`projectCardDetails` 返回 `WidgetProjection(snapshot, matchingCount, warnings)`，其中 `matchingCount` 是完成过滤、业务时间筛选和 ID 去重后、48 条上限前的数量。`constrainWidgetSnapshots` 返回满足 v1 schema 和 512 KiB 上限的 envelope。
 
-- CardDefinition：`schema_version=1, card_id, revision, archived, spec`。ID 本地生成，版本从 1 递增。人工可见性另存 `hidden|titles|title_time|fields`；新卡默认为 titles。hidden 显示通用占位，AI 不得改变可见性；旧 fields 授权保持原行为，直到人工切换。
-- CardSpec：`title, source_mode, sections, excluded_table_ids, hide_empty_sections, theme, include_open_todos?, include_recent_events?`。新增来源开关默认 false；JSON 缺省兼容旧配置，显式值必须是布尔值，false 在 JSON 中省略以保持旧命令签名。selected_tables 按 sections 顺序，all_tables 保留显式表配置再扩展未排除表；快捷来源跨表，遵循排除表。theme 为 system/light/dark。新建或编辑至少保留一张表或启用一个快捷来源；所选表不能同时排除。
-- SectionSpec：`table_id, label?, types, todo_state, days_ahead?, sort, limit, fields`。类型默认全选 note/todo/schedule/event；todo_state 为 any/open/done，后两项仅匹配待办；days_ahead 是以本地今日为起点、右端不含的 N 个自然日。业务时间为待办截止、日程开始、事件发生时间；普通笔记无业务时间。sort 为 `{key:updated_at|business_time|title,direction:asc|desc}`，默认更新时间倒序，空值末尾，条目 ID 破平局。limit 默认 4，范围 1–10。标题固定，可选最多三项 builtin:time、builtin:type、builtin:status、custom:<fieldId>。
-- 已删除表不投影，恢复后重新显示。失效字段省略且预览告警。写入允许保留旧失效引用，拒绝新增失效引用。预览不持久化，返回样本、匹配数与告警。
-- 命令为 create(spec)、replace(cardId, expectedRevision, spec)、archive/restore(cardId, expectedRevision)、人工 setVisibility(cardId, expectedRevision, visibility)、人工 undo(cardId, expectedRevision, targetOperationId)。replace 不改 ID、可见性或归档状态。撤销限最近一次写入、版本匹配且 10 分钟内；撤销创建即归档。
-- 回执包含 operationId/status/cardId/revision/publishStatus，错误为 invalid_argument/not_found/revision_conflict/forbidden/operation_conflict/storage_error。相同操作 ID 和规范化命令读回原回执；异参冲突。配置、撤销材料和回执由单写者原子提交至 noBackupFilesDir/home_widgets；提交前重查权限。发布失败不回滚配置，回执标记 pending。
-- TableLibrary 提交后约 300 ms 合并刷新，整轮共用一次 contentSnapshot()；启动、恢复前台、迁移成功和配置提交也刷新。串行发布，运行期间的新通知补跑一轮。迁移门阻断时清空原生快照，禁止写入、投影与导航。
+`SectionSpec.todoState` 与 `sort` 保留用于读取旧配置和秘书兼容；新 UI 固定提交 `todo_state=open`、`sort=business_time/asc`。投影始终排除完成待办，并以统一业务时间轴排序，因此旧卡片保存的 `any | done | updated_at | desc` 不会把完成项重新带回桌面。
 
-## Android
+显示模式：
 
-通道 `com.yuanfang.aitext.personal_ai_inbox/home_widgets`：
-
-| 调用 | 入参 | 返回 |
+| 值 | 快照内容 | Android 表现 |
 |---|---|---|
-| getStoreDirectory | 无 | 私有目录路径 |
-| publishSnapshots | {snapshot_json} | {submitted_count, failed_count}，仅表示向系统提交 |
-| clearSnapshots | 无 | null |
-| requestPin | {card_id} | requested / unsupported / failed |
-| takeOpenTarget | 无 | null 或一次性 {kind:settings\|table\|entry, table_id?, entry_id?} |
+| `hidden` | 无条目 | 通用隐私占位 |
+| `titles` | 标题 | 单行标题 |
+| `title_time` | 标题 + 业务时间 | 标题一行，时间小字下一行 |
+| `fields` | 旧版标题 + 字段 | 标题一行，字段小字下一行；保留兼容 |
 
-openTargetAvailable 为原生发出的拉取提示，冷启动首帧也主动拉取。入口与现有分享通道分开。快照示例见 `app/test/fixtures/widget_snapshot_v1.json`。新快照每卡至多 48 条 entry 行；整包最多 512 KiB，从末尾卡片的末尾条目裁剪并设置 has_more，保留卡片和桌面绑定。只传显示用短文本与 ID。
-
-Kotlin 的 bind(widgetId, cardId) 和 render(widgetId) 返回 Boolean；校验本 Provider 实例及有效卡片。取消配置不写绑定；固定请求只由用户发起，收到系统成功回调后绑定。移除实例只清绑定；系统恢复的实例重新选卡。归档实例显示占位。API 31+ 使用标准 `StackView` 和 RemoteCollectionItems 按条目分页；集合项模板统一由透明 `HomeWidgetOpenActivity` 接收，`entry` 目标进入 App，`page` 目标只更新目标页后退出。API 24–30 使用固定行，点按翻页由内部 receiver 更新。新快照只含条目行，原生仍读旧缓存中的 section 并跳过。条目点击沿用卡片 revision 与行 hash 校验后导航。日期筛选显示数据日期；数据在 App 启动、恢复前台和内容提交后刷新。
-
-## 时间轴与首页排序
-
-共享排序位于 `app/lib/core/table_entry_order.dart`：
-
-```dart
-DateTime? businessTimeOf(TableEntryDocument entry);
-int compareTableEntriesByBusinessTime(
-  TableEntryDocument left,
-  TableEntryDocument right,
-);
-```
-
-待办取截止时间，日程取开始时间，事件取发生时间，笔记无业务时间。有时间的条目升序、同时间按 ID 升序；无时间的条目放最后，按更新时间降序、再按 ID 排序。首页表模块、待办与表详情复用该比较器；今日安排仍只筛选当天，最近笔记仍按更新时间。
-
-快捷来源匹配：
-
-- `include_open_todos=true` 加入所有未完成待办，包括逾期和无截止时间的待办。
-- `include_recent_events=true` 加入日程和有发生时间的事件，按本地时间筛选 `[today 00:00, today+7 days 00:00)`，不展开重复日程。
-- 表来源保留原有 SectionSpec 类型、状态、日期窗和 limit，先按统一顺序排序再应用 limit。快捷来源跨表，所有来源遵循排除表。
-- 多来源按 entry ID 去重并统一排序。preview `matchingCount` 是去重后、48 条全局上限之前的数量。仍沿用每卡 48 行和整包 512 KiB 上限。
-
-`titles` 快照只含标题；`title_time` 只含标题与业务时间；`fields` 保留旧版自定义字段行为；`hidden` 不含条目或日期。时间格式 `M月d日 HH:mm`；全天只有日期，无业务时间时不生成 detail，跨年补年份。简洁快照不包含字段、状态或时间。
-
-## Android 分页 Kotlin API
-
-`HomeWidgetPager.kt` 提供纯分页，`HomeWidgetRenderer.kt` 提供原生渲染及目标页提交，`HomeWidgetNavigation.kt` 提供目标编码，`HomeWidgetOpenActivity.kt` 处理集合项与页目标，`HomeWidgetClickReceiver.kt` 继续处理固定行翻页。
+## Android API
 
 ```kotlin
-internal data class HomeWidgetPage(val index: Int, val rows: List<HomeWidgetRow>)
-internal data class HomeWidgetPageRequest(
-    val widgetId: Int, val cardId: String, val revision: Long,
-    val generatedAtMs: Long, val pageIndex: Int,
-)
-internal object HomeWidgetPager {
-    fun paginate(rows: List<HomeWidgetRow>, rowsPerPage: Int): List<HomeWidgetPage>
-}
 internal object HomeWidgetRenderer {
     fun render(context: Context, manager: AppWidgetManager, widgetId: Int): Boolean
-    fun showPage(context: Context, manager: AppWidgetManager,
-        request: HomeWidgetPageRequest): Boolean
+    fun entryItem(
+        context: Context,
+        widgetId: Int,
+        card: HomeWidgetCard,
+        row: HomeWidgetRow,
+    ): RemoteViews
+}
+
+class HomeWidgetListService : RemoteViewsService() {
+    override fun onGetViewFactory(intent: Intent): RemoteViewsFactory
 }
 ```
 
-`paginate` 保持输入顺序、只分页 entry 行；`rowsPerPage` 必须为正，空列表返回空页。容量按桌面高度和系统字体倍率估算，至少一行，API 24–30 另受六行布局上限约束。全量投影或尺寸变化回首页。`showPage` 校验 Provider、当前绑定、卡片版本、快照时间和页索引；无效请求返回 false，不导航。跨页只更新原生视图。桌面不显示卡片标题、表标题、条数或滑动提示；使用 App 浅蓝强调色及浅/深表面。
+`render` 返回实例是否写回系统。成功写回后调用 `notifyAppWidgetViewDataChanged(widgetId, R.id.widget_list)`，让新增、排序和完成待办排除立即反映到集合列表。`entryItem` 返回透明背景行，只设置标题、第二行详情和一次性点击填充意图。
 
-## 代码文件结构
+`HomeWidgetListService` 的工厂 API：
 
-- 排序：`app/lib/core/table_entry_order.dart`；调用者为 `ui/pages/home_page.dart`、`ui/pages/table_detail_page.dart`。
-- 配置与投影：`modules/home_widgets/home_widget_contract.dart`、`home_widget_projection.dart`、`widget_workspace.dart`；设置 UI 为 `ui/pages/widget_settings_page.dart`；秘书适配为 `services/widget_tools.dart`，工具 Schema 在 `services/chat_service.dart`。
-- Android：`HomeWidgetPager.kt`、`HomeWidgetRenderer.kt`、`HomeWidgetNavigation.kt`、`HomeWidgetClickReceiver.kt`；布局和颜色在 `res/layout`、`res/values/home_widget_colors.xml`。
-- 不新增 MethodChannel 方法。`publishSnapshots({snapshot_json})` 仍返回 `{submitted_count, failed_count}`；`takeOpenTarget()` 仍只返回 null 或 Flutter 导航目标。翻页广播只在 Android 内部处理。
+| 函数 | 返回 | 说明 |
+|---|---|---|
+| `onCreate()` / `onDataSetChanged()` | `Unit` | 重新读取绑定卡片和快照 |
+| `getCount()` | `Int` | 当前卡片 `entry` 行数 |
+| `getViewAt(position)` | `RemoteViews` | 标题 + 可选第二行详情 |
+| `getItemId(position)` | `Long` | 卡片、修订、表 ID 和条目 ID 的稳定哈希 |
+| `getViewTypeCount()` | `Int` | 固定为 1 |
+| `hasStableIds()` | `Boolean` | `true` |
+| `getLoadingView()` | `RemoteViews?` | `null` |
 
-## 秘书
+通道仍为 `com.yuanfang.aitext.personal_ai_inbox/home_widgets`。`publishSnapshots({snapshot_json}) -> {submitted_count, failed_count}`、`clearSnapshots`、`requestPin` 和 `takeOpenTarget` 的返回形式不变。
 
-widget_list({}) 返回 cards 摘要；widget_get({card_id}) 返回 card 或 not_found。都需 appSettingsRead，并过滤超出表读取范围的卡片。widget_manage 接受 operation=create/replace/archive/restore：create 只要 spec；replace 要 card_id、expected_revision 和 spec；archive/restore 只要 ID 与版本。spec 可选 include_open_todos、include_recent_events；启用任一快捷来源必须有全表读取范围，显示模式仍由用户在设置页控制。返回 ChatWriteToolReceipt，data 含 card_id、revision、publish_status。仅有效完全权限且允许 appSettingsUpdate 时展示，执行、恢复和提交重查权限及表范围。all_tables 需要全表读取范围。沿用现有串行写链，用持久助手消息 ID 与工具调用标识构造幂等 ID。工具不返回原生实例 ID 或内容行。
+## 刷新与失败
+
+1. `TableLibrary` 提交完成状态后通知。
+2. `WidgetWorkspace` 约 300 ms 去抖，重新读取一次 `contentSnapshot()`。
+3. 投影排除完成待办，生成新 envelope。
+4. Flutter 调用 `publishSnapshots`。
+5. Provider 重绘外壳并通知 `ListView` 数据集变化。
+6. 发布失败不回滚已保存卡片配置，回执标记 `pending`，下一次启动、回前台或内容更新重试。
+
+迁移门阻断时清空原生快照并禁止投影。快照损坏或绑定失效时显示占位，不显示旧缓存内容。行点击按卡片 revision 和行哈希校验，过期点击只提示已过期，不打开错误条目。
+
+## 执行与验证步骤
+
+1. 在共享排序层实现完成待办过滤和不可见列表返回值。
+2. 首页表模块改用共享列表，保持默认五行与展开。
+3. 小组件合同默认业务时间升序，配置 UI 移除状态/排序选择并显示自动刷新说明。
+4. 投影在类型筛选前排除完成待办，统一排序后应用快照上限。
+5. Android 外壳改为 `ListView`，删除 `StackView` 页数据、翻页广播和页索引持久化。
+6. 行布局始终使用标题加第二行详情，删除宽屏右侧时间变体。
+7. Provider 写回后通知集合数据变化，覆盖待办完成后的自动消除。
+8. 运行首页、投影、合同和工作区定向测试。
+9. 运行目标 `dart analyze`、格式检查与 Android Debug APK 构建。
+10. 更新 README、交接和 `test-results/home-flat-timeline-20261119/VALIDATION.md`，提交原子变更。

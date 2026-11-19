@@ -7,6 +7,17 @@ DateTime? businessTimeOf(TableEntryDocument entry) => switch (entry.type) {
   TableContentType.note => null,
 };
 
+List<TableEntryDocument> visibleTableEntriesByBusinessTime(
+  Iterable<TableEntryDocument> entries,
+) {
+  final visible =
+      entries
+          .where((entry) => entry.type != TableContentType.todo || !entry.done)
+          .toList()
+        ..sort(compareTableEntriesByBusinessTime);
+  return List.unmodifiable(visible);
+}
+
 int compareTableEntriesByBusinessTime(
   TableEntryDocument left,
   TableEntryDocument right,

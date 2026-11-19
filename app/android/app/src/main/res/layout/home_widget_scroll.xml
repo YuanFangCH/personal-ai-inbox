@@ -5,14 +5,19 @@
     android:layout_height="match_parent"
     android:background="@drawable/home_widget_background_light"
     android:orientation="vertical"
-    android:padding="12dp">
+    android:padding="10dp">
 
     <LinearLayout
         android:id="@+id/widget_header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:background="@drawable/home_widget_section_light"
         android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="10dp">
 
         <TextView
             android:id="@+id/widget_title"
@@ -23,47 +28,33 @@
             android:maxLines="1"
             android:text="@string/home_widget_title"
             android:textColor="@color/home_widget_text_primary_light"
-            android:textSize="17sp"
+            android:textSize="18sp"
             android:textStyle="bold" />
 
-        <LinearLayout
+        <TextView
+            android:id="@+id/widget_date"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:gravity="end"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/widget_date"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@color/home_widget_text_secondary_light"
-                android:textSize="10sp" />
-
-            <TextView
-                android:id="@+id/scroll_hint"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="1dp"
-                android:text="@string/home_widget_scroll_hint"
-                android:textColor="@color/home_widget_accent_light"
-                android:textSize="10sp" />
-        </LinearLayout>
+            android:layout_marginStart="8dp"
+            android:textColor="@color/home_widget_text_secondary_light"
+            android:textSize="10sp" />
     </LinearLayout>
 
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="7dp"
+        android:layout_marginTop="4dp"
         android:layout_weight="1">
 
-        <StackView
+        <ListView
             android:id="@+id/widget_list"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
             android:divider="@null"
-            android:animateFirstView="false"
-            android:loopViews="false" />
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:scrollbars="vertical" />
 
         <TextView
             android:id="@+id/widget_list_empty"
@@ -73,16 +64,6 @@
             android:textColor="@color/home_widget_text_secondary_light"
             android:textSize="13sp" />
     </FrameLayout>
-
-    <TextView
-        android:id="@+id/scroll_more"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:paddingTop="4dp"
-        android:textColor="@color/home_widget_accent_light"
-        android:textSize="10sp"
-        android:visibility="gone" />
 
     <TextView
         android:id="@+id/scroll_data_date"

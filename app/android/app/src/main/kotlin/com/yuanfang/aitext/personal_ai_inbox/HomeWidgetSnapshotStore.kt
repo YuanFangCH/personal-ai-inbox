@@ -98,7 +98,6 @@ internal data class HomeWidgetPublishResult(
 internal object HomeWidgetSnapshotStore {
     private const val SNAPSHOT_FILE = "snapshot.json"
     private const val BINDINGS_FILE = "bindings.json"
-    private const val PAGES_PREFERENCES = "home_widget_pages"
     private const val MAX_PACKAGE_BYTES = 512 * 1024
     private const val MAX_ROWS_PER_CARD = 48
     private const val MAX_ID_LENGTH = 512
@@ -170,15 +169,6 @@ internal object HomeWidgetSnapshotStore {
 
     fun removeBinding(context: Context, widgetId: Int) {
         removeBindings(context, intArrayOf(widgetId))
-    }
-
-    fun pageIndex(context: Context, widgetId: Int): Int =
-        context.getSharedPreferences(PAGES_PREFERENCES, Context.MODE_PRIVATE)
-            .getInt(widgetId.toString(), 0)
-
-    fun setPageIndex(context: Context, widgetId: Int, pageIndex: Int) {
-        context.getSharedPreferences(PAGES_PREFERENCES, Context.MODE_PRIVATE)
-            .edit().putInt(widgetId.toString(), pageIndex).apply()
     }
 
     fun clearBindings(context: Context) {

@@ -74,6 +74,24 @@ void main() {
     expect(parsedCommand.normalizedSignature, command.normalizedSignature);
   });
 
+  test('new sections default to open todos in business-time order', () {
+    final section = SectionSpec(tableId: 'tb_work');
+
+    expect(section.todoState, WidgetTodoState.open);
+    expect(section.sort.key, WidgetSortKey.businessTime);
+    expect(section.sort.direction, WidgetSortDirection.asc);
+
+    final parsed = SectionSpec.parse({
+      'table_id': 'tb_work',
+      'types': [TableContentType.todo.wireName],
+      'limit': 4,
+      'fields': const <String>[],
+    });
+    expect(parsed.todoState, WidgetTodoState.any);
+    expect(parsed.sort.key, WidgetSortKey.businessTime);
+    expect(parsed.sort.direction, WidgetSortDirection.asc);
+  });
+
   test('parses all command constructors', () {
     final commands = [
       CardCommand.create(CardSpec(title: '首页')),
